@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+
+{% block head %}
+    <meta charset="UTF-8">
+    <title>Controller for {{inst.__class__.__name__}}</title>
+{% endblock %}
+
+
+{% block body %}
+
+    <div>
+        <h1>Controller for {{inst.__class__.__name__}} ({{instrument}})</h1>
+    </div>
+    <div class="function">
+        {% for function in functions %}
+        <form role="form" method='POST' name="{{function}}" action='/controllers/{{instrument}}'>
+            <div class="form-group">
+                {% if not functions[function].parameters.keys()|length == 0 %}
+                    {% for parameter in functions[function].parameters.keys() %}
+                        {{parameter}}
+                        {% if not parameter == 'self' %}
+                            {% if functions[function].parameters[parameter].annotation.__name__ == 'bool' %}
+                                <br>
+                                <input type="radio" id="True" name="{{parameter}}"
+                                    value="True" {{'checked' if functions[function].parameters[parameter].default=="True" else ''}}>
+                                    <label for="True">True</label><br>
+                                <input type="radio" id="False" name="{{parameter}}"
+                                    value="False" {{"checked" if functions[function].parameters[parameter].default=="False" else ''}}>
+                                <label for="False">False</label><br>
+                            {% else %}
+                                <input type="text" id="{{parameter}}" name="{{parameter}}"
+                                    placeholder="{{functions[function].parameters[parameter].annotation.__name__}}"
+                                    value="{{functions[function].parameters[parameter].default}}">
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </div>
+            <button type="submit" name="action" value="{{function}}" class="btn btn-default">{{function}}</button>
+        </form>
+        <br>
+        <br>
+
+        {% endfor %}
+    </div>
+
+    <div class="message">
+        <p>{{err_msg}}</p>
+    </div>
+{% endblock %}

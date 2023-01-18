@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+{% block head %}
+    <meta charset="UTF-8">
+    <title>Available Controllers</title>
+{% endblock %}
+
+{% block body %}
+    <div>
+        <h1>Available Controllers</h1>
+    </div>
+
+    <div class="function">
+      {% for instrument in api_variables %}
+        <form role="form" method='POST' name="{{instrument}}" action='/new_controller'>
+          <div class="form-group">
+            <button type="submit" name="api" value="{{instrument}}" class="btn btn-default" >{{instrument}}</button>
+          </div>
+
+        </form>
+      {% endfor %}
+    </div>
+
+    <br><br><br>
+    {% if device %}
+
+    <div class="init">
+        <form role="form" method='POST' name="init" action='/new_controller/create'>
+            <div class="form-group">
+                <label>Name this device</label>
+                <input type="text" id="name" name="name" placeholder="e.g. {{device.__name__}}1" required="required">
+                <br>
+
+                {% for arg in device.__init__.__annotations__ %}
+                    <label>{{arg}}</label>
+                    <input type="text" id="{{arg}}" name="{{arg}}"
+                           placeholder="{{device.__init__.__annotations__[arg].__name__}}"
+                           value="{{args.parameters[arg].default if not args.parameters[arg].default.__name__ == '_empty' else ''}}">
+                    <br>
+                {% endfor %}
+                <button type="submit" name="create" value="{{device.__name__}}" class="btn btn-default" >Create</button>
+            </div>
+
+        </form>
+
+    </div>
+    {% endif %}
+    {% if err_msg %}
+        <div class="message">
+            <p>{{err_msg}}</p>
+        </div>
+    {% endif %}
+{% endblock %}
+
+</html>

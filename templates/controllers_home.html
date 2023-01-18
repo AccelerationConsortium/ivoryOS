@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+{% block head %}
+    <meta charset="UTF-8">
+    <title>Available Controllers</title>
+{% endblock %}
+
+{% block body %}
+    <div>
+        <h1>Available Controllers</h1>
+    </div>
+
+    <div class="function">
+      {% for instrument in defined_variables %}
+        <form role="form" method='GET' name="{{instrument}}" action='/controllers/{{instrument}}'>
+          <div class="form-group">
+            <button type="submit" name="action" value="{{instrument}}" class="btn btn-default">{{instrument}}</button>
+          </div>
+        </form>
+      {% endfor %}
+    </div>
+{% endblock %}
+<body>
+
+</body>
+</html>
