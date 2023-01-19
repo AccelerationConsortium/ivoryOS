@@ -1,10 +1,15 @@
+from test_inner import TestInner
+
+
 class Test:
 
-    def __init__(self, arg2: str, arg1: int = 0):
-        self.a = arg1
+    def __init__(self, arg1: TestInner, arg2: int = 0):
+        self.inner = arg1
+        self.a = arg2
 
     def test1(self):
-        print("Test1: no arg ", self.a)
+        print(self.inner)
+        print("Test1: no arg ", self.inner.a)
 
     def test2(self, arg1: int = 2, arg2: str = "4"):
         print("Test2: Testing for None default", arg1)

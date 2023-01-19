@@ -20,7 +20,7 @@
             <div class="form-group">
                 {% if not functions[function].parameters.keys()|length == 0 %}
                     {% for parameter in functions[function].parameters.keys() %}
-                        {{parameter}}
+                        {{parameter}} ({{'optional' if not functions[function].parameters[parameter].default.__name__ == '_empty' else 'required'}}):
                         {% if not parameter == 'self' %}
                             {% if functions[function].parameters[parameter].annotation.__name__ == 'bool' %}
                                 <br>
@@ -33,7 +33,7 @@
                             {% else %}
                                 <input type="text" id="{{parameter}}" name="{{parameter}}"
                                     placeholder="{{functions[function].parameters[parameter].annotation.__name__}}"
-                                    value="{{functions[function].parameters[parameter].default}}">
+                                    value="{{'' if functions[function].parameters[parameter].default.__name__ == '_empty' or functions[function].parameters[parameter].default == None else functions[function].parameters[parameter].default}}">
                             {% endif %}
                         {% endif %}
                     {% endfor %}
@@ -41,7 +41,6 @@
             </div>
             <button type="submit" name="action" value="{{function}}" class="btn btn-default">{{function}}</button>
         </form>
-        <br>
         <br>
 
         {% endfor %}

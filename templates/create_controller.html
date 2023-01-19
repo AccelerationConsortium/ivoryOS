@@ -28,14 +28,18 @@
         <form role="form" method='POST' name="init" action='/new_controller/create'>
             <div class="form-group">
                 <label>Name this device</label>
-                <input type="text" id="name" name="name" placeholder="e.g. {{device.__name__}}1" required="required">
+                <input type="text" id="name" name="name" placeholder="e.g. {{device.__name__}}1" >
                 <br>
 
                 {% for arg in device.__init__.__annotations__ %}
                     <label>{{arg}}</label>
                     <input type="text" id="{{arg}}" name="{{arg}}"
-                           placeholder="{{device.__init__.__annotations__[arg].__name__}}"
-                           value="{{args.parameters[arg].default if not args.parameters[arg].default.__name__ == '_empty' else ''}}">
+                        placeholder="{{device.__init__.__annotations__[arg].__name__}}"
+                        value="{{args.parameters[arg].default if not args.parameters[arg].default.__name__ == '_empty' else ''}}">
+                    {% if not device.__init__.__annotations__[arg].__module__ == "builtins" %}
+                        <button type="submit" name="api" value="{{device.__init__.__annotations__[arg].__name__}}" formaction='/new_controller'
+                                class="btn btn-default" >initialize {{device.__init__.__annotations__[arg].__name__}} first</button>
+                    {% endif %}
                     <br>
                 {% endfor %}
                 <button type="submit" name="create" value="{{device.__name__}}" class="btn btn-default" >Create</button>

@@ -9,6 +9,7 @@ libs = set(dir())
 
 # ---------API imports------------
 from test import Test
+from test_inner import TestInner
 
 api = set(dir())
 api_variables = api - libs - set(["libs"])
@@ -50,7 +51,6 @@ def create_controller():
 @app.route("/new_controller/create", methods=['GET', 'POST'])
 def controllers_new():
     if request.method == 'POST':
-
         device = find_instrument_by_name(request.form["create"])
         device_name = request.form["name"]
         args = inspect.signature(device.__init__)
@@ -60,7 +60,13 @@ def controllers_new():
         args = request.form.to_dict()
         args.pop("name")
         args.pop("create")
-        globals()[device_name] = device(args)
+        for arg in device.__init__.__annotations__:
+            if not device.__init__.__annotations__[arg].__module__ == "builtins":
+                args[arg] = globals()[args[arg]]
+        try:
+            globals()[device_name] = device(**args)
+        except Exception as e:
+            return render_template('create_controller.html', api_variables=api_variables, device=device, args=args, err_msg=e)
         return redirect(url_for('controllers', instrument=device_name))
     return render_template('create_controller.html', api_variables=api_variables, device=None)
 
@@ -125,6 +131,11 @@ def parse_functions(class_object=None, call=True):
 #         if not function.startswith("_") and not function.isupper():
 #             functions.append(function)
 #     return functions
+
+# def creat_device(device, args):
+#     for arg in device.__init__.__annotations__:
+#         if not device.__init__.__annotations__[arg].__module__ == "builtins":
+#             args[arg] = globals()[args[arg]]
 
 
 if __name__ == "__main__":
