@@ -1,59 +1,60 @@
-<!DOCTYPE html>
-<html lang="en">
-{% block head %}
-    <meta charset="UTF-8">
-    <title>Available Controllers</title>
-{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Available Controllers{% endblock %}
 
 {% block body %}
-    <div>
+
+    <div class="container">
+
         <h1>Available Controllers</h1>
-    </div>
-
-    <div class="function">
-      {% for instrument in api_variables %}
-        <form role="form" method='POST' name="{{instrument}}" action='/new_controller'>
-          <div class="form-group">
-            <button type="submit" name="api" value="{{instrument}}" class="btn btn-default" >{{instrument}}</button>
-          </div>
-
-        </form>
-      {% endfor %}
-    </div>
-
-    <br><br><br>
-    {% if device %}
-
-    <div class="init">
-        <form role="form" method='POST' name="init" action='/new_controller/create'>
-            <div class="form-group">
-                <label>Name this device</label>
-                <input type="text" id="name" name="name" placeholder="e.g. {{device.__name__}}1" >
-                <br>
-
-                {% for arg in device.__init__.__annotations__ %}
-                    <label>{{arg}}</label>
-                    <input type="text" id="{{arg}}" name="{{arg}}"
-                        placeholder="{{device.__init__.__annotations__[arg].__name__}}"
-                        value="{{args.parameters[arg].default if not args.parameters[arg].default.__name__ == '_empty' else ''}}">
-                    {% if not device.__init__.__annotations__[arg].__module__ == "builtins" %}
-                        <button type="submit" name="api" value="{{device.__init__.__annotations__[arg].__name__}}" formaction='/new_controller'
-                                class="btn btn-default" >initialize {{device.__init__.__annotations__[arg].__name__}} first</button>
-                    {% endif %}
-                    <br>
-                {% endfor %}
-                <button type="submit" name="create" value="{{device.__name__}}" class="btn btn-default" >Create</button>
+        <div class="row">
+            <div class="col-4">
+            {% for instrument in api_variables %}
+                <form role="form" method='POST' name="{{instrument}}" action='/new_controller'>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-dark" name="api" value="{{instrument}}" >{{instrument}}</button>
+                    </div>
+                </form>
+            {% endfor %}
             </div>
 
-        </form>
 
-    </div>
-    {% endif %}
-    {% if err_msg %}
-        <div class="message">
-            <p>{{err_msg}}</p>
+            <div class="col-6">
+                {% if device %}
+                    <form role="form" method='POST' name="init" action='/new_controller/create'>
+                        <div class="form-group">
+                            <label>Name this device</label>
+                            <input type="text" id="name" name="name" placeholder="e.g. {{device.__name__}}1" >
+                            <br>
+
+                            {% for arg in device.__init__.__annotations__ %}
+                                <label>{{arg}}</label>
+                                <input type="text" id="{{arg}}" name="{{arg}}"
+                                    placeholder="{{device.__init__.__annotations__[arg].__name__}}"
+                                    value="{{args.parameters[arg].default if not args.parameters[arg].default.__name__ == '_empty' else ''}}">
+                                {% if not device.__init__.__annotations__[arg].__module__ == "builtins" %}
+                                    <button type="submit" name="api" value="{{device.__init__.__annotations__[arg].__name__}}" formaction='/new_controller'
+                                            class="btn btn-dark">initialize {{device.__init__.__annotations__[arg].__name__}} first</button>
+                                {% endif %}
+                                <br>
+                            {% endfor %}
+                            <button type="submit" name="create" value="{{device.__name__}}" class="btn btn-dark">Create</button>
+                        </div>
+                    </form>
+
+                    {% with messages = get_flashed_messages() %}
+                      {% if messages %}
+                        <ul class=flashes>
+                        {% for message in messages %}
+                          <li>{{ message }}</li>
+                        {% endfor %}
+                        </ul>
+                      {% endif %}
+                    {% endwith %}
+                {% endif %}
+            </div>
         </div>
-    {% endif %}
+    </div>
+
 {% endblock %}
 
 </html>

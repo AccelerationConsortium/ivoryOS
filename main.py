@@ -1,8 +1,10 @@
 import inspect
 from flask import Flask, redirect, url_for, flash
 from flask import request, render_template
+import sample_deck as deck
 
 app = Flask(__name__)
+app.secret_key="key"
 bool_dict = {"True": True, "False": False}
 
 libs = set(dir())
@@ -17,7 +19,7 @@ api_variables = api - libs - set(["libs"])
 import_variables = set(dir())
 
 # -----initialize functions here------
-ran = Test(5)
+ran = Test(TestInner('test'))
 
 user_variables = set(dir())
 defined_variables = user_variables - import_variables - set(["import_variables"])
@@ -30,9 +32,13 @@ def index():
 
 @app.route("/controllers")
 def controllers_home():
-    # defined_variables = parse_globals()
+    # current_variables = set(dir())
     return render_template('controllers_home.html', defined_variables=defined_variables)
 
+@app.route("/my_deck")
+def deck_controllers():
+    current_variables = ["deck."+var for var in set(dir(deck)) if not var.startswith("_") and not var[0].isupper()]
+    return render_template('controllers_home.html', defined_variables=current_variables)
 
 @app.route("/new_controller", methods=['GET', 'POST'])
 def create_controller():
@@ -54,9 +60,9 @@ def controllers_new():
         device = find_instrument_by_name(request.form["create"])
         device_name = request.form["name"]
         args = inspect.signature(device.__init__)
-        if device_name in globals():
-            return render_template('create_controller.html', api_variables=api_variables, device=device, args=args,
-                                   err_msg="Invalid Name,  change to something else.")
+        if device_name == '' or device_name in globals():
+            flash("Device name is NOT valid")
+            return render_template('create_controller.html', api_variables=api_variables, device=device, args=args)
         args = request.form.to_dict()
         args.pop("name")
         args.pop("create")
@@ -65,6 +71,7 @@ def controllers_new():
                 args[arg] = globals()[args[arg]]
         try:
             globals()[device_name] = device(**args)
+            defined_variables.add(device_name)
         except Exception as e:
             return render_template('create_controller.html', api_variables=api_variables, device=device, args=args, err_msg=e)
         return redirect(url_for('controllers', instrument=device_name))
@@ -87,14 +94,17 @@ def controllers(instrument):
             else:
                 function()
         except Exception as e:
+            flash(e)
             return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object,
                                    err_msg=e)
-
+        flash("Run Success!")
     return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object, err_msg='')
 
 
 def find_instrument_by_name(name: str):
-    if name in globals():
+    if name.startswith("deck"):
+        return eval(name)
+    elif name in globals():
         return globals()[name]
 
 

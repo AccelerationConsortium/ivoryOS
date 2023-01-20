@@ -1,20 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
-{% block head %}
-    <meta charset="UTF-8">
-    <title>Available Controllers</title>
-{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Available Controllers{% endblock %}
+
 
 {% block body %}
-    <div>
+    <div class= "container">
         <h1>Available Controllers</h1>
-    </div>
-
-    <div class="function">
       {% for instrument in defined_variables %}
         <form role="form" method='GET' name="{{instrument}}" action='/controllers/{{instrument}}'>
           <div class="form-group">
-            <button type="submit" name="action" value="{{instrument}}" class="btn btn-default">{{instrument}}</button>
+            <button type="submit" class="btn btn-dark" name="action" value="{{instrument}}" >{{instrument}}</button>
           </div>
         </form>
       {% endfor %}

@@ -1,52 +1,57 @@
-<!DOCTYPE html>
-<html lang="en">
-
-
-
-{% block head %}
-    <meta charset="UTF-8">
-    <title>Controller for {{inst.__class__.__name__}}</title>
-{% endblock %}
-
+{% extends 'base.html' %}
+{% block title %}Controller for {{inst.__class__.__name__}}{% endblock %}
 
 {% block body %}
-
-    <div>
+    <div class= "container">
         <h1>Controller for {{inst.__class__.__name__}} ({{instrument}})</h1>
-    </div>
-    <div class="function">
-        {% for function in functions %}
-        <form role="form" method='POST' name="{{function}}" action='/controllers/{{instrument}}'>
-            <div class="form-group">
-                {% if not functions[function].parameters.keys()|length == 0 %}
-                    {% for parameter in functions[function].parameters.keys() %}
-                        {{parameter}} ({{'optional' if not functions[function].parameters[parameter].default.__name__ == '_empty' else 'required'}}):
-                        {% if not parameter == 'self' %}
-                            {% if functions[function].parameters[parameter].annotation.__name__ == 'bool' %}
+        <div class="row">
+            {% for function in functions %}
+            <div class="col-md-3">
+                <form role="form" method='POST' name="{{function}}" action='/controllers/{{instrument}}'>
+                    <div class="form-group">
+                        {% if not functions[function].parameters.keys()|length == 0 %}
+                            {% for parameter in functions[function].parameters.keys() %}
+                                {{parameter}} ({{'optional' if not functions[function].parameters[parameter].default.__name__ == '_empty' else 'required'}}):<br>
+                                {% if not parameter == 'self' %}
+                                    {% if functions[function].parameters[parameter].annotation.__name__ == 'bool' %}
+
+                                        <input type="radio" id="True" name="{{parameter}}"
+                                            value="True" {{'checked' if functions[function].parameters[parameter].default=="True" else ''}}>
+                                            <label for="True">True</label><br>
+                                        <input type="radio" id="False" name="{{parameter}}"
+                                            value="False" {{"checked" if functions[function].parameters[parameter].default=="False" else ''}}>
+                                        <label for="False">False</label>
+                                    {% else %}
+                                        <input type="text" id="{{parameter}}" name="{{parameter}}"
+                                            placeholder="{{functions[function].parameters[parameter].annotation.__name__}}"
+                                            value="{{'' if functions[function].parameters[parameter].default.__name__ == '_empty' or functions[function].parameters[parameter].default == None else functions[function].parameters[parameter].default}}">
+                                    {% endif %}
+                                {% endif %}
                                 <br>
-                                <input type="radio" id="True" name="{{parameter}}"
-                                    value="True" {{'checked' if functions[function].parameters[parameter].default=="True" else ''}}>
-                                    <label for="True">True</label><br>
-                                <input type="radio" id="False" name="{{parameter}}"
-                                    value="False" {{"checked" if functions[function].parameters[parameter].default=="False" else ''}}>
-                                <label for="False">False</label><br>
-                            {% else %}
-                                <input type="text" id="{{parameter}}" name="{{parameter}}"
-                                    placeholder="{{functions[function].parameters[parameter].annotation.__name__}}"
-                                    value="{{'' if functions[function].parameters[parameter].default.__name__ == '_empty' or functions[function].parameters[parameter].default == None else functions[function].parameters[parameter].default}}">
-                            {% endif %}
+                            {% endfor %}
                         {% endif %}
-                    {% endfor %}
-                {% endif %}
+                        <br>
+                        <button type="submit" class="btn btn-dark" name="action" value="{{function}}" >{{function}}</button>
+                    </div>
+                </form>
+<!--                <div class="message">-->
+<!--                    <p>{{err_msg}}</p>-->
+<!--                </div>-->
             </div>
-            <button type="submit" name="action" value="{{function}}" class="btn btn-default">{{function}}</button>
-        </form>
-        <br>
 
-        {% endfor %}
+            {% endfor %}
+        </div>
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+
     </div>
 
-    <div class="message">
-        <p>{{err_msg}}</p>
-    </div>
+
 {% endblock %}
