@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block title %}Available Controllers{% endblock %}
+
+{% block body %}
+
+<script type="text/javascript">
+$(document).ready(function(){
+   function slideout(){
+    setTimeout(function(){
+      $("#response").slideUp("slow", function () {
+    });
+    }, 2000);
+  }
+
+  $("#response").hide();
+  $(function() {
+    $("#list ul").sortable({ opacity: 0.8, cursor: 'move', update: function() {
+      var item_order = new Array();
+      $('ul.reorder li').each(function() {
+          item_order.push($(this).attr("id"));
+      });
+      var order_string = 'order='+item_order;
+      $.ajax({
+        method: "POST",
+        url: "/updateList",
+        data: order_string,
+        cache: false,
+        success: function(data){
+            $("#response").html(data);
+            $("#response").slideDown('slow');
+            // location.reload();
+            slideout();
+        }
+    });
+    }
+    });
+   });
+
+});
+</script>
+    <div class= "container">
+        <div class="row">
+
+            <div class="col-md-3">
+                <p>Available Controllers</p>
+                {% for instrument in defined_variables %}
+                <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}">
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-dark" name="device" value="{{instrument}}" >{{instrument}}</button>
+                    </div>
+                </form>
+                {% endfor%}
+            </div>
+            {% if not defined_variables %}
+                <div class="col-md-3">
+                    <p>Local Controllers</p>
+                    {% for instrument in local_variables %}
+                    <form role="form" method='POST' name="{{instrument}}">
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-dark" name="action" value="{{instrument}}" >{{instrument}}</button>
+                        </div>
+                    </form>
+                    {% endfor%}
+                </div>
+            {% endif %}
+            <div class="col-md-3">
+                <p>Actions for {{instrument}}</p>
+
+                <ul>
+                    {% for function in functions %}
+                    <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}/{{function}}">
+                        <div class="form-group">
+                            <input  name="device" value="{{device}}" type="hidden">
+                            <button type="submit" class="btn btn-dark" name="action" value="{{function}}" >{{function}}</button>
+                        </div>
+                    </form>
+                    {% endfor %}
+                </ul>
+<!--                <div id="list">-->
+<!--                    <ul class="reorder">-->
+<!--                        {% for function in functions %}-->
+<!--                        <li draggable="true">{{function}}</li>-->
+<!--                        {% endfor %}-->
+<!--                    </ul>-->
+<!--                </div>-->
+            </div>
+            <div class="col-md-3">
+            {% if action %}
+                 <form role="form" method='POST' name="add">
+                        <div class="form-group">
+                            {% for parameter in parameters.keys() %}
+                                {{parameter}} ({{'optional' if not parameters[parameter].default.__name__ == '_empty' else 'required'}}):<br>
+                                {% if not parameter == 'self' %}
+                                    {% if parameters[parameter].annotation.__name__ == 'bool' %}
+
+                                        <input type="radio" id="True" name="{{parameter}}" value="True" {{'checked' if parameters[parameter].default=="True" else ''}}>
+                                        <label for="True">True</label><br>
+                                        <input type="radio" id="False" name="{{parameter}}" value="False" {{"checked" if parameters[parameter].default=="False" else ''}}>
+                                        <label for="False">False</label>
+                                    {% else %}
+                                        <input type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{parameters[parameter].annotation.__name__}}"
+                                               value="{{'' if parameters[parameter].default.__name__ == '_empty' or parameters[parameter].default == None else parameters[parameter].default}}">
+                                    {% endif %}
+                                {% endif %}
+                                <br>
+                            {% endfor %}
+
+                            <button type="submit" class="btn btn-dark" name="add" value="{{action}}" >add</button>
+                        </div>
+                </form>
+            {% endif %}
+
+            </div>
+
+            <div class="col-md-6">
+                <p>Script Editor</p>
+                {% if script %}
+                <div id="list">
+                    <ul class="reorder">
+                        {% for s in script %}
+                        <li draggable="true" id="{{s['id']}}">{{s['id']}}: {{s['action']}}</li>
+                        <div class="clear"></div>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                <a class="btn btn-dark" href="{{ url_for('experiment_run') }}">Run</a>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+<body>
+
+</body>
+</html>

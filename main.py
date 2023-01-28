@@ -1,13 +1,15 @@
 import inspect
-from flask import Flask, redirect, url_for, flash
+from flask import Flask, redirect, url_for, flash, jsonify
 from flask import request, render_template
 import sample_deck as deck
 
 app = Flask(__name__)
-app.secret_key="key"
+app.secret_key = "key"
 bool_dict = {"True": True, "False": False}
+script_list = []
 
 libs = set(dir())
+
 
 # ---------API imports------------
 from test import Test
@@ -35,10 +37,81 @@ def controllers_home():
     # current_variables = set(dir())
     return render_template('controllers_home.html', defined_variables=defined_variables)
 
+
+@app.route("/experiment/build/", methods=['GET', 'POST'])
+@app.route("/experiment/build/<instrument>/", methods=['GET', 'POST'])
+@app.route("/experiment/build/<instrument>/<action>", methods=['GET', 'POST'])
+def experiment_builder(instrument=None, action=None):
+    # current_variables = set(dir())
+    # inst_object = find_instrument_by_name(instrument)
+    # functions = parse_functions(inst_object)
+    # script_list.sort(key=sort_by_id)
+    # print(script_list)
+    deck_variables = ["deck." + var for var in set(dir(deck)) if not var.startswith("_") and not var[0].isupper()]
+    if instrument:
+        inst_object = find_instrument_by_name(instrument)
+        functions = parse_functions(inst_object)
+        if action:
+            action_parameters = functions[action].parameters
+            if request.method == 'POST':
+                args = request.form.to_dict()
+                selected_function = args.pop('add')
+                args = convert_type(args, functions[selected_function].parameters)
+                action_dict = {"id":len(script_list)+1, "action": selected_function, "args": args}
+                script_list.append(action_dict)
+                return render_template('experiment_builder.html', defined_variables=deck_variables,
+                                       local_variables=defined_variables,
+                                       functions=functions, parameters=action_parameters, instrument=instrument,
+                                       action=action, script=script_list)
+            return render_template('experiment_builder.html', defined_variables=deck_variables,
+                                   local_variables=defined_variables,
+                                   functions=functions, parameters=action_parameters, instrument=instrument,
+                                   action=action, script=script_list)
+        else:
+            return render_template('experiment_builder.html', defined_variables=deck_variables,
+                                   local_variables=defined_variables,
+                                   functions=functions, instrument=instrument, script=script_list)
+        return render_template('experiment_builder.html', defined_variables=deck_variables,
+                               local_variables=defined_variables)
+    return render_template('experiment_builder.html', defined_variables=deck_variables,
+                           local_variables=defined_variables, script=script_list)
+
+
+@app.route("/updateList", methods=['GET', 'POST'])
+def update_list():
+    getorder = request.form['order']
+    order = getorder.split(",", len(script_list))
+    print(order)
+    for action in script_list:
+        for i in range(len(script_list)):
+            if action['id']==int(order[i]):
+                print(i+1)
+                action['id']=i+1
+    #     print(script_list[i]['id'])
+    # print(script_list)
+    # print(script_list)
+    return jsonify('Successfully Updated')
+    # return render_template('experiment_builder.html',script=script_list)
+    # return redirect(url_for('experiment_builder'))
+
+
+@app.route("/saveList", methods=['GET', 'POST'])
+def save_list():
+    return ''
+@app.route("/experiment")
+def experiment_run():
+    # current_variables = set(dir())
+    script_list.sort(key=sort_by_id)
+    print(script_list)
+
+    return render_template('experiment_run.html', script=script_list)
+
+
 @app.route("/my_deck")
 def deck_controllers():
-    current_variables = ["deck."+var for var in set(dir(deck)) if not var.startswith("_") and not var[0].isupper()]
+    current_variables = ["deck." + var for var in set(dir(deck)) if not var.startswith("_") and not var[0].isupper()]
     return render_template('controllers_home.html', defined_variables=current_variables)
+
 
 @app.route("/new_controller", methods=['GET', 'POST'])
 def create_controller():
@@ -47,10 +120,6 @@ def create_controller():
         inst_object = find_instrument_by_name(module_name)
         args = inspect.signature(inst_object.__init__)
         return render_template('create_controller.html', api_variables=api_variables, device=inst_object, args=args)
-        # global new
-        # new = inst_object(9)
-        # return redirect(url_for('controllers', instrument='new'))
-
     return render_template('create_controller.html', api_variables=api_variables, device=None)
 
 
@@ -73,7 +142,8 @@ def controllers_new():
             globals()[device_name] = device(**args)
             defined_variables.add(device_name)
         except Exception as e:
-            return render_template('create_controller.html', api_variables=api_variables, device=device, args=args, err_msg=e)
+            return render_template('create_controller.html', api_variables=api_variables, device=device, args=args,
+                                   err_msg=e)
         return redirect(url_for('controllers', instrument=device_name))
     return render_template('create_controller.html', api_variables=api_variables, device=None)
 
@@ -99,6 +169,8 @@ def controllers(instrument):
                                    err_msg=e)
         flash("Run Success!")
     return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object, err_msg='')
+
+
 
 
 def find_instrument_by_name(name: str):
@@ -133,6 +205,14 @@ def parse_functions(class_object=None, call=True):
             else:
                 functions[function] = function
     return functions
+
+
+def sort_actions(script_list):
+    script_list.sort(key=sort_by_id)
+
+
+def sort_by_id(dict):
+    return dict['id']
 
 
 # def parse_globals():

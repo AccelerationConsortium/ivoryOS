@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Available Controllers{% endblock %}
+
+
+{% block body %}
+    <div class= "container">
+        <a class="nav-link" href="{{ url_for('experiment_builder') }}">Build Experiments</a>
+
+
+
+
+        <div class="col-md-6">
+            <p>Script Editor</p>
+            {% if script %}
+                <div >
+                    <ul>
+                        {% for s in script %}
+                        <li id="{{s['id']}}">{{s['id']}}: {{s['action']}}</li>
+                        <div class="clear"></div>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+<body>
+
+</body>
+</html>
