@@ -4,18 +4,19 @@
 
 {% block body %}
     <div class= "container">
-        <a class="nav-link" href="{{ url_for('experiment_builder') }}">Build Experiments</a>
+        <a class="btn btn-dark" href="{{ url_for('experiment_builder') }}">Build Experiments</a>
 
 
 
 
         <div class="col-md-6">
-            <p>Script Editor</p>
+            <p>Run Script </p>
             {% if script %}
                 <div >
                     <ul>
                         {% for s in script %}
-                        <li id="{{s['id']}}">{{s['id']}}: {{s['action']}}</li>
+                        <li class="btn btn-light" id="{{s['id']}}">{{s['action']}}</li>
+
                         <div class="clear"></div>
                         {% endfor %}
                     </ul>

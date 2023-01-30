@@ -93,9 +93,9 @@ $(document).ready(function(){
                                 {% if not parameter == 'self' %}
                                     {% if parameters[parameter].annotation.__name__ == 'bool' %}
 
-                                        <input type="radio" id="True" name="{{parameter}}" value="True" {{'checked' if parameters[parameter].default=="True" else ''}}>
+                                        <input type="radio" id="True" name="{{parameter}}" value="True" {{"checked" if parameters[parameter].default=="True" else ""}}>
                                         <label for="True">True</label><br>
-                                        <input type="radio" id="False" name="{{parameter}}" value="False" {{"checked" if parameters[parameter].default=="False" else ''}}>
+                                        <input type="radio" id="False" name="{{parameter}}" value="False" {{"checked" if parameters[parameter].default=="False" else ""}}>
                                         <label for="False">False</label>
                                     {% else %}
                                         <input type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{parameters[parameter].annotation.__name__}}"
@@ -118,7 +118,10 @@ $(document).ready(function(){
                 <div id="list">
                     <ul class="reorder">
                         {% for s in script %}
-                        <li draggable="true" id="{{s['id']}}">{{s['id']}}: {{s['action']}}</li>
+                        <li draggable="true" id="{{s['id']}}">{{s['action']}}
+                            <a class="btn btn-dark" href="/delete/{{s['id']}}">Delete</a>
+                        </li>
+
                         <div class="clear"></div>
                         {% endfor %}
                     </ul>

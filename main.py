@@ -7,7 +7,7 @@ app = Flask(__name__)
 app.secret_key = "key"
 bool_dict = {"True": True, "False": False}
 script_list = []
-
+order=[]
 libs = set(dir())
 
 
@@ -37,6 +37,10 @@ def controllers_home():
     # current_variables = set(dir())
     return render_template('controllers_home.html', defined_variables=defined_variables)
 
+@app.route("/delete/<id>")
+def delete_action(id):
+    return ''
+
 
 @app.route("/experiment/build/", methods=['GET', 'POST'])
 @app.route("/experiment/build/<instrument>/", methods=['GET', 'POST'])
@@ -47,6 +51,10 @@ def experiment_builder(instrument=None, action=None):
     # functions = parse_functions(inst_object)
     # script_list.sort(key=sort_by_id)
     # print(script_list)
+    global script_list
+    # print(script_list)
+    if len(order) > 0:
+        sort_actions(script_list, order)
     deck_variables = ["deck." + var for var in set(dir(deck)) if not var.startswith("_") and not var[0].isupper()]
     if instrument:
         inst_object = find_instrument_by_name(instrument)
@@ -80,15 +88,8 @@ def experiment_builder(instrument=None, action=None):
 @app.route("/updateList", methods=['GET', 'POST'])
 def update_list():
     getorder = request.form['order']
+    global order
     order = getorder.split(",", len(script_list))
-    print(order)
-    for action in script_list:
-        for i in range(len(script_list)):
-            if action['id']==int(order[i]):
-                print(i+1)
-                action['id']=i+1
-    #     print(script_list[i]['id'])
-    # print(script_list)
     # print(script_list)
     return jsonify('Successfully Updated')
     # return render_template('experiment_builder.html',script=script_list)
@@ -101,8 +102,10 @@ def save_list():
 @app.route("/experiment")
 def experiment_run():
     # current_variables = set(dir())
-    script_list.sort(key=sort_by_id)
-    print(script_list)
+    if len(order) > 0:
+        print(order)
+        list = sort_actions(script_list, order)
+        print(script_list)
 
     return render_template('experiment_run.html', script=script_list)
 
@@ -207,7 +210,14 @@ def parse_functions(class_object=None, call=True):
     return functions
 
 
-def sort_actions(script_list):
+def sort_actions(script_list, order):
+    for action in script_list:
+        for i in range(len(script_list)):
+            if action['id']==int(order[i]):
+                # print(i+1)
+                action['id']=i+1
+                break
+    order.sort()
     script_list.sort(key=sort_by_id)
 
 
