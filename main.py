@@ -5,11 +5,9 @@ import sample_deck as deck
 
 app = Flask(__name__)
 app.secret_key = "key"
-bool_dict = {"True": True, "False": False}
 script_list = []
-order=[]
+order = []
 libs = set(dir())
-
 
 # ---------API imports------------
 from test import Test
@@ -37,9 +35,16 @@ def controllers_home():
     # current_variables = set(dir())
     return render_template('controllers_home.html', defined_variables=defined_variables)
 
+
 @app.route("/delete/<id>")
 def delete_action(id):
-    return ''
+    for action in script_list:
+        if action['id'] == int(id):
+            script_list.remove(action)
+    for i in order:
+        if int(i) == int(id):
+            order.remove(i)
+    return redirect(url_for('experiment_builder'))
 
 
 @app.route("/experiment/build/", methods=['GET', 'POST'])
@@ -49,12 +54,10 @@ def experiment_builder(instrument=None, action=None):
     # current_variables = set(dir())
     # inst_object = find_instrument_by_name(instrument)
     # functions = parse_functions(inst_object)
-    # script_list.sort(key=sort_by_id)
-    # print(script_list)
     global script_list
+    global order
+    sort_actions()
     # print(script_list)
-    if len(order) > 0:
-        sort_actions(script_list, order)
     deck_variables = ["deck." + var for var in set(dir(deck)) if not var.startswith("_") and not var[0].isupper()]
     if instrument:
         inst_object = find_instrument_by_name(instrument)
@@ -62,11 +65,16 @@ def experiment_builder(instrument=None, action=None):
         if action:
             action_parameters = functions[action].parameters
             if request.method == 'POST':
+                # sort_actions(script_list, order)
+
                 args = request.form.to_dict()
                 selected_function = args.pop('add')
                 args = convert_type(args, functions[selected_function].parameters)
-                action_dict = {"id":len(script_list)+1, "action": selected_function, "args": args}
+                action_dict = {"id": len(script_list) + 1, "instrument": instrument, "action": selected_function,
+                               "args": args}
+                order.append(str(len(script_list) + 1))
                 script_list.append(action_dict)
+
                 return render_template('experiment_builder.html', defined_variables=deck_variables,
                                        local_variables=defined_variables,
                                        functions=functions, parameters=action_parameters, instrument=instrument,
@@ -99,14 +107,31 @@ def update_list():
 @app.route("/saveList", methods=['GET', 'POST'])
 def save_list():
     return ''
-@app.route("/experiment")
+
+
+@app.route("/experiment", methods=['GET', 'POST'])
 def experiment_run():
     # current_variables = set(dir())
     if len(order) > 0:
-        print(order)
-        list = sort_actions(script_list, order)
-        print(script_list)
-
+        # print(order)
+        sort_actions()
+        # print(script_list)
+    if request.method == "POST":
+        # err_list = []
+        for action in script_list:
+            instrument = action['instrument']
+            inst_object = find_instrument_by_name(instrument)
+            args = action['args']
+            action = action['action']
+            function = getattr(inst_object, action)
+            try:
+                if args is not None:
+                    function(**args)
+                else:
+                    function()
+            except Exception as e:
+                flash(e)
+        return render_template('experiment_run.html', script=script_list)
     return render_template('experiment_run.html', script=script_list)
 
 
@@ -174,8 +199,6 @@ def controllers(instrument):
     return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object, err_msg='')
 
 
-
-
 def find_instrument_by_name(name: str):
     if name.startswith("deck"):
         return eval(name)
@@ -184,6 +207,7 @@ def find_instrument_by_name(name: str):
 
 
 def convert_type(args, parameters):
+    bool_dict = {"True": True, "False": False}
     if not len(args) == 0:
         for arg in args:
             if args[arg] == '' or args[arg] == "None":
@@ -210,15 +234,25 @@ def parse_functions(class_object=None, call=True):
     return functions
 
 
-def sort_actions(script_list, order):
-    for action in script_list:
-        for i in range(len(script_list)):
-            if action['id']==int(order[i]):
-                # print(i+1)
-                action['id']=i+1
-                break
-    order.sort()
-    script_list.sort(key=sort_by_id)
+def sort_actions():
+    global script_list
+    global order
+    if len(order) > 0:
+        for action in script_list:
+            for i in range(len(order)):
+                if action['id'] == int(order[i]):
+                    # print(i+1)
+                    action['id'] = i + 1
+                    break
+        order.sort()
+        if not int(order[-1]) == len(script_list):
+            # print(order)
+
+            order = list(range(1, len(script_list) + 1))
+            for i in order:
+                i = str(i)
+            # print(order)
+        script_list.sort(key=sort_by_id)
 
 
 def sort_by_id(dict):

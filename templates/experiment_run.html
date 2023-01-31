@@ -21,8 +21,27 @@
                         {% endfor %}
                     </ul>
                 </div>
+                <form role="form" method='POST' name="run" action='/experiment'>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-dark" name="run" value="run" >Run Script</button>
+                    </div>
+                </form>
             {% endif %}
         </div>
+
+         <div class="col-md-6">
+             {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <ul class=flashes>
+                    {% for message in messages %}
+                        <li>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            {% endwith %}
+         </div>
+
+
     </div>
 {% endblock %}
 <body>

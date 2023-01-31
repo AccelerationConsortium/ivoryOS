@@ -63,10 +63,10 @@ $(document).ready(function(){
                     {% endfor%}
                 </div>
             {% endif %}
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <p>Actions for {{instrument}}</p>
 
-                <ul>
+
                     {% for function in functions %}
                     <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}/{{function}}">
                         <div class="form-group">
@@ -75,7 +75,7 @@ $(document).ready(function(){
                         </div>
                     </form>
                     {% endfor %}
-                </ul>
+
 <!--                <div id="list">-->
 <!--                    <ul class="reorder">-->
 <!--                        {% for function in functions %}-->
@@ -85,6 +85,7 @@ $(document).ready(function(){
 <!--                </div>-->
             </div>
             <div class="col-md-3">
+                <p>Click add</p>
             {% if action %}
                  <form role="form" method='POST' name="add">
                         <div class="form-group">
@@ -112,13 +113,13 @@ $(document).ready(function(){
 
             </div>
 
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <p>Script Editor</p>
                 {% if script %}
                 <div id="list">
                     <ul class="reorder">
                         {% for s in script %}
-                        <li draggable="true" id="{{s['id']}}">{{s['action']}}
+                        <li draggable="true" id="{{s['id']}}">{{s['id']}} {{s['action']}}
                             <a class="btn btn-dark" href="/delete/{{s['id']}}">Delete</a>
                         </li>
 
