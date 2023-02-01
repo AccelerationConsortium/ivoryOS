@@ -113,25 +113,34 @@ def save_list():
     return ''
 
 
+def build_run_block():
+    exec_string = """def block(""" + +""")"""
+    configure = []
+
+    for action in script_list:
+        instrument = action['instrument']
+        inst_object = find_instrument_by_name(instrument)
+        args = action['args']
+        # args = convert_type(args, functions[selected_function].parameters)
+        action = action['action']
+        function = getattr(inst_object, action)
+        if args is not None:
+            for arg in args:
+                if args[arg].startswith("#"):
+                    temp = args.__str__().replace("'#" + args[arg][1:] + "'", args[arg][1:])
+                instrument + "." + action + "(**" + temp + ")"
+        else:
+            instrument + "." + action + "()"
+
+
 @app.route("/experiment", methods=['GET', 'POST'])
 def experiment_run():
     # current_variables = set(dir())
     if len(order) > 0:
         sort_actions()
     if request.method == "POST":
-        for action in script_list:
-            instrument = action['instrument']
-            inst_object = find_instrument_by_name(instrument)
-            args = action['args']
-            action = action['action']
-            function = getattr(inst_object, action)
-            try:
-                if args is not None:
-                    function(**args)
-                else:
-                    function()
-            except Exception as e:
-                flash(e)
+        build_run_block()
+
         return render_template('experiment_run.html', script=script_list)
     return render_template('experiment_run.html', script=script_list)
 
@@ -207,7 +216,7 @@ def find_instrument_by_name(name: str):
         return globals()[name]
 
 
-def convert_type(args, parameters):
+def convert_type(args, parameters, configure=[]):
     bool_dict = {"True": True, "False": False}
     if not len(args) == 0:
         for arg in args:
@@ -217,9 +226,10 @@ def convert_type(args, parameters):
                 args[arg] = bool_dict[args[arg]]
             # configure parameter
             elif args[arg].startswith("#"):
-                args[arg]
+                # configure_variables.append(args[arg][1:])
                 # exec(args[arg][1:]+"=None")
-                # args[arg] = eval(args[arg][1:])
+                configure.append(args[arg][1:])
+                # args[arg] = args[arg][1:]
             elif parameters[arg].annotation is not inspect._empty:
                 if not type(args[arg]) == parameters[arg].annotation:
                     args[arg] = parameters[arg].annotation(args[arg])
