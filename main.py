@@ -3,6 +3,8 @@ from flask import Flask, redirect, url_for, flash, jsonify
 from flask import request, render_template
 import sample_deck as deck
 
+# import ur_deck
+
 app = Flask(__name__)
 app.secret_key = "key"
 script_list = []
@@ -69,7 +71,9 @@ def experiment_builder(instrument=None, action=None):
 
                 args = request.form.to_dict()
                 selected_function = args.pop('add')
+
                 args = convert_type(args, functions[selected_function].parameters)
+                print(args)
                 action_dict = {"id": len(script_list) + 1, "instrument": instrument, "action": selected_function,
                                "args": args}
                 order.append(str(len(script_list) + 1))
@@ -113,11 +117,8 @@ def save_list():
 def experiment_run():
     # current_variables = set(dir())
     if len(order) > 0:
-        # print(order)
         sort_actions()
-        # print(script_list)
     if request.method == "POST":
-        # err_list = []
         for action in script_list:
             instrument = action['instrument']
             inst_object = find_instrument_by_name(instrument)
@@ -214,9 +215,15 @@ def convert_type(args, parameters):
                 args[arg] = None
             elif args[arg] == "True" or args[arg] == "False":
                 args[arg] = bool_dict[args[arg]]
+            # configure parameter
+            elif args[arg].startswith("#"):
+                args[arg]
+                # exec(args[arg][1:]+"=None")
+                # args[arg] = eval(args[arg][1:])
             elif parameters[arg].annotation is not inspect._empty:
                 if not type(args[arg]) == parameters[arg].annotation:
                     args[arg] = parameters[arg].annotation(args[arg])
+
         return args
 
 
@@ -246,12 +253,8 @@ def sort_actions():
                     break
         order.sort()
         if not int(order[-1]) == len(script_list):
-            # print(order)
-
-            order = list(range(1, len(script_list) + 1))
-            for i in order:
-                i = str(i)
-            # print(order)
+            new_order = list(range(1, len(script_list) + 1))
+            order = [str(i) for i in new_order]
         script_list.sort(key=sort_by_id)
 
 

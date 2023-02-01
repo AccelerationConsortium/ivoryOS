@@ -91,9 +91,7 @@ $(document).ready(function(){
                         <div class="form-group">
                             {% for parameter in parameters.keys() %}
                                 {{parameter}} ({{'optional' if not parameters[parameter].default.__name__ == '_empty' else 'required'}}):<br>
-                                {% if not parameter == 'self' %}
                                     {% if parameters[parameter].annotation.__name__ == 'bool' %}
-
                                         <input type="radio" id="True" name="{{parameter}}" value="True" {{"checked" if parameters[parameter].default=="True" else ""}}>
                                         <label for="True">True</label><br>
                                         <input type="radio" id="False" name="{{parameter}}" value="False" {{"checked" if parameters[parameter].default=="False" else ""}}>
@@ -102,8 +100,10 @@ $(document).ready(function(){
                                         <input type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{parameters[parameter].annotation.__name__}}"
                                                value="{{'' if parameters[parameter].default.__name__ == '_empty' or parameters[parameter].default == None else parameters[parameter].default}}">
                                     {% endif %}
-                                {% endif %}
-                                <br>
+                                <div>
+                                    <input type="checkbox" id="{{parameter}}_argument" name="{{parameter}}_argument"> Configure later
+                                </div>
+
                             {% endfor %}
 
                             <button type="submit" class="btn btn-dark" name="add" value="{{action}}" >add</button>
@@ -127,8 +127,17 @@ $(document).ready(function(){
                         {% endfor %}
                     </ul>
                 </div>
+                <form role="form" method='POST' name="add" >
+                    <div class="form-group">
+                        <label for="repeat">Repeat for </label>
+                        <input type="number" id="repeat" name="repeat" min="1" max="30">
+                        <label for="repeat"> times</label>
+                        <br>
+                        <button type="submit" class="btn btn-dark">Configure Run</button>
+                    </div>
+                </form>
                 {% endif %}
-                <a class="btn btn-dark" href="{{ url_for('experiment_run') }}">Run</a>
+
             </div>
         </div>
     </div>
