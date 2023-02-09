@@ -4,26 +4,39 @@
 
 {% block body %}
     <div class= "container">
-        <h1>Available Controllers</h1>
-      {% for instrument in defined_variables %}
-        <form role="form" method='GET' name="{{instrument}}" action='/controllers/{{instrument}}'>
-          <div class="form-group">
-            <button type="submit" class="btn btn-dark" name="action" value="{{instrument}}" >{{instrument}}</button>
-          </div>
-        </form>
-<!--<div data-role="draggable">-->
-<!--            <ul >-->
-<!--                <li draggable="true">Item 1</li>-->
-<!--                <li draggable="true">Item 2</li>-->
-<!--                <li draggable="true">Item 3</li>-->
-<!--                <li draggable="true">Item 4</li>-->
-<!--                <li draggable="true">Item 5</li>-->
-<!--            </ul>-->
-<!--</div>-->
-      {% endfor %}
+        <h1>Available {{deck}} Controllers</h1>
+        {% if not deck == "Deck" %}
+            <a class="btn btn-secondary" href="{{ url_for('create_controller') }}">Create New</a>
+            <br>
+        {% endif %}
+
+        {% for instrument in defined_variables %}
+            <form role="form" method='GET' name="{{instrument}}" action='/controllers/{{instrument}}'>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-dark" name="action" value="{{instrument}}" >{{instrument}}</button>
+                </div>
+            </form>
+        {% endfor %}
+
+
+        {% if deck == "Deck" %}
+                <form method="POST" action="/import_deck" enctype="multipart/form-data">
+                    <input type="text" name="filepath">
+                    <input class="btn btn-dark" type="submit">
+                </form>
+        {% endif %}
+
+        {% if defined_variables|length == 0 or not deck == "Deck" %}
+        <div class= "container">
+            <p>No available constrollers?</p>
+            <a>Import Python API from file explorer:</a>
+
+                <form method="POST" action="/import_api" enctype="multipart/form-data">
+                    <input type="file" name="file">
+                    <input class="btn btn-dark" type="submit" value="Initiate">
+                </form>
+
+        </div>
+        {% endif %}
     </div>
 {% endblock %}
-<body>
-
-</body>
-</html>

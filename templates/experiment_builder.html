@@ -3,41 +3,6 @@
 
 {% block body %}
 
-<script type="text/javascript">
-$(document).ready(function(){
-   function slideout(){
-    setTimeout(function(){
-      $("#response").slideUp("slow", function () {
-    });
-    }, 2000);
-  }
-
-  $("#response").hide();
-  $(function() {
-    $("#list ul").sortable({ opacity: 0.8, cursor: 'move', update: function() {
-      var item_order = new Array();
-      $('ul.reorder li').each(function() {
-          item_order.push($(this).attr("id"));
-      });
-      var order_string = 'order='+item_order;
-      $.ajax({
-        method: "POST",
-        url: "/updateList",
-        data: order_string,
-        cache: false,
-        success: function(data){
-            $("#response").html(data);
-            $("#response").slideDown('slow');
-            // location.reload();
-            slideout();
-        }
-    });
-    }
-    });
-   });
-
-});
-</script>
     <div class= "container">
         <div class="row">
 
@@ -63,86 +28,127 @@ $(document).ready(function(){
                     {% endfor%}
                 </div>
             {% endif %}
-            <div class="col-md-2">
+
+            <div class="col-md-3">
                 <p>Actions for {{instrument}}</p>
 
 
-                    {% for function in functions %}
-                    <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}/{{function}}">
+                {% for function in functions %}
+                <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}/{{function}}">
+                    <div class="form-group">
+                        <input  name="device" value="{{device}}" type="hidden">
+                        <button type="submit" class="btn btn-dark" name="action" value="{{function}}" >{{function}}</button>
+                    </div>
+                </form>
+                {% if action == function %}
+                <div class="container" style="background-color: aliceblue">
+                    <div class="box"><form role="form" method='POST' name="add">
                         <div class="form-group">
-                            <input  name="device" value="{{device}}" type="hidden">
-                            <button type="submit" class="btn btn-dark" name="action" value="{{function}}" >{{function}}</button>
-                        </div>
-                    </form>
-                    {% endfor %}
+                            {% if functions[function].__class__.__name__ == "dict" %}
+                                {% for arg in functions[function] %}
+                                    Setters: <br>
+                                    {{arg}}: <br>
+                                    <input type="text" id="{{arg}}" name="{{arg}}"
+                                           placeholder="{{functions[function][arg].__name__}}"
+                                           value="">
+                                    <br>
+                                {% endfor %}
 
-<!--                <div id="list">-->
-<!--                    <ul class="reorder">-->
-<!--                        {% for function in functions %}-->
-<!--                        <li draggable="true">{{function}}</li>-->
-<!--                        {% endfor %}-->
-<!--                    </ul>-->
-<!--                </div>-->
-            </div>
-            <div class="col-md-3">
-                <p>Click add</p>
-            {% if action %}
-                 <form role="form" method='POST' name="add">
-                        <div class="form-group">
-                            {% for parameter in parameters.keys() %}
-                                {{parameter}} ({{'optional' if not parameters[parameter].default.__name__ == '_empty' else 'required'}}):<br>
+                            {% else %}
+                                {% for parameter in parameters.keys() %}
+                                    {{parameter}} ({{'optional' if not parameters[parameter].default.__name__ == '_empty' else 'required'}}):<br>
                                     {% if parameters[parameter].annotation.__name__ == 'bool' %}
                                         <input type="radio" id="True" name="{{parameter}}" value="True" {{"checked" if parameters[parameter].default=="True" else ""}}>
                                         <label for="True">True</label><br>
                                         <input type="radio" id="False" name="{{parameter}}" value="False" {{"checked" if parameters[parameter].default=="False" else ""}}>
                                         <label for="False">False</label>
                                     {% else %}
-                                        <input type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{parameters[parameter].annotation.__name__}}"
-                                               value="{{'' if parameters[parameter].default.__name__ == '_empty' or parameters[parameter].default == None else parameters[parameter].default}}">
+                                    <input type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{parameters[parameter].annotation.__name__}}"
+                                           value="{{'' if parameters[parameter].default.__name__ == '_empty' or parameters[parameter].default == None else parameters[parameter].default}}">
                                     {% endif %}
-                                <div>
-                                    <input type="checkbox" id="{{parameter}}_argument" name="{{parameter}}_argument"> Configure later
-                                </div>
-
-                            {% endfor %}
-
+                                    <br>
+<!--                                          <div>-->
+<!--                                              <input type="checkbox" id="{{parameter}}_argument" name="{{parameter}}_argument"> Configure later-->
+<!--                                          </div>-->
+                                {% endfor %}
+                            {% endif %}
                             <button type="submit" class="btn btn-dark" name="add" value="{{action}}" >add</button>
                         </div>
-                </form>
-            {% endif %}
+                    </form></div>
+                </div>
+                {% endif %}
+
+
+                {% endfor %}
 
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <p>Script Editor</p>
                 {% if script %}
-                <div id="list">
-                    <ul class="reorder">
-                        {% for s in script %}
-                        <li draggable="true" id="{{s['id']}}">{{s['id']}} {{s['action']}}
-                            <a class="btn btn-dark" href="/delete/{{s['id']}}">Delete</a>
-                        </li>
+                <div class="container">
+                    <div id="list">
+                        <ul class="reorder">
+                            {% for s in script %}
+                            <li draggable="true" id="{{s['id']}}" style="list-style-type: none;">
 
-                        <div class="clear"></div>
-                        {% endfor %}
-                    </ul>
-                </div>
-                <form role="form" method='POST' name="add" >
-                    <div class="form-group">
-                        <label for="repeat">Repeat for </label>
-                        <input type="number" id="repeat" name="repeat" min="1" max="30">
-                        <label for="repeat"> times</label>
-                        <br>
-                        <button type="submit" class="btn btn-dark">Configure Run</button>
+                                <a type="button" class="btn btn-light">{{s['instrument'].split(".")[1]}}.{{s.action}}
+                                    {% if s['args'] %}
+                                        {% if s['args'].__class__.__name__ == "dict" %}
+                                            (
+                                            {% for i in s['args'] %}
+                                            {{i}}={{s['args'][i]}},
+                                            {% endfor %}
+                                            )
+
+                                        {% else %}
+                                            = {{s['args']}}
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+<!--                                <a class="btn btn-dark" href="/delete/{{s['id']}}">Delete <span class="bi bi-trash"></span></a>-->
+                                <a href="/delete/{{s['id']}}" type="button" class="btn btn-light"><span class="bi bi-trash"></span></a>
+                            </li>
+
+                            <div class="clear"></div>
+                            {% endfor %}
+                        </ul>
                     </div>
-                </form>
+                </div>
+                <a class="btn btn-dark" href = "{{url_for('build_run_block')}}">Configure Run</a>
+
+<!--                <form role="form" method='POST' name="cong" action="/">-->
+<!--                    <div class="form-group">-->
+<!--                        <label for="repeat">Repeat for </label>-->
+<!--                        <input type="number" id="repeat" name="repeat" min="1" max="30">-->
+<!--                        <label for="repeat"> times</label>-->
+<!--                        <br>-->
+<!--                    </div>-->
+<!--                </form>-->
+
                 {% endif %}
 
             </div>
+            <div>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <ul class=flashes>
+                        {% for message in messages %}
+                          <li style="list-style-type: none;">{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+            </div>
+<!--            <div class="col-md-2">-->
+<!--                <p>Variables</p>-->
+<!--                    <ul>-->
+<!--                        {% for i in config %}-->
+<!--                        <li>{{i}}</li>-->
+<!--                        {% endfor %}-->
+<!--                    </ul>-->
+<!--            </div>-->
+
         </div>
     </div>
 {% endblock %}
-<body>
-
-</body>
-</html>

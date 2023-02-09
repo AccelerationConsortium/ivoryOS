@@ -7,7 +7,7 @@
 
         <h1>Available Controllers</h1>
         <div class="row">
-            <div class="col-4">
+            <div class="col-3">
             {% for instrument in api_variables %}
                 <form role="form" method='POST' name="{{instrument}}" action='/new_controller'>
                     <div class="form-group">
@@ -18,7 +18,7 @@
             </div>
 
 
-            <div class="col-6">
+            <div class="col-5">
                 {% if device %}
                     <form role="form" method='POST' name="init" action='/new_controller/create'>
                         <div class="form-group">
@@ -45,12 +45,24 @@
                       {% if messages %}
                         <ul class=flashes>
                         {% for message in messages %}
-                          <li>{{ message }}</li>
+                          <li style="list-style-type: none;">{{ message }}</li>
                         {% endfor %}
                         </ul>
                       {% endif %}
                     {% endwith %}
                 {% endif %}
+            </div>
+            <div class="col-3">
+                <div class="card">
+                    <div class="card-body">
+                        Defined Instruments Names:<br>
+                        {% for instrument in defined_variables %}
+                            {{instrument}}<br>
+                        {% endfor %}
+                    </div>
+                </div>
+
+
             </div>
         </div>
     </div>

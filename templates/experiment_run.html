@@ -6,10 +6,7 @@
     <div class= "container">
         <a class="btn btn-dark" href="{{ url_for('experiment_builder') }}">Build Experiments</a>
 
-
-
-
-        <div class="col-md-6">
+        <div>
             <p>Run Script </p>
             {% if script %}
                 <div >
@@ -21,30 +18,64 @@
                         {% endfor %}
                     </ul>
                 </div>
-                <form role="form" method='POST' name="run" action='/experiment'>
-                    <div class="form-group">
-                        <button type="submit" class="btn btn-dark" name="run" value="run" >Run Script</button>
+
+                <div class="row">
+
+                    <div class="col-6">
+                        <p>Configure:</p>
+                        <p>Download and edit CSV file</p>
+                        <div>
+                            <a href="/download"><button class="btn btn-dark">Download</button></a>
+                            <form method="POST" action="/uploads" enctype="multipart/form-data">
+                              <input type="file" name="file">
+                              <input class="btn btn-dark" type="submit">
+                            </form>
+
+                        </div>
+                        {% if filename %}
+                        <form role="form" method='POST' name="run" action='/experiment/{{filename}}'>
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-dark">Run</button>
+                            </div>
+                        </form>
+                        {% endif %}
                     </div>
-                </form>
+
+
+                    <div class="col-6">
+                        <p>No configuration:</p>
+                        <form role="form" method='POST' name="run" action='/experiment'>
+                            <div class="form-group">
+                                <label for="repeat">Repeat for </label>
+                                <input type="number" id="repeat" name="repeat" min="1" max="30">
+                                <label for="repeat"> times</label>
+                                <br>
+                                <button type="submit" class="btn btn-dark">Run</button>
+
+                            </div>
+                        </form>
+                    </div>
+                    <br>
+
+                </div>
+
             {% endif %}
         </div>
+        <br>
+<!--        <a><button class="btn btn-dark" name="run" value="run" >Run Script</button></a>-->
 
-         <div class="col-md-6">
-             {% with messages = get_flashed_messages() %}
+        <div>
+            {% with messages = get_flashed_messages() %}
                 {% if messages %}
                 <ul class=flashes>
                     {% for message in messages %}
-                        <li>{{ message }}</li>
+                    <li>{{ message }}</li>
                     {% endfor %}
                 </ul>
                 {% endif %}
             {% endwith %}
-         </div>
+        </div>
 
 
     </div>
 {% endblock %}
-<body>
-
-</body>
-</html>

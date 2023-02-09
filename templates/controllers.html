@@ -6,10 +6,21 @@
         <h1>Controller for {{inst.__class__.__name__}} ({{instrument}})</h1>
         <div class="row">
             {% for function in functions %}
+
             <div class="col-md-3">
                 <form role="form" method='POST' name="{{function}}" action='/controllers/{{instrument}}'>
                     <div class="form-group">
-                        {% if not functions[function].parameters.keys()|length == 0 %}
+
+                        {% if functions[function].__class__.__name__ == "dict" %}
+                            {% for arg in functions[function] %}
+                            {{arg}}: <br>
+                            <input type="text" id="{{arg}}" name="{{arg}}"
+                                   placeholder="{{functions[function][arg].__name__}}"
+                                   value="">
+                            <br>
+                            {% endfor %}
+
+                        {% elif not functions[function].parameters.keys()|length == 0 %}
                             {% for parameter in functions[function].parameters.keys() %}
                                 {{parameter}} ({{'optional' if not functions[function].parameters[parameter].default.__name__ == '_empty' else 'required'}}):<br>
                                 {% if not parameter == 'self' %}
@@ -34,23 +45,21 @@
                         <button type="submit" class="btn btn-dark" name="action" value="{{function}}" >{{function}}</button>
                     </div>
                 </form>
-<!--                <div class="message">-->
-<!--                    <p>{{err_msg}}</p>-->
-<!--                </div>-->
             </div>
-
             {% endfor %}
         </div>
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <ul class=flashes>
-    {% for message in messages %}
-      <li>{{ message }}</li>
-    {% endfor %}
-    </ul>
-  {% endif %}
-{% endwith %}
 
+        <div>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <ul class=flashes>
+                        {% for message in messages %}
+                          <li style="list-style-type: none;">{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+        </div>
     </div>
 
 
