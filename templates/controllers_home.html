@@ -4,11 +4,14 @@
 
 {% block body %}
     <div class= "container">
-        <h1>Available {{deck}} Controllers</h1>
+        <h1>Available {{deck}} Controllers
         {% if not deck == "Deck" %}
             <a class="btn btn-secondary" href="{{ url_for('create_controller') }}">Create New</a>
             <br>
         {% endif %}
+
+        </h1>
+
 
         {% for instrument in defined_variables %}
             <form role="form" method='GET' name="{{instrument}}" action='/controllers/{{instrument}}'>
@@ -19,24 +22,26 @@
         {% endfor %}
 
 
-        {% if deck == "Deck" %}
-                <form method="POST" action="/import_deck" enctype="multipart/form-data">
-                    <input type="text" name="filepath">
-                    <input class="btn btn-dark" type="submit">
-                </form>
-        {% endif %}
-
-        {% if defined_variables|length == 0 or not deck == "Deck" %}
+<!--    import deck or API using filepath-->
         <div class= "container">
+            {% if deck == "Deck" %}
+            <p>Import deck from file explorer:</p>
+            <form method="POST" action="/import_deck" enctype="multipart/form-data">
+                <input type="text" name="filepath">
+                <input class="btn btn-dark" type="submit">
+            </form>
+            {% endif %}
+
+
+            {% if deck == "" %}
             <p>No available constrollers?</p>
             <a>Import Python API from file explorer:</a>
-
-                <form method="POST" action="/import_api" enctype="multipart/form-data">
-                    <input type="file" name="file">
-                    <input class="btn btn-dark" type="submit" value="Initiate">
-                </form>
-
+            <form method="POST" action="/import_api" enctype="multipart/form-data">
+                <input type="text" name="filepath">
+                <input class="btn btn-dark" type="submit" value="Initiate">
+            </form>
+            {% endif %}
         </div>
-        {% endif %}
+
     </div>
 {% endblock %}

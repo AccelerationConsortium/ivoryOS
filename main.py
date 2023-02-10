@@ -1,4 +1,5 @@
 import inspect
+import json
 import os
 
 from flask import Flask, redirect, url_for, flash, jsonify, send_from_directory, current_app, send_file
@@ -51,10 +52,25 @@ def upload():
     if request.method == "POST":
         f = request.files['file']
         if f.filename.split('.')[-1] == "csv":
-
             filename = secure_filename(f.filename)
             f.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             return redirect(url_for("experiment_run", filename=filename))
+    # return send_from_directory(directory=uploads, filename=filename)
+
+
+@app.route('/load_json', methods=['GET', 'POST'])
+def load_json():
+    if request.method == "POST":
+        f = request.files['file']
+        if f.filename.split('.')[-1] == "json":
+            deck_variables = ["deck." + var for var in set(dir(deck)) if
+                              not var.startswith("_") and not var[0].isupper()]
+
+            filename = secure_filename(f.filename)
+            global script_list
+            script_list = json.load(f)
+            return redirect(url_for("experiment_builder", defined_variables=deck_variables,
+                                    local_variables=defined_variables, script=script_list, config=config()))
     # return send_from_directory(directory=uploads, filename=filename)
 
 
@@ -72,6 +88,14 @@ def delete_action(id):
         if int(i) == int(id):
             order.remove(i)
     return redirect(url_for('experiment_builder'))
+
+
+@app.route("/edit/<id>")
+def edit_action(id):
+    for action in script_list:
+        if action['id'] == int(id):
+            return ""
+            # return redirect(url_for('experiment_builder', edit_action=action))
 
 
 @app.route("/experiment/build/", methods=['GET', 'POST'])
@@ -99,14 +123,15 @@ def experiment_builder(instrument=None, action=None):
 
                 args = request.form.to_dict()
                 function_name = args.pop('add')
+                # args = convert_type(args, functions[action])
                 try:
                     args = convert_type(args, functions[function_name])
                 except Exception as e:
                     flash(e)
                     return render_template('experiment_builder.html', defined_variables=deck_variables,
-                                       local_variables=defined_variables,
-                                       functions=functions, parameters=action_parameters, instrument=instrument,
-                                       action=action, script=script_list, config=config())
+                                           local_variables=defined_variables,
+                                           functions=functions, parameters=action_parameters, instrument=instrument,
+                                           action=action, script=script_list, config=config())
                 if type(functions[function_name]) is dict:
                     args = list(args.values())[0]
                 action_dict = {"id": len(script_list) + 1, "instrument": instrument, "action": function_name,
@@ -142,17 +167,24 @@ def update_list():
     # return render_template('experiment_builder.html',script=script_list)
     # return redirect(url_for('experiment_builder'))
 
-@app.route("/import_api/<filepath>", methods=['GET', 'POST'])
-def import_api(filepath):
+
+@app.route("/import_api", methods=['GET', 'POST'])
+def import_api():
     import importlib.util
     filepath = request.form.get('filepath')
-    name = request.form.get('name')
-    if name == '':
-        name = filepath.split('/')[-1].split('.')[0]
+    filepath.replace('\\', '/')
+    # name = request.form.get('name')
+    # if name == '':
+    name = filepath.split('\\')[-1].split('.')[0]
+    print(name)
     spec = importlib.util.spec_from_file_location(name, filepath)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    globals()[name] = module
+    classes = inspect.getmembers(module, inspect.isclass)
+    for i in classes:
+        globals()[i[0]] = i[1]
+        api_variables.add(i[0])
+    return redirect(url_for("controllers_home"))
 
 
 @app.route("/import_deck", methods=['GET', 'POST'])
@@ -160,7 +192,6 @@ def import_deck():
     import importlib.util
     filepath = request.form.get('filepath')
     filepath.replace('\\', '/')
-    print(filepath)
     # name = request.form.get('name')
     # if name == '':
     #     name = filepath.split('/')[-1].split('.')[0]
@@ -200,11 +231,14 @@ def build_run_block(run_name=None):
             else:
                 if type(args) is str and args.startswith("#"):
                     args = args.replace("'#" + args[1:] + "'", args[1:])
-                exec_string = exec_string + "\n\t" + instrument + "." + action + "=" + args
+                exec_string = exec_string + "\n\t" + instrument + "." + action + "=" + str(args)
         else:
             exec_string = exec_string + "\n\t" + instrument + "." + action + "()"
     # print(script_list)
     exec(exec_string)
+    json_object = json.dumps(script_list)
+    with open(run_name + ".json", "w") as outfile:
+        outfile.write(json_object)
     with open("empty_configure.csv", 'w') as f:
         writer = csv.writer(f)
         writer.writerow(configure)
@@ -247,7 +281,9 @@ def deck_controllers():
 def create_controller():
     if request.method == 'POST':
         module_name = request.form['api']
+        print(module_name)
         inst_object = find_instrument_by_name(module_name)
+        print(inst_object)
         args = inspect.signature(inst_object.__init__)
         return render_template('create_controller.html', api_variables=api_variables,
                                device=inst_object, args=args, defined_variables=defined_variables)
@@ -302,7 +338,7 @@ def controllers(instrument):
                     function_executable(**args)
                 else:
                     function_executable()
-            else:   # for setter
+            else:  # for setter
                 function_executable = args
             flash("Run Success!")
         except Exception as e:
@@ -333,8 +369,8 @@ def convert_type(args, parameters, configure=[]):
                 # exec(args[arg][1:]+"=None")
                 configure.append(args[arg][1:])
                 # args[arg] = args[arg][1:]
-            elif type(parameters) is not dict:
-                parameters = parameters.paramenters
+            elif type(parameters) is inspect.Signature:
+                parameters = parameters.parameters
                 if parameters[arg].annotation is not inspect._empty:
                     if not type(args[arg]) == parameters[arg].annotation:
                         args[arg] = parameters[arg].annotation(args[arg])

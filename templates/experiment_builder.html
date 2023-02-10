@@ -7,7 +7,7 @@
         <div class="row">
 
             <div class="col-md-3">
-                <p>Available Controllers</p>
+                <p>Deck:</p>
                 {% for instrument in defined_variables %}
                 <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}">
                     <div class="form-group">
@@ -15,22 +15,26 @@
                     </div>
                 </form>
                 {% endfor%}
+
+                {% if not defined_variables %}
+                <p>Only Local Controllers:</p>
+                {% for instrument in local_variables %}
+                <form role="form" method='POST' name="{{instrument}}" action="/experiment/build/{{instrument}}">
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-dark" name="action" value="{{instrument}}" >{{instrument}}</button>
+                    </div>
+                </form>
+                {% endfor%}
+                {% endif %}
             </div>
-            {% if not defined_variables %}
-                <div class="col-md-3">
-                    <p>Local Controllers</p>
-                    {% for instrument in local_variables %}
-                    <form role="form" method='POST' name="{{instrument}}">
-                        <div class="form-group">
-                            <button type="submit" class="btn btn-dark" name="action" value="{{instrument}}" >{{instrument}}</button>
-                        </div>
-                    </form>
-                    {% endfor%}
-                </div>
-            {% endif %}
+
 
             <div class="col-md-3">
                 <p>Actions for {{instrument}}</p>
+
+                {% if edit_action %}
+                    {{edit_action}}
+                {% endif %}
 
 
                 {% for function in functions %}
@@ -85,6 +89,11 @@
 
             <div class="col-md-6">
                 <p>Script Editor</p>
+                <p>Load json file</p>
+                    <form method="POST" action="/load_json" enctype="multipart/form-data">
+                        <input type="file" name="file">
+                        <input class="btn btn-dark" type="submit">
+                    </form>
                 {% if script %}
                 <div class="container">
                     <div id="list">
@@ -92,7 +101,8 @@
                             {% for s in script %}
                             <li draggable="true" id="{{s['id']}}" style="list-style-type: none;">
 
-                                <a type="button" class="btn btn-light">{{s['instrument'].split(".")[1]}}.{{s.action}}
+<!--                                href="/edit/{{s['id']}}"-->
+                                <a  type="button" class="btn btn-light">{{s['instrument'].split(".")[1] if s['instrument'].startswith("deck") else s['instrument']}}.{{s.action}}
                                     {% if s['args'] %}
                                         {% if s['args'].__class__.__name__ == "dict" %}
                                             (
@@ -115,6 +125,15 @@
                         </ul>
                     </div>
                 </div>
+                <div>
+                    <p>Variables</p>
+                    <ul>
+                        {% for i in config %}
+                        <li>{{i}}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
                 <a class="btn btn-dark" href = "{{url_for('build_run_block')}}">Configure Run</a>
 
 <!--                <form role="form" method='POST' name="cong" action="/">-->
@@ -140,14 +159,6 @@
                 {% endif %}
             {% endwith %}
             </div>
-<!--            <div class="col-md-2">-->
-<!--                <p>Variables</p>-->
-<!--                    <ul>-->
-<!--                        {% for i in config %}-->
-<!--                        <li>{{i}}</li>-->
-<!--                        {% endfor %}-->
-<!--                    </ul>-->
-<!--            </div>-->
 
         </div>
     </div>
