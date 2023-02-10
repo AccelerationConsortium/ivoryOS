@@ -27,7 +27,7 @@
             {% if deck == "Deck" %}
             <p>Import deck from file explorer:</p>
             <form method="POST" action="/import_deck" enctype="multipart/form-data">
-                <input type="text" name="filepath">
+                <input type="text" name="filepath" required="required">
                 <input class="btn btn-dark" type="submit">
             </form>
             {% endif %}
@@ -37,7 +37,7 @@
             <p>No available constrollers?</p>
             <a>Import Python API from file explorer:</a>
             <form method="POST" action="/import_api" enctype="multipart/form-data">
-                <input type="text" name="filepath">
+                <input type="text" name="filepath" required="required">
                 <input class="btn btn-dark" type="submit" value="Initiate">
             </form>
             {% endif %}
