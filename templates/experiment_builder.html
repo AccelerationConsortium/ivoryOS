@@ -89,11 +89,22 @@
 
             <div class="col-md-6">
                 <p>Script Editor</p>
-                <p>Load json file</p>
-                    <form method="POST" action="/load_json" enctype="multipart/form-data">
-                        <input type="file" name="file">
-                        <input class="btn btn-dark" type="submit">
-                    </form>
+
+                <p>
+                    <a class="btn btn-secondary" data-toggle="collapse" href="#loadfile" role="button" aria-expanded="false" aria-controls="collapseExample">
+                        Load JSON file
+                    </a>
+                </p>
+                <div class="collapse" id="loadfile">
+                    <div class="container">
+                        <form method="POST" action="/load_json" enctype="multipart/form-data">
+                            <input type="file" name="file" required="required">
+                            <input class="btn btn-dark" type="submit">
+                        </form>
+                    </div>
+                </div>
+
+
                 {% if script %}
                 <div class="container">
                     <div id="list">
@@ -135,6 +146,7 @@
                 </div>
 
                 <a class="btn btn-dark" href = "{{url_for('build_run_block')}}">Configure Run</a>
+                <a href="/download/script"><button class="btn btn-dark">Download as JSON</button></a>
 
 <!--                <form role="form" method='POST' name="cong" action="/">-->
 <!--                    <div class="form-group">-->

@@ -74,10 +74,16 @@ def load_json():
     # return send_from_directory(directory=uploads, filename=filename)
 
 
-@app.route('/download')
-def download():
-    return send_file("empty_configure.csv", as_attachment=True)
-
+@app.route('/download/<filetype>')
+def download(filetype):
+    if filetype == "configure":
+        return send_file("empty_configure.csv", as_attachment=True)
+    if filetype == "script":
+        json_object = json.dumps(script_list)
+        # with open(run_name + ".json", "w") as outfile:
+        with open("untitled.json", "w") as outfile:
+            outfile.write(json_object)
+        return send_file("untitled.json", as_attachment=True)
 
 @app.route("/delete/<id>")
 def delete_action(id):
@@ -236,9 +242,7 @@ def build_run_block(run_name=None):
             exec_string = exec_string + "\n\t" + instrument + "." + action + "()"
     # print(script_list)
     exec(exec_string)
-    json_object = json.dumps(script_list)
-    with open(run_name + ".json", "w") as outfile:
-        outfile.write(json_object)
+
     with open("empty_configure.csv", 'w') as f:
         writer = csv.writer(f)
         writer.writerow(configure)
@@ -382,6 +386,10 @@ def convert_type(args, parameters, configure=[]):
 
 
 def config():
+    """
+    take the global script_list
+    :return: list of variable that require input
+    """
     configure = []
     for action in script_list:
         args = action['args']
@@ -402,7 +410,7 @@ def parse_functions(class_object=None, call=True):
     functions = {}
     for function in dir(class_object):
         if not function.startswith("_") and not function.isupper():
-            if call:
+            # if call:
                 att = getattr(class_object, function)
 
                 # handle getter setters
@@ -415,8 +423,8 @@ def parse_functions(class_object=None, call=True):
                             functions[function] = att.fset.__annotations__
                     except:
                         pass
-            else:
-                functions[function] = function
+            # else:
+            #     functions[function] = function
     return functions
 
 
@@ -455,4 +463,4 @@ def sort_by_id(dict):
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=8080, debug=True)
+    app.run(host="127.0.0.1", port=8080, debug=False)
