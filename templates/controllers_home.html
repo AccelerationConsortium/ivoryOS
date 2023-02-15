@@ -4,13 +4,7 @@
 
 {% block body %}
     <div class= "container">
-        <h1>Available {{deck}} Controllers
-        {% if not deck == "Deck" %}
-            <a class="btn btn-secondary" href="{{ url_for('create_controller') }}">Create New</a>
-            <br>
-        {% endif %}
-
-        </h1>
+        <h2>{{deck}} Controllers</h2>
 
 
         {% for instrument in defined_variables %}
@@ -34,12 +28,12 @@
 
 
             {% if deck == "" %}
-            <p>No available constrollers?</p>
-            <a>Import Python API from file explorer:</a>
-            <form method="POST" action="/import_api" enctype="multipart/form-data">
-                <input type="text" name="filepath" required="required">
-                <input class="btn btn-dark" type="submit" value="Initiate">
-            </form>
+            <p>No available constrollers? Try
+            <a href="{{ url_for('new_controller') }}">Create New</a>
+            <br>
+            </p>
+
+
             {% endif %}
         </div>
 

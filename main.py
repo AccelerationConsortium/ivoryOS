@@ -1,6 +1,8 @@
 import inspect
 import json
 import os
+import csv
+import sqlite3
 
 from flask import Flask, redirect, url_for, flash, jsonify, send_from_directory, current_app, send_file
 from flask import request, render_template
@@ -8,16 +10,28 @@ from werkzeug.utils import secure_filename
 
 # import sample_deck as deck
 deck = None
-import csv
 
-# import ur_deck
+# import ur_deck as deck
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'csv/'
+app.config['CSV_FOLDER'] = 'config_csv/'
+app.config['SCRIPT_FOLDER'] = 'scripts/'
 app.secret_key = "key"
+
+sqlite3.register_adapter(list, json.dumps)
+sqlite3.register_adapter(dict, json.dumps)
+con = sqlite3.connect("webapp.db")
+cursor = con.cursor()
+cursor.execute("""create table IF NOT EXISTS workflow (name TEXT PRIMARY KEY NOT NULL, 
+                    deck TEXT NOT NULL, status TEXT NOT NULL, script NOT NULL)""")
 
 script_list = []
 order = []
+script_dict = {'name': '',
+               'deck': '',
+               'status': 'editing',
+               'script': []}
+
 libs = set(dir())
 
 # ---------API imports------------
@@ -47,75 +61,17 @@ def controllers_home():
     return render_template('controllers_home.html', defined_variables=defined_variables, deck='')
 
 
-@app.route('/uploads/', methods=['GET', 'POST'])
-def upload():
-    if request.method == "POST":
-        f = request.files['file']
-        if f.filename.split('.')[-1] == "csv":
-            filename = secure_filename(f.filename)
-            f.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            return redirect(url_for("experiment_run", filename=filename))
-    # return send_from_directory(directory=uploads, filename=filename)
-
-
-@app.route('/load_json', methods=['GET', 'POST'])
-def load_json():
-    if request.method == "POST":
-        f = request.files['file']
-        if f.filename.split('.')[-1] == "json":
-            deck_variables = ["deck." + var for var in set(dir(deck)) if
-                              not var.startswith("_") and not var[0].isupper()]
-
-            filename = secure_filename(f.filename)
-            global script_list
-            script_list = json.load(f)
-            return redirect(url_for("experiment_builder", defined_variables=deck_variables,
-                                    local_variables=defined_variables, script=script_list, config=config()))
-    # return send_from_directory(directory=uploads, filename=filename)
-
-
-@app.route('/download/<filetype>')
-def download(filetype):
-    if filetype == "configure":
-        return send_file("empty_configure.csv", as_attachment=True)
-    if filetype == "script":
-        json_object = json.dumps(script_list)
-        # with open(run_name + ".json", "w") as outfile:
-        with open("untitled.json", "w") as outfile:
-            outfile.write(json_object)
-        return send_file("untitled.json", as_attachment=True)
-
-@app.route("/delete/<id>")
-def delete_action(id):
-    for action in script_list:
-        if action['id'] == int(id):
-            script_list.remove(action)
-    for i in order:
-        if int(i) == int(id):
-            order.remove(i)
-    return redirect(url_for('experiment_builder'))
-
-
-@app.route("/edit/<id>")
-def edit_action(id):
-    for action in script_list:
-        if action['id'] == int(id):
-            return ""
-            # return redirect(url_for('experiment_builder', edit_action=action))
-
-
 @app.route("/experiment/build/", methods=['GET', 'POST'])
 @app.route("/experiment/build/<instrument>/", methods=['GET', 'POST'])
 @app.route("/experiment/build/<instrument>/<action>", methods=['GET', 'POST'])
 def experiment_builder(instrument=None, action=None):
-    # current_variables = set(dir())
-    # inst_object = find_instrument_by_name(instrument)
-    # functions = parse_functions(inst_object)
-    global script_list
+    global script_dict
     global order
     sort_actions()
-    # print(script_list)
-    deck_variables = ["deck." + var for var in set(dir(deck)) if not var.startswith("_") and not var[0].isupper()]
+    action_parameters = None
+    functions = []
+    deck_variables = ["deck." + var for var in set(dir(deck)) if not var.startswith("_") and not var[0].isupper()
+                      and not var.startswith("repackage")]
     if instrument:
         inst_object = find_instrument_by_name(instrument)
         functions = parse_functions(inst_object)
@@ -125,128 +81,23 @@ def experiment_builder(instrument=None, action=None):
             else:
                 action_parameters = functions[action].parameters
             if request.method == 'POST':
-                # sort_actions(script_list, order)
-
                 args = request.form.to_dict()
                 function_name = args.pop('add')
-                # args = convert_type(args, functions[action])
                 try:
                     args = convert_type(args, functions[function_name])
-                except Exception as e:
-                    flash(e)
-                    return render_template('experiment_builder.html', defined_variables=deck_variables,
-                                           local_variables=defined_variables,
-                                           functions=functions, parameters=action_parameters, instrument=instrument,
-                                           action=action, script=script_list, config=config())
+                except ValueError as e:
+                    flash(e.__str__())
+                    return redirect(url_for("experiment_builder", instrument=instrument, action=action))
                 if type(functions[function_name]) is dict:
                     args = list(args.values())[0]
-                action_dict = {"id": len(script_list) + 1, "instrument": instrument, "action": function_name,
+                action_dict = {"id": len(script_dict['script']) + 1, "instrument": instrument, "action": function_name,
                                "args": args}
-                order.append(str(len(script_list) + 1))
-                script_list.append(action_dict)
-                # configure = config()
-                return render_template('experiment_builder.html', defined_variables=deck_variables,
-                                       local_variables=defined_variables,
-                                       functions=functions, parameters=action_parameters, instrument=instrument,
-                                       action=action, script=script_list, config=config())
-            return render_template('experiment_builder.html', defined_variables=deck_variables,
-                                   local_variables=defined_variables,
-                                   functions=functions, parameters=action_parameters, instrument=instrument,
-                                   action=action, script=script_list, config=config())
-        else:
-            return render_template('experiment_builder.html', defined_variables=deck_variables,
-                                   local_variables=defined_variables,
-                                   functions=functions, instrument=instrument, script=script_list, config=config())
-        return render_template('experiment_builder.html', defined_variables=deck_variables,
-                               local_variables=defined_variables)
-    return render_template('experiment_builder.html', defined_variables=deck_variables,
-                           local_variables=defined_variables, script=script_list, config=config())
+                order.append(str(len(script_dict['script']) + 1))
+                script_dict['script'].append(action_dict)
 
-
-@app.route("/updateList", methods=['GET', 'POST'])
-def update_list():
-    getorder = request.form['order']
-    global order
-    order = getorder.split(",", len(script_list))
-    # print(script_list)
-    return jsonify('Successfully Updated')
-    # return render_template('experiment_builder.html',script=script_list)
-    # return redirect(url_for('experiment_builder'))
-
-
-@app.route("/import_api", methods=['GET', 'POST'])
-def import_api():
-    import importlib.util
-    filepath = request.form.get('filepath')
-    filepath.replace('\\', '/')
-    # name = request.form.get('name')
-    # if name == '':
-    name = filepath.split('\\')[-1].split('.')[0]
-    print(name)
-    spec = importlib.util.spec_from_file_location(name, filepath)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    classes = inspect.getmembers(module, inspect.isclass)
-    for i in classes:
-        globals()[i[0]] = i[1]
-        api_variables.add(i[0])
-    return redirect(url_for("controllers_home"))
-
-
-@app.route("/import_deck", methods=['GET', 'POST'])
-def import_deck():
-    import importlib.util
-    filepath = request.form.get('filepath')
-    filepath.replace('\\', '/')
-    # name = request.form.get('name')
-    # if name == '':
-    #     name = filepath.split('/')[-1].split('.')[0]
-    spec = importlib.util.spec_from_file_location("deck", filepath, )
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    globals()["deck"] = module
-    # spec.loader.exec_module(module)
-
-    return redirect(url_for("deck_controllers"))
-
-
-@app.route("/configure", methods=['GET', 'POST'])
-def build_run_block(run_name=None):
-    if run_name is None:
-        run_name = "random_for_now"
-    exec_string = "def " + run_name + "("
-    configure = config()
-    for i in configure:
-        exec_string = exec_string + i + ","
-    exec_string = exec_string + "):"
-    exec_string = exec_string + "\n\tglobal " + run_name
-    for action in script_list:
-        instrument = action['instrument']
-        # inst_object = find_instrument_by_name(instrument)
-        args = action['args']
-        # args = convert_type(args, functions[selected_function].parameters)
-        action = action['action']
-        # function = getattr(inst_object, action)
-        if args is not None:
-            if type(args) is dict:
-                temp = args.__str__()
-                for arg in args:
-                    if type(args[arg]) is str and args[arg].startswith("#"):
-                        temp = temp.replace("'#" + args[arg][1:] + "'", args[arg][1:])
-                exec_string = exec_string + "\n\t" + instrument + "." + action + "(**" + temp + ")"
-            else:
-                if type(args) is str and args.startswith("#"):
-                    args = args.replace("'#" + args[1:] + "'", args[1:])
-                exec_string = exec_string + "\n\t" + instrument + "." + action + "=" + str(args)
-        else:
-            exec_string = exec_string + "\n\t" + instrument + "." + action + "()"
-    # print(script_list)
-    exec(exec_string)
-
-    with open("empty_configure.csv", 'w') as f:
-        writer = csv.writer(f)
-        writer.writerow(configure)
-    return redirect(url_for("experiment_run"))
+    return render_template('experiment_builder.html', instrument=instrument, action=action, script=script_dict,
+                           defined_variables=deck_variables, local_variables=defined_variables, functions=functions,
+                           parameters=action_parameters, config=config())
 
 
 @app.route("/experiment", methods=['GET', 'POST'])
@@ -259,7 +110,7 @@ def experiment_run(filename=None):
         run_name = "random_for_now"
         repeat = request.form.get('repeat')
         if filename is not None and not filename == 'None':
-            df = csv.DictReader(open(os.path.join(app.config['UPLOAD_FOLDER'], filename)))
+            df = csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename)))
             for i in df:
                 exec(run_name + "(**i)")
         if not repeat == '' and repeat is not None:
@@ -269,55 +120,46 @@ def experiment_run(filename=None):
                 except Exception as e:
                     flash(e)
                     break
-        # print(exec_string)
-
-        return render_template('experiment_run.html', script=script_list, filename=filename)
-    return render_template('experiment_run.html', script=script_list, filename=filename)
+        # return render_template('experiment_run.html', script=script_dict['script'], filename=filename)
+    return render_template('experiment_run.html', script=script_dict['script'], filename=filename)
 
 
 @app.route("/my_deck")
 def deck_controllers():
-    current_variables = ["deck." + var for var in set(dir(deck)) if not var.startswith("_") and not var[0].isupper()]
-    return render_template('controllers_home.html', defined_variables=current_variables, deck="Deck")
+    deck_variables = ["deck." + var for var in set(dir(deck)) if not var.startswith("_") and not var[0].isupper()
+                      and not var.startswith("repackage")]
+    return render_template('controllers_home.html', defined_variables=deck_variables, deck="Deck")
 
 
-@app.route("/new_controller", methods=['GET', 'POST'])
-def create_controller():
-    if request.method == 'POST':
-        module_name = request.form['api']
-        print(module_name)
-        inst_object = find_instrument_by_name(module_name)
-        print(inst_object)
-        args = inspect.signature(inst_object.__init__)
-        return render_template('create_controller.html', api_variables=api_variables,
-                               device=inst_object, args=args, defined_variables=defined_variables)
-    return render_template('create_controller.html', api_variables=api_variables,
-                           device=None, defined_variables=defined_variables)
-
-
-@app.route("/new_controller/create", methods=['GET', 'POST'])
-def controllers_new():
-    if request.method == 'POST':
-        device = find_instrument_by_name(request.form["create"])
-        device_name = request.form["name"]
+@app.route("/new_controller/")
+@app.route("/new_controller/<instrument>", methods=['GET', 'POST'])
+def new_controller(instrument=None):
+    device = None
+    args = None
+    if instrument:
+        device = find_instrument_by_name(instrument)
+        # print(inst_object)
         args = inspect.signature(device.__init__)
-        if device_name == '' or device_name in globals():
-            flash("Device name is NOT valid")
-            return render_template('create_controller.html', api_variables=api_variables, device=device, args=args)
-        args = request.form.to_dict()
-        args.pop("name")
-        args.pop("create")
-        for arg in device.__init__.__annotations__:
-            if not device.__init__.__annotations__[arg].__module__ == "builtins":
-                args[arg] = globals()[args[arg]]
-        try:
-            globals()[device_name] = device(**args)
-            defined_variables.add(device_name)
-        except Exception as e:
-            return render_template('create_controller.html', api_variables=api_variables, device=device, args=args,
-                                   err_msg=e)
-        return redirect(url_for('controllers_home', defined_variables=defined_variables, deck=''))
-    return render_template('create_controller.html', api_variables=api_variables, device=None)
+
+        if request.method == 'POST':
+            device_name = request.form["name"]
+            if device_name == '' or device_name in globals():
+                flash("Device name is NOT valid")
+                return render_template('create_controller.html', instrument=instrument, api_variables=api_variables,
+                                       device=device, args=args, defined_variables=defined_variables)
+            kwargs = request.form.to_dict()
+            kwargs.pop("name")
+            for arg in device.__init__.__annotations__:
+                if not device.__init__.__annotations__[arg].__module__ == "builtins":
+                    kwargs[arg] = globals()[kwargs[arg]]
+            try:
+                globals()[device_name] = device(**kwargs)
+                defined_variables.add(device_name)
+                return redirect(url_for('controllers_home'))
+            except Exception as e:
+                flash(e)
+    return render_template('create_controller.html', instrument=instrument, api_variables=api_variables,
+                           device=device, args=args, defined_variables=defined_variables)
 
 
 @app.route("/controllers/<instrument>", methods=['GET', 'POST'])
@@ -333,7 +175,7 @@ def controllers(instrument):
             args = convert_type(args, functions[function_name])
         except Exception as e:
             flash(e)
-            return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object)
+            # return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object)
         if type(functions[function_name]) is dict:
             args = list(args.values())[0]
         try:
@@ -347,8 +189,180 @@ def controllers(instrument):
             flash("Run Success!")
         except Exception as e:
             flash(e)
-            # return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object)
     return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object)
+
+
+# -----------------------handle action editing--------------------------------------------
+@app.route("/delete/<id>")
+def delete_action(id):
+    for action in script_dict['script']:
+        if action['id'] == int(id):
+            script_dict['script'].remove(action)
+    for i in order:
+        if int(i) == int(id):
+            order.remove(i)
+    return redirect(url_for('experiment_builder'))
+
+
+# TODO
+@app.route("/edit/<id>")
+def edit_action(id):
+    for action in script_dict['script']:
+        if action['id'] == int(id):
+            return ""
+            # return redirect(url_for('experiment_builder', edit_action=action))
+
+
+@app.route("/edit_run_name", methods=['GET', 'POST'])
+def edit_run_name():
+    if request.method == "POST":
+        run_name = request.form.get("run_name")
+        script_dict['name'] = run_name
+        return redirect(url_for("experiment_builder"))
+
+
+@app.route("/updateList", methods=['GET', 'POST'])
+def update_list():
+    getorder = request.form['order']
+    global order
+    order = getorder.split(",", len(script_dict['script']))
+    # print(script_list)
+    return jsonify('Successfully Updated')
+    # return render_template('experiment_builder.html',script=script_list)
+    # return redirect(url_for('experiment_builder'))
+
+
+@app.route("/configure", methods=['GET', 'POST'])
+def build_run_block():
+    """
+
+    :param run_name:
+    :return:
+    """
+    run_name = script_dict['name']
+    if run_name is None or run_name == "":
+        run_name = "random_for_now"
+    exec_string = "def " + run_name + "("
+    configure = config()
+    for i in configure:
+        exec_string = exec_string + i + ","
+    exec_string = exec_string + "):"
+    exec_string = exec_string + "\n\tglobal " + run_name
+    for action in script_dict['script']:
+        instrument = action['instrument']
+        args = action['args']
+        action = action['action']
+        if args is not None:
+            if type(args) is dict:
+                temp = args.__str__()
+                for arg in args:
+                    if type(args[arg]) is str and args[arg].startswith("#"):
+                        temp = temp.replace("'#" + args[arg][1:] + "'", args[arg][1:])
+                exec_string = exec_string + "\n\t" + instrument + "." + action + "(**" + temp + ")"
+            else:
+                if type(args) is str and args.startswith("#"):
+                    args = args.replace("'#" + args[1:] + "'", args[1:])
+                exec_string = exec_string + "\n\t" + instrument + "." + action + "=" + str(args)
+        else:
+            exec_string = exec_string + "\n\t" + instrument + "." + action + "()"
+    exec(exec_string)
+    # create config_csv file
+    with open("empty_configure.csv", 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(configure)
+    return redirect(url_for("experiment_run"))
+
+
+# --------------------handle all the import/export and download/upload--------------------------
+
+@app.route("/import_api", methods=['GET', 'POST'])
+def import_api():
+    import importlib.util
+    filepath = request.form.get('filepath')
+    # filepath.replace('\\', '/')
+    # name = request.form.get('name')
+    # if name == '':
+    name = filepath.split('\\')[-1].split('.')[0]
+    try:
+        spec = importlib.util.spec_from_file_location(name, filepath)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        classes = inspect.getmembers(module, inspect.isclass)
+        if len(classes) == 0:
+            flash("Invalid import: no class found in the path")
+            return redirect(url_for("controllers_home"))
+        for i in classes:
+            globals()[i[0]] = i[1]
+            api_variables.add(i[0])
+    # should handle path error and file type error
+    except Exception as e:
+        flash(e.__str__())
+    return redirect(url_for("new_controller"))
+
+
+@app.route("/import_deck", methods=['GET', 'POST'])
+def import_deck():
+    import importlib.util
+    global script_dict
+    filepath = request.form.get('filepath')
+    name = filepath.split('\\')[-1].split('.')[0]
+    # filepath.replace('\\', '/')
+    try:
+        spec = importlib.util.spec_from_file_location(name, filepath)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        # deck format checking
+        if len([var for var in set(dir(module)) if not var.startswith("_") and not var[0].isupper() \
+                                                   and not var.startswith("repackage")]) == 0:
+            flash("Invalid Deck import")
+            return redirect(url_for("deck_controllers"))
+        globals()["deck"] = module
+        if script_dict['deck'] == "":
+            script_dict['deck'] = module.__name__
+    # file path error exception
+    except Exception as e:
+        flash(e.__str__())
+    return redirect(url_for("experiment_builder"))
+
+
+@app.route('/uploads/', methods=['GET', 'POST'])
+def upload():
+    if request.method == "POST":
+        f = request.files['file']
+        if f.filename.split('.')[-1] == "config_csv":
+            filename = secure_filename(f.filename)
+            f.save(os.path.join(app.config['CSV_FOLDER'], filename))
+            return redirect(url_for("experiment_run", filename=filename))
+        else:
+            flash("Config file is in .config_csv format")
+            return redirect(url_for("experiment_run"))
+    # return send_from_directory(directory=uploads, filename=filename)
+
+
+@app.route('/load_json', methods=['GET', 'POST'])
+def load_json():
+    if request.method == "POST":
+        f = request.files['file']
+        if f.filename.split('.')[-1] == "json":
+            global script_dict
+            script_dict = json.load(f)
+        else:
+            flash("Script file need to be JSON file")
+    return redirect(url_for("experiment_builder"))
+
+
+@app.route('/download/<filetype>')
+def download(filetype):
+    if filetype == "configure":
+        return send_file("empty_configure.csv", as_attachment=True)
+    if filetype == "script":
+        sort_actions()
+
+        json_object = json.dumps(script_dict)
+        # with open(run_name + ".json", "w") as outfile:
+        with open("untitled.json", "w") as outfile:
+            outfile.write(json_object)
+        return send_file("untitled.json", as_attachment=True)
 
 
 def find_instrument_by_name(name: str):
@@ -387,11 +401,11 @@ def convert_type(args, parameters, configure=[]):
 
 def config():
     """
-    take the global script_list
+    take the global script_dict
     :return: list of variable that require input
     """
     configure = []
-    for action in script_list:
+    for action in script_dict['script']:
         args = action['args']
         if args is not None:
             if type(args) is not dict:
@@ -411,42 +425,38 @@ def parse_functions(class_object=None, call=True):
     for function in dir(class_object):
         if not function.startswith("_") and not function.isupper():
             # if call:
-                att = getattr(class_object, function)
+            att = getattr(class_object, function)
 
-                # handle getter setters
-                if callable(att):
-                    functions[function] = inspect.signature(att)
-                else:
-                    try:
-                        att = getattr(class_object.__class__, function)
-                        if isinstance(att, property) and att.fset is not None:
-                            functions[function] = att.fset.__annotations__
-                    except:
-                        pass
-            # else:
-            #     functions[function] = function
+            # handle getter setters
+            if callable(att):
+                functions[function] = inspect.signature(att)
+            else:
+                try:
+                    att = getattr(class_object.__class__, function)
+                    if isinstance(att, property) and att.fset is not None:
+                        functions[function] = att.fset.__annotations__
+                except AttributeError:
+                    pass
+        # else:
+        #     functions[function] = function
     return functions
 
 
 def sort_actions():
-    global script_list
+    global script_dict
     global order
     if len(order) > 0:
-        for action in script_list:
+        for action in script_dict['script']:
             for i in range(len(order)):
                 if action['id'] == int(order[i]):
                     # print(i+1)
                     action['id'] = i + 1
                     break
         order.sort()
-        if not int(order[-1]) == len(script_list):
-            new_order = list(range(1, len(script_list) + 1))
+        if not int(order[-1]) == len(script_dict['script']):
+            new_order = list(range(1, len(script_dict['script']) + 1))
             order = [str(i) for i in new_order]
-        script_list.sort(key=sort_by_id)
-
-
-def sort_by_id(dict):
-    return dict['id']
+        script_dict['script'].sort(key=lambda x: x['id'])
 
 
 # def parse_globals():

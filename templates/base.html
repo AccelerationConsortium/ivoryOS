@@ -23,9 +23,7 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('index') }}">Home<span class="sr-only">(current)</span></a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('deck_controllers') }}">My Deck</a>
-                    </li>
+
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('experiment_builder') }}">Build Experiments</a>
                     </li>
@@ -33,10 +31,13 @@
                         <a class="nav-link" href="{{ url_for('experiment_run') }}">Run Experiments</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('controllers_home') }}">Test Controllers</a>
+                        <a class="nav-link" href="{{ url_for('deck_controllers') }}">My Deck</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('controllers_home') }}">My Controllers</a>
                     </li>
 <!--                    <li class="nav-item">-->
-<!--                        <a class="nav-link" href="{{ url_for('create_controller') }}">Create New Controller</a>-->
+<!--                        <a class="nav-link" href="{{ url_for('new_controller') }}">Create New Controller</a>-->
 <!--                    </li>-->
 
 
@@ -44,6 +45,18 @@
             </div>
 
         </nav>
+        <div class="flash">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="card card-body" class=flashes>
+                        Error Message:
+                        {% for message in messages %}
+                        {{ message }}<br>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+        </div>
     </div>
     {% block body %}{% endblock %}
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>

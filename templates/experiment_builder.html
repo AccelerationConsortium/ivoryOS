@@ -4,10 +4,30 @@
 {% block body %}
 
     <div class= "container">
+
         <div class="row">
 
             <div class="col-md-3">
-                <p>Deck:</p>
+                {% if defined_variables|length == 0 %}
+                <div>
+                    <h5>No deck information
+                        <a data-toggle="collapse" href="#loaddeck" role="button" aria-expanded="false" aria-controls="collapseExample">
+                            (import deck)
+                        </a>
+                    </h5>
+                    <div class="collapse" id="loaddeck">
+                        <div class="container">
+                            <form method="POST" action="/import_deck" enctype="multipart/form-data">
+                                <input type="text" name="filepath" required="required">
+                                <input class="btn btn-dark" type="submit">
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <h5>Deck Actions:</h5>
+                {% endif %}
+
                 {% for instrument in defined_variables %}
                 <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}">
                     <div class="form-group">
@@ -17,7 +37,7 @@
                 {% endfor%}
 
                 {% if not defined_variables %}
-                <p>Only Local Controllers:</p>
+                <h5>Local Actions:</h5>
                 {% for instrument in local_variables %}
                 <form role="form" method='POST' name="{{instrument}}" action="/experiment/build/{{instrument}}">
                     <div class="form-group">
@@ -30,7 +50,9 @@
 
 
             <div class="col-md-3">
-                <p>Actions for {{instrument}}</p>
+                {% if instrument %}
+                <h5>Actions for {{instrument}}</h5>
+                {% endif %}
 
                 {% if edit_action %}
                     {{edit_action}}
@@ -88,11 +110,14 @@
             </div>
 
             <div class="col-md-6">
-                <p>Script Editor</p>
+                <h5>Script Editor</h5>
 
                 <p>
                     <a class="btn btn-secondary" data-toggle="collapse" href="#loadfile" role="button" aria-expanded="false" aria-controls="collapseExample">
                         Load JSON file
+                    </a>
+                    <a class="btn btn-secondary" data-toggle="collapse" href="#load_database" role="button" aria-expanded="false" aria-controls="collapseExample">
+                        Load from database
                     </a>
                 </p>
                 <div class="collapse" id="loadfile">
@@ -104,12 +129,44 @@
                     </div>
                 </div>
 
+                <div class="collapse" id="load_database">
+                    <div class="container">
+                        Loading the database...(still developing)
+                    </div>
+                </div>
 
                 {% if script %}
+                <div>
+
+                    <p>
+                        <h6>Deck Name: {{script['deck']}}</h6>
+
+                        <h6>Block Name:
+                        {% if not script['name'] == '' %}
+                            {{script['name']}}
+                            <a data-toggle="collapse" href="#changename" role="button" aria-expanded="false" aria-controls="collapseExample">
+                                Change Name
+                            </a>
+                        {% endif %}
+                        </h6>
+                    </p>
+
+                    <div class="{{'collapse.show' if script['name'] == '' else 'collapse'}}" id="changename">
+                        <div class="container">
+                            <form method="POST" name="run_name" action="/edit_run_name">
+
+                                <input type="text" name="run_name" id="run_name" placeholder="{{script['name']}}" required="required">
+                                <button type="submit" class="btn btn-dark">Save</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <h6>Editing: {{script['status']}}</h6>
+                <h6>Action Script:</h6>
                 <div class="container">
                     <div id="list">
                         <ul class="reorder">
-                            {% for s in script %}
+                            {% for s in script['script'] %}
                             <li draggable="true" id="{{s['id']}}" style="list-style-type: none;">
 
 <!--                                href="/edit/{{s['id']}}"-->
@@ -137,13 +194,14 @@
                     </div>
                 </div>
                 <div>
-                    <p>Variables</p>
+                    <h6>Config Variables:</h6>
                     <ul>
                         {% for i in config %}
                         <li>{{i}}</li>
                         {% endfor %}
                     </ul>
                 </div>
+
 
                 <a class="btn btn-dark" href = "{{url_for('build_run_block')}}">Configure Run</a>
                 <a href="/download/script"><button class="btn btn-dark">Download as JSON</button></a>
@@ -160,17 +218,7 @@
                 {% endif %}
 
             </div>
-            <div>
-            {% with messages = get_flashed_messages() %}
-                {% if messages %}
-                    <ul class=flashes>
-                        {% for message in messages %}
-                          <li style="list-style-type: none;">{{ message }}</li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-            {% endwith %}
-            </div>
+
 
         </div>
     </div>
