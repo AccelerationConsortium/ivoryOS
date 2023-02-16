@@ -20,10 +20,18 @@ app.secret_key = "key"
 
 sqlite3.register_adapter(list, json.dumps)
 sqlite3.register_adapter(dict, json.dumps)
-con = sqlite3.connect("webapp.db")
+con = sqlite3.connect("webapp.db", check_same_thread=False)
 cursor = con.cursor()
+cursor.row_factory = sqlite3.Row
 cursor.execute("""create table IF NOT EXISTS workflow (name TEXT PRIMARY KEY NOT NULL, 
                     deck TEXT NOT NULL, status TEXT NOT NULL, script NOT NULL)""")
+
+
+def get_db_connection():
+    con = sqlite3.connect("webapp.db")
+    con.row_factory = sqlite3.Row
+    return con
+
 
 script_list = []
 order = []
@@ -107,19 +115,20 @@ def experiment_run(filename=None):
     if len(order) > 0:
         sort_actions()
     if request.method == "POST":
-        run_name = "random_for_now"
+        run_name = script_dict['name']
         repeat = request.form.get('repeat')
-        if filename is not None and not filename == 'None':
-            df = csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename)))
-            for i in df:
-                exec(run_name + "(**i)")
-        if not repeat == '' and repeat is not None:
-            for i in range(int(repeat)):
-                try:
+        try:
+            if filename is not None and not filename == 'None':
+                df = csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename)))
+                for _ in df:
+                    exec(run_name + "(**i)")
+            if not repeat == '' and repeat is not None:
+                for i in range(int(repeat)):
                     exec(run_name + "()")
-                except Exception as e:
-                    flash(e)
-                    break
+            flash("Run finished")
+        except Exception as e:
+            flash(e)
+            # break
         # return render_template('experiment_run.html', script=script_dict['script'], filename=filename)
     return render_template('experiment_run.html', script=script_dict['script'], filename=filename)
 
@@ -211,6 +220,31 @@ def edit_action(id):
         if action['id'] == int(id):
             return ""
             # return redirect(url_for('experiment_builder', edit_action=action))
+
+
+@app.route("/publish")
+def publish():
+    # cursor = con.cursor()
+    cursor.execute("""INSERT INTO workflow(name, deck, status, script)
+                        VALUES (:name,:deck, :status,:script);""", script_dict)
+    con.commit()
+    return redirect(url_for('experiment_builder'))
+
+
+@app.route("/database", methods=['GET', 'POST'])
+@app.route("/database/<deck_name>", methods=['GET', 'POST'])
+def load_from_database(deck_name=None):
+    # cursor = con.cursor()]
+    # deck_list = []
+    if deck_name is None:
+        workflows = cursor.execute("""SELECT * FROM workflow""").fetchall()
+        temp = cursor.execute("""SELECT DISTINCT deck FROM workflow""")
+        deck_list = [i['deck'] for i in temp]
+    else:
+        workflows = cursor.execute("""SELECT * FROM workflow WHERE deck is '%s'""" % deck_name).fetchall()
+        deck_list = ["ALL"]
+    # con.commit()
+    return render_template("experiment_database.html", workflows=workflows, deck_list=deck_list)
 
 
 @app.route("/edit_run_name", methods=['GET', 'POST'])
@@ -308,7 +342,7 @@ def import_deck():
     name = filepath.split('\\')[-1].split('.')[0]
     # filepath.replace('\\', '/')
     try:
-        spec = importlib.util.spec_from_file_location(name, filepath)
+        spec = importlib.util.spec_from_file_location(name, filepath, )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         # deck format checking
@@ -329,12 +363,12 @@ def import_deck():
 def upload():
     if request.method == "POST":
         f = request.files['file']
-        if f.filename.split('.')[-1] == "config_csv":
+        if f.filename.split('.')[-1] == "csv":
             filename = secure_filename(f.filename)
             f.save(os.path.join(app.config['CSV_FOLDER'], filename))
             return redirect(url_for("experiment_run", filename=filename))
         else:
-            flash("Config file is in .config_csv format")
+            flash("Config file is in csv format")
             return redirect(url_for("experiment_run"))
     # return send_from_directory(directory=uploads, filename=filename)
 

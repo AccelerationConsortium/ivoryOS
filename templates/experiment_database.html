@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Welcome{% endblock %}
+
+
+{% block body %}
+<div class= "container">
+  <div>
+    {% for deck_name in deck_list %}
+      {% if deck_name == "ALL" %}
+      <a class="btn btn-secondary" href="{{url_for('load_from_database')}}">Back</a>
+      {% else %}
+      <a class="btn btn-secondary" href="{{url_for('load_from_database',deck_name=deck_name)}}">{{deck_name}}</a>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <table class="table table-hover">
+    <thead>
+      <tr>
+        <th scope="col">Workflow Name</th>
+        <th scope="col">Deck Name</th>
+        <th scope="col">Current Status</th>
+        <th scope="col"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for workflow in workflows %}
+      <tr class='clickable-row' data-href="/edit_workflow/{{workflow['name']}}">
+        <td><a href="/edit_workflow/{{workflow['name']}}">{{workflow["name"]}}</a></td>
+        <td>{{workflow["deck"]}}</td>
+        <td>{{workflow["status"]}}</td>
+        <td><a href="/edit_workflow/{{workflow['name']}}">edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}
