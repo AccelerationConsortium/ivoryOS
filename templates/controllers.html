@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Controller for {{inst.__class__.__name__}}{% endblock %}
+
+{% block body %}
+    <div class= "container">
+        <h1>Controller for {{inst.__class__.__name__}} ({{instrument}})</h1>
+        <div class="row">
+            {% for function in functions %}
+
+            <div class="col-md-3">
+                <form role="form" method='POST' name="{{function}}" action='/controllers/{{instrument}}'>
+                    <div class="form-group">
+
+                        {% if functions[function].__class__.__name__ == "dict" %}
+                            {% for arg in functions[function] %}
+                            {{arg}}: <br>
+                            <input type="text" id="{{arg}}" name="{{arg}}"
+                                   placeholder="{{functions[function][arg].__name__}}"
+                                   value="">
+                            <br>
+                            {% endfor %}
+
+                        {% elif not functions[function].parameters.keys()|length == 0 %}
+                            {% for parameter in functions[function].parameters.keys() %}
+                                {{parameter}} ({{'optional' if not functions[function].parameters[parameter].default.__name__ == '_empty' else 'required'}}):<br>
+                                {% if not parameter == 'self' %}
+                                    {% if functions[function].parameters[parameter].annotation.__name__ == 'bool' %}
+
+                                        <input type="radio" id="True" name="{{parameter}}"
+                                            value="True" {{'checked' if functions[function].parameters[parameter].default=="True" else ''}}>
+                                            <label for="True">True</label><br>
+                                        <input type="radio" id="False" name="{{parameter}}"
+                                            value="False" {{"checked" if functions[function].parameters[parameter].default=="False" else ''}}>
+                                        <label for="False">False</label>
+                                    {% else %}
+                                        <input type="text" id="{{parameter}}" name="{{parameter}}"
+                                            placeholder="{{functions[function].parameters[parameter].annotation.__name__}}"
+                                            value="{{'' if functions[function].parameters[parameter].default.__name__ == '_empty' or functions[function].parameters[parameter].default == None else functions[function].parameters[parameter].default}}">
+                                    {% endif %}
+                                {% endif %}
+                                <br>
+                            {% endfor %}
+                        {% endif %}
+                        <br>
+                        <button type="submit" class="btn btn-dark" name="action" value="{{function}}" >{{function}}</button>
+                    </div>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+
+
+    </div>
+
+
+{% endblock %}

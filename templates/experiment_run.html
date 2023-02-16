@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}Available Controllers{% endblock %}
+
+
+{% block body %}
+    <div class= "container">
+        <div class= "container">
+        <div>
+            <div>
+                <h5>Script
+                    <a href="{{ url_for('experiment_builder') }}">(back to editing)</a>
+                </h5>
+            </div>
+            {% if script %}
+            <div >
+                <ul>
+                    {% for s in script %}
+                    <li class="btn btn-light" id="{{s['id']}}">{{s['action']}}</li>
+                    <div class="clear"></div>
+                    {% endfor %}
+                </ul>
+            </div>
+
+
+            <h5>Run Panel:</h5>
+            <div class="row">
+                <div class="col-6">
+                    <p>Configure: download CSV file, edit, and upload</p>
+                    <div>
+                        <p>
+                            <a href="/download/configure"><button class="btn btn-dark">Download .csv</button></a>
+                            <a class="btn btn-secondary" data-toggle="collapse" href="#loadfile" role="button" aria-expanded="false"
+                               aria-controls="collapseExample">Upload .csv
+                            </a>
+                        </p>
+                        <div class="collapse" id="loadfile">
+                            <div class="container">
+                                <form method="POST" action="/uploads" enctype="multipart/form-data">
+                                    <input type="file" name="file" required="required">
+                                    <input class="btn btn-dark" type="submit">
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if filename %}
+                    <form role="form" method='POST' name="run" action='/experiment/{{filename}}'>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-dark">Run</button>
+                        </div>
+                    </form>
+                    {% endif %}
+
+                </div>
+                <div class="col-6">
+                    <p>No configuration:</p>
+                    <form role="form" method='POST' name="run" action='/experiment'>
+                        <div class="form-group">
+                            <label for="repeat">Repeat for </label>
+                            <input type="number" id="repeat" name="repeat" min="1" max="30">
+                            <label for="repeat"> times</label>
+                            <br>
+                            <button type="submit" class="btn btn-dark">Run</button>
+                        </div>
+                    </form>
+                </div>
+                <br>
+            </div>
+
+            {% endif %}
+        </div>
+        <br>
+<!--        <a><button class="btn btn-dark" name="run" value="run" >Run Script</button></a>-->
+
+
+    </div>
+    </div>
+{% endblock %}

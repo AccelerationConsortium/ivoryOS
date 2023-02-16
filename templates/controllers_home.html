@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Available Controllers{% endblock %}
+
+
+{% block body %}
+    <div class= "container">
+        <h2>{{deck}} Controllers</h2>
+
+
+        {% for instrument in defined_variables %}
+            <form role="form" method='GET' name="{{instrument}}" action='/controllers/{{instrument}}'>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-dark" name="action" value="{{instrument}}" >{{instrument}}</button>
+                </div>
+            </form>
+        {% endfor %}
+
+
+<!--    import deck or API using filepath-->
+        <div class= "container">
+            {% if deck == "Deck" %}
+            <p>Import deck from file explorer:</p>
+            <form method="POST" action="/import_deck" enctype="multipart/form-data">
+                <input type="text" name="filepath" required="required">
+                <input class="btn btn-dark" type="submit">
+            </form>
+            {% endif %}
+
+
+            {% if deck == "" %}
+            <p>No available constrollers? Try
+            <a href="{{ url_for('new_controller') }}">Create New</a>
+            <br>
+            </p>
+
+
+            {% endif %}
+        </div>
+
+    </div>
+{% endblock %}
