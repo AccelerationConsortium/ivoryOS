@@ -190,6 +190,7 @@ def controllers(instrument):
         try:
             if callable(function_executable):
                 if args is not None:
+                    print(args)
                     function_executable(**args)
                 else:
                     function_executable()
@@ -422,10 +423,10 @@ def convert_type(args, parameters, configure=[]):
                 configure.append(args[arg][1:])
                 # args[arg] = args[arg][1:]
             elif type(parameters) is inspect.Signature:
-                parameters = parameters.parameters
-                if parameters[arg].annotation is not inspect._empty:
-                    if not type(args[arg]) == parameters[arg].annotation:
-                        args[arg] = parameters[arg].annotation(args[arg])
+                p = parameters.parameters
+                if p[arg].annotation is not inspect._empty:
+                    if not type(args[arg]) == p[arg].annotation:
+                        args[arg] = p[arg].annotation(args[arg])
             elif type(parameters) is dict:
                 if parameters[arg] is not None:
                     if not type(args[arg]) == parameters[arg]:
