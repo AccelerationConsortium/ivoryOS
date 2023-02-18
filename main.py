@@ -4,8 +4,7 @@ import os
 import csv
 import sqlite3
 
-from flask import Flask, redirect, url_for, flash, jsonify, send_from_directory, current_app, send_file
-from flask import request, render_template
+from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, render_template
 from werkzeug.utils import secure_filename
 
 # import sample_deck as deck
@@ -28,17 +27,25 @@ cursor.execute("""create table IF NOT EXISTS workflow (name TEXT PRIMARY KEY NOT
 
 
 def get_db_connection():
-    con = sqlite3.connect("webapp.db")
-    con.row_factory = sqlite3.Row
-    return con
+    connect = sqlite3.connect("webapp.db")
+    connect.row_factory = sqlite3.Row
+    return connect
 
 
 script_list = []
 order = []
-script_dict = {'name': '',
-               'deck': '',
+script_dict = {'name': None,
+               'deck': None,
                'status': 'editing',
-               'script': []}
+               'prep':  [],
+               'script': [],
+               'cleanup':  [],
+               }
+
+# script_dict = {'name': None,
+#                'deck': None,
+#                'status': 'editing',
+#                'script': {"prep": [], "main": [], "cleanup": []}}
 
 libs = set(dir())
 
@@ -61,6 +68,11 @@ defined_variables = user_variables - import_variables - set(["import_variables"]
 @app.route("/")
 def index():
     return render_template('home.html')
+
+
+@app.route("/help")
+def help_info():
+    return render_template('help.html')
 
 
 @app.route("/controllers")
@@ -98,10 +110,10 @@ def experiment_builder(instrument=None, action=None):
                     return redirect(url_for("experiment_builder", instrument=instrument, action=action))
                 if type(functions[function_name]) is dict:
                     args = list(args.values())[0]
-                action_dict = {"id": len(script_dict['script']) + 1, "instrument": instrument, "action": function_name,
+                action_dict = {"id": len(script_dict['script']['main']) + 1, "instrument": instrument, "action": function_name,
                                "args": args}
-                order.append(str(len(script_dict['script']) + 1))
-                script_dict['script'].append(action_dict)
+                order.append(str(len(script_dict['script']['main']) + 1))
+                script_dict['script']['main'].append(action_dict)
 
     return render_template('experiment_builder.html', instrument=instrument, action=action, script=script_dict,
                            defined_variables=deck_variables, local_variables=defined_variables, functions=functions,
@@ -223,12 +235,41 @@ def edit_action(id):
             # return redirect(url_for('experiment_builder', edit_action=action))
 
 
+@app.route("/edit_workflow/<workflow_name>")
+def edit_workflow(workflow_name):
+    global script_dict
+    row = cursor.execute(f"SELECT * FROM workflow WHERE name = '{workflow_name}'").fetchone()
+    script_dict = dict(zip(row.keys(), row))
+    script_dict["script"] = json.loads(script_dict["script"])
+    return redirect(url_for('experiment_builder'))
+
+@app.route("/delete_workflow/<workflow_name>")
+def delete_workflow(workflow_name):
+    global script_dict
+    cursor.execute(f"Delete FROM workflow WHERE name = '{workflow_name}'")
+    con.commit()
+    return redirect(url_for('load_from_database'))
+
+
 @app.route("/publish")
 def publish():
     # cursor = con.cursor()
-    cursor.execute("""INSERT INTO workflow(name, deck, status, script)
-                        VALUES (:name,:deck, :status,:script);""", script_dict)
-    con.commit()
+    global script_dict
+    row = cursor.execute(f"SELECT * FROM workflow WHERE name = '{script_dict['name']}'").fetchone()
+    if row is not None and row["status"] == "finalized":
+        flash("This is a finalized script, edit name to create a new entry")
+        return redirect(url_for('experiment_builder'))
+    else:
+        cursor.execute("""INSERT OR REPLACE INTO workflow(name, deck, status, script)
+                                    VALUES (:name,:deck, :status,:script);""", script_dict)
+        con.commit()
+    return redirect(url_for('load_from_database'))
+
+@app.route("/finalize")
+def finalize():
+    # cursor = con.cursor()
+    global script_dict
+    script_dict['status'] = "finalized"
     return redirect(url_for('experiment_builder'))
 
 
@@ -242,7 +283,7 @@ def load_from_database(deck_name=None):
         temp = cursor.execute("""SELECT DISTINCT deck FROM workflow""")
         deck_list = [i['deck'] for i in temp]
     else:
-        workflows = cursor.execute("""SELECT * FROM workflow WHERE deck is '%s'""" % deck_name).fetchall()
+        workflows = cursor.execute(f"""SELECT * FROM workflow WHERE deck = '{deck_name}'""").fetchall()
         deck_list = ["ALL"]
     # con.commit()
     return render_template("experiment_database.html", workflows=workflows, deck_list=deck_list)
@@ -305,6 +346,8 @@ def build_run_block():
     with open("empty_configure.csv", 'w') as f:
         writer = csv.writer(f)
         writer.writerow(configure)
+    with open("scripts/script.py", "w") as s:
+        s.write(exec_string)
     return redirect(url_for("experiment_run"))
 
 
@@ -317,7 +360,7 @@ def import_api():
     # filepath.replace('\\', '/')
     # name = request.form.get('name')
     # if name == '':
-    name = filepath.split('\\')[-1].split('.')[0]
+    name = os.path.split(filepath)[-1].split('.')[0]
     try:
         spec = importlib.util.spec_from_file_location(name, filepath)
         module = importlib.util.module_from_spec(spec)
@@ -340,7 +383,7 @@ def import_deck():
     import importlib.util
     global script_dict
     filepath = request.form.get('filepath')
-    name = filepath.split('\\')[-1].split('.')[0]
+    name = os.path.split(filepath)[-1].split('.')[0]
     # filepath.replace('\\', '/')
     try:
         spec = importlib.util.spec_from_file_location(name, filepath, )
@@ -352,7 +395,7 @@ def import_deck():
             flash("Invalid Deck import")
             return redirect(url_for("deck_controllers"))
         globals()["deck"] = module
-        if script_dict['deck'] == "":
+        if script_dict['deck'] == "" or script_dict['deck'] is None:
             script_dict['deck'] = module.__name__
     # file path error exception
     except Exception as e:

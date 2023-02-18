@@ -25,11 +25,16 @@
     </thead>
     <tbody>
       {% for workflow in workflows %}
-      <tr class='clickable-row' data-href="/edit_workflow/{{workflow['name']}}">
+      <tr>
         <td><a href="/edit_workflow/{{workflow['name']}}">{{workflow["name"]}}</a></td>
         <td>{{workflow["deck"]}}</td>
         <td>{{workflow["status"]}}</td>
-        <td><a href="/edit_workflow/{{workflow['name']}}">edit</a></td>
+        <td>
+          {% if not workflow["status"] == "finalized" %}
+            <a href="/delete_workflow/{{workflow['name']}}">delete</a>
+          {% else %}
+          {% endif %}
+        <td>
       </tr>
       {% endfor %}
     </tbody>

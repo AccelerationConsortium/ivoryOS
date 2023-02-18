@@ -4,9 +4,15 @@
 {% block body %}
 
     <div class="container">
-
+            <a>Import New API by File Path:</a>
+            <form method="POST" action="/import_api" enctype="multipart/form-data">
+                <input type="text" class="form-control" name="filepath" required="required">
+                <input class="btn btn-dark" type="submit" value="Import">
+            </form>
         <h2>Available Python API</h2>
         <div class="row">
+
+
             <div class="col-3">
             {% for instrument in api_variables %}
             <form role="form" method='GET' name="{{instrument}}" action='/new_controller/{{instrument}}'>
@@ -16,11 +22,6 @@
             </form>
             {% endfor %}
 
-            <a>Import New API by File Path:</a>
-            <form method="POST" action="/import_api" enctype="multipart/form-data">
-                <input type="text" name="filepath" required="required">
-                <input class="btn btn-dark" type="submit" value="Initiate">
-            </form>
             </div>
 
 
@@ -43,7 +44,7 @@
                                 {% endif %}
                                 <br>
                             {% endfor %}
-                            <button type="submit" class="btn btn-dark">Create</button>
+                            <button type="submit" class="btn btn-dark">Connect</button>
                         </div>
                     </form>
 

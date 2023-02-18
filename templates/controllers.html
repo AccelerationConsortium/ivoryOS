@@ -8,6 +8,7 @@
             {% for function in functions %}
 
             <div class="col-md-3">
+                <div class="card card-body">
                 <form role="form" method='POST' name="{{function}}" action='/controllers/{{instrument}}'>
                     <div class="form-group">
 
@@ -45,6 +46,9 @@
                         <button type="submit" class="btn btn-dark" name="action" value="{{function}}" >{{function}}</button>
                     </div>
                 </form>
+
+                </div>
+                 <br>
             </div>
             {% endfor %}
         </div>
