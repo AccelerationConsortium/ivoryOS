@@ -110,10 +110,10 @@ def experiment_builder(instrument=None, action=None):
                     return redirect(url_for("experiment_builder", instrument=instrument, action=action))
                 if type(functions[function_name]) is dict:
                     args = list(args.values())[0]
-                action_dict = {"id": len(script_dict['script']['main']) + 1, "instrument": instrument, "action": function_name,
+                action_dict = {"id": len(script_dict['script']) + 1, "instrument": instrument, "action": function_name,
                                "args": args}
-                order.append(str(len(script_dict['script']['main']) + 1))
-                script_dict['script']['main'].append(action_dict)
+                order.append(str(len(script_dict['script']) + 1))
+                script_dict['script'].append(action_dict)
 
     return render_template('experiment_builder.html', instrument=instrument, action=action, script=script_dict,
                            defined_variables=deck_variables, local_variables=defined_variables, functions=functions,
@@ -347,7 +347,8 @@ def build_run_block():
         writer = csv.writer(f)
         writer.writerow(configure)
     with open("scripts/script.py", "w") as s:
-        s.write(exec_string)
+        #TODO:
+        s.write("import " + script_dict['deck'] + " as deck\n" + exec_string)
     return redirect(url_for("experiment_run"))
 
 
