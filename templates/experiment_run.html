@@ -10,6 +10,13 @@
                 <h5>Script
                     <a href="{{ url_for('experiment_builder') }}">(back to editing)</a>
                 </h5>
+                <h6>Preparation:
+                    <a href="#">Add preparation step from database</a>
+                </h6>
+<!--                <h6>Experiment</h6>-->
+                <h6>Clean up:
+                    <a href="#">Add preparation step from database</a>
+                </h6>
             </div>
             {% if script %}
             <div >
@@ -34,12 +41,15 @@
                             </a>
                         </p>
                         <div class="collapse" id="loadfile">
-                            <div class="container">
-                                <form method="POST" action="/uploads" enctype="multipart/form-data">
-                                    <input type="file" name="file" required="required">
+
+                            <form method="POST" action="/uploads" enctype="multipart/form-data">
+                                <div class="input-group">
+<!--                                    <label class="form-label"></label>-->
+                                    <input class="form-control" type="file" required="required">
                                     <input class="btn btn-dark" type="submit">
-                                </form>
-                            </div>
+                                </div>
+                            </form>
+
                         </div>
                     </div>
 

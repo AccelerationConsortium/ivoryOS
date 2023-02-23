@@ -34,13 +34,15 @@ def get_db_connection():
 
 script_list = []
 order = []
-script_dict = {'name': None,
-               'deck': None,
+script_dict = {'name': 'untitled',
+               'deck': '',
                'status': 'editing',
                'prep':  [],
                'script': [],
                'cleanup':  [],
                }
+# save action to block
+# in run
 
 # script_dict = {'name': None,
 #                'deck': None,
@@ -128,6 +130,8 @@ def experiment_run(filename=None):
         sort_actions()
     if request.method == "POST":
         run_name = script_dict['name']
+        # if run_name is None or run_name == "None":
+        #     run_name =
         repeat = request.form.get('repeat')
         try:
             if filename is not None and not filename == 'None':
@@ -316,7 +320,7 @@ def build_run_block():
     :return:
     """
     run_name = script_dict['name']
-    if run_name is None or run_name == "":
+    if run_name is None or run_name == "None":
         run_name = "random_for_now"
     exec_string = "def " + run_name + "("
     configure = config()

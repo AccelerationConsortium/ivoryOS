@@ -172,6 +172,35 @@
                         Finalize
                     </a>
                 </h6>
+                <h6>Preparation Script:</h6>
+                <div class="container">
+<!--                    <div id="prep">-->
+<!--                        <ul class="reorder">-->
+<!--                            {% for s in script['prep'] %}-->
+<!--                            <li draggable="true" id="{{s['id']}}" style="list-style-type: none;">-->
+<!--                                <a  type="button" class="btn btn-light">{{s['id']}}: ac{{s['instrument'].split(".")[1] if s['instrument'].startswith("deck") else s['instrument']}}.{{s.action}}-->
+<!--                                    {% if s['args'] %}-->
+<!--                                        {% if s['args'].__class__.__name__ == "dict" %}-->
+<!--                                            (-->
+<!--                                            {% for i in s['args'] %}-->
+<!--                                            {{i}}={{s['args'][i]}},-->
+<!--                                            {% endfor %}-->
+<!--                                            )-->
+
+<!--                                        {% else %}-->
+<!--                                            = {{s['args']}}-->
+<!--                                        {% endif %}-->
+<!--                                    {% endif %}-->
+<!--                                </a>-->
+<!--&lt;!&ndash;                                <a class="btn btn-dark" href="/delete/{{s['id']}}">Delete <span class="bi bi-trash"></span></a>&ndash;&gt;-->
+<!--                                <a href="/delete/{{s['id']}}" type="button" class="btn btn-light"><span class="bi bi-trash"></span></a>-->
+<!--                            </li>-->
+
+<!--                            <div class="clear"></div>-->
+<!--                            {% endfor %}-->
+<!--                        </ul>-->
+<!--                    </div>-->
+                </div>
                 <h6>Action Script:</h6>
                 <div class="container">
                     <div id="list">
