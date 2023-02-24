@@ -93,7 +93,8 @@ def experiment_builder(instrument=None, action=None):
     action_parameters = None
     functions = []
     deck_variables = ["deck." + var for var in set(dir(deck)) if not var.startswith("_") and not var[0].isupper()
-                      and not var.startswith("repackage")]
+                      and not var.startswith("repackage") and not type(eval("deck."+var)).__module__ == 'builtins']
+
     if instrument:
         inst_object = find_instrument_by_name(instrument)
         functions = parse_functions(inst_object)
@@ -152,7 +153,11 @@ def experiment_run(filename=None):
 @app.route("/my_deck")
 def deck_controllers():
     deck_variables = ["deck." + var for var in set(dir(deck)) if not var.startswith("_") and not var[0].isupper()
-                      and not var.startswith("repackage")]
+                      and not var.startswith("repackage") and not type(eval("deck."+var)).__module__ == 'builtins']
+    # for i in deck_variables:
+    #     a = eval(i)
+    #     if type(eval(i)) is type(__builtins__):
+
     return render_template('controllers_home.html', defined_variables=deck_variables, deck="Deck")
 
 

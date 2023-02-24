@@ -8,18 +8,16 @@
         <div>
             <div>
                 <h5>Script
-                    <a href="{{ url_for('experiment_builder') }}">(back to editing)</a>
+<!--                    <a href="{{ url_for('experiment_builder') }}">(back to editing)</a>-->
                 </h5>
                 <h6>Preparation:
-                    <a href="#">Add preparation step from database</a>
+                    <a href="#">Add</a>
                 </h6>
-<!--                <h6>Experiment</h6>-->
-                <h6>Clean up:
-                    <a href="#">Add preparation step from database</a>
-                </h6>
+
             </div>
-            {% if script %}
+
             <div >
+                <h6>Experiment:</h6>
                 <ul>
                     {% for s in script %}
                     <li class="btn btn-light" id="{{s['id']}}">{{s['action']}}</li>
@@ -27,8 +25,10 @@
                     {% endfor %}
                 </ul>
             </div>
-
-
+                <h6>Clean up:
+                    <a href="#">Add</a>
+                </h6>
+            {% if script %}
             <h5>Run Panel:</h5>
             <div class="row">
                 <div class="col-6">
