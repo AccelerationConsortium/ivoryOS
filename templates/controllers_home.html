@@ -19,10 +19,12 @@
 <!--    import deck or API using filepath-->
         <div class= "container">
             {% if deck == "Deck" %}
-            <p>Import deck from file explorer:</p>
             <form method="POST" action="/import_deck" enctype="multipart/form-data">
-                <input type="text" name="filepath" required="required">
-                <input class="btn btn-dark" type="submit">
+                <div class="input-group">
+                    <label class="input-group-text" for="filepath">Import Deck by File Path:</label>
+                    <input type="text" class="form-control" name="filepath" id="filepath" required="required">
+                    <input class="btn btn-secondary" type="submit">
+                </div>
             </form>
             {% endif %}
 

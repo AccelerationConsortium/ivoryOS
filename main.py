@@ -370,8 +370,11 @@ def import_api():
     # filepath.replace('\\', '/')
     # name = request.form.get('name')
     # if name == '':
+    print(filepath)
     name = os.path.split(filepath)[-1].split('.')[0]
+    print(name)
     try:
+
         spec = importlib.util.spec_from_file_location(name, filepath)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -393,6 +396,7 @@ def import_deck():
     import importlib.util
     global script_dict
     filepath = request.form.get('filepath')
+    print(filepath)
     name = os.path.split(filepath)[-1].split('.')[0]
     # filepath.replace('\\', '/')
     try:

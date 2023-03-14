@@ -10,7 +10,7 @@
             <div class="col-md-3">
                 {% if defined_variables|length == 0 %}
                 <div>
-                    <h5>No deck information
+                    <h5>No deck found
                         <a data-toggle="collapse" href="#loaddeck" role="button" aria-expanded="false" aria-controls="collapseExample">
                             (import deck)
                         </a>
@@ -18,9 +18,16 @@
                     <div class="collapse" id="loaddeck">
                         <div class="container">
                             <form method="POST" action="/import_deck" enctype="multipart/form-data">
-                                <input type="text" name="filepath" required="required">
-                                <input class="btn btn-dark" type="submit">
+                                <div class="input-group">
+                                    <label class="input-group-text" for="filepath">Import Deck by File Path:</label>
+                                    <input type="text" class="form-control" name="filepath" id="filepath" required="required">
+                                    <input class="btn btn-secondary" type="submit">
+                                </div>
                             </form>
+<!--                            <form method="POST" action="/import_deck" enctype="multipart/form-data">-->
+<!--                                <input type="text" name="filepath" required="required">-->
+<!--                                <input class="btn btn-dark" type="submit">-->
+<!--                            </form>-->
                         </div>
                     </div>
                 </div>
