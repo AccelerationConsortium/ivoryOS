@@ -10,25 +10,33 @@
                 <h5>Script
 <!--                    <a href="{{ url_for('experiment_builder') }}">(back to editing)</a>-->
                 </h5>
-                <h6>Preparation:
-                    <a href="#">Add</a>
-                </h6>
-
             </div>
-
-            <div >
+            <div>
+                <h6>Preparation:</h6>
+                <ul>
+                    {% for p in script['prep'] %}
+                    <li class="btn btn-light" id="{{p['id']}}">{{p['action']}}</li>
+                    <div class="clear"></div>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div>
                 <h6>Experiment:</h6>
                 <ul>
-                    {% for s in script %}
+                    {% for s in script['script'] %}
                     <li class="btn btn-light" id="{{s['id']}}">{{s['action']}}</li>
                     <div class="clear"></div>
                     {% endfor %}
                 </ul>
             </div>
-                <h6>Clean up:
-                    <a href="#">Add</a>
-                </h6>
-            {% if script %}
+                <h6>Clean up:</h6>
+                <ul>
+                    {% for c in script['cleanup'] %}
+                    <li class="btn btn-light" id="{{c['id']}}">{{c['action']}}</li>
+                    <div class="clear"></div>
+                    {% endfor %}
+                </ul>
+            {% if script['script'] %}
             <h5>Run Panel:</h5>
             <div class="row">
                 <div class="col-6">

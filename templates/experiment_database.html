@@ -4,6 +4,9 @@
 
 {% block body %}
 <div class= "container">
+<!--  <div>-->
+<!--    <a class="btn btn-secondary" href="{{url_for('load_from_database',admin='admin')}}">Enable Admin Mode</a>-->
+<!--  </div>-->
   <div>
     {% for deck_name in deck_list %}
       {% if deck_name == "ALL" %}
@@ -30,10 +33,12 @@
         <td>{{workflow["deck"]}}</td>
         <td>{{workflow["status"]}}</td>
         <td>
-          {% if not workflow["status"] == "finalized" %}
-            <a href="/delete_workflow/{{workflow['name']}}">delete</a>
+
+          {% if not workflow["status"] == "finalized" or admin=='admin' %}
+          <a href="/delete_workflow/{{workflow['name']}}">delete</a>
           {% else %}
           {% endif %}
+
         <td>
       </tr>
       {% endfor %}

@@ -1,0 +1,7 @@
+.card{
+    display: flex;
+    justify-content: flex-end;
+}
+body {
+  padding-top: 60px;
+}
