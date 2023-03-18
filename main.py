@@ -118,6 +118,7 @@ def experiment_builder(instrument=None, action=None):
                 args = request.form.to_dict()
                 function_name = args.pop('add')
                 script_type = args.pop('script_type')
+                save_data = args.pop('return') if 'return' in request.form else ''
                 try:
                     args = convert_type(args, functions[function_name])
                 except ValueError as e:
@@ -131,7 +132,7 @@ def experiment_builder(instrument=None, action=None):
                 # order.append(str(len(script_dict['script']) + 1))
                 # script_dict['script'].append(action_dict)
                 action_dict = {"id": len(script_dict[script_type]) + 1, "instrument": instrument, "action": function_name,
-                               "args": args}
+                               "args": args, "return": save_data}
                 order[script_type].append(str(len(script_dict[script_type]) + 1))
                 script_dict[script_type].append(action_dict)
 
@@ -371,13 +372,15 @@ def build_run_block():
     for i in stypes:
         exec_string = "def " + run_name + "_" + i + "("
         configure = config()
-        for i in configure:
-            exec_string = exec_string + i + ","
+        if i == "script":
+            for j in configure:
+                exec_string = exec_string + j + ","
         exec_string = exec_string + "):"
         exec_string = exec_string + "\n\tglobal " + run_name + "_" + i
         for action in script_dict[i]:
             instrument = action['instrument']
             args = action['args']
+            save_data = action['return']
             action = action['action']
             if args is not None:
                 if type(args) is dict:
@@ -385,21 +388,26 @@ def build_run_block():
                     for arg in args:
                         if type(args[arg]) is str and args[arg].startswith("#"):
                             temp = temp.replace("'#" + args[arg][1:] + "'", args[arg][1:])
-                    exec_string = exec_string + "\n\t" + instrument + "." + action + "(**" + temp + ")"
+                    single_line = instrument + "." + action + "(**" + temp + ")"
                 else:
                     if type(args) is str and args.startswith("#"):
                         args = args.replace("'#" + args[1:] + "'", args[1:])
-                    exec_string = exec_string + "\n\t" + instrument + "." + action + "=" + str(args)
+                    single_line = instrument + "." + action + "=" + str(args)
             else:
-                exec_string = exec_string + "\n\t" + instrument + "." + action + "()"
+                single_line = instrument + "." + action + "()"
+            if save_data == '':
+                exec_string = exec_string + "\n\t" + single_line
+            else:
+                exec_string = exec_string + "\n\t" + save_data + "=" + single_line
         exec(exec_string)
+        with open("scripts/script_"+i+".py", "w") as s:
+            # TODO:
+            s.write("import " + script_dict['deck'] + " as deck\n" + exec_string)
     # create config_csv file
     with open("empty_configure.csv", 'w') as f:
         writer = csv.writer(f)
         writer.writerow(configure)
-    with open("scripts/script.py", "w") as s:
-        # TODO:
-        s.write("import " + script_dict['deck'] + " as deck\n" + exec_string)
+
     return redirect(url_for("experiment_run"))
 
 
@@ -458,10 +466,12 @@ def import_deck():
     return redirect(url_for("experiment_builder"))
 
 
-@app.route('/uploads/', methods=['GET', 'POST'])
+@app.route('/uploads', methods=['GET', 'POST'])
 def upload():
     if request.method == "POST":
         f = request.files['file']
+        if 'file' not in request.files:
+            flash('No file part')
         if f.filename.split('.')[-1] == "csv":
             filename = secure_filename(f.filename)
             f.save(os.path.join(app.config['CSV_FOLDER'], filename))
@@ -476,6 +486,8 @@ def upload():
 def load_json():
     if request.method == "POST":
         f = request.files['file']
+        if 'file' not in request.files:
+            flash('No file part')
         if f.filename.split('.')[-1] == "json":
             global script_dict
             script_dict = json.load(f)

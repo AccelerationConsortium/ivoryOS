@@ -72,43 +72,46 @@
                 <div class="box"><form role="form" method='POST' name="add">
                     <div class="form-group">
                         {% if functions[function].__class__.__name__ == "dict" %}
-                        {% for arg in functions[function] %}
-                        Setters: <br>
-                        {{arg}}: <br>
-                        <input type="text" id="{{arg}}" name="{{arg}}"
-                               placeholder="{{functions[function][arg].__name__}}"
-                               value="">
-                        <br>
-                        {% endfor %}
+                            {% for arg in functions[function] %}
+                            Setters: <br>
+                            {{arg}}: <br>
+                            <input type="text" id="{{arg}}" name="{{arg}}"
+                                   placeholder="{{functions[function][arg].__name__}}"
+                                   value="">
+                            <br>
+                            {% endfor %}
                         {% else %}
-                        {% for parameter in parameters.keys() %}
-                        {{parameter}} ({{'optional' if not parameters[parameter].default.__name__ == '_empty' else 'required'}}):<br>
-                        {% if parameters[parameter].annotation.__name__ == 'bool' %}
-                        <input type="radio" id="True" name="{{parameter}}" value="True" {{"checked" if parameters[parameter].default==True else ''}}>
-                        <label for="True">True</label><br>
-                        <input type="radio" id="False" name="{{parameter}}" value="False" {{"checked" if parameters[parameter].default==False else ''}}>
-                        <label for="False">False</label>
-                        {% else %}
-                        <input type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{parameters[parameter].annotation.__name__}}"
-                               value="{{'' if parameters[parameter].default.__name__ == '_empty' or parameters[parameter].default == None else parameters[parameter].default}}">
-                        {% endif %}
-                        <br>
+                            {% for parameter in parameters.keys() %}
+                            {{parameter}} ({{'optional' if not parameters[parameter].default.__name__ == '_empty' else 'required'}}):<br>
+                            {% if parameters[parameter].annotation.__name__ == 'bool' %}
+                                <input type="radio" id="True" name="{{parameter}}" value="True" {{"checked" if parameters[parameter].default==True else ''}}>
+                                <label for="True">True</label><br>
+                                <input type="radio" id="False" name="{{parameter}}" value="False" {{"checked" if parameters[parameter].default==False else ''}}>
+                                <label for="False">False</label>
+                            {% else %}
+                                <input type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{parameters[parameter].annotation.__name__}}"
+                                       value="{{'' if parameters[parameter].default.__name__ == '_empty' or parameters[parameter].default == None else parameters[parameter].default}}">
 
-                        {% endfor %}
+                            {% endif %}
+                            {% endfor %}
+
+                            <label for="return">Save the output as:</label><input type="text" id="return" name="return">
+                            <br>
+
+                        {% endif %}
                         <div>
                             <p>
                                 Add to:
-                                <select class="form-select" name="script_type" aria-label="Default select example">
+                                <select class="form-select" name="script_type">
                                     <option  value="prep">Prep</option>
                                     <option name="script_type" value="script" selected>Experiment</option>
                                     <option name="script_type" value="cleanup">Clean up</option>
                                 </select>
-                                <input type="radio" id="prep" name="script_type" value="prep"><label for="prep">Prep</label>
-                                <input type="radio" id="exp" name="script_type" value="script" checked="checked"><label for="exp">Experiment</label>
-                                <input type="radio" id="cleanup" name="script_type" value="cleanup"><label for="cleanup">Clean up</label>
+<!--                                   <input type="radio" id="prep" name="script_type" value="prep"><label for="prep">Prep</label>-->
+<!--                                   <input type="radio" id="exp" name="script_type" value="script" checked="checked"><label for="exp">Experiment</label>-->
+<!--                                   <input type="radio" id="cleanup" name="script_type" value="cleanup"><label for="cleanup">Clean up</label>-->
                             </p>
                         </div>
-                        {% endif %}
                         <button type="submit" class="btn btn-dark" name="add" value="{{action}}" >add</button>
                     </div>
                 </form></div>
@@ -167,7 +170,11 @@
                             {% for s in script[script_type] %}
                             <li draggable="true" id="{{s['id']}}" style="list-style-type: none;">
 <!--                                href="/edit/{{s['id']}}"-->
-                                <a  type="button" class="btn btn-light">{{s['id']}}: {{s['instrument'].split(".")[1] if s['instrument'].startswith("deck") else s['instrument']}}.{{s.action}}
+                                <a  type="button" class="btn btn-light">{{s['id']}}:
+                                    {% if not s['return'] == '' %}
+                                    {{s['return']}} =
+                                    {% endif %}
+                                    {{s['instrument'].split(".")[1] if s['instrument'].startswith("deck") else s['instrument']}}.{{s.action}}
                                     {% if s['args'] %}
                                         {% if s['args'].__class__.__name__ == "dict" %}
                                             (
