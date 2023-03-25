@@ -31,6 +31,12 @@
                 </div>
             </div>
             {% else %}
+            <h5>Logic Options:</h5>
+            <form role="form" method='GET' name="if" action="/experiment/build/if">
+                <div class="form-group">
+                    <button type="submit" class="btn btn-dark" name="device" value="if" >If</button>
+                </div>
+            </form>
             <h5>Deck Actions:</h5>
             {% endif %}
             {% for instrument in defined_variables %}
@@ -57,9 +63,31 @@
             {% if instrument %}
             <h5>Actions for {{instrument}}</h5>
             {% endif %}
+
             {% if edit_action %}
                 {{edit_action}}
             {% endif %}
+
+            {% if instrument == 'if' %}
+            <form role="form" method='POST' name="addif" action="/experiment/build/if">
+                <div class="form-group">
+                    <div>
+                        <label for="statement">Statement:</label>
+                        <input type="text" id="statement" name="statement" >
+                        <p>Add to:
+                            <select class="form-select" name="script_type">
+                                <option name="script_type" value="prep">Prep</option>
+                                <option name="script_type" value="script" selected>Experiment</option>
+                                <option name="script_type" value="cleanup">Clean up</option>
+                            </select>
+                        </p>
+                    </div>
+                    <button type="submit" class="btn btn-dark" name="addif">add</button>
+
+                </div>
+            </form>
+            {% endif %}
+
             {% for function in functions %}
             <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}/{{function}}">
                 <div class="form-group">
@@ -69,52 +97,54 @@
             </form>
             {% if action == function %}
             <div class="container" style="background-color: aliceblue">
-                <div class="box"><form role="form" method='POST' name="add">
-                    <div class="form-group">
-                        {% if functions[function].__class__.__name__ == "dict" %}
-                            {% for arg in functions[function] %}
-                            Setters: <br>
-                            {{arg}}: <br>
-                            <input type="text" id="{{arg}}" name="{{arg}}"
-                                   placeholder="{{functions[function][arg].__name__}}"
-                                   value="">
-                            <br>
-                            {% endfor %}
-                        {% else %}
-                            {% for parameter in parameters.keys() %}
-                            {{parameter}} ({{'optional' if not parameters[parameter].default.__name__ == '_empty' else 'required'}}):<br>
-                            {% if parameters[parameter].annotation.__name__ == 'bool' %}
-                                <input type="radio" id="True" name="{{parameter}}" value="True" {{"checked" if parameters[parameter].default==True else ''}}>
-                                <label for="True">True</label><br>
-                                <input type="radio" id="False" name="{{parameter}}" value="False" {{"checked" if parameters[parameter].default==False else ''}}>
-                                <label for="False">False</label>
+                <div class="box">
+                    <form role="form" method='POST' name="add">
+                        <div class="form-group">
+                            {% if functions[function].__class__.__name__ == "dict" %}
+                                {% for arg in functions[function] %}
+                                Setters: <br>
+                                {{arg}}: <br>
+                                <input type="text" id="{{arg}}" name="{{arg}}"
+                                       placeholder="{{functions[function][arg].__name__}}"
+                                       value="">
+                                <br>
+                                {% endfor %}
                             {% else %}
-                                <input type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{parameters[parameter].annotation.__name__}}"
-                                       value="{{'' if parameters[parameter].default.__name__ == '_empty' or parameters[parameter].default == None else parameters[parameter].default}}">
+                                {% for parameter in parameters.keys() %}
+                                {{parameter}} ({{'optional' if not parameters[parameter].default.__name__ == '_empty' else 'required'}}):<br>
+                                {% if parameters[parameter].annotation.__name__ == 'bool' %}
+                                    <input type="radio" id="True" name="{{parameter}}" value="True" {{"checked" if parameters[parameter].default==True else ''}}>
+                                    <label for="True">True</label><br>
+                                    <input type="radio" id="False" name="{{parameter}}" value="False" {{"checked" if parameters[parameter].default==False else ''}}>
+                                    <label for="False">False</label><br>
+                                {% else %}
+                                    <input type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{parameters[parameter].annotation.__name__}}"
+                                           value="{{'' if parameters[parameter].default.__name__ == '_empty' or parameters[parameter].default == None else parameters[parameter].default}}">
+
+                                {% endif %}
+                                {% endfor %}
+
+                                <label for="return">Save the output as:</label><input type="text" id="return" name="return">
+                                <br>
 
                             {% endif %}
-                            {% endfor %}
-
-                            <label for="return">Save the output as:</label><input type="text" id="return" name="return">
-                            <br>
-
-                        {% endif %}
-                        <div>
-                            <p>
-                                Add to:
-                                <select class="form-select" name="script_type">
-                                    <option  value="prep">Prep</option>
-                                    <option name="script_type" value="script" selected>Experiment</option>
-                                    <option name="script_type" value="cleanup">Clean up</option>
-                                </select>
-<!--                                   <input type="radio" id="prep" name="script_type" value="prep"><label for="prep">Prep</label>-->
-<!--                                   <input type="radio" id="exp" name="script_type" value="script" checked="checked"><label for="exp">Experiment</label>-->
-<!--                                   <input type="radio" id="cleanup" name="script_type" value="cleanup"><label for="cleanup">Clean up</label>-->
-                            </p>
+                            <div>
+                                <p>
+                                    Add to:
+                                    <select class="form-select" name="script_type">
+                                        <option  value="prep">Prep</option>
+                                        <option name="script_type" value="script" selected>Experiment</option>
+                                        <option name="script_type" value="cleanup">Clean up</option>
+                                    </select>
+<!--                                       <input type="radio" id="prep" name="script_type" value="prep"><label for="prep">Prep</label>-->
+<!--                                       <input type="radio" id="exp" name="script_type" value="script" checked="checked"><label for="exp">Experiment</label>-->
+<!--                                       <input type="radio" id="cleanup" name="script_type" value="cleanup"><label for="cleanup">Clean up</label>-->
+                                </p>
+                            </div>
+                            <button type="submit" class="btn btn-dark" name="add" value="{{action}}" >add</button>
                         </div>
-                        <button type="submit" class="btn btn-dark" name="add" value="{{action}}" >add</button>
-                    </div>
-                </form></div>
+                    </form>
+                </div>
             </div>
             {% endif %}
             {% endfor %}
@@ -168,11 +198,14 @@
                     <div id="list">
                         <ul class="reorder">
                             {% for s in script[script_type] %}
-                            <li draggable="true" id="{{s['id']}}" style="list-style-type: none;">
+                            <li draggable="false" id="{{s['id']}}" style="list-style-type: none;">
 <!--                                href="/edit/{{s['id']}}"-->
-                                <a  type="button" class="btn btn-light">{{s['id']}}:
+                                {% if s['instrument'] == 'if' %}
+                                    <a type="button" class="btn btn-light" style="background-color: tomato">{{s['action']}} {% if s['args'] %}({{s['args']}}){% endif %}</a>
+                                {% else %}
+                                    <a  type="button" class="btn btn-light">{{s['id']}}:
                                     {% if not s['return'] == '' %}
-                                    {{s['return']}} =
+                                        {{s['return']}} =
                                     {% endif %}
                                     {{s['instrument'].split(".")[1] if s['instrument'].startswith("deck") else s['instrument']}}.{{s.action}}
                                     {% if s['args'] %}
@@ -188,7 +221,7 @@
                                         {% endif %}
                                     {% endif %}
                                 </a>
-<!--                                <a class="btn btn-dark" href="/delete/{{s['id']}}">Delete <span class="bi bi-trash"></span></a>-->
+                                {% endif %}
                                 <a href="/delete/{{s['id']}}" type="button" class="btn btn-light"><span class="bi bi-trash"></span></a>
                             </li>
 

@@ -15,7 +15,8 @@
                 <h6>Preparation:</h6>
                 <ul>
                     {% for p in script['prep'] %}
-                    <li class="btn btn-light" id="{{p['id']}}">{{p['action']}}</li>
+                    {% if not p['instrument']=='if' %} &emsp; {% endif %}
+                    <li class="btn btn-light" id="{{p['id']}}" style="{{'background-color: tomato' if p['instrument']=='if' else ''}}">{{p['action']}}</li>
                     <div class="clear"></div>
                     {% endfor %}
                 </ul>
@@ -24,7 +25,10 @@
                 <h6>Experiment:</h6>
                 <ul>
                     {% for s in script['script'] %}
-                    <li class="btn btn-light" id="{{s['id']}}">{{s['action']}}</li>
+                    {% if not s['instrument']=='if' %} &emsp; {% endif %}
+                    <li class="btn btn-light" id="{{s['id']}}" style="{{'background-color: tomato' if s['instrument']=='if' else ''}}">
+                        {{s['action']}}
+                    </li>
                     <div class="clear"></div>
                     {% endfor %}
                 </ul>
@@ -32,7 +36,8 @@
                 <h6>Clean up:</h6>
                 <ul>
                     {% for c in script['cleanup'] %}
-                    <li class="btn btn-light" id="{{c['id']}}">{{c['action']}}</li>
+                    {% if not c['instrument']=='if' %} &emsp; {% endif %}
+                    <li class="btn btn-light" id="{{c['id']}}" style="{{'background-color: tomato' if c['instrument']=='if' else ''}}">{{c['action']}}</li>
                     <div class="clear"></div>
                     {% endfor %}
                 </ul>

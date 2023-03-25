@@ -96,19 +96,25 @@ def experiment_builder(instrument=None, action=None):
     global script_dict
     global order
     global script_type
-    # print(script_type)
     sort_actions(script_type)
     action_parameters = None
     functions = []
-    if "gui_functions" in set(dir(deck)):
-        deck_variables = ["deck." + var for var in deck.gui_functions]
-    else:
-        deck_variables = ["deck." + var for var in set(dir(deck)) if not var.startswith("_") and not var[0].isupper()
-                          and not var.startswith("repackage") and not type(eval("deck." + var)).__module__ == 'builtins']
-
+    deck_variables = parse_deck(deck)
     if instrument:
         inst_object = find_instrument_by_name(instrument)
         functions = parse_functions(inst_object)
+        if request.method == 'POST' and "addif" in request.form:
+            script_type = request.form.get('script_type')
+            statement = request.form.get('statement')
+            current_len = len(script_dict[script_type])
+            action_if = {"id": current_len + 1, "instrument": 'if', "action": 'if',
+                         "args": statement, "return": ''}
+            action_else = {"id": current_len + 2, "instrument": 'if', "action": 'else',
+                           "args": '', "return": ''}
+            action_endif = {"id": current_len + 3, "instrument": 'if', "action": 'endif',
+                            "args": '', "return": ''}
+            order[script_type].extend([str(current_len + 1), str(current_len + 2), str(current_len + 3)])
+            script_dict[script_type].extend([action_if, action_else, action_endif])
         if action:
             if type(functions[action]) is dict:
                 action_parameters = functions[action]
@@ -116,6 +122,7 @@ def experiment_builder(instrument=None, action=None):
                 action_parameters = functions[action].parameters
             if request.method == 'POST':
                 args = request.form.to_dict()
+                print(args)
                 function_name = args.pop('add')
                 script_type = args.pop('script_type')
                 save_data = args.pop('return') if 'return' in request.form else ''
@@ -131,7 +138,8 @@ def experiment_builder(instrument=None, action=None):
                 #                "args": args}
                 # order.append(str(len(script_dict['script']) + 1))
                 # script_dict['script'].append(action_dict)
-                action_dict = {"id": len(script_dict[script_type]) + 1, "instrument": instrument, "action": function_name,
+                action_dict = {"id": len(script_dict[script_type]) + 1, "instrument": instrument,
+                               "action": function_name,
                                "args": args, "return": save_data}
                 order[script_type].append(str(len(script_dict[script_type]) + 1))
                 script_dict[script_type].append(action_dict)
@@ -161,8 +169,8 @@ def experiment_run(filename=None):
             exec(run_name + "_prep()")
             if filename is not None and not filename == 'None':
                 df = csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename)))
-                for _ in df:
-                    exec(run_name + "_script(**i)")
+                for i in df:
+                    exec(run_name + "_script(**" + str(i) + ")")
             if not repeat == '' and repeat is not None:
                 for i in range(int(repeat)):
                     exec(run_name + "_script()")
@@ -175,14 +183,20 @@ def experiment_run(filename=None):
     return render_template('experiment_run.html', script=script_dict, filename=filename)
 
 
-@app.route("/my_deck")
-def deck_controllers():
-    global deck
+def parse_deck(deck):
     if "gui_functions" in set(dir(deck)):
         deck_variables = ["deck." + var for var in deck.gui_functions]
     else:
-        deck_variables = ["deck." + var for var in set(dir(deck)) if not var.startswith("_") and not var[0].isupper()
-                          and not var.startswith("repackage") and not type(eval("deck." + var)).__module__ == 'builtins']
+        deck_variables = ["deck." + var for var in set(dir(deck)) if not (
+                var.startswith("_") or var[0].isupper() or var.startswith(
+            "repackage")) and not type(eval("deck." + var)).__module__ == 'builtins']
+    return deck_variables
+
+
+@app.route("/my_deck")
+def deck_controllers():
+    global deck
+    deck_variables = parse_deck(deck)
     return render_template('controllers_home.html', defined_variables=deck_variables, deck="Deck")
 
 
@@ -250,7 +264,7 @@ def controllers(instrument):
 
 # -----------------------handle action editing--------------------------------------------
 @app.route("/delete/<id>")
-#todo
+# todo
 def delete_action(id):
     for action in script_dict[script_type]:
         if action['id'] == int(id):
@@ -342,21 +356,20 @@ def edit_run_name():
             flash("Script name is already exist in database")
         return redirect(url_for("experiment_builder"))
 
+
 @app.route("/toggle_script_type/<stype>")
 def toggle_script_type(stype=None):
     global script_type
     script_type = stype
     return redirect(url_for('experiment_builder'))
 
+
 @app.route("/updateList", methods=['GET', 'POST'])
 def update_list():
     getorder = request.form['order']
     global order
     order[script_type] = getorder.split(",", len(script_dict[script_type]))
-    # print(script_list)
     return jsonify('Successfully Updated')
-    # return render_template('experiment_builder.html',script=script_list)
-    # return redirect(url_for('experiment_builder'))
 
 
 @app.route("/configure", methods=['GET', 'POST'])
@@ -366,43 +379,68 @@ def build_run_block():
     :param run_name:
     :return:
     """
+    global script_dict
     run_name = script_dict['name']
     if run_name is None or run_name == "":
         run_name = "random_for_now"
-    for i in stypes:
-        exec_string = "def " + run_name + "_" + i + "("
-        configure = config()
-        if i == "script":
-            for j in configure:
-                exec_string = exec_string + j + ","
-        exec_string = exec_string + "):"
-        exec_string = exec_string + "\n\tglobal " + run_name + "_" + i
-        for action in script_dict[i]:
-            instrument = action['instrument']
-            args = action['args']
-            save_data = action['return']
-            action = action['action']
-            if args is not None:
-                if type(args) is dict:
-                    temp = args.__str__()
-                    for arg in args:
-                        if type(args[arg]) is str and args[arg].startswith("#"):
-                            temp = temp.replace("'#" + args[arg][1:] + "'", args[arg][1:])
-                    single_line = instrument + "." + action + "(**" + temp + ")"
+    with open("scripts/script.py", "w") as s:
+        s.write("import " + script_dict['deck'] + " as deck")
+        for i in stypes:
+            exec_string = "\n\ndef " + run_name + "_" + i + "("
+            configure = config()
+            if i == "script":
+                for j in configure:
+                    exec_string = exec_string + j + ","
+            exec_string = exec_string + "):"
+            exec_string = exec_string + "\n\tglobal " + run_name + "_" + i
+            indent = ''
+            for index, action in enumerate(script_dict[i]):
+                instrument = action['instrument']
+                args = action['args']
+                save_data = action['return']
+                action = action['action']
+                next_ = None
+                if instrument == 'if':
+                    args = "True" if args == '' else args
+                    if index < (len(script_dict[i]) - 1):
+                        next_ = script_dict[i][index + 1]
+                    if action == 'if':
+                        exec_string = exec_string + "\n\tif " + args + ":"
+                        if next_['instrument'] == 'if':
+                            exec_string = exec_string + "\n\t\tpass"
+                        else:
+                            indent = "\t"
+                    elif action == 'else':
+                        exec_string = exec_string + "\n\telse:"
+                        if next_['instrument'] == 'if':
+                            exec_string = exec_string + "\n\t\tpass"
+                        else:
+                            indent = "\t"
+                    else:
+                        indent = ''
                 else:
-                    if type(args) is str and args.startswith("#"):
-                        args = args.replace("'#" + args[1:] + "'", args[1:])
-                    single_line = instrument + "." + action + "=" + str(args)
-            else:
-                single_line = instrument + "." + action + "()"
-            if save_data == '':
-                exec_string = exec_string + "\n\t" + single_line
-            else:
-                exec_string = exec_string + "\n\t" + save_data + "=" + single_line
-        exec(exec_string)
-        with open("scripts/script_"+i+".py", "w") as s:
-            # TODO:
-            s.write("import " + script_dict['deck'] + " as deck\n" + exec_string)
+                    if args is not None:
+                        if type(args) is dict:
+                            temp = args.__str__()
+                            for arg in args:
+                                if type(args[arg]) is str and args[arg].startswith("#"):
+                                    temp = temp.replace("'#" + args[arg][1:] + "'", args[arg][1:])
+                            single_line = instrument + "." + action + "(**" + temp + ")"
+                        else:
+                            if type(args) is str and args.startswith("#"):
+                                args = args.replace("'#" + args[1:] + "'", args[1:])
+                            single_line = instrument + "." + action + "=" + str(args)
+                    else:
+                        single_line = instrument + "." + action + "()"
+                    if save_data == '':
+                        exec_string = exec_string + "\n\t" + indent + single_line
+                    else:
+                        exec_string = exec_string + "\n\t" + indent + save_data + "=" + single_line
+            exec(exec_string)
+            s.write(exec_string)
+        # with open("scripts/script_" + i + ".py", "w") as s:
+        #     # TODO:
+        #     s.write("import " + script_dict['deck'] + " as deck\n" + exec_string)
     # create config_csv file
     with open("empty_configure.csv", 'w') as f:
         writer = csv.writer(f)
@@ -418,11 +456,7 @@ def import_api():
     import importlib.util
     filepath = request.form.get('filepath')
     # filepath.replace('\\', '/')
-    # name = request.form.get('name')
-    # if name == '':
-    # print(filepath)
     name = os.path.split(filepath)[-1].split('.')[0]
-    # print(name)
     try:
         spec = importlib.util.spec_from_file_location(name, filepath)
         module = importlib.util.module_from_spec(spec)
@@ -445,7 +479,6 @@ def import_deck():
     import importlib.util
     global script_dict
     filepath = request.form.get('filepath')
-    # print(filepath)
     name = os.path.split(filepath)[-1].split('.')[0]
     # filepath.replace('\\', '/')
     try:
