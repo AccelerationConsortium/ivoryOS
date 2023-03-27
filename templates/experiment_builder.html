@@ -31,12 +31,24 @@
                 </div>
             </div>
             {% else %}
-            <h5>Logic Options:</h5>
-            <form role="form" method='GET' name="if" action="/experiment/build/if">
-                <div class="form-group">
-                    <button type="submit" class="btn btn-dark" name="device" value="if" >If</button>
-                </div>
-            </form>
+            <h5><a data-toggle="collapse" href="#advanced" role="button" aria-expanded="false" aria-controls="collapseExample">Advanced Options:</a></h5>
+            <div class="collapse" id="advanced">
+                <form role="form" method='GET' name="if" action="/experiment/build/if">
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-dark" name="device" value="if" >If</button>
+                    </div>
+                </form>
+                <form role="form" method='GET' name="while" action="/experiment/build/while">
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-dark" name="device" value="while" >While</button>
+                    </div>
+                </form>
+                <form role="form" method='GET' name="variable" action="/experiment/build/variable">
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-dark" name="device" value="variable" >Add variable</button>
+                    </div>
+                </form>
+            </div>
             <h5>Deck Actions:</h5>
             {% endif %}
             {% for instrument in defined_variables %}
@@ -86,8 +98,43 @@
 
                 </div>
             </form>
+            {% elif instrument == 'while' %}
+            <form role="form" method='POST' name="addwhile" action="/experiment/build/while">
+                <div class="form-group">
+                    <div>
+                        <label for="statement">Statement:</label>
+                        <input type="text" id="statement" name="statement" >
+                        <p>Add to:
+                            <select class="form-select" name="script_type">
+                                <option name="script_type" value="prep">Prep</option>
+                                <option name="script_type" value="script" selected>Experiment</option>
+                                <option name="script_type" value="cleanup">Clean up</option>
+                            </select>
+                        </p>
+                    </div>
+                    <button type="submit" class="btn btn-dark" name="addwhile">add</button>
+                </div>
+            </form>
+            {% elif instrument == 'variable' %}
+            <form role="form" method='POST' name="addvariable" action="/experiment/build/variable">
+                <div class="form-group">
+                    <div>
+                        <label for="variable">Name:</label>
+                        <input type="text" id="variable" name="variable" >
+                        <label for="statement">Value:</label>
+                        <input type="text" id="statement" name="statement" >
+                        <p>Add to:
+                            <select class="form-select" name="script_type">
+                                <option name="script_type" value="prep">Prep</option>
+                                <option name="script_type" value="script" selected>Experiment</option>
+                                <option name="script_type" value="cleanup">Clean up</option>
+                            </select>
+                        </p>
+                    </div>
+                    <button type="submit" class="btn btn-dark" name="addvariable">add</button>
+                </div>
+            </form>
             {% endif %}
-
             {% for function in functions %}
             <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}/{{function}}">
                 <div class="form-group">
@@ -111,20 +158,24 @@
                                 {% endfor %}
                             {% else %}
                                 {% for parameter in parameters.keys() %}
-                                {{parameter}} ({{'optional' if not parameters[parameter].default.__name__ == '_empty' else 'required'}}):<br>
-                                {% if parameters[parameter].annotation.__name__ == 'bool' %}
-                                    <input type="radio" id="True" name="{{parameter}}" value="True" {{"checked" if parameters[parameter].default==True else ''}}>
-                                    <label for="True">True</label><br>
-                                    <input type="radio" id="False" name="{{parameter}}" value="False" {{"checked" if parameters[parameter].default==False else ''}}>
-                                    <label for="False">False</label><br>
-                                {% else %}
-                                    <input type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{parameters[parameter].annotation.__name__}}"
-                                           value="{{'' if parameters[parameter].default.__name__ == '_empty' or parameters[parameter].default == None else parameters[parameter].default}}">
+                                <div>
+                                    <label for="{{parameter}}">{{parameter}} ({{'optional' if not parameters[parameter].default.__name__ == '_empty' else 'required'}}):</label>
+<!--                                    {{parameter}} ({{'optional' if not parameters[parameter].default.__name__ == '_empty' else 'required'}}):<br>-->
+                                    {% if parameters[parameter].annotation.__name__ == 'bool' %}
+                                        <input type="radio" id="True" name="{{parameter}}" value="True" {{"checked" if parameters[parameter].default==True else ''}}>
+                                        <label for="True">True</label><br>
+                                        <input type="radio" id="False" name="{{parameter}}" value="False" {{"checked" if parameters[parameter].default==False else ''}}>
+                                        <label for="False">False</label><br>
+                                    {% else %}
 
-                                {% endif %}
+                                        <input type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{parameters[parameter].annotation.__name__}}"
+                                               value="{{'' if parameters[parameter].default.__name__ == '_empty' or parameters[parameter].default == None else parameters[parameter].default}}">
+
+                                    {% endif %}
+                                </div>
                                 {% endfor %}
 
-                                <label for="return">Save the output as:</label><input type="text" id="return" name="return">
+                                <label for="return">Save the output as (optional):</label><input type="text" id="return" name="return">
                                 <br>
 
                             {% endif %}
@@ -152,6 +203,7 @@
 
         <div class="col-md-6">
             <h5>Script Editor</h5>
+<!--            <button type="button" class="btn btn-danger" data-toggle="popover" title="Popover title" data-content="And here's some amazing content. It's very engaging. Right?">Click to toggle popover</button>-->
             {% if not script['deck']=='' %}
             <div>
                 <p>
@@ -201,7 +253,9 @@
                             <li draggable="false" id="{{s['id']}}" style="list-style-type: none;">
 <!--                                href="/edit/{{s['id']}}"-->
                                 {% if s['instrument'] == 'if' %}
-                                    <a type="button" class="btn btn-light" style="background-color: tomato">{{s['action']}} {% if s['args'] %}({{s['args']}}){% endif %}</a>
+                                    <a type="button" class="btn btn-light" style="background-color: tomato">{{s['action']}} {% if s['args'] %}({{s['args']}}) {% endif %}</a>
+                                {% elif s['instrument'] == 'while' %}
+                                    <a type="button" class="btn btn-light" style="background-color: darkcyan">{{s['action']}} {% if s['args'] %}({{s['args']}}){% endif %}</a>
                                 {% else %}
                                     <a  type="button" class="btn btn-light">{{s['id']}}:
                                     {% if not s['return'] == '' %}

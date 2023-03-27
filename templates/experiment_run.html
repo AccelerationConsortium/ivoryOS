@@ -15,8 +15,13 @@
                 <h6>Preparation:</h6>
                 <ul>
                     {% for p in script['prep'] %}
-                    {% if not p['instrument']=='if' %} &emsp; {% endif %}
-                    <li class="btn btn-light" id="{{p['id']}}" style="{{'background-color: tomato' if p['instrument']=='if' else ''}}">{{p['action']}}</li>
+                    {% if not p['instrument']=='if' and not p['instrument']=='while' %} &emsp; {% endif %}
+                    <li class="btn btn-light" id="{{p['id']}}" style="{{'background-color: tomato' if p['instrument']=='if' else 'background-color: darkcyan' if p['instrument']=='while' else ''}}">
+                        {{p['action']}}
+                        {% if p['action']== 'if' %} {% if p['args'] %}({{p['args']}}) {% else %} True {% endif %}
+                        {% elif p['action']== 'while' %} {% if p['args'] %}({{p['args']}}) {% else %} False {% endif %}
+                        {% endif %}
+                    </li>
                     <div class="clear"></div>
                     {% endfor %}
                 </ul>
@@ -25,9 +30,12 @@
                 <h6>Experiment:</h6>
                 <ul>
                     {% for s in script['script'] %}
-                    {% if not s['instrument']=='if' %} &emsp; {% endif %}
-                    <li class="btn btn-light" id="{{s['id']}}" style="{{'background-color: tomato' if s['instrument']=='if' else ''}}">
+                    {% if not s['instrument']=='if' and not s['instrument']=='while' %} &emsp; {% endif %}
+                    <li class="btn btn-light" id="{{s['id']}}" style="{{'background-color: tomato' if s['instrument']=='if' else 'background-color: darkcyan' if s['instrument']=='while' else ''}}">
                         {{s['action']}}
+                        {% if s['action']== 'if' %} {% if s['args'] %}({{s['args']}}) {% else %} True {% endif %}
+                        {% elif s['action']== 'while' %} {% if s['args'] %}({{s['args']}}) {% else %} False {% endif %}
+                        {% endif %}
                     </li>
                     <div class="clear"></div>
                     {% endfor %}
@@ -36,8 +44,13 @@
                 <h6>Clean up:</h6>
                 <ul>
                     {% for c in script['cleanup'] %}
-                    {% if not c['instrument']=='if' %} &emsp; {% endif %}
-                    <li class="btn btn-light" id="{{c['id']}}" style="{{'background-color: tomato' if c['instrument']=='if' else ''}}">{{c['action']}}</li>
+                    {% if not c['instrument']=='if' and not c['instrument']=='while' %} &emsp; {% endif %}
+                    <li class="btn btn-light" id="{{c['id']}}" style="{{'background-color: tomato' if c['instrument']=='if' else 'background-color: darkcyan' if c['instrument']=='while' else ''}}">
+                        {{c['action']}}
+                        {% if c['action']== 'if' %} {% if c['args'] %}({{c['args']}}) {% else %} True {% endif %}
+                        {% elif c['action']== 'while' %} {% if c['args'] %}({{c['args']}}) {% else %} False {% endif %}
+                        {% endif %}
+                    </li>
                     <div class="clear"></div>
                     {% endfor %}
                 </ul>

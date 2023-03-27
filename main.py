@@ -103,18 +103,38 @@ def experiment_builder(instrument=None, action=None):
     if instrument:
         inst_object = find_instrument_by_name(instrument)
         functions = parse_functions(inst_object)
+        current_len = len(script_dict[script_type])
         if request.method == 'POST' and "addif" in request.form:
             script_type = request.form.get('script_type')
             statement = request.form.get('statement')
-            current_len = len(script_dict[script_type])
+            args = 'True' if statement == '' else statement
             action_if = {"id": current_len + 1, "instrument": 'if', "action": 'if',
-                         "args": statement, "return": ''}
+                         "args": args, "return": ''}
             action_else = {"id": current_len + 2, "instrument": 'if', "action": 'else',
                            "args": '', "return": ''}
             action_endif = {"id": current_len + 3, "instrument": 'if', "action": 'endif',
                             "args": '', "return": ''}
             order[script_type].extend([str(current_len + 1), str(current_len + 2), str(current_len + 3)])
             script_dict[script_type].extend([action_if, action_else, action_endif])
+        if request.method == 'POST' and "addwhile" in request.form:
+            script_type = request.form.get('script_type')
+            statement = request.form.get('statement')
+            args = 'False' if statement == '' else statement
+            action_while = {"id": current_len + 1, "instrument": 'while', "action": 'while',
+                            "args": args, "return": ''}
+            action_endwhile = {"id": current_len + 2, "instrument": 'while', "action": 'endwhile',
+                               "args": '', "return": ''}
+            order[script_type].extend([str(current_len + 1), str(current_len + 2)])
+            script_dict[script_type].extend([action_while, action_endwhile])
+        if request.method == 'POST' and "variable" in request.form:
+            var_name = request.form.get('variable')
+            statement = request.form.get('statement')
+            args = 'None' if statement == '' else statement
+            action_add_var = {"id": current_len + 1, "instrument": 'variable', "action": var_name,
+                              "args": args, "return": ''}
+            order[script_type].append(str(current_len + 1))
+            script_dict[script_type].append(action_add_var)
+
         if action:
             if type(functions[action]) is dict:
                 action_parameters = functions[action]
@@ -122,7 +142,7 @@ def experiment_builder(instrument=None, action=None):
                 action_parameters = functions[action].parameters
             if request.method == 'POST':
                 args = request.form.to_dict()
-                print(args)
+                # print(args)
                 function_name = args.pop('add')
                 script_type = args.pop('script_type')
                 save_data = args.pop('return') if 'return' in request.form else ''
@@ -154,6 +174,7 @@ def experiment_builder(instrument=None, action=None):
 def experiment_run(filename=None):
     # current_variables = set(dir())
     global order
+    global script_dict
     for i in stypes:
         if len(order[i]) > 0:
             sort_actions(i)
@@ -162,8 +183,8 @@ def experiment_run(filename=None):
         # flash('Warning: import deck or connect instruments, go to <a class="alert-link" href="/experiment/build">Build Experiment</a>')
     if request.method == "POST":
         run_name = script_dict['name']
-        # if run_name is None or run_name == "None":
-        #     run_name =
+        if run_name is None or run_name == "":
+            run_name = 'random_for_now'
         repeat = request.form.get('repeat')
         try:
             exec(run_name + "_prep()")
@@ -372,6 +393,12 @@ def update_list():
     return jsonify('Successfully Updated')
 
 
+def indent(unit=0):
+    string = "\n"
+    for _ in range(unit):
+        string=string+"\t"
+    return string
+
 @app.route("/configure", methods=['GET', 'POST'])
 def build_run_block():
     """
@@ -380,20 +407,24 @@ def build_run_block():
     :return:
     """
     global script_dict
+    for i in stypes:
+        if len(order[i]) > 0:
+            sort_actions(i)
     run_name = script_dict['name']
     if run_name is None or run_name == "":
         run_name = "random_for_now"
     with open("scripts/script.py", "w") as s:
         s.write("import " + script_dict['deck'] + " as deck")
         for i in stypes:
+            indent_unit = 1
             exec_string = "\n\ndef " + run_name + "_" + i + "("
             configure = config()
             if i == "script":
                 for j in configure:
                     exec_string = exec_string + j + ","
             exec_string = exec_string + "):"
-            exec_string = exec_string + "\n\tglobal " + run_name + "_" + i
-            indent = ''
+            exec_string = exec_string + indent(indent_unit) + "global " + run_name + "_" + i
+
             for index, action in enumerate(script_dict[i]):
                 instrument = action['instrument']
                 args = action['args']
@@ -401,23 +432,40 @@ def build_run_block():
                 action = action['action']
                 next_ = None
                 if instrument == 'if':
-                    args = "True" if args == '' else args
+
                     if index < (len(script_dict[i]) - 1):
                         next_ = script_dict[i][index + 1]
                     if action == 'if':
-                        exec_string = exec_string + "\n\tif " + args + ":"
-                        if next_['instrument'] == 'if':
-                            exec_string = exec_string + "\n\t\tpass"
-                        else:
-                            indent = "\t"
+                        exec_string = exec_string + indent(indent_unit) + "if " + args + ":"
+                        indent_unit += 1
+                        if next_ and next_['instrument'] == 'if':
+                            exec_string = exec_string + indent(indent_unit+1) + "pass"
+                        # else:
+                        #     indent_unit+=1
                     elif action == 'else':
-                        exec_string = exec_string + "\n\telse:"
-                        if next_['instrument'] == 'if':
-                            exec_string = exec_string + "\n\t\tpass"
-                        else:
-                            indent = "\t"
+                        exec_string = exec_string + indent(indent_unit-1) + "else:"
+                        if next_['instrument'] == 'if' and next_['action'] == 'endif':
+                            exec_string = exec_string + indent(indent_unit) + "pass"
+                        # else:
+                        #     indent = indent+"\t"
                     else:
-                        indent = ''
+                        indent_unit -= 1
+                elif instrument == 'while':
+
+                    if index < (len(script_dict[i]) - 1):
+                        next_ = script_dict[i][index + 1]
+                    if action == 'while':
+                        exec_string = exec_string + indent(indent_unit) + "while " + args + ":"
+                        indent_unit += 1
+                        if next_ and next_['instrument'] == 'while':
+                            exec_string = exec_string + indent(indent_unit) + "pass"
+                        # else:
+                        #     indent = "\t"
+                    elif action == 'endwhile':
+                        indent_unit -= 1
+                elif instrument == 'variable':
+                    # args = "False" if args == '' else args
+                    exec_string = exec_string + indent(indent_unit) + action + " = " + args
                 else:
                     if args is not None:
                         if type(args) is dict:
@@ -433,14 +481,15 @@ def build_run_block():
                     else:
                         single_line = instrument + "." + action + "()"
                     if save_data == '':
-                        exec_string = exec_string + "\n\t" + indent + single_line
+                        exec_string = exec_string + indent(indent_unit) + single_line
                     else:
-                        exec_string = exec_string + "\n\t" + indent + save_data + "=" + single_line
-            exec(exec_string)
+                        exec_string = exec_string + indent(indent_unit) + save_data + "=" + single_line
+            try:
+                exec(exec_string)
+            except Exception:
+                flash("Please check syntax!!")
+                return redirect(url_for("experiment_builder"))
             s.write(exec_string)
-        # with open("scripts/script_" + i + ".py", "w") as s:
-        #     # TODO:
-        #     s.write("import " + script_dict['deck'] + " as deck\n" + exec_string)
     # create config_csv file
     with open("empty_configure.csv", 'w') as f:
         writer = csv.writer(f)
