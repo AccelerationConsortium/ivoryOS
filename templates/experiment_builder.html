@@ -10,7 +10,7 @@
             {% if defined_variables|length == 0 %}
             <div>
                 <h5>No deck found
-                    <a data-toggle="collapse" href="#loaddeck" role="button" aria-expanded="false" aria-controls="collapseExample">
+                    <a data-bs-toggle="collapse" href="#loaddeck" role="button" aria-expanded="false" aria-controls="collapseExample">
                         (import deck)
                     </a>
                 </h5>
@@ -31,7 +31,7 @@
                 </div>
             </div>
             {% else %}
-            <h5><a data-toggle="collapse" href="#advanced" role="button" aria-expanded="false" aria-controls="collapseExample">Advanced Options:</a></h5>
+            <h5><a data-bs-toggle="collapse" href="#advanced" role="button" aria-expanded="false" aria-controls="collapseExample">Advanced Options:</a></h5>
             <div class="collapse" id="advanced">
                 <form role="form" method='GET' name="if" action="/experiment/build/if">
                     <div class="form-group">
@@ -202,20 +202,42 @@
         </div>
 
         <div class="col-md-6">
-            <h5>Script Editor</h5>
-<!--            <button type="button" class="btn btn-danger" data-toggle="popover" title="Popover title" data-content="And here's some amazing content. It's very engaging. Right?">Click to toggle popover</button>-->
-            {% if not script['deck']=='' %}
-            <div>
+            <h5>Script Editor
+                <a role="button" data-bs-toggle="popover" data-bs-title="How to use:" data-bs-content="Some instructions can go here..."><i class="bi bi-info-circle"></i></a>
+                <!-- Button trigger modal -->
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">New</button>
+            </h5>
+
+            <!-- Modal -->
+            <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="exampleModalLabel">Save your current editing!</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    The current editing won't be saved. Are you sure you want to proceed?
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Continue editing</button>
+                    <a role="button" class="btn btn-primary" href="{{url_for('clear')}}">Already saved, clear all</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+
                 <p>
-                <h6>Deck Name: {{script['deck']}}</h6>
-                <h6>Block Name:
-                    {% if not script['name'] == '' %}
-                    {{script['name']}}
-                    <a data-toggle="collapse" href="#changename" role="button" aria-expanded="false" aria-controls="collapseExample">
-                        edit
-                    </a>
-                    {% endif %}
-                </h6>
+                    <h6>Deck Name: {{script['deck']}}</h6>
+                    <h6>Block Name:
+                        {% if not script['name'] == '' %}
+                        {{script['name']}}
+                        <a data-bs-toggle="collapse" href="#changename" role="button" aria-expanded="false" aria-controls="collapseExample">
+                            edit
+                        </a>
+                        {% endif %}
+                    </h6>
                 </p>
 
                 <div class="{{'collapse.show' if script['name'] == '' else 'collapse'}}" id="changename">
@@ -230,7 +252,7 @@
                 <h6>
                     Editing status: {{script['status']}}
                     {% if script['status']=='finalized' %}
-                    <a data-toggle="collapse" href="#changename" role="button" aria-expanded="false" aria-controls="collapseExample">
+                    <a data-bs-toggle="collapse" href="#changename" role="button" aria-expanded="false" aria-controls="collapseExample">
                         Rename to edit
                     </a>
                     {% else %}
@@ -239,6 +261,7 @@
                     </a>
                     {% endif %}
                 </h6>
+
                 <div>
                     <a class="{{'btn btn-dark' if script_type=='prep' else 'btn btn-secondary'}}" href="/toggle_script_type/prep">Prep</a>
                     <a class="{{'btn btn-dark' if script_type=='script' else 'btn btn-secondary'}}" href="/toggle_script_type/script">Experiment</a>
@@ -247,17 +270,22 @@
 
                 <h6>Script ({{script_type}}):</h6>
                 <div class="container">
-                    <div id="list">
+                    <div class="list-group" id="list" >
                         <ul class="reorder">
                             {% for s in script[script_type] %}
-                            <li draggable="false" id="{{s['id']}}" style="list-style-type: none;">
-<!--                                href="/edit/{{s['id']}}"-->
+                            <li id="{{s['id']}}" style="list-style-type: none;">
+<!--                                class="{{'unsortable' if s['instrument'] == 'if' or s['instrument'] == 'while' else ''}}"-->
+<!--                                href="/edit/{{s['id']}}" -->
+                                {{s['id']}}:
+
                                 {% if s['instrument'] == 'if' %}
                                     <a type="button" class="btn btn-light" style="background-color: tomato">{{s['action']}} {% if s['args'] %}({{s['args']}}) {% endif %}</a>
                                 {% elif s['instrument'] == 'while' %}
                                     <a type="button" class="btn btn-light" style="background-color: darkcyan">{{s['action']}} {% if s['args'] %}({{s['args']}}){% endif %}</a>
+                                {% elif s['instrument'] == 'variable' %}
+                                    <a type="button" class="btn btn-light" style="">{{s['return']}} = {{s['args']}}</a>
                                 {% else %}
-                                    <a  type="button" class="btn btn-light">{{s['id']}}:
+                                    <a  type="button" class="btn btn-light">
                                     {% if not s['return'] == '' %}
                                         {{s['return']}} =
                                     {% endif %}
@@ -279,7 +307,7 @@
                                 <a href="/delete/{{s['id']}}" type="button" class="btn btn-light"><span class="bi bi-trash"></span></a>
                             </li>
 
-                            <div class="clear"></div>
+<!--                            <div class="clear"></div>-->
                             {% endfor %}
                         </ul>
                     </div>
@@ -298,12 +326,12 @@
                     <p>
                         <a class="btn btn-dark " href = "{{url_for('build_run_block')}}">Configure Run</a>
                         <a class="btn btn-secondary" href="{{url_for('publish')}}">Publish to database</a>
-                        <a class="btn btn-secondary" data-toggle="collapse" href="#jsonaction" role="button"><span class="bi bi-three-dots"></span></a>
+                        <a class="btn btn-secondary" data-bs-toggle="collapse" href="#jsonaction" role="button"><span class="bi bi-three-dots"></span></a>
                     </p>
                 </div>
                 <div class="collapse" id="jsonaction">
                     <p>
-                        <a class="btn btn-secondary" data-toggle="collapse" href="#loadfile" role="button" aria-expanded="true">
+                        <a class="btn btn-secondary" data-bs-toggle="collapse" href="#loadfile" role="button" aria-expanded="true">
                             Load JSON file
                         </a>
                         <a href="/download/script" class="btn btn-secondary">Download as JSON</a>
@@ -317,7 +345,7 @@
                         </div>
                     </div>
                 </div>
-                {% endif %}
+
             </div>
         </div>
     </div>

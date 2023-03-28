@@ -4,111 +4,103 @@
 
 {% block body %}
     <div class= "container">
-        <div class= "container">
-        <div>
-            <div>
+
+        <div class="row">
+            <div class="col-md-6">
                 <h5>Script
 <!--                    <a href="{{ url_for('experiment_builder') }}">(back to editing)</a>-->
                 </h5>
-            </div>
-            <div>
-                <h6>Preparation:</h6>
-                <ul>
-                    {% for p in script['prep'] %}
-                    {% if not p['instrument']=='if' and not p['instrument']=='while' %} &emsp; {% endif %}
-                    <li class="btn btn-light" id="{{p['id']}}" style="{{'background-color: tomato' if p['instrument']=='if' else 'background-color: darkcyan' if p['instrument']=='while' else ''}}">
-                        {{p['action']}}
-                        {% if p['action']== 'if' %} {% if p['args'] %}({{p['args']}}) {% else %} True {% endif %}
-                        {% elif p['action']== 'while' %} {% if p['args'] %}({{p['args']}}) {% else %} False {% endif %}
+
+                <div>
+                    {% for script_type in ['prep', 'script', 'cleanup'] %}
+                        {% if script[script_type] %}
+                            <h6>
+                                {% if script_type == 'prep' %} Preparation: {% elif script_type == 'script' %} Experiment:
+                                {% elif script_type == 'cleanup' %} Clean up: {% endif %}
+                            </h6>
+                            <ul>
+                                {% for s in script[script_type] %}
+                                {% if not s['instrument']=='if' and not s['instrument']=='while' %} &emsp; {% endif %}
+                                <li class="btn btn-light" id="{{s['id']}}" style="{{'background-color: tomato' if s['instrument']=='if' else 'background-color: darkcyan' if s['instrument']=='while' else ''}}">
+                                    {% if s['return'] %}{{s['return']}} = {% endif %}
+                                    {{s['action']}}
+                                    {% if s['action']== 'if' %} {% if s['args'] %}({{s['args']}}) {% else %} True {% endif %}
+                                    {% elif s['action']== 'while' %} {% if s['args'] %}({{s['args']}}) {% else %} False {% endif %}
+
+                                    {% endif %}
+                                </li>
+                                <div class="clear"></div>
+                                {% endfor %}
+                            </ul>
                         {% endif %}
-                    </li>
-                    <div class="clear"></div>
                     {% endfor %}
-                </ul>
+                </div>
             </div>
-            <div>
-                <h6>Experiment:</h6>
-                <ul>
-                    {% for s in script['script'] %}
-                    {% if not s['instrument']=='if' and not s['instrument']=='while' %} &emsp; {% endif %}
-                    <li class="btn btn-light" id="{{s['id']}}" style="{{'background-color: tomato' if s['instrument']=='if' else 'background-color: darkcyan' if s['instrument']=='while' else ''}}">
-                        {{s['action']}}
-                        {% if s['action']== 'if' %} {% if s['args'] %}({{s['args']}}) {% else %} True {% endif %}
-                        {% elif s['action']== 'while' %} {% if s['args'] %}({{s['args']}}) {% else %} False {% endif %}
-                        {% endif %}
-                    </li>
-                    <div class="clear"></div>
-                    {% endfor %}
-                </ul>
+            <div class="col-md-6">
+                <h5>Export to Python </h5>
+                <div class="card">
+                    <pre ><code class="python" >{{dot_py}}</code></pre>
+                    <a href="/download/python">Download <i class="bi bi-download"></i></a>
+                </div>
+
             </div>
-                <h6>Clean up:</h6>
-                <ul>
-                    {% for c in script['cleanup'] %}
-                    {% if not c['instrument']=='if' and not c['instrument']=='while' %} &emsp; {% endif %}
-                    <li class="btn btn-light" id="{{c['id']}}" style="{{'background-color: tomato' if c['instrument']=='if' else 'background-color: darkcyan' if c['instrument']=='while' else ''}}">
-                        {{c['action']}}
-                        {% if c['action']== 'if' %} {% if c['args'] %}({{c['args']}}) {% else %} True {% endif %}
-                        {% elif c['action']== 'while' %} {% if c['args'] %}({{c['args']}}) {% else %} False {% endif %}
-                        {% endif %}
-                    </li>
-                    <div class="clear"></div>
-                    {% endfor %}
-                </ul>
+        </div>
+
+        <div>
             {% if script['script'] %}
-            <h5>Run Panel:</h5>
-            <div class="row">
-                <div class="col-6">
-                    <p>Configure: download CSV file, edit, and upload</p>
-                    <div>
-                        <p>
-                            <a href="/download/configure"><button class="btn btn-dark">Download .csv</button></a>
-                            <a class="btn btn-secondary" data-toggle="collapse" href="#loadfile" role="button" aria-expanded="false"
-                               aria-controls="collapseExample">Upload .csv
-                            </a>
-                        </p>
-                        <div class="collapse" id="loadfile">
 
-                            <form method="POST" action="/uploads" enctype="multipart/form-data">
-                                <div class="input-group">
-<!--                                    <label class="form-label"></label>-->
-                                    <input class="form-control" name="file" type="file" required="required">
-                                    <input class="btn btn-dark" type="submit">
-                                </div>
-                            </form>
+            <div class="card"><div class="card-body">
+                <h5 class="card-title">Run Panel:</h5>
 
+                <div class="row">
+                    <div class="col-6">
+                        <p>Configure: download CSV file, edit, and upload</p>
+                        <div>
+                            <p>
+                                <a href="/download/configure"><button class="btn btn-dark">Download .csv</button></a>
+                                <a class="btn btn-secondary" data-toggle="collapse" href="#loadfile" role="button" aria-expanded="false"
+                                   aria-controls="collapseExample">Upload .csv
+                                </a>
+                            </p>
+                            <div class="collapse" id="loadfile">
+
+                                <form method="POST" action="/uploads" enctype="multipart/form-data">
+                                    <div class="input-group">
+<!--                                        <label class="form-label"></label>-->
+                                        <input class="form-control" name="file" type="file" required="required">
+                                        <input class="btn btn-dark" type="submit">
+                                    </div>
+                                </form>
+
+                            </div>
                         </div>
+
+                        {% if filename %}
+                        <form role="form" method='POST' name="run" action='/experiment/{{filename}}'>
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-dark">Run</button>
+                            </div>
+                        </form>
+                        {% endif %}
+
                     </div>
-
-                    {% if filename %}
-                    <form role="form" method='POST' name="run" action='/experiment/{{filename}}'>
-                        <div class="form-group">
-                            <button type="submit" class="btn btn-dark">Run</button>
-                        </div>
-                    </form>
-                    {% endif %}
-
+                    <div class="col-6">
+                        <p>No configuration:</p>
+                        <form role="form" method='POST' name="run" action='/experiment'>
+                            <div class="form-group">
+                                <label for="repeat">Repeat for </label>
+                                <input type="number" id="repeat" name="repeat" min="1" max="30">
+                                <label for="repeat"> times</label>
+                                <br>
+                                <button type="submit" class="btn btn-dark">Run</button>
+                            </div>
+                        </form>
+                    </div>
+                    <br>
                 </div>
-                <div class="col-6">
-                    <p>No configuration:</p>
-                    <form role="form" method='POST' name="run" action='/experiment'>
-                        <div class="form-group">
-                            <label for="repeat">Repeat for </label>
-                            <input type="number" id="repeat" name="repeat" min="1" max="30">
-                            <label for="repeat"> times</label>
-                            <br>
-                            <button type="submit" class="btn btn-dark">Run</button>
-                        </div>
-                    </form>
-                </div>
-                <br>
-            </div>
-
+            </div></div>
             {% endif %}
         </div>
-        <br>
-<!--        <a><button class="btn btn-dark" name="run" value="run" >Run Script</button></a>-->
 
-
-    </div>
     </div>
 {% endblock %}

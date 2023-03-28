@@ -1,4 +1,4 @@
-import inspect
+# import inspect
 import json
 import os
 import csv
@@ -7,6 +7,7 @@ import sqlite3
 from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, render_template
 from werkzeug.utils import secure_filename
 
+from utils.utils import *
 # import sample_deck as deck
 deck = None
 
@@ -26,33 +27,16 @@ cursor.execute("""create table IF NOT EXISTS workflow (name TEXT PRIMARY KEY NOT
                     deck TEXT NOT NULL, status TEXT NOT NULL, script NOT NULL, prep NOT NULL, cleanup NOT NULL)""")
 
 
-def get_db_connection():
-    connect = sqlite3.connect("webapp.db")
-    connect.row_factory = sqlite3.Row
-    return connect
+# def get_db_connection():
+#     connect = sqlite3.connect("webapp.db")
+#     connect.row_factory = sqlite3.Row
+#     return connect
 
 
-script_list = []
-script_type = 'script'
-stypes = ['prep', 'script', 'cleanup']
-order = {'prep': [],
-         'script': [],
-         'cleanup': [],
-         }
-script_dict = {'name': '',
-               'deck': '',
-               'status': 'editing',
-               'prep': [],
-               'script': [],
-               'cleanup': [],
-               }
-# save action to block
-# in run
+script_type = 'script'      # set default type to be 'script'
+# stypes = ['prep', 'script', 'cleanup']
+script_dict, order = new_script(deck)
 
-# script_dict = {'name': None,
-#                'deck': None,
-#                'status': 'editing',
-#                'script': {"prep": [], "main": [], "cleanup": []}}
 
 libs = set(dir())
 
@@ -84,19 +68,17 @@ def help_info():
 
 @app.route("/controllers")
 def controllers_home():
-    # current_variables = set(dir())
     return render_template('controllers_home.html', defined_variables=defined_variables, deck='')
 
 
 @app.route("/experiment/build/", methods=['GET', 'POST'])
 @app.route("/experiment/build/<instrument>/", methods=['GET', 'POST'])
 @app.route("/experiment/build/<instrument>/<action>", methods=['GET', 'POST'])
-# @app.route("/experiment/build/<instrument>/<action>/<script_type>", methods=['GET', 'POST'])
 def experiment_builder(instrument=None, action=None):
     global script_dict
     global order
     global script_type
-    sort_actions(script_type)
+    sort_actions(script_dict, order, script_type)
     action_parameters = None
     functions = []
     deck_variables = parse_deck(deck)
@@ -104,45 +86,14 @@ def experiment_builder(instrument=None, action=None):
         inst_object = find_instrument_by_name(instrument)
         functions = parse_functions(inst_object)
         current_len = len(script_dict[script_type])
-        if request.method == 'POST' and "addif" in request.form:
-            script_type = request.form.get('script_type')
-            statement = request.form.get('statement')
-            args = 'True' if statement == '' else statement
-            action_if = {"id": current_len + 1, "instrument": 'if', "action": 'if',
-                         "args": args, "return": ''}
-            action_else = {"id": current_len + 2, "instrument": 'if', "action": 'else',
-                           "args": '', "return": ''}
-            action_endif = {"id": current_len + 3, "instrument": 'if', "action": 'endif',
-                            "args": '', "return": ''}
-            order[script_type].extend([str(current_len + 1), str(current_len + 2), str(current_len + 3)])
-            script_dict[script_type].extend([action_if, action_else, action_endif])
-        if request.method == 'POST' and "addwhile" in request.form:
-            script_type = request.form.get('script_type')
-            statement = request.form.get('statement')
-            args = 'False' if statement == '' else statement
-            action_while = {"id": current_len + 1, "instrument": 'while', "action": 'while',
-                            "args": args, "return": ''}
-            action_endwhile = {"id": current_len + 2, "instrument": 'while', "action": 'endwhile',
-                               "args": '', "return": ''}
-            order[script_type].extend([str(current_len + 1), str(current_len + 2)])
-            script_dict[script_type].extend([action_while, action_endwhile])
-        if request.method == 'POST' and "variable" in request.form:
-            var_name = request.form.get('variable')
-            statement = request.form.get('statement')
-            args = 'None' if statement == '' else statement
-            action_add_var = {"id": current_len + 1, "instrument": 'variable', "action": var_name,
-                              "args": args, "return": ''}
-            order[script_type].append(str(current_len + 1))
-            script_dict[script_type].append(action_add_var)
-
         if action:
+            # handle instrument actions
             if type(functions[action]) is dict:
                 action_parameters = functions[action]
             else:
                 action_parameters = functions[action].parameters
             if request.method == 'POST':
                 args = request.form.to_dict()
-                # print(args)
                 function_name = args.pop('add')
                 script_type = args.pop('script_type')
                 save_data = args.pop('return') if 'return' in request.form else ''
@@ -153,20 +104,39 @@ def experiment_builder(instrument=None, action=None):
                     return redirect(url_for("experiment_builder", instrument=instrument, action=action))
                 if type(functions[function_name]) is dict:
                     args = list(args.values())[0]
-
-                # action_dict = {"id": len(script_dict['script']) + 1, "instrument": instrument, "action": function_name,
-                #                "args": args}
-                # order.append(str(len(script_dict['script']) + 1))
-                # script_dict['script'].append(action_dict)
-                action_dict = {"id": len(script_dict[script_type]) + 1, "instrument": instrument,
+                action_dict = {"id": current_len + 1, "instrument": instrument,
                                "action": function_name,
                                "args": args, "return": save_data}
-                order[script_type].append(str(len(script_dict[script_type]) + 1))
+                order[script_type].append(str(current_len + 1))
                 script_dict[script_type].append(action_dict)
-
+        elif request.method == 'POST':
+            # handle while, if and define variables
+            script_type = request.form.get('script_type')
+            statement = request.form.get('statement')
+            if "addif" in request.form:
+                args = 'True' if statement == '' else statement
+                action_list = [
+                    {"id": current_len + 1, "instrument": 'if', "action": 'if', "args": args, "return": ''},
+                    {"id": current_len + 2, "instrument": 'if', "action": 'else', "args": '', "return": ''},
+                    {"id": current_len + 3, "instrument": 'if', "action": 'endif', "args": '', "return": ''},
+                ]
+            if "addwhile" in request.form:
+                args = 'False' if statement == '' else statement
+                action_list = [
+                    {"id": current_len + 1, "instrument": 'while', "action": 'while', "args": args, "return": ''},
+                    {"id": current_len + 2, "instrument": 'while', "action": 'endwhile', "args": '', "return": ''},
+                ]
+            if "variable" in request.form:
+                var_name = request.form.get('variable')
+                args = 'None' if statement == '' else statement
+                action_list = [
+                    {"id": current_len + 1, "instrument": 'variable', "action": args, "args": args, "return": var_name},
+                ]
+            order[script_type].extend([str(current_len + i + 1) for i in range(len(action_list))])
+            script_dict[script_type].extend(action_list)
     return render_template('experiment_builder.html', instrument=instrument, action=action, script_type=script_type,
                            script=script_dict, defined_variables=deck_variables, local_variables=defined_variables,
-                           functions=functions, parameters=action_parameters, config=config())
+                           functions=functions, parameters=action_parameters, config=config(script_dict))
 
 
 @app.route("/experiment", methods=['GET', 'POST'])
@@ -175,16 +145,16 @@ def experiment_run(filename=None):
     # current_variables = set(dir())
     global order
     global script_dict
-    for i in stypes:
-        if len(order[i]) > 0:
-            sort_actions(i)
+    run_name = script_dict['name'] if script_dict['name'] else "untitled"
+    file = open("scripts/"+run_name+".py", "r")
+    script_py = file.read()
+    file.close()
+
+    sort_actions(script_dict, order)
     if deck is None and len(defined_variables) == 0:
         flash('Warning: import deck or connect instruments, go to Build Experiment tab')
         # flash('Warning: import deck or connect instruments, go to <a class="alert-link" href="/experiment/build">Build Experiment</a>')
     if request.method == "POST":
-        run_name = script_dict['name']
-        if run_name is None or run_name == "":
-            run_name = 'random_for_now'
         repeat = request.form.get('repeat')
         try:
             exec(run_name + "_prep()")
@@ -199,19 +169,7 @@ def experiment_run(filename=None):
             flash("Run finished")
         except Exception as e:
             flash(e)
-            # break
-        # return render_template('experiment_run.html', script=script_dict['script'], filename=filename)
-    return render_template('experiment_run.html', script=script_dict, filename=filename)
-
-
-def parse_deck(deck):
-    if "gui_functions" in set(dir(deck)):
-        deck_variables = ["deck." + var for var in deck.gui_functions]
-    else:
-        deck_variables = ["deck." + var for var in set(dir(deck)) if not (
-                var.startswith("_") or var[0].isupper() or var.startswith(
-            "repackage")) and not type(eval("deck." + var)).__module__ == 'builtins']
-    return deck_variables
+    return render_template('experiment_run.html', script=script_dict, filename=filename, dot_py=script_py)
 
 
 @app.route("/my_deck")
@@ -393,12 +351,6 @@ def update_list():
     return jsonify('Successfully Updated')
 
 
-def indent(unit=0):
-    string = "\n"
-    for _ in range(unit):
-        string=string+"\t"
-    return string
-
 @app.route("/configure", methods=['GET', 'POST'])
 def build_run_block():
     """
@@ -407,18 +359,18 @@ def build_run_block():
     :return:
     """
     global script_dict
-    for i in stypes:
-        if len(order[i]) > 0:
-            sort_actions(i)
-    run_name = script_dict['name']
-    if run_name is None or run_name == "":
-        run_name = "random_for_now"
-    with open("scripts/script.py", "w") as s:
+    global order
+    sort_actions(script_dict, order)
+    run_name = script_dict['name'] if script_dict['name'] else "untitled"
+    if script_dict['deck'] == '':
+        flash("Define deck first")
+        return redirect(url_for("experiment_builder"))
+    with open("scripts/"+run_name+".py", "w") as s:
         s.write("import " + script_dict['deck'] + " as deck")
         for i in stypes:
             indent_unit = 1
             exec_string = "\n\ndef " + run_name + "_" + i + "("
-            configure = config()
+            configure = config(script_dict)
             if i == "script":
                 for j in configure:
                     exec_string = exec_string + j + ","
@@ -439,15 +391,11 @@ def build_run_block():
                         exec_string = exec_string + indent(indent_unit) + "if " + args + ":"
                         indent_unit += 1
                         if next_ and next_['instrument'] == 'if':
-                            exec_string = exec_string + indent(indent_unit+1) + "pass"
-                        # else:
-                        #     indent_unit+=1
+                            exec_string = exec_string + indent(indent_unit) + "pass"
                     elif action == 'else':
-                        exec_string = exec_string + indent(indent_unit-1) + "else:"
+                        exec_string = exec_string + indent(indent_unit - 1) + "else:"
                         if next_['instrument'] == 'if' and next_['action'] == 'endif':
                             exec_string = exec_string + indent(indent_unit) + "pass"
-                        # else:
-                        #     indent = indent+"\t"
                     else:
                         indent_unit -= 1
                 elif instrument == 'while':
@@ -465,7 +413,7 @@ def build_run_block():
                         indent_unit -= 1
                 elif instrument == 'variable':
                     # args = "False" if args == '' else args
-                    exec_string = exec_string + indent(indent_unit) + action + " = " + args
+                    exec_string = exec_string + indent(indent_unit) + save_data + " = " + action
                 else:
                     if args is not None:
                         if type(args) is dict:
@@ -477,13 +425,13 @@ def build_run_block():
                         else:
                             if type(args) is str and args.startswith("#"):
                                 args = args.replace("'#" + args[1:] + "'", args[1:])
-                            single_line = instrument + "." + action + "=" + str(args)
+                            single_line = instrument + "." + action + " = " + str(args)
                     else:
                         single_line = instrument + "." + action + "()"
                     if save_data == '':
                         exec_string = exec_string + indent(indent_unit) + single_line
                     else:
-                        exec_string = exec_string + indent(indent_unit) + save_data + "=" + single_line
+                        exec_string = exec_string + indent(indent_unit) + save_data + " = " + single_line
             try:
                 exec(exec_string)
             except Exception:
@@ -499,6 +447,12 @@ def build_run_block():
 
 
 # --------------------handle all the import/export and download/upload--------------------------
+@app.route("/clear")
+def clear():
+    global script_dict, order
+    script_dict, order = new_script(deck)
+    return redirect(url_for("experiment_builder"))
+
 
 @app.route("/import_api", methods=['GET', 'POST'])
 def import_api():
@@ -550,6 +504,10 @@ def import_deck():
 
 @app.route('/uploads', methods=['GET', 'POST'])
 def upload():
+    """
+    upload csv configuration file
+    :return:
+    """
     if request.method == "POST":
         f = request.files['file']
         if 'file' not in request.files:
@@ -580,16 +538,17 @@ def load_json():
 
 @app.route('/download/<filetype>')
 def download(filetype):
+    run_name = script_dict['name'] if script_dict['name'] else "untitled"
     if filetype == "configure":
         return send_file("empty_configure.csv", as_attachment=True)
-    if filetype == "script":
-        sort_actions()
-
+    elif filetype == "script":
+        sort_actions(script_dict, order)
         json_object = json.dumps(script_dict)
-        # with open(run_name + ".json", "w") as outfile:
-        with open("untitled.json", "w") as outfile:
+        with open(run_name + ".json", "w") as outfile:
             outfile.write(json_object)
-        return send_file("untitled.json", as_attachment=True)
+        return send_file(run_name + ".json", as_attachment=True)
+    elif filetype == "python":
+        return send_file("scripts/"+run_name+".py", as_attachment=True)
 
 
 def find_instrument_by_name(name: str):
@@ -597,106 +556,6 @@ def find_instrument_by_name(name: str):
         return eval(name)
     elif name in globals():
         return globals()[name]
-
-
-def convert_type(args, parameters, configure=[]):
-    bool_dict = {"True": True, "False": False}
-
-    if not len(args) == 0:
-        for arg in args:
-            if args[arg] == '' or args[arg] == "None":
-                args[arg] = None
-            elif args[arg] == "True" or args[arg] == "False":
-                args[arg] = bool_dict[args[arg]]
-            # configure parameter
-            elif args[arg].startswith("#"):
-                # configure_variables.append(args[arg][1:])
-                # exec(args[arg][1:]+"=None")
-                configure.append(args[arg][1:])
-                # args[arg] = args[arg][1:]
-            elif type(parameters) is inspect.Signature:
-                p = parameters.parameters
-                if p[arg].annotation is not inspect._empty:
-                    if not type(args[arg]) == p[arg].annotation:
-                        args[arg] = p[arg].annotation(args[arg])
-            elif type(parameters) is dict:
-                if parameters[arg] is not None:
-                    if not type(args[arg]) == parameters[arg]:
-                        args[arg] = parameters[arg](args[arg])
-        return args
-
-
-def config():
-    """
-    take the global script_dict
-    :return: list of variable that require input
-    """
-    configure = []
-    for action in script_dict['script']:
-        args = action['args']
-        if args is not None:
-            if type(args) is not dict:
-                if type(args) is str and args.startswith("#") and not args[1:] in configure:
-                    configure.append(args[1:])
-            else:
-                for arg in args:
-                    if type(args[arg]) is str \
-                            and args[arg].startswith("#") \
-                            and not args[arg][1:] in configure:
-                        configure.append(args[arg][1:])
-    return configure
-
-
-def parse_functions(class_object=None, call=True):
-    functions = {}
-    for function in dir(class_object):
-        if not function.startswith("_") and not function.isupper():
-            # if call:
-            att = getattr(class_object, function)
-
-            # handle getter setters
-            if callable(att):
-                functions[function] = inspect.signature(att)
-            else:
-                try:
-                    att = getattr(class_object.__class__, function)
-                    if isinstance(att, property) and att.fset is not None:
-                        functions[function] = att.fset.__annotations__
-                except AttributeError:
-                    pass
-        # else:
-        #     functions[function] = function
-    return functions
-
-
-def sort_actions(script_type):
-    global script_dict
-    global order
-    if len(order[script_type]) > 0:
-        for action in script_dict[script_type]:
-            for i in range(len(order[script_type])):
-                if action['id'] == int(order[script_type][i]):
-                    # print(i+1)
-                    action['id'] = i + 1
-                    break
-        order[script_type].sort()
-        if not int(order[script_type][-1]) == len(script_dict[script_type]):
-            new_order = list(range(1, len(script_dict[script_type]) + 1))
-            order[script_type] = [str(i) for i in new_order]
-        script_dict[script_type].sort(key=lambda x: x['id'])
-
-
-# def parse_globals():
-#     functions = []
-#     for function in all_variables:
-#         if not function.startswith("_") and not function.isupper():
-#             functions.append(function)
-#     return functions
-
-# def creat_device(device, args):
-#     for arg in device.__init__.__annotations__:
-#         if not device.__init__.__annotations__[arg].__module__ == "builtins":
-#             args[arg] = globals()[args[arg]]
 
 
 if __name__ == "__main__":
