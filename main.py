@@ -8,6 +8,7 @@ from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, 
 from werkzeug.utils import secure_filename
 
 from utils.utils import *
+
 # import sample_deck as deck
 deck = None
 
@@ -26,17 +27,15 @@ cursor.row_factory = sqlite3.Row
 cursor.execute("""create table IF NOT EXISTS workflow (name TEXT PRIMARY KEY NOT NULL, 
                     deck TEXT NOT NULL, status TEXT NOT NULL, script NOT NULL, prep NOT NULL, cleanup NOT NULL)""")
 
-
 # def get_db_connection():
 #     connect = sqlite3.connect("webapp.db")
 #     connect.row_factory = sqlite3.Row
 #     return connect
 
 
-script_type = 'script'      # set default type to be 'script'
+script_type = 'script'  # set default type to be 'script'
 # stypes = ['prep', 'script', 'cleanup']
 script_dict, order = new_script(deck)
-
 
 libs = set(dir())
 
@@ -85,6 +84,7 @@ def experiment_builder(instrument=None, action=None):
     if instrument:
         inst_object = find_instrument_by_name(instrument)
         functions = parse_functions(inst_object)
+        print(script_dict)
         current_len = len(script_dict[script_type])
         if action:
             # handle instrument actions
@@ -146,7 +146,7 @@ def experiment_run(filename=None):
     global order
     global script_dict
     run_name = script_dict['name'] if script_dict['name'] else "untitled"
-    file = open("scripts/"+run_name+".py", "r")
+    file = open("scripts/" + run_name + ".py", "r")
     script_py = file.read()
     file.close()
 
@@ -157,6 +157,7 @@ def experiment_run(filename=None):
     if request.method == "POST":
         repeat = request.form.get('repeat')
         try:
+            flash("Running!")
             exec(run_name + "_prep()")
             if filename is not None and not filename == 'None':
                 df = csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename)))
@@ -227,6 +228,7 @@ def controllers(instrument):
         if type(functions[function_name]) is dict:
             args = list(args.values())[0]
         try:
+
             if callable(function_executable):
                 if args is not None:
                     # print(args)
@@ -243,7 +245,6 @@ def controllers(instrument):
 
 # -----------------------handle action editing--------------------------------------------
 @app.route("/delete/<id>")
-# todo
 def delete_action(id):
     for action in script_dict[script_type]:
         if action['id'] == int(id):
@@ -365,7 +366,7 @@ def build_run_block():
     if script_dict['deck'] == '':
         flash("Define deck first")
         return redirect(url_for("experiment_builder"))
-    with open("scripts/"+run_name+".py", "w") as s:
+    with open("scripts/" + run_name + ".py", "w") as s:
         s.write("import " + script_dict['deck'] + " as deck")
         for i in stypes:
             indent_unit = 1
@@ -548,7 +549,7 @@ def download(filetype):
             outfile.write(json_object)
         return send_file(run_name + ".json", as_attachment=True)
     elif filetype == "python":
-        return send_file("scripts/"+run_name+".py", as_attachment=True)
+        return send_file("scripts/" + run_name + ".py", as_attachment=True)
 
 
 def find_instrument_by_name(name: str):
@@ -556,6 +557,16 @@ def find_instrument_by_name(name: str):
         return eval(name)
     elif name in globals():
         return globals()[name]
+
+
+def parse_deck(deck):
+    if "gui_functions" in set(dir(deck)):
+        deck_variables = ["deck." + var for var in deck.gui_functions]
+    else:
+        deck_variables = ["deck." + var for var in set(dir(deck))
+                          if not (var.startswith("_") or var[0].isupper() or var.startswith("repackage"))
+                          and not type(eval("deck." + var)).__module__ == 'builtins']
+    return deck_variables
 
 
 if __name__ == "__main__":

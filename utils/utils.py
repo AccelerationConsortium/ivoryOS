@@ -22,16 +22,6 @@ def new_script(deck):
     return script_dict, order
 
 
-def parse_deck(deck):
-    if "gui_functions" in set(dir(deck)):
-        deck_variables = ["deck." + var for var in deck.gui_functions]
-    else:
-        deck_variables = ["deck." + var for var in set(dir(deck)) if not (
-                var.startswith("_") or var[0].isupper() or var.startswith(
-            "repackage")) and not type(eval("deck." + var)).__module__ == 'builtins']
-    return deck_variables
-
-
 def indent(unit=0):
     string = "\n"
     for _ in range(unit):

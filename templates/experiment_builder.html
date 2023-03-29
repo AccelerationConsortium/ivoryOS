@@ -1,69 +1,52 @@
 {% extends 'base.html' %}
-{% block title %}Available Controllers{% endblock %}
+{% block title %}Script Editor{% endblock %}
 
 {% block body %}
 
 <div class= "container">
     <div class="row">
-
-        <div class="col-md-3">
-            {% if defined_variables|length == 0 %}
-            <div>
-                <h5>No deck found
-                    <a data-bs-toggle="collapse" href="#loaddeck" role="button" aria-expanded="false" aria-controls="collapseExample">
-                        (import deck)
-                    </a>
-                </h5>
-                <div class="collapse" id="loaddeck">
-                    <div class="container">
-                        <form method="POST" action="/import_deck" enctype="multipart/form-data">
-                            <div class="input-group">
-                                <label class="input-group-text" for="filepath">Deck File Path:</label>
-                                <input type="text" class="form-control" name="filepath" id="filepath" required="required">
-                                <input class="btn btn-secondary" type="submit">
-                            </div>
-                        </form>
-<!--                           <form method="POST" action="/import_deck" enctype="multipart/form-data">-->
-<!--                               <input type="text" name="filepath" required="required">-->
-<!--                               <input class="btn btn-dark" type="submit">-->
-<!--                           </form>-->
-                    </div>
-                </div>
-            </div>
-            {% else %}
-            <h5><a data-bs-toggle="collapse" href="#advanced" role="button" aria-expanded="false" aria-controls="collapseExample">Advanced Options:</a></h5>
-            <div class="collapse" id="advanced">
-                <form role="form" method='GET' name="if" action="/experiment/build/if">
-                    <div class="form-group">
-                        <button type="submit" class="btn btn-dark" name="device" value="if" >If</button>
-                    </div>
-                </form>
-                <form role="form" method='GET' name="while" action="/experiment/build/while">
-                    <div class="form-group">
-                        <button type="submit" class="btn btn-dark" name="device" value="while" >While</button>
-                    </div>
-                </form>
-                <form role="form" method='GET' name="variable" action="/experiment/build/variable">
-                    <div class="form-group">
-                        <button type="submit" class="btn btn-dark" name="device" value="variable" >Add variable</button>
-                    </div>
-                </form>
-            </div>
-            <h5>Deck Actions:</h5>
-            {% endif %}
-            {% for instrument in defined_variables %}
-            <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}">
-                <div class="form-group">
-                    <button type="submit" class="btn btn-dark" name="device" value="{{instrument}}" >{{instrument}}</button>
+        {% if defined_variables|length == 0 %}
+        <div class="container">
+            <form method="POST" action="/import_deck" enctype="multipart/form-data">
+                <div class="input-group">
+                    <label class="input-group-text" for="filepath">Deck File Path:</label>
+                    <input type="text" class="form-control" name="filepath" id="filepath" required="required">
+                    <input class="btn btn-secondary" type="submit">
                 </div>
             </form>
-            {% endfor%}
+        </div>
+        {% endif %}
+        <div class="col-md-3">
+            <h5><a data-bs-toggle="collapse" href="#advanced" role="button" aria-expanded="false" aria-controls="collapseExample">Advanced Options:</a></h5>
+            <div class="collapse" id="advanced">
+                <ul class="list-group">
+                {% for instrument in ['if', 'while', 'variable'] %}
+                <form role="form" method='GET' name="if" action="/experiment/build/{{instrument}}">
+                    <div class="form-group">
+                        <button class="list-group-item list-group-item-action" type="submit" class="btn btn-dark" name="device" value="{{instrument}}">{{instrument}}</button>
+                    </div>
+                </form>
+                {% endfor %}
+                </ul>
+            </div>
+
+            <h5>Deck Actions:</h5>
+
+            <ul class="list-group">
+            {% for instrument in defined_variables %}
+            <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}">
+                <div>
+                    <button class="list-group-item list-group-item-action" type="submit"  name="device" value="{{instrument}}" >{{instrument}}</button>
+                </div>
+            </form>
+            {% endfor %}
+            </ul>
             {% if not defined_variables %}
             <h5>Local Actions:</h5>
             {% for instrument in local_variables %}
-            <form role="form" method='POST' name="{{instrument}}" action="/experiment/build/{{instrument}}">
+            <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}">
                 <div class="form-group">
-                    <button type="submit" class="btn btn-dark" name="action" value="{{instrument}}" >{{instrument}}</button>
+                    <button type="submit" class="btn btn-dark" name="device" value="{{instrument}}" >{{instrument}}</button>
                 </div>
             </form>
             {% endfor%}
@@ -162,12 +145,13 @@
                                     <label for="{{parameter}}">{{parameter}} ({{'optional' if not parameters[parameter].default.__name__ == '_empty' else 'required'}}):</label>
 <!--                                    {{parameter}} ({{'optional' if not parameters[parameter].default.__name__ == '_empty' else 'required'}}):<br>-->
                                     {% if parameters[parameter].annotation.__name__ == 'bool' %}
-                                        <input type="radio" id="True" name="{{parameter}}" value="True" {{"checked" if parameters[parameter].default==True else ''}}>
-                                        <label for="True">True</label><br>
-                                        <input type="radio" id="False" name="{{parameter}}" value="False" {{"checked" if parameters[parameter].default==False else ''}}>
-                                        <label for="False">False</label><br>
+                                        <p>
+                                            <input type="radio" id="True" name="{{parameter}}" value="True" {{"checked" if parameters[parameter].default==True else ''}}>
+                                            <label for="True">True</label><br>
+                                            <input type="radio" id="False" name="{{parameter}}" value="False" {{"checked" if parameters[parameter].default==False else ''}}>
+                                            <label for="False">False</label>
+                                        </p>
                                     {% else %}
-
                                         <input type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{parameters[parameter].annotation.__name__}}"
                                                value="{{'' if parameters[parameter].default.__name__ == '_empty' or parameters[parameter].default == None else parameters[parameter].default}}">
 
