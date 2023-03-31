@@ -8,3 +8,41 @@ body {
 pre {
   tab-size: 4;
 }
+.row-height{
+  height: 90vh;
+}
+
+label {
+    display:block
+}
+
+.scroll {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch; /* enables momentum-scrolling on iOS */
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.dropdown {
+  display: inline-block;
+}
+/*Remove the scrollbar from Chrome, Safari, Edge and IE*/
+::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+}
+
+* {
+  -ms-overflow-style: none !important;
+}
+td {
+    border-bottom: none;
+    border-top: cadetblue;
+}
+th{
+    border-top: cadetblue;
+    border-bottom: none;
+}

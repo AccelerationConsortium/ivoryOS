@@ -72,55 +72,54 @@ def controllers_home():
 
 @app.route("/experiment/build/", methods=['GET', 'POST'])
 @app.route("/experiment/build/<instrument>/", methods=['GET', 'POST'])
-@app.route("/experiment/build/<instrument>/<action>", methods=['GET', 'POST'])
+# @app.route("/experiment/build/<instrument>/<action>", methods=['GET', 'POST'])
 def experiment_builder(instrument=None, action=None):
     global script_dict
     global order
     global script_type
+    filepath_list = import_history()
     sort_actions(script_dict, order, script_type)
     action_parameters = None
     functions = []
     deck_variables = parse_deck(deck)
+    if deck is None or not script_dict['deck'] == deck.__name__:
+        flash(f"Make sure to import {script_dict['deck'] if script_dict['deck'] else 'deck'} for this script")
     if instrument:
         inst_object = find_instrument_by_name(instrument)
         functions = parse_functions(inst_object)
-        print(script_dict)
+        # print(script_dict)
         current_len = len(script_dict[script_type])
-        if action:
-            # handle instrument actions
-            if type(functions[action]) is dict:
-                action_parameters = functions[action]
-            else:
-                action_parameters = functions[action].parameters
-            if request.method == 'POST':
-                args = request.form.to_dict()
-                function_name = args.pop('add')
-                script_type = args.pop('script_type')
-                save_data = args.pop('return') if 'return' in request.form else ''
-                try:
-                    args = convert_type(args, functions[function_name])
-                except ValueError as e:
-                    flash(e.__str__())
-                    return redirect(url_for("experiment_builder", instrument=instrument, action=action))
-                if type(functions[function_name]) is dict:
-                    args = list(args.values())[0]
-                action_dict = {"id": current_len + 1, "instrument": instrument,
-                               "action": function_name,
-                               "args": args, "return": save_data}
-                order[script_type].append(str(current_len + 1))
-                script_dict[script_type].append(action_dict)
+        if request.method == 'POST' and "add" in request.form:
+
+            args = request.form.to_dict()
+            function_name = args.pop('add')
+            script_type = args.pop('script_type')
+            save_data = args.pop('return') if 'return' in request.form else ''
+            try:
+                args = convert_type(args, functions[function_name])
+            except ValueError as e:
+                flash(e.__str__())
+                return redirect(url_for("experiment_builder", instrument=instrument, action=action))
+            if type(functions[function_name]) is dict:
+                args = list(args.values())[0]
+            action_dict = {"id": current_len + 1, "instrument": instrument,
+                           "action": function_name,
+                           "args": args, "return": save_data}
+            order[script_type].append(str(current_len + 1))
+            script_dict[script_type].append(action_dict)
         elif request.method == 'POST':
+
             # handle while, if and define variables
             script_type = request.form.get('script_type')
             statement = request.form.get('statement')
-            if "addif" in request.form:
+            if "if" in request.form:
                 args = 'True' if statement == '' else statement
                 action_list = [
                     {"id": current_len + 1, "instrument": 'if', "action": 'if', "args": args, "return": ''},
                     {"id": current_len + 2, "instrument": 'if', "action": 'else', "args": '', "return": ''},
                     {"id": current_len + 3, "instrument": 'if', "action": 'endif', "args": '', "return": ''},
                 ]
-            if "addwhile" in request.form:
+            if "while" in request.form:
                 args = 'False' if statement == '' else statement
                 action_list = [
                     {"id": current_len + 1, "instrument": 'while', "action": 'while', "args": args, "return": ''},
@@ -130,13 +129,13 @@ def experiment_builder(instrument=None, action=None):
                 var_name = request.form.get('variable')
                 args = 'None' if statement == '' else statement
                 action_list = [
-                    {"id": current_len + 1, "instrument": 'variable', "action": args, "args": args, "return": var_name},
+                    {"id": current_len + 1, "instrument": 'variable', "action": var_name, "args": args, "return": ''},
                 ]
             order[script_type].extend([str(current_len + i + 1) for i in range(len(action_list))])
             script_dict[script_type].extend(action_list)
-    return render_template('experiment_builder.html', instrument=instrument, action=action, script_type=script_type,
+    return render_template('experiment_builder.html', instrument=instrument, script_type=script_type, history=filepath_list,
                            script=script_dict, defined_variables=deck_variables, local_variables=defined_variables,
-                           functions=functions, parameters=action_parameters, config=config(script_dict))
+                           functions=functions, config=config(script_dict))
 
 
 @app.route("/experiment", methods=['GET', 'POST'])
@@ -151,9 +150,12 @@ def experiment_run(filename=None):
     file.close()
 
     sort_actions(script_dict, order)
-    if deck is None and len(defined_variables) == 0:
+    if deck is None:
         flash('Warning: import deck or connect instruments, go to Build Experiment tab')
+        # and len(defined_variables) == 0
         # flash('Warning: import deck or connect instruments, go to <a class="alert-link" href="/experiment/build">Build Experiment</a>')
+    elif not script_dict['deck'] == deck.__name__:
+        flash("This script is not compatible with current deck, import deck name with ", script_dict['deck'])
     if request.method == "POST":
         repeat = request.form.get('repeat')
         try:
@@ -170,6 +172,7 @@ def experiment_run(filename=None):
             flash("Run finished")
         except Exception as e:
             flash(e)
+
     return render_template('experiment_run.html', script=script_dict, filename=filename, dot_py=script_py)
 
 
@@ -335,7 +338,18 @@ def edit_run_name():
         else:
             flash("Script name is already exist in database")
         return redirect(url_for("experiment_builder"))
-
+@app.route("/save_as", methods=['GET', 'POST'])
+def save_as():
+    if request.method == "POST":
+        run_name = request.form.get("run_name")
+        exist_script = cursor.execute(f"""SELECT * FROM workflow WHERE name ='{run_name}'""").fetchall()
+        if len(exist_script) == 0:
+            script_dict['name'] = run_name
+            script_dict['status'] = 'editing'
+            publish()
+        else:
+            flash("Script name is already exist in database")
+        return redirect(url_for("experiment_builder"))
 
 @app.route("/toggle_script_type/<stype>")
 def toggle_script_type(stype=None):
@@ -363,11 +377,12 @@ def build_run_block():
     global order
     sort_actions(script_dict, order)
     run_name = script_dict['name'] if script_dict['name'] else "untitled"
-    if script_dict['deck'] == '':
-        flash("Define deck first")
-        return redirect(url_for("experiment_builder"))
+
+        # flash("Define deck first")
+        # return redirect(url_for("experiment_builder"))
     with open("scripts/" + run_name + ".py", "w") as s:
-        s.write("import " + script_dict['deck'] + " as deck")
+        if not script_dict['deck'] == '':
+            s.write("import " + script_dict['deck'] + " as deck")
         for i in stypes:
             indent_unit = 1
             exec_string = "\n\ndef " + run_name + "_" + i + "("
@@ -414,7 +429,7 @@ def build_run_block():
                         indent_unit -= 1
                 elif instrument == 'variable':
                     # args = "False" if args == '' else args
-                    exec_string = exec_string + indent(indent_unit) + save_data + " = " + action
+                    exec_string = exec_string + indent(indent_unit) + action + " = " + args
                 else:
                     if args is not None:
                         if type(args) is dict:
@@ -457,7 +472,6 @@ def clear():
 
 @app.route("/import_api", methods=['GET', 'POST'])
 def import_api():
-    import importlib.util
     filepath = request.form.get('filepath')
     # filepath.replace('\\', '/')
     name = os.path.split(filepath)[-1].split('.')[0]
@@ -478,15 +492,17 @@ def import_api():
     return redirect(url_for("new_controller"))
 
 
-@app.route("/import_deck", methods=['GET', 'POST'])
+@app.route("/import_deck", methods=['POST'])
 def import_deck():
-    import importlib.util
     global script_dict
+    global deck
     filepath = request.form.get('filepath')
     name = os.path.split(filepath)[-1].split('.')[0]
     # filepath.replace('\\', '/')
     try:
-        spec = importlib.util.spec_from_file_location(name, filepath, )
+        if deck is not None:
+            deck = None
+        spec = importlib.util.spec_from_file_location(name, filepath)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         # deck format checking
@@ -495,6 +511,7 @@ def import_deck():
             flash("Invalid Deck import")
             return redirect(url_for("deck_controllers"))
         globals()["deck"] = module
+        save_to_history(filepath)
         if script_dict['deck'] == "" or script_dict['deck'] is None:
             script_dict['deck'] = module.__name__
     # file path error exception
