@@ -5,18 +5,26 @@ stypes = ['prep', 'script', 'cleanup']
 
 
 def save_to_history(filepath):
-    with open("deck_history.txt", 'r') as file:
-        lines = file.read()
-        connections = lines.split('\n')
+    connections = []
+    try:
+        with open("deck_history.txt", 'r') as file:
+            lines = file.read()
+            connections = lines.split('\n')
+    except FileNotFoundError:
+        pass
     if filepath not in connections:
         with open("deck_history.txt", 'a') as file:
             file.writelines(f"{filepath}\n")
 
 
 def import_history():
-    with open("deck_history.txt", 'r') as file:
-        lines = file.read()
-        connections = lines.split('\n')
+    connections = []
+    try:
+        with open("deck_history.txt", 'r') as file:
+            lines = file.read()
+            connections = lines.split('\n')
+    except FileNotFoundError:
+        pass
     connections = [i for i in connections if not i == '']
     return connections
 

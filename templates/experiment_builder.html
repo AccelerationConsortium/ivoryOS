@@ -36,7 +36,7 @@
     </div>
 {% endif %}
 
-    <div class="row row-height">
+    <div class="row">
         <div class="col-md-3" style="height: 100%; overflow: scroll;">
             <div class="accordion accordion-flush">
                 <div class="accordion-item">
@@ -198,18 +198,18 @@
         </div>
         <div class="col-md-6" style="height: 100%; overflow: scroll;">
             <h5>Script Editor
-                <div class="dropdown">
-                    <a class="dropdown-toggle h5" type="button" data-bs-toggle="dropdown" aria-expanded="false">File</a>
+                <div class="dropdown ">
+                    <a class="dropdown-toggle h5" type="button" data-bs-toggle="dropdown" ><i class="bi bi-tools"></i></a>
                     <ul class="dropdown-menu">
                         <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#newScriptModal">New</button></li>
-                        <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#jsonModal">Import New</button></li>
+                        <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#jsonModal">Import</button></li>
                         <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#renameModal">Rename</button></li>
+                        <li><a role="button" class="dropdown-item {{'disabled' if script['name'] == '' or script['status'] == 'finalized'}}" type="button" href="{{url_for('publish')}}">Save</a></li>
                         <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#saveasModal">Save as</button></li>
-                        <li><a role="button" class="dropdown-item" type="button" href="{{url_for('publish')}}">Save</a></li>
                         {% if not script['status'] == 'finalized' %}
-                            <li><a role="button" class="dropdown-item" type="button" href="{{url_for('finalize')}}">Enable protected mode</a></li>
+                            <li><a role="button" class="dropdown-item" type="button" href="{{url_for('finalize')}}">Disable editing</a></li>
                         {% endif %}
-                        <li><a role="button" class="dropdown-item" type="button" href="/download/script">Export JSON</a></li>
+                        <li><a role="button" class="dropdown-item" type="button" href="/download/script">Export (.json <i class="bi bi-filetype-json"></i>)</a></li>
                     </ul>
                 </div>
             </h5>
@@ -295,7 +295,7 @@
                     </div>
                 </div>
             </div>
-            <table class="table">
+            <table class="table script-table">
                 <tbody>
                     <tr>
                         <th scope="row">Deck Name</th>
@@ -316,13 +316,32 @@
                         <td>{{script['status']}}</td>
                     </tr>
                     <tr>
+                        <th scope="row">Output Values <a role="button" data-bs-toggle="popover" data-bs-title="How to use:" data-bs-content="Some instructions can go here..."><i class="bi bi-info-circle"></i></a></th>
+                        <td>
+                            <ul>
+<!--                                {% for i in config %}-->
+<!--                                    <li>{{i}}</li>-->
+<!--                                {% endfor %}-->
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Config Variables <a role="button" data-bs-toggle="popover" data-bs-title="How to use:" data-bs-content="Some instructions can go here..."><i class="bi bi-info-circle"></i></a></th>
+                        <td>
+                            <ul>
+                                {% for i in config %}
+                                    <li>{{i}}</li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
                         <th scope="row">Script</th>
                         <td></td>
                     </tr>
                 </tbody>
             </table>
 
-{#            <h6>Script</h6>#}
             <div>
                 <ul class="nav nav-tabs">
                     <li class="nav-item"><a class="{{'nav-link active' if script_type=='prep' else 'nav-link'}}" aria-current="page" href="/toggle_script_type/prep">Prep</a></li>
@@ -365,22 +384,12 @@
                                 {% endif %}
                                 <a href="/delete/{{s['id']}}" type="button" class="btn btn-light"><span class="bi bi-trash"></span></a>
                             </li>
-<!--                            <div class="clear"></div>-->
                         {% endfor %}
                     </ul>
                 </div>
             </div>
             <div>
-                <h6>Config Variables:</h6>
-                <ul>
-                    {% for i in config %}<li>{{i}}</li>
-                    {% endfor %}
-                </ul>
-            </div>
-            <div>
-                <p>
-                    <a class="btn btn-dark " href = "{{url_for('build_run_block')}}">Configure Run</a>
-                </p>
+                <a class="btn btn-dark " href="{{url_for('build_run_block')}}">Configure Run</a>
             </div>
         </div>
     </div>
