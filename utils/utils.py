@@ -98,6 +98,17 @@ def config(script_dict):
                         configure.append(args[arg][1:])
     return configure
 
+def config_return(script_dict):
+    """
+    take the global script_dict
+    :return: list of variable that require input
+    """
+    return_list = [action['return'] for action in script_dict if not action['return'] == '']
+    output_str = "return {"
+    for i in return_list:
+        output_str += "'" + i + "':" + i + ","
+    output_str += "}"
+    return output_str, return_list
 
 def convert_type(args, parameters, configure=[]):
     bool_dict = {"True": True, "False": False}

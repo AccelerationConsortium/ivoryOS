@@ -26,24 +26,3 @@ class MyTest:
 
     def test5(self, arg1: bool):
         print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
-
-    def test6(self, arg1: bool):
-        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
-    def test7(self, arg1: bool):
-        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
-    def test8(self, arg1: bool):
-        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
-    def test9(self, arg1: bool):
-        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
-    def test10(self, arg1: bool):
-        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
-    def test11(self, arg1: bool):
-        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
-    def test12(self, arg1: bool):
-        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
-    def test13(self, arg1: bool):
-        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
-    def test14(self, arg1: bool):
-        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
-    def test16(self, arg1: bool):
-        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))

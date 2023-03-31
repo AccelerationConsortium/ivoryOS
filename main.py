@@ -135,7 +135,7 @@ def experiment_builder(instrument=None, action=None):
             script_dict[script_type].extend(action_list)
     return render_template('experiment_builder.html', instrument=instrument, script_type=script_type, history=filepath_list,
                            script=script_dict, defined_variables=deck_variables, local_variables=defined_variables,
-                           functions=functions, config=config(script_dict))
+                           functions=functions, config=config(script_dict), return_list=config_return(script_dict['script'])[1])
 
 
 @app.route("/experiment", methods=['GET', 'POST'])
@@ -148,7 +148,7 @@ def experiment_run(filename=None):
     file = open("scripts/" + run_name + ".py", "r")
     script_py = file.read()
     file.close()
-
+    _, return_list = config_return(script_dict['script'])
     sort_actions(script_dict, order)
     if deck is None:
         flash('Warning: import deck or connect instruments, go to Build Experiment tab')
@@ -158,29 +158,37 @@ def experiment_run(filename=None):
         flash("This script is not compatible with current deck, import deck name with ", script_dict['deck'])
     if request.method == "POST":
         repeat = request.form.get('repeat')
+        output_list = []
         try:
-            flash("Running!")
+            # flash("Running!")
             exec(run_name + "_prep()")
             if filename is not None and not filename == 'None':
                 df = csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename)))
                 for i in df:
-                    exec(run_name + "_script(**" + str(i) + ")")
+                    output = eval(run_name + "_script(**" + str(i) + ")")
+                    output_list.append(output)
             if not repeat == '' and repeat is not None:
                 for i in range(int(repeat)):
-                    exec(run_name + "_script()")
+                    output = eval(run_name + "_script()")
+                    output_list.append(output)
             exec(run_name + "_cleanup()")
+            print(output_list)
+            with open("results/"+run_name+"_data.csv", "w", newline='') as file:
+                writer = csv.DictWriter(file, fieldnames=return_list)
+                writer.writeheader()
+                writer.writerows(output_list)
             flash("Run finished")
         except Exception as e:
             flash(e)
 
-    return render_template('experiment_run.html', script=script_dict, filename=filename, dot_py=script_py)
+    return render_template('experiment_run.html', script=script_dict, filename=filename, dot_py=script_py, return_list=return_list)
 
 
 @app.route("/my_deck")
 def deck_controllers():
     global deck
     deck_variables = parse_deck(deck)
-    return render_template('controllers_home.html', defined_variables=deck_variables, deck="Deck")
+    return render_template('controllers_home.html', defined_variables=deck_variables, deck="Deck", history=import_history())
 
 
 @app.route("/new_controller/")
@@ -340,6 +348,8 @@ def edit_run_name():
         else:
             flash("Script name is already exist in database")
         return redirect(url_for("experiment_builder"))
+
+
 @app.route("/save_as", methods=['GET', 'POST'])
 def save_as():
     if request.method == "POST":
@@ -352,6 +362,7 @@ def save_as():
         else:
             flash("Script name is already exist in database")
         return redirect(url_for("experiment_builder"))
+
 
 @app.route("/toggle_script_type/<stype>")
 def toggle_script_type(stype=None):
@@ -452,6 +463,9 @@ def build_run_block():
                         exec_string = exec_string + indent(indent_unit) + single_line
                     else:
                         exec_string = exec_string + indent(indent_unit) + save_data + " = " + single_line
+            return_str, return_list = config_return(script_dict[i])
+            if len(return_list) > 0:
+                exec_string += indent(indent_unit) + return_str
             try:
                 exec(exec_string)
             except Exception:
@@ -571,6 +585,8 @@ def download(filetype):
         return send_file(run_name + ".json", as_attachment=True)
     elif filetype == "python":
         return send_file("scripts/" + run_name + ".py", as_attachment=True)
+    elif filetype == "data":
+        return send_file("results/"+run_name+"_data.csv", as_attachment=True)
 
 
 def find_instrument_by_name(name: str):
