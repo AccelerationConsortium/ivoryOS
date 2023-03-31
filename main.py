@@ -270,10 +270,12 @@ def edit_action(id):
 @app.route("/edit_workflow/<workflow_name>")
 def edit_workflow(workflow_name):
     global script_dict
+    global order
     row = cursor.execute(f"SELECT * FROM workflow WHERE name = '{workflow_name}'").fetchone()
     script_dict = dict(zip(row.keys(), row))
     for i in stypes:
         script_dict[i] = json.loads(script_dict[i])
+        order[i] = [str(i+1) for i in range(len(script_dict[i]))]
     return redirect(url_for('experiment_builder'))
 
 
@@ -383,6 +385,8 @@ def build_run_block():
     with open("scripts/" + run_name + ".py", "w") as s:
         if not script_dict['deck'] == '':
             s.write("import " + script_dict['deck'] + " as deck")
+        else:
+            s.write("deck = None")
         for i in stypes:
             indent_unit = 1
             exec_string = "\n\ndef " + run_name + "_" + i + "("
