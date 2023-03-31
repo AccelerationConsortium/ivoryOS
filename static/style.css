@@ -5,6 +5,9 @@
 body {
   padding-top: 60px;
 }
+/*.run-panel-row-height {*/
+/*    height: 80vh;*/
+/*}*/
 pre {
   tab-size: 4;
 }
@@ -38,11 +41,11 @@ label {
 * {
   -ms-overflow-style: none !important;
 }
-td {
+.script-table td {
     border-bottom: none;
     border-top: cadetblue;
 }
-th{
+.script-table th{
     border-top: cadetblue;
     border-bottom: none;
 }
