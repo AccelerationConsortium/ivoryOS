@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Available Controllers{% endblock %}
+{% block title %}Run Control Panel{% endblock %}
 
 
 {% block body %}
@@ -26,7 +26,8 @@
                                     {{s['action']}}
                                     {% if s['action']== 'if' %} {% if s['args'] %}({{s['args']}}) {% else %} True {% endif %}
                                     {% elif s['action']== 'while' %} {% if s['args'] %}({{s['args']}}) {% else %} False {% endif %}
-
+                                    {% elif s['instrument']== 'variable' %} = {{s['args']}}
+                                    {% else %} {% if s['args'] %} ({{s['args']}}) {% endif %}
                                     {% endif %}
                                 </li>
                                 <div class="clear"></div>
@@ -58,7 +59,7 @@
                         <div>
                             <p>
                                 <a href="/download/configure"><button class="btn btn-dark">Download .csv</button></a>
-                                <a class="btn btn-secondary" data-toggle="collapse" href="#loadfile" role="button" aria-expanded="false"
+                                <a class="btn btn-secondary" data-bs-toggle="collapse" href="#loadfile" role="button" aria-expanded="false"
                                    aria-controls="collapseExample">Upload .csv
                                 </a>
                             </p>
@@ -68,7 +69,7 @@
                                     <div class="input-group">
 <!--                                        <label class="form-label"></label>-->
                                         <input class="form-control" name="file" type="file" required="required">
-                                        <input class="btn btn-dark" type="submit">
+                                        <input class="btn btn-secondary" type="submit">
                                     </div>
                                 </form>
 

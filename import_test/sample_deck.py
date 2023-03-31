@@ -22,9 +22,10 @@ test12 = MyTest(inner_test1)
 test13 = MyTest(inner_test1)
 test14 = MyTest(inner_test1)
 test15 = MyTest(inner_test1)
-
-
-gui_functions = ['inner_test1', 'test1', 'test2']
+test16 = MyTest(inner_test1)
+test17= MyTest(inner_test1)
+test18 = MyTest(inner_test1)
+# gui_functions = ['inner_test1', 'test1', 'test2']
 
 
 def new_function_test():

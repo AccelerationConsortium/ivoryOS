@@ -1,6 +1,25 @@
 import inspect
+import importlib.util
 
 stypes = ['prep', 'script', 'cleanup']
+
+
+def save_to_history(filepath):
+    with open("deck_history.txt", 'r') as file:
+        lines = file.read()
+        connections = lines.split('\n')
+    if filepath not in connections:
+        with open("deck_history.txt", 'a') as file:
+            file.writelines(f"{filepath}\n")
+
+
+def import_history():
+    with open("deck_history.txt", 'r') as file:
+        lines = file.read()
+        connections = lines.split('\n')
+    connections = [i for i in connections if not i == '']
+    return connections
+
 
 def new_script(deck):
     """
@@ -20,16 +39,6 @@ def new_script(deck):
              'cleanup': [],
              }
     return script_dict, order
-
-
-def parse_deck(deck):
-    if "gui_functions" in set(dir(deck)):
-        deck_variables = ["deck." + var for var in deck.gui_functions]
-    else:
-        deck_variables = ["deck." + var for var in set(dir(deck)) if not (
-                var.startswith("_") or var[0].isupper() or var.startswith(
-            "repackage")) and not type(eval("deck." + var)).__module__ == 'builtins']
-    return deck_variables
 
 
 def indent(unit=0):

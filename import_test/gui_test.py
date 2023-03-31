@@ -1,3 +1,5 @@
+import time
+
 import repackage
 repackage.up()
 from import_test.test_inner import TestInner
@@ -10,17 +12,38 @@ class MyTest:
         self.a = arg2
 
     def test1(self):
-        print(self.inner)
+        time.sleep(3)
         print("Test1: no arg ", self.inner.a)
 
-    def test2(self, arg1: int = 2, arg2: str = "4"):
+    def test2_return_test(self, arg1: int = 2, arg2: str = "4"):
         print("Test2: Testing for None default", arg1)
-
-    def test3(self, arg1: int = 2):
-        print(arg1)
+        return arg2
+    def test3_arg_required(self, arg1: int):
+        print("Test3: Testing required arg", arg1)
 
     def test4(self, arg1: int = None):
         print("Test4: Testing for None default", arg1)
 
     def test5(self, arg1: bool):
+        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
+
+    def test6(self, arg1: bool):
+        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
+    def test7(self, arg1: bool):
+        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
+    def test8(self, arg1: bool):
+        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
+    def test9(self, arg1: bool):
+        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
+    def test10(self, arg1: bool):
+        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
+    def test11(self, arg1: bool):
+        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
+    def test12(self, arg1: bool):
+        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
+    def test13(self, arg1: bool):
+        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
+    def test14(self, arg1: bool):
+        print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
+    def test16(self, arg1: bool):
         print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
