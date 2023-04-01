@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
-{% block title %}Welcome{% endblock %}
+{% block title %}Help Page{% endblock %}
 
 
 {% block body %}
 <div class= "container">
-    <h2>User Manual</h2>
-    <p>still developing :(</p>
+    <h2>First time launch manual</h2>
+    <object data="{{ url_for('static', filename='setup-help.pdf')}}" type="application/pdf" style="min-height:80vh;width:100%"></object>
 </div>
 
 {% endblock %}

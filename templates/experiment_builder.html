@@ -33,17 +33,21 @@
                 </div>
             </div>
         </div>
+    <hr>
     </div>
 {% endif %}
 
     <div class="row">
+
         <div class="col-md-3" style="height: 100%; overflow: scroll;">
+            <h5>Instruments</h5>
+            <hr>
             <div class="accordion accordion-flush">
                 <div class="accordion-item">
                     <h5 class="accordion-header">
-                        <a class="accordion-button" data-bs-toggle="collapse" href="#advanced" role="button" aria-expanded="false" aria-controls="collapseExample">
+                        <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#advanced" role="button" aria-expanded="false" aria-controls="collapseExample">
                             Advanced Options:
-                        </a>
+                        </button>
                     </h5>
                     <div class="accordion-collapse collapse show" id="advanced">
                         <ul class="list-group">
@@ -60,9 +64,9 @@
 
                 <div class="accordion-item">
                     <h5 class="accordion-header">
-                        <a class="accordion-button" data-bs-toggle="collapse" href="#deck" role="button" aria-expanded="false" aria-controls="collapseExample">
+                        <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#deck" role="button" aria-expanded="false" aria-controls="collapseExample">
                             Deck Actions:
-                        </a>
+                        </button>
                     </h5>
                     <div class="accordion-collapse collapse show" id="deck">
                         <ul class="list-group">
@@ -80,9 +84,9 @@
                 {% if local_variables and not defined_variables %}
                     <div class="accordion-item">
                         <h5 class="accordion-header">
-                            <a class="accordion-button" data-bs-toggle="collapse" href="#local" role="button" aria-expanded="false" aria-controls="collapseExample">
+                            <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#local" role="button" aria-expanded="false" aria-controls="collapseExample">
                                 Local Actions:
-                            </a>
+                            </button>
                         </h5>
                         <div class="accordion-collapse collapse show" id="local">
                             <ul class="list-group">
@@ -102,6 +106,7 @@
         <div class="col-md-3" style="height: 100%; overflow: scroll;">
             {% if instrument %}
                 <h5>Actions for {{instrument}}</h5>
+                <hr>
             {% endif %}
             {% if edit_action %}
                 {{edit_action}}
@@ -198,6 +203,7 @@
         </div>
         <div class="col-md-6" style="height: 100%; overflow: scroll;">
             <h5>Script Editor
+                <hr>
                 <div class="dropdown ">
                     <a class="dropdown-toggle h5" type="button" data-bs-toggle="dropdown" ><i class="bi bi-tools"></i></a>
                     <ul class="dropdown-menu">

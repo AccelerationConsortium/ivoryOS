@@ -2,8 +2,17 @@
     display: flex;
     justify-content: flex-end;
 }
+.navbar-nav {
+    font-size: larger;
+}
+.navbar-nav li{
+    margin-right:10px;
+    margin-left:10px;
+}
+
+
 body {
-  padding-top: 60px;
+  padding-top: 100px;
 }
 /*.run-panel-row-height {*/
 /*    height: 80vh;*/
