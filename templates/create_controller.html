@@ -4,7 +4,8 @@
 {% block body %}
 
     <div class="container">
-        <div>
+        <div class = "collapse {{'show' if not api_variables else ''}}" id="import">
+
             <form method="POST" action="/import_api" enctype="multipart/form-data">
                 <div class="input-group">
                     <label class="input-group-text" for="filepath">Import API by File Path:</label>
@@ -14,65 +15,69 @@
             </form>
         </div>
 
-        <div>
-            <h2>Available Python API</h2>
-            <div class="row">
 
 
-                <div class="col-3">
+        <div class="row">
+            <div class="col-4">
+                <h5>Available Python API <a role="button" class="btn btn-secondary" data-bs-toggle="collapse" href="#import">import another</a></h5>
+                <hr>
                 {% for instrument in api_variables %}
-                <form role="form" method='GET' name="{{instrument}}" action='/new_controller/{{instrument}}'>
+                <div class="bg-white rounded shadow-sm position-relative">
+                    <h5 class="p-3"> <a  href="/new_controller/{{instrument}}" class="text-dark stretched-link">{{instrument}}</a></h5>
+                </div>{% endfor %}
+            </div>
+            <div class="col-5">
+                {% if device %}
+                <h5>Connecting</h5>
+                <hr>
+                <form role="form" method='POST' name="init" action='/new_controller/{{instrument}}'>
                     <div class="form-group">
-                        <button type="submit" class="btn btn-dark" name="api" value="{{instrument}}" >{{instrument}}</button>
+                        <div class="input-group mb-3">
+                            <span class="input-group-text" >Name this device</span>
+                            <input class="form-control" type="text" id="name" name="name" aria-labelledby="nameHelpBlock" placeholder="e.g. {{device.__name__}}1" >
+                            <div id="nameHelpBlock" class="form-text">
+                                Name your instrument, avoid names that are defined on the right
+                            </div>
+                        </div>
+                        {% for arg in device.__init__.__annotations__ %}
+                        <div class="input-group mb-3">
+                            <span class="input-group-text" >{{arg}}</span>
+                            <input class="form-control"  type="text" id="{{arg}}" name="{{arg}}"
+                                   placeholder="{{device.__init__.__annotations__[arg].__name__}}"
+                                   value="{{args.parameters[arg].default if not args.parameters[arg].default.__name__ == '_empty' else ''}}">
+                            {% if not device.__init__.__annotations__[arg].__module__ == "builtins" %}
+                            <a role="button" href="/new_controller/{{device.__init__.__annotations__[arg].__name__}}"
+                               class="btn btn-secondary">initialize {{device.__init__.__annotations__[arg].__name__}} first</a>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        <button type="submit" class="btn btn-dark">Connect</button>
                     </div>
                 </form>
-                {% endfor %}
-
-                </div>
-
-
-                <div class="col-5">
-                    {% if device %}
-                        <form role="form" method='POST' name="init" action='/new_controller/{{instrument}}'>
-                            <div class="form-group">
-                                <label>Name this device</label>
-                                <input type="text" id="name" name="name" placeholder="e.g. {{device.__name__}}1" >
-                                <br>
-
-                                {% for arg in device.__init__.__annotations__ %}
-                                    <label>{{arg}}</label>
-                                    <input type="text" id="{{arg}}" name="{{arg}}"
-                                        placeholder="{{device.__init__.__annotations__[arg].__name__}}"
-                                        value="{{args.parameters[arg].default if not args.parameters[arg].default.__name__ == '_empty' else ''}}">
-                                    {% if not device.__init__.__annotations__[arg].__module__ == "builtins" %}
-                                        <button type="submit" name="api" value="{{device.__init__.__annotations__[arg].__name__}}" formaction='/new_controller'
-                                                class="btn btn-dark">initialize {{device.__init__.__annotations__[arg].__name__}} first</button>
-                                    {% endif %}
-                                    <br>
-                                {% endfor %}
-                                <button type="submit" class="btn btn-dark">Connect</button>
-                            </div>
-                        </form>
-
-
-                    {% endif %}
-                </div>
-                <div class="col-3">
-                    <div class="card">
-                        <div class="card-body">
-                            Defined Instruments Names:<br>
+                {% endif %}
+            </div>
+            <div class="col-3">
+                <h5>Defined Instruments</h5>
+                <hr>
+                <div class="card card-body bg-white rounded shadow-sm">
+                    <div  class="card-text">
+                        <ul>
                             {% for instrument in defined_variables %}
-                                {{instrument}}<br>
+                            <li>{{instrument}}</li>
                             {% endfor %}
-                        </div>
+                        </ul>
+<!--                           <ul class="list-group">-->
+<!--                               {% for instrument in defined_variables %}-->
+<!--                               <li class="list-group-item">{{instrument}}</li>-->
+<!--                               {% endfor %}-->
+<!--                           </ul>-->
                     </div>
-
-
                 </div>
             </div>
         </div>
     </div>
 
-{% endblock %}
 
-</html>
+
+
+{% endblock %}

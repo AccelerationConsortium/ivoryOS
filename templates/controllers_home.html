@@ -3,17 +3,18 @@
 
 
 {% block body %}
+
+
 <div class= "container">
     <h2>{{deck}} Controllers</h2>
-    <div class="card-group">
+    <div class="row">
+
         {% for instrument in defined_variables %}
-        <div class="card mb-3" style="min-width: 15rem;max-width: 25rem;">
-            <div class="card card-body">
-                <form role="form" method='GET' name="{{instrument}}" action='/controllers/{{instrument}}'>
-                    <div class="form-group">
-                        <button type="submit" class="btn btn-dark" name="action" value="{{instrument}}">{{instrument}}</button>
-                    </div>
-                </form>
+        <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
+            <div class="bg-white rounded shadow-sm position-relative">
+                <div class="p-4" >
+                    <h5> <a href="/controllers/{{instrument}}" class="text-dark stretched-link">{{instrument}}</a></h5>
+                </div>
             </div>
         </div>
         {% endfor %}
@@ -21,36 +22,9 @@
 <!-    import deck or API using filepath-->
     <div class= "container">
         {% if deck == "Deck" and not defined_variables %}
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card card-body">
-                    <h5 class="card-title">Import using file path</h5>
-                    <div>
-                        <form method="POST" action="/import_deck" enctype="multipart/form-data">
-                            <div class="input-group">
-                                <label class="input-group-text" for="filepath">Deck File Path:</label>
-                                <input type="text" class="form-control" name="filepath" id="filepath" required="required">
-                                <input class="btn btn-secondary" type="submit">
-                            </div>
-                        </form>
-                    </div>
-                <hr>
-                    <h5 class="card-title">Import from connection history</h5>
-                    <div>
-                        <ul class="list-group">
-                            {% for connection in history %}
-                                <form method="POST" action="/import_deck" enctype="multipart/form-data">
-                                    <div class="form-group">
-                                        <button class="list-group-item list-group-item-action" type="submit" name="filepath" id="filepath" value="{{connection}}">{{connection}}</button>
-                                    </div>
-                                </form>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+<!--        <div class="bg-white rounded shadow-sm">-->
+            <p>No available constrollers? Try <a data-bs-toggle="modal" href="#importModal">import deck file</a></p>
+<!--        </div>-->
         {% elif deck == "" %}
         <p>No available constrollers? Try
             <a href="{{ url_for('new_controller') }}">create a new connection</a>

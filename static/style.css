@@ -58,3 +58,8 @@ label {
     border-top: cadetblue;
     border-bottom: none;
 }
+
+.bottom-button {
+    position: absolute;
+    bottom: 20px;
+}

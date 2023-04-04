@@ -5,36 +5,12 @@
 
 <div class= "container">
 {% if defined_variables|length == 0 %}
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card card-body">
-                <h5 class="card-title">Import using file path</h5>
-                <div>
-                    <form method="POST" action="/import_deck" enctype="multipart/form-data">
-                        <div class="input-group">
-                            <label class="input-group-text" for="filepath">Deck File Path:</label>
-                            <input type="text" class="form-control" name="filepath" id="filepath" required="required">
-                            <input class="btn btn-secondary" type="submit">
-                        </div>
-                    </form>
-                </div>
-            <hr>
-                <h5 class="card-title">Import from connection history</h5>
-                <div>
-                    <ul class="list-group">
-                        {% for connection in history %}
-                            <form method="POST" action="/import_deck" enctype="multipart/form-data">
-                                <div class="form-group">
-                                    <button class="list-group-item list-group-item-action" type="submit" name="filepath" id="filepath" value="{{connection}}">{{connection}}</button>
-                                </div>
-                            </form>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-        </div>
-    <hr>
-    </div>
+    <script type="text/javascript">
+        window.onload = function () {
+        OpenBootstrapPopup();
+    };
+
+    </script>
 {% endif %}
 
     <div class="row">
@@ -219,88 +195,7 @@
                     </ul>
                 </div>
             </h5>
-            <div class="modal fade" id="newScriptModal" tabindex="-1" aria-labelledby="newScriptModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="newScriptModalLabel">Save your current editing!</h1>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            The current editing won't be saved. Are you sure you want to proceed?
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Continue editing </button>
-                            <a role="button" class="btn btn-primary" href="{{url_for('clear')}}"> Already saved, clear all </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal fade" id="saveasModal" tabindex="-1" aria-labelledby="saveasModal" aria-hidden="true" >
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="saveasModal">Save your script as </h1>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form method="POST" name="run_name" action="{{ url_for('save_as') }}">
-                            <div class="modal-body">
-                                <div class="input-group mb-3">
-                                    <label class="input-group-text" for="run_name">Run Name</label>
-                                    <input class="form-control" type="text" name="run_name" id="run_name" placeholder="{{script['name']}}" required="required">
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Close </button>
-                                <button type="submit"  class="btn btn-primary"> Save </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            <div class="modal fade" id="renameModal" tabindex="-1" aria-labelledby="renameModal" aria-hidden="true" >
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="renameModal">Rename your script</h1>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form method="POST" name="run_name" action="{{ url_for('edit_run_name') }}">
-                            <div class="modal-body">
-                                <div class="input-group mb-3">
-                                    <label class="input-group-text" for="run_name">Run Name</label>
-                                    <input class="form-control" type="text" name="run_name" id="run_name" placeholder="{{script['name']}}" required="required">
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Close </button>
-                                <button type="submit"  class="btn btn-primary"> Save </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            <div class="modal fade" id="jsonModal" tabindex="-1" aria-labelledby="jsonModal" aria-hidden="true" >
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="jsonModal">Import from JSON</h1>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form method="POST" action="/load_json" enctype="multipart/form-data">
-                            <div class="modal-body">
-                                <div class="input-group mb-3">
-                                    <input class="form-control" type="file" name="file" required="required">
-                                </div>
-                            </div>
-                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Close </button>
-                                <button type="submit" class="btn btn-primary"> Upload </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
+
             <table class="table script-table">
                 <tbody>
                     <tr>
@@ -403,4 +298,87 @@
 
 
 
+
+<div class="modal fade" id="newScriptModal" tabindex="-1" aria-labelledby="newScriptModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="newScriptModalLabel">Save your current editing!</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                The current editing won't be saved. Are you sure you want to proceed?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Continue editing </button>
+                <a role="button" class="btn btn-primary" href="{{url_for('clear')}}"> Already saved, clear all </a>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="saveasModal" tabindex="-1" aria-labelledby="saveasModal" aria-hidden="true" >
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="saveasModal">Save your script as </h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" name="run_name" action="{{ url_for('save_as') }}">
+                <div class="modal-body">
+                    <div class="input-group mb-3">
+                        <label class="input-group-text" for="run_name">Run Name</label>
+                        <input class="form-control" type="text" name="run_name" id="run_name" placeholder="{{script['name']}}" required="required">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Close </button>
+                    <button type="submit"  class="btn btn-primary"> Save </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="renameModal" tabindex="-1" aria-labelledby="renameModal" aria-hidden="true" >
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="renameModal">Rename your script</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" name="run_name" action="{{ url_for('edit_run_name') }}">
+                <div class="modal-body">
+                    <div class="input-group mb-3">
+                        <label class="input-group-text" for="run_name">Run Name</label>
+                        <input class="form-control" type="text" name="run_name" id="run_name" placeholder="{{script['name']}}" required="required">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Close </button>
+                    <button type="submit"  class="btn btn-primary"> Save </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="jsonModal" tabindex="-1" aria-labelledby="jsonModal" aria-hidden="true" >
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="jsonModal">Import from JSON</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="/load_json" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="input-group mb-3">
+                        <input class="form-control" type="file" name="file" required="required">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Close </button>
+                    <button type="submit" class="btn btn-primary"> Upload </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
