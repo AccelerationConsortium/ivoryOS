@@ -1,5 +1,6 @@
 import inspect
 import importlib.util
+import pickle
 
 stypes = ['prep', 'script', 'cleanup']
 
@@ -27,6 +28,11 @@ def import_history():
         pass
     connections = [i for i in connections if not i == '']
     return connections
+
+
+def available_pseudo_deck():
+    import os
+    return os.listdir('./static/pseudo_deck')
 
 
 def new_script(deck):
@@ -65,7 +71,8 @@ def parse_functions(class_object=None, call=True):
 
             # handle getter setters
             if callable(att):
-                functions[function] = inspect.signature(att)
+                if is_compatible(att):
+                    functions[function] = inspect.signature(att)
             else:
                 try:
                     att = getattr(class_object.__class__, function)
@@ -77,6 +84,17 @@ def parse_functions(class_object=None, call=True):
         #     functions[function] = function
     return functions
 
+
+def is_compatible(att):
+    try:
+        obj = inspect.signature(att)
+        try:
+            pickle.dumps(obj)
+        except Exception:
+            return False
+    except ValueError:
+        return False
+    return True
 
 def config(script_dict):
     """
@@ -98,6 +116,7 @@ def config(script_dict):
                         configure.append(args[arg][1:])
     return configure
 
+
 def config_return(script_dict):
     """
     take the global script_dict
@@ -109,6 +128,7 @@ def config_return(script_dict):
         output_str += "'" + i + "':" + i + ","
     output_str += "}"
     return output_str, return_list
+
 
 def convert_type(args, parameters, configure=[]):
     bool_dict = {"True": True, "False": False}
@@ -130,6 +150,12 @@ def convert_type(args, parameters, configure=[]):
                 if p[arg].annotation is not inspect._empty:
                     if not type(args[arg]) == p[arg].annotation:
                         args[arg] = p[arg].annotation(args[arg])
+                else:
+                    #todo
+                    try:
+                        args[arg] = eval(args[arg])
+                    except Exception:
+                        pass
             elif type(parameters) is dict:
                 if parameters[arg] is not None:
                     if not type(args[arg]) == parameters[arg]:

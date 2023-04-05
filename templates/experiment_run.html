@@ -4,7 +4,11 @@
 
 {% block body %}
     <div class= "container">
-
+{% if prompt and not dismiss%}
+    <script type="text/javascript">
+        window.onload = function () {OpenBootstrapPopup();};
+    </script>
+{% endif %}
         <div class="row">
             <div class="col-md-6" >
                 <h5>Script

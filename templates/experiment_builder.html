@@ -4,20 +4,30 @@
 {% block body %}
 
 <div class= "container">
-{% if defined_variables|length == 0 %}
-    <script type="text/javascript">
-        window.onload = function () {
-        OpenBootstrapPopup();
-    };
-
-    </script>
-{% endif %}
+{#{% if defined_variables|length == 0 and not dismiss%}#}
+{#    <script type="text/javascript">#}
+{#        window.onload = function () {OpenBootstrapPopup();};#}
+{#    </script>#}
+{#{% endif %}#}
 
     <div class="row">
 
         <div class="col-md-3" style="height: 100%; overflow: scroll;">
             <h5>Instruments</h5>
             <hr>
+            {% if defined_variables|length == 0 %}
+                <form method="POST" action="/import_pseudo" enctype="multipart/form-data">
+                    <div class="input-group mb-3">
+                        <span for="pkl_name" class="input-group-text">Choose deck:</span>
+                        <select class="form-select" name="pkl_name" id="pkl_name">
+                            {% for connection in history %}
+                                <option style="overflow-wrap: break-word;" name="pkl_name" id="pkl_name" value="{{connection}}">{{connection.split('.')[0]}}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit"  class="btn btn-primary"> Save </button>
+                    </div>
+                </form>
+            {% endif %}
             <div class="accordion accordion-flush">
                 <div class="accordion-item">
                     <h5 class="accordion-header">
@@ -149,7 +159,8 @@
                                                             <label class="btn btn-default" for="False">False</label>
                                                         </div>
                                                     {% else %}
-                                                        <input class="form-control" type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{functions[function].parameters[parameter].annotation.__name__}}"
+                                                        <input class="form-control" type="text" id="{{parameter}}" name="{{parameter}}"
+                                                               placeholder="{{functions[function].parameters[parameter].annotation.__name__ if not functions[function].parameters[parameter].default.__name__ == '_empty' else ''}}"
                                                                value="{{'' if functions[function].parameters[parameter].default.__name__ == '_empty' or functions[function].parameters[parameter].default == None else functions[function].parameters[parameter].default}}"
                                                                 {{"required" if functions[function].parameters[parameter].default.__name__ == '_empty' else ''}}>
                                                     {% endif %}
