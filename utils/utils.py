@@ -67,19 +67,19 @@ def parse_functions(class_object=None, call=True):
     for function in dir(class_object):
         if not function.startswith("_") and not function.isupper():
             # if call:
-            att = getattr(class_object, function)
+            try:
+                att = getattr(class_object, function)
 
             # handle getter setters
-            if callable(att):
-                if is_compatible(att):
-                    functions[function] = inspect.signature(att)
-            else:
-                try:
+                if callable(att):
+                    if is_compatible(att):
+                        functions[function] = inspect.signature(att)
+                else:
                     att = getattr(class_object.__class__, function)
                     if isinstance(att, property) and att.fset is not None:
                         functions[function] = att.fset.__annotations__
-                except AttributeError:
-                    pass
+            except AttributeError:
+                pass
         # else:
         #     functions[function] = function
     return functions
