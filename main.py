@@ -163,6 +163,8 @@ def experiment_run(filename=None):
             if filename is not None and not filename == 'None':
                 df = csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename)))
                 for i in df:
+                    # todo
+                    # arg = convert_type(i,)
                     output = eval(run_name + "_script(**" + str(i) + ")")
                     output_list.append(output)
             if not repeat == '' and repeat is not None:
@@ -468,7 +470,8 @@ def build_run_block():
                 exec_string += indent(indent_unit) + return_str
             try:
                 exec(exec_string)
-            except Exception:
+            except Exception as e:
+                # flash(e.__str__())
                 flash("Please check syntax!!")
                 return redirect(url_for("experiment_builder"))
             s.write(exec_string)
@@ -622,6 +625,7 @@ def find_instrument_by_name(name: str):
 
 
 def parse_deck(deck, save=None):
+    global pseudo_deck
     parse_dict = {}
     if "gui_functions" in set(dir(deck)):
         deck_variables = ["deck." + var for var in deck.gui_functions]
@@ -634,6 +638,7 @@ def parse_deck(deck, save=None):
         functions = parse_functions(instrument)
         parse_dict[var] = functions
     if deck is not None and save:
+        # pseudo_deck = parse_dict
         with open("static/pseudo_deck/" + deck.__name__ + ".pkl", 'wb') as file:
             pickle.dump(parse_dict, file)
 
