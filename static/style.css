@@ -10,7 +10,18 @@
     margin-left:10px;
 }
 
+.canvas {
+    height: 70vh;
+    overflow: hidden;
+    overflow-y: scroll;
+    background: beige;
+    background-size: 20px 20px;
+    background-image: radial-gradient(circle, cadetblue 1px, rgba(0, 0, 0, 0) 1px);
+}
 
+.canvas content{
+    margin-top: 10px;
+}
 body {
   padding-top: 100px;
 }
@@ -20,8 +31,10 @@ body {
 pre {
   tab-size: 4;
 }
-.row-height{
+.scroll-column{
   height: 90vh;
+    overflow: hidden;
+  overflow-y: scroll;
 }
 
 label {
@@ -38,17 +51,24 @@ label {
     bottom: 0;
 }
 
-.dropdown {
-  display: inline-block;
-}
+/*.dropdown {*/
+/*  !*display: inline-block;*!*/
+/*    padding: 0;*/
+/*}*/
+
+
 /*Remove the scrollbar from Chrome, Safari, Edge and IE*/
 ::-webkit-scrollbar {
-    width: 0px;
+
     background: transparent;
 }
 
 * {
   -ms-overflow-style: none !important;
+}
+.script-table{
+    background: white;
+    width: fit-content;
 }
 .script-table td {
     border-bottom: none;
@@ -62,4 +82,11 @@ label {
 .bottom-button {
     position: absolute;
     bottom: 20px;
+}
+
+hr.vertical {
+    width: 5px;
+    height: 100%;
+    display: inline-block;
+  /* or height in PX */
 }

@@ -26,7 +26,7 @@ test15 = MyTest(inner_test1)
 test16 = MyTest(inner_test1)
 test17= MyTest(inner_test1)
 test18 = MyTest(inner_test1)
-gui_functions = ['inner_test1', 'test1', 'test2']
+# gui_functions = ['inner_test1', 'test1', 'test2']
 
 
 def new_function_test():

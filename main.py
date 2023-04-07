@@ -172,16 +172,17 @@ def experiment_run(filename=None):
                     output = eval(run_name + "_script()")
                     output_list.append(output)
             exec(run_name + "_cleanup()")
-            print(output_list)
-            with open("results/" + run_name + "_data.csv", "w", newline='') as file:
-                writer = csv.DictWriter(file, fieldnames=return_list)
-                writer.writeheader()
-                writer.writerows(output_list)
+            if len(return_list) > 0:
+                with open("results/" + run_name + "_data.csv", "w", newline='') as file:
+                    writer = csv.DictWriter(file, fieldnames=return_list)
+                    writer.writeheader()
+                    writer.writerows(output_list)
             flash("Run finished")
         except Exception as e:
             flash(e)
     return render_template('experiment_run.html', script=script_dict, filename=filename, dot_py=script_py,
-                           return_list=return_list, history=import_history(), prompt=prompt, dismiss=dismiss)
+                           # return_list=return_list,
+                           history=import_history(), prompt=prompt, dismiss=dismiss)
 
 
 @app.route("/my_deck")
@@ -259,13 +260,14 @@ def controllers(instrument):
 # -----------------------handle action editing--------------------------------------------
 @app.route("/delete/<id>")
 def delete_action(id):
+    back = request.referrer
     for action in script_dict[script_type]:
         if action['id'] == int(id):
             script_dict[script_type].remove(action)
     for i in order[script_type]:
         if int(i) == int(id):
             order[script_type].remove(i)
-    return redirect(url_for('experiment_builder'))
+    return redirect(back)
 
 
 # TODO
@@ -301,9 +303,6 @@ def delete_workflow(workflow_name):
 def publish():
     # cursor = con.cursor()
     global script_dict
-    if script_dict['name'] == '':
-        flash("Name cannot be blank")
-        return redirect(url_for("experiment_builder"))
     row = cursor.execute(f"SELECT * FROM workflow WHERE name = '{script_dict['name']}'").fetchone()
     if row is not None and row["status"] == "finalized":
         flash("This is a finalized script, edit name to create a new entry")
