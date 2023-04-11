@@ -1,10 +1,66 @@
 {% extends 'base.html' %}
-{% block title %}Welcome{% endblock %}
+{% block title %}HEIN LAB | Welcome{% endblock %}
 
 
 {% block body %}
 <div class= "container">
-    <h1>Welcome</h1>
+    <h1 style="align-self: center">Welcome</h1>
+    <div class="p-4" >
+    <div class="row">
+
+        <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
+            <div class="rounded shadow-sm position-relative flex-fill">
+                <div class="p-4" >
+                    <a style="text-decoration: none" class="h5 text-dark stretched-link" href="{{ url_for('load_from_database') }}">Browse workflows</a>
+                    <p>Browse all workflow scripts saved in the database</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
+            <div class="rounded shadow-sm position-relative flex-fill">
+                <div class="p-4" >
+                    <a style="text-decoration: none" class="h5 text-dark stretched-link" href="{{ url_for('experiment_builder') }}">Edit workflow</a>
+                    <p>Compile your script and execute workflow</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <br>
+    <br><br>
+    <h5>Only available on lab computer</h5>
+    <hr>
+    <div class="row">
+
+        <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
+            <div class="rounded shadow-sm position-relative flex-fill">
+                <div class="p-4" >
+                    <a style="text-decoration: none" class="h5 text-dark stretched-link" href="{{ url_for('experiment_run') }}">Run experiment</a>
+                    <p>Compile and execute workflow</p>
+                </div>
+            </div>
+        </div>
+
+
+
+        <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
+            <div class="rounded shadow-sm position-relative flex-fill">
+                <div class="p-4" >
+                    <a style="text-decoration: none" class="h5 text-dark stretched-link"  href="{{ url_for('deck_controllers') }}">Deck instruments</a>
+                    <p>Browse and control deck instruments</p>
+                </div>
+            </div>
+        </div>
+        <br>
+        <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
+            <div class="rounded shadow-sm position-relative flex-fill">
+                <div class="p-4" >
+                    <a style="text-decoration: none" class="h5 text-dark stretched-link"  href="{{ url_for('controllers_home') }}">Individual instruments </a>
+                    <p>Browse, connect and control individual instrument. For simple configurations and testing purpose.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 {% endblock %}

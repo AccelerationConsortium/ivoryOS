@@ -83,7 +83,7 @@ def experiment_builder(instrument=None):
     deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
     functions = []
     if pseudo_deck is None:
-        flash("Choose available deck below. Import deck if there is no deck information")
+        flash("Choose available deck below.")
         # flash(f"Make sure to import {script_dict['deck'] if script_dict['deck'] else 'deck'} for this script")
     if instrument:
         # inst_object = find_instrument_by_name(instrument)
@@ -152,8 +152,8 @@ def experiment_run(filename=None):
     sort_actions(script_dict, order)
     if deck is None:
         prompt = True
-    elif not script_dict['deck'] == deck.__name__:
-        flash("This script is not compatible with current deck, import deck name with ", script_dict['deck'])
+    elif not script_dict['deck'] == '' and not script_dict['deck'] == deck.__name__:
+        flash("This script is not compatible with current deck, import ", script_dict['deck'])
     if request.method == "POST":
         repeat = request.form.get('repeat')
         output_list = []
@@ -559,6 +559,8 @@ def import_pseudo():
             pseudo_deck = pickle.load(f)
         if script_dict['deck'] == "" or script_dict['deck'] is None:
             script_dict['deck'] = pkl_name.split('.')[0]
+        elif not script_dict['deck'] == "" and not script_dict['deck'] == pkl_name.split('.')[0]:
+            flash(f"Choose the deck with name {pkl_name.split('.')[0]}")
     # file path error exception
     except Exception as e:
         flash(e.__str__())

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Script Editor{% endblock %}
+{% block title %}HEIN LAB | Workflow Builder{% endblock %}
 
 {% block body %}
 
@@ -9,13 +9,15 @@
 {#            <h5>Instruments</h5>#}
             <form method="POST" action="/import_pseudo" enctype="multipart/form-data">
                 <div class="input-group mb-3">
-                    <span for="pkl_name" class="input-group-text">Choose deck:</span>
+{#                <div class="form-floating">#}
+{#                    <label for="pkl_name" class="form-label">Choose/Change deck:</label>#}
                     <select class="form-select" name="pkl_name" id="pkl_name">
                         {% for connection in history %}
                             <option style="overflow-wrap: break-word;" name="pkl_name" id="pkl_name" value="{{connection}}">{{connection.split('.')[0]}}</option>
+                            {{ 'selected' if connection.split('.')[0]==script['deck'] else '' }}
                         {% endfor %}
                     </select>
-                    <button type="submit"  class="btn btn-primary"> Save </button>
+                    <button type="submit"  class="btn btn-primary"> Submit </button>
                 </div>
             </form>
             <hr>
@@ -200,6 +202,30 @@
                             <a  class="dropdown-item" role="button" type="button" href="/download/script">Export (.json <i class="bi bi-filetype-json"></i>)</a>
                         </ul>
                     </li>
+{#                    <li class="nav-item dropdown">#}
+{#                        <a class="nav-link dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">File tools <i class="bi bi-tools"></i></a>#}
+{#                        <ul class="dropdown-menu">#}
+{#                            <li style="display: inline-block">Deck Name: {{script['deck']}}</li>#}
+{#                            <li style="display: inline-block">Script Name: {{ script['name'] }}</li>#}
+{#                            <li style="display: inline-block">Editing status <a role="button" data-bs-toggle="popover" data-bs-title="How to use:" data-bs-content="You can choose to disable editing, so the script is finalized and cannot be edited. Use save as to rename the script"><i class="bi bi-info-circle"></i></a>#}
+{#                                {{script['status']}}</li>#}
+{#                            <li style="display: inline-block">Output Values <a role="button" data-bs-toggle="popover" data-bs-title="How to use:" data-bs-content="This will be your output data. If the return data is not a value, it will save as None is the result file"><i class="bi bi-info-circle"></i></a>#}
+{##}
+{#                                    {% for i in return_list %}#}
+{#                                        <input type="checkbox">{{i}}#}
+{#                                    {% endfor %}#}
+{##}
+{#                            </li>#}
+{#                            <li style="display: inline-block">Config Variables <a role="button" data-bs-toggle="popover" data-bs-title="How to use:" data-bs-content="This shows variables you want to configure later using .csv file"><i class="bi bi-info-circle"></i></a>#}
+{##}
+{#                                    <ul>#}
+{#                                        {% for i in config %}#}
+{#                                            <li>{{i}}</li>#}
+{#                                        {% endfor %}#}
+{#                                    </ul>#}
+{##}
+{#                            </li>#}
+{#                        </ul>#}
                     <li class="nav-item"><a class="nav-link" aria-current="page" data-bs-toggle="collapse" href="#info">Info</a></li>
                     <li class="nav-item"><a class="{{'nav-link active' if script_type=='prep' else 'nav-link'}}" aria-current="page" href="/toggle_script_type/prep">Prep</a></li>
                     <li class="nav-item"><a class="{{'nav-link active' if script_type=='script' else 'nav-link'}}" aria-current="page" href="/toggle_script_type/script">Experiment</a></li>
