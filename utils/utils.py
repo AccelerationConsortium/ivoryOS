@@ -35,18 +35,19 @@ def available_pseudo_deck():
     return os.listdir('./static/pseudo_deck')
 
 
-def new_script(deck):
+def new_script(deck_name):
     """
     script dictionary structure
     :param deck:
     :return:
     """
     script_dict = {'name': '',
-                   'deck': deck.__name__ if deck else '',
+                   'deck': deck_name,
                    'status': 'editing',
                    'prep': [],
                    'script': [],
                    'cleanup': [],
+
                    }
     order = {'prep': [],
              'script': [],

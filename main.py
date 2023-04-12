@@ -37,7 +37,7 @@ cursor.execute("""create table IF NOT EXISTS workflow (name TEXT PRIMARY KEY NOT
 
 script_type = 'script'  # set default type to be 'script'
 # stypes = ['prep', 'script', 'cleanup']
-script_dict, order = new_script(deck)
+script_dict, order = new_script(deck.__name__ if deck else '')
 dismiss = None
 libs = set(dir())
 
@@ -302,16 +302,19 @@ def delete_workflow(workflow_name):
 @app.route("/publish")
 def publish():
     # cursor = con.cursor()
-    global script_dict
+    global script_dict, order
+    sort_actions(script_dict, order)
+    if script_dict['name'] == "" or script_dict['deck'] == "":
+        flash("Deck cannot be empty, try to re-submit deck configuration on the left panel")
     row = cursor.execute(f"SELECT * FROM workflow WHERE name = '{script_dict['name']}'").fetchone()
     if row is not None and row["status"] == "finalized":
         flash("This is a finalized script, edit name to create a new entry")
-        return redirect(url_for('experiment_builder'))
     else:
         cursor.execute("""INSERT OR REPLACE INTO workflow(name, deck, status, script, prep, cleanup)
                                     VALUES (:name,:deck, :status,:script, :prep, :cleanup);""", script_dict)
         con.commit()
-    return redirect(url_for('load_from_database'))
+        flash("Saved!")
+    return redirect(url_for('experiment_builder'))
 
 
 @app.route("/finalize")
@@ -486,7 +489,13 @@ def build_run_block():
 @app.route("/clear")
 def clear():
     global script_dict, order
-    script_dict, order = new_script(deck)
+    if deck:
+        deck_name = deck.__name__
+    elif pseudo_deck:
+        deck_name = pseudo_deck["deck_name"]
+    else:
+        deck_name = ''
+    script_dict, order = new_script(deck_name)
     return redirect(url_for("experiment_builder"))
 
 
@@ -560,7 +569,7 @@ def import_pseudo():
         if script_dict['deck'] == "" or script_dict['deck'] is None:
             script_dict['deck'] = pkl_name.split('.')[0]
         elif not script_dict['deck'] == "" and not script_dict['deck'] == pkl_name.split('.')[0]:
-            flash(f"Choose the deck with name {pkl_name.split('.')[0]}")
+            flash(f"Choose the deck with name {script_dict['deck']}")
     # file path error exception
     except Exception as e:
         flash(e.__str__())
@@ -638,6 +647,7 @@ def parse_deck(deck, save=None):
         instrument = eval(var)
         functions = parse_functions(instrument)
         parse_dict[var] = functions
+    parse_dict["deck_name"] = deck.__name__
     if deck is not None and save:
         # pseudo_deck = parse_dict
         with open("static/pseudo_deck/" + deck.__name__ + ".pkl", 'wb') as file:

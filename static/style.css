@@ -90,3 +90,6 @@ hr.vertical {
     display: inline-block;
   /* or height in PX */
 }
+.list-group a {
+    text-align: left;
+}

@@ -12,9 +12,10 @@
 {#                <div class="form-floating">#}
 {#                    <label for="pkl_name" class="form-label">Choose/Change deck:</label>#}
                     <select class="form-select" name="pkl_name" id="pkl_name">
+
                         {% for connection in history %}
                             <option style="overflow-wrap: break-word;" name="pkl_name" id="pkl_name" value="{{connection}}">{{connection.split('.')[0]}}</option>
-                            {{ 'selected' if connection.split('.')[0]==script['deck'] else '' }}
+{#                            {{ 'selected' if connection.split('.')[0]==script['deck'] else '' }}#}
                         {% endfor %}
                     </select>
                     <button type="submit"  class="btn btn-primary"> Submit </button>
@@ -28,7 +29,10 @@
                     {% if edit_action %}
                         {{edit_action}}
                     {% endif %}
-                    <h6>{{ instrument }}</h6>
+                    <div class="rounded shadow-sm flex-fill" style="height: 30px;background-color: aliceblue">
+{#                        background-color: aliceblue;#}
+                        <h6  style=" text-align: center; ">{{ instrument }}</h6>
+                    </div>
                     {% if instrument == 'if' or instrument == 'while' or instrument == 'variable' %}
                         <form role="form" method='POST' name="{{instrument}}" action="/experiment/build/{{instrument}}" >
                             <div class="form-group">
@@ -268,9 +272,9 @@
                     <ul class="reorder">
                         {% for s in script[script_type] %}
                             <li id="{{s['id']}}" style="list-style-type: none;">
-<!--                                class="{{'unsortable' if s['instrument'] == 'if' or s['instrument'] == 'while' else ''}}"-->
-<!--                                href="/edit/{{s['id']}}" -->
-                                {{s['id']}}:
+{#                                class="{{'unsortable' if s['instrument'] == 'if' or s['instrument'] == 'while' else ''}}"#}
+{#                                href="/edit/{{s['id']}}" #}
+{#                                {{s['id']}}:#}
                                 {% if s['instrument'] == 'if' %}
                                     <a type="button" class="btn btn-light" style="background-color: tomato">{{s['action']}} {% if s['args'] %}({{s['args']}}) {% endif %}</a>
                                 {% elif s['instrument'] == 'while' %}
