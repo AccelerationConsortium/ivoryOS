@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Test{% endblock %}
+
+
+{% block body %}
+<div class= "container">
+    <form role="form" method='POST' action='/generate_grid'>
+        <div class="input-group mb-3">
+            <label class="input-group-text" for="row">Row </label>
+            <input class="form-control" type="number" id="row" name="row" min="1" max="26">
+        </div>
+        <div class="input-group mb-3">
+            <label class="input-group-text" for="col">Col </label>
+            <input class="form-control" type="number" id="col" name="col" min="1" max="30">
+        </div>
+        <div class="input-group mb-3">
+            <button class="form-control" type="submit" class="btn btn-dark">Create</button>
+        </div>
+    </form>
+
+
+    <div>
+        {% if grid %}
+            <form role="form" method='POST' action='/vial'>
+            {% for row in grid %}
+                {% for col in row %}
+{#                    <button>{{ col }}</button>#}
+                    <input type="checkbox" class="btn-check" name="{{ col }}" id="{{ col }}" autocomplete="off" value="{{ col }}">
+                    <label class="btn btn-outline-primary" for="{{ col }}">{{ col }}</label>
+                {% endfor %}
+                <br>
+            {% endfor %}
+            <button class="form-control" type="submit" class="btn btn-dark">Create</button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

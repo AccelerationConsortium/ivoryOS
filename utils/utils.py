@@ -230,3 +230,23 @@ def logic_dict(key: str, current_len, args, var_name=None):
     }
     return logic_dict[key]
 
+# def make_grid(row:int=1,col:int=1):
+#     """
+#     return the tray index str list by defining the size
+#     :param row: 1 to 26
+#     :param col:
+#     :return: return the tray index
+#     """
+#     letter_list = [chr(i) for i in range(65, 90)]
+#     return [i + str(j + 1) for i in letter_list[:col] for j in range(row)]
+
+
+def make_grid(row:int=1,col:int=1):
+    """
+    return the tray index str list by defining the size
+    :param row: 1 to 26
+    :param col:
+    :return: return the tray index
+    """
+    letter_list = [chr(i) for i in range(65, 90)]
+    return [[i + str(j + 1) for j in range(row)] for i in letter_list[:col]]

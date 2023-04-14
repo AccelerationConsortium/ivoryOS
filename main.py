@@ -571,6 +571,27 @@ def import_pseudo():
     return redirect(url_for("experiment_builder"))
 
 
+@app.route('/generate_grid', methods=['get', 'POST'])
+def generate_grid():
+    grid = None
+    if request.method == "POST":
+
+        col = request.form.get('col')
+        row = request.form.get('row')
+        grid = make_grid( int(col),int(row),)
+
+    return render_template("grid.html", grid=grid)
+
+
+@app.route('/vial', methods=['POST'])
+def vial():
+    if request.method == "POST":
+
+        vials = request.form.to_dict()
+        flash(list(vials.keys()))
+    return redirect(url_for("generate_grid"))
+
+
 @app.route('/uploads', methods=['GET', 'POST'])
 def upload():
     """
