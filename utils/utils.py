@@ -1,7 +1,10 @@
 import inspect
 import importlib.util
 import pickle
-
+import datetime
+import traceback
+import logging
+from flask import flash
 stypes = ['prep', 'script', 'cleanup']
 
 
@@ -41,13 +44,17 @@ def new_script(deck_name):
     :param deck:
     :return:
     """
+    # .strftime("%Y-%m-%d %H:%M:%S")
+    current_time = datetime.datetime.now()
     script_dict = {'name': '',
                    'deck': deck_name,
                    'status': 'editing',
                    'prep': [],
                    'script': [],
                    'cleanup': [],
-
+                   # 'time_created': current_time,
+                   # 'time_modified': current_time,
+                   # 'author': '',
                    }
     order = {'prep': [],
              'script': [],
@@ -79,7 +86,7 @@ def parse_functions(class_object=None, call=True):
                     att = getattr(class_object.__class__, function)
                     if isinstance(att, property) and att.fset is not None:
                         functions[function] = att.fset.__annotations__
-            except AttributeError:
+            except Exception:
                 pass
         # else:
         #     functions[function] = function
@@ -149,8 +156,12 @@ def convert_type(args, parameters, configure=[]):
             elif type(parameters) is inspect.Signature:
                 p = parameters.parameters
                 if p[arg].annotation is not inspect._empty:
+                    # todo
                     if not type(args[arg]) == p[arg].annotation:
+                        # try:
                         args[arg] = p[arg].annotation(args[arg])
+                        # except Exception as e:
+                        #     flash(e)
                 else:
                     #todo
                     try:
@@ -166,7 +177,7 @@ def convert_type(args, parameters, configure=[]):
 
 def sort_actions(script_dict, order, script_type=None):
     """
-    sort all three types if script_type is None
+    sort all three types if script_type is None, otherwise sort the specified script type
     :return:
     """
     if script_type:
@@ -189,3 +200,33 @@ def sort(script_dict, order, script_type):
             new_order = list(range(1, len(script_dict[script_type]) + 1))
             order[script_type] = [str(i) for i in new_order]
         script_dict[script_type].sort(key=lambda x: x['id'])
+
+
+def logic_dict(key: str, current_len, args, var_name=None):
+    """
+
+    :param key:
+    :param current_len:
+    :param args:
+    :param var_name:
+    :return:
+    """
+    logic_dict = {
+        "if":
+            [
+                {"id": current_len + 1, "instrument": 'if', "action": 'if', "args": args, "return": ''},
+                {"id": current_len + 2, "instrument": 'if', "action": 'else', "args": '', "return": ''},
+                {"id": current_len + 3, "instrument": 'if', "action": 'endif', "args": '', "return": ''},
+            ],
+        "while":
+            [
+                {"id": current_len + 1, "instrument": 'while', "action": 'while', "args": args, "return": ''},
+                {"id": current_len + 2, "instrument": 'while', "action": 'endwhile', "args": '', "return": ''},
+            ],
+        "variable":
+            [
+                {"id": current_len + 1, "instrument": 'variable', "action": var_name, "args": args, "return": ''},
+            ]
+    }
+    return logic_dict[key]
+

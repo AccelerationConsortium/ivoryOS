@@ -8,7 +8,7 @@ import sys
 
 from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, render_template
 from werkzeug.utils import secure_filename
-
+from werkzeug.exceptions import HTTPException
 from utils.utils import *
 
 # import sample_deck as deck
@@ -81,6 +81,7 @@ def experiment_builder(instrument=None):
     deck_list = available_pseudo_deck()
     sort_actions(script_dict, order, script_type)
     deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
+
     functions = []
     if pseudo_deck is None:
         flash("Choose available deck below.")
@@ -96,11 +97,11 @@ def experiment_builder(instrument=None):
             function_name = args.pop('add')
             script_type = args.pop('script_type')
             save_data = args.pop('return') if 'return' in request.form else ''
-            try:
-                args = convert_type(args, functions[function_name])
-            except ValueError as e:
-                flash(e.__str__())
-                return redirect(url_for("experiment_builder", instrument=instrument))
+            # try:
+            args = convert_type(args, functions[function_name])
+            # except Exception:
+                # flash(traceback.format_exc())
+                # return redirect(url_for("experiment_builder", instrument=instrument))
             if type(functions[function_name]) is dict:
                 args = list(args.values())[0]
             action_dict = {"id": current_len + 1, "instrument": instrument, "action": function_name,
@@ -113,25 +114,17 @@ def experiment_builder(instrument=None):
             statement = request.form.get('statement')
             if "if" in request.form:
                 args = 'True' if statement == '' else statement
-                action_list = [
-                    {"id": current_len + 1, "instrument": 'if', "action": 'if', "args": args, "return": ''},
-                    {"id": current_len + 2, "instrument": 'if', "action": 'else', "args": '', "return": ''},
-                    {"id": current_len + 3, "instrument": 'if', "action": 'endif', "args": '', "return": ''},
-                ]
+                action_list = action_list = logic_dict(key="if", current_len=current_len, args=args)
             if "while" in request.form:
                 args = 'False' if statement == '' else statement
-                action_list = [
-                    {"id": current_len + 1, "instrument": 'while', "action": 'while', "args": args, "return": ''},
-                    {"id": current_len + 2, "instrument": 'while', "action": 'endwhile', "args": '', "return": ''},
-                ]
+                action_list = logic_dict(key="while", current_len=current_len, args=args)
             if "variable" in request.form:
                 var_name = request.form.get('variable')
                 args = 'None' if statement == '' else statement
-                action_list = [
-                    {"id": current_len + 1, "instrument": 'variable', "action": var_name, "args": args, "return": ''},
-                ]
+                action_list = logic_dict(key="variable", current_len=current_len, args=args, var_name=var_name)
             order[script_type].extend([str(current_len + i + 1) for i in range(len(action_list))])
             script_dict[script_type].extend(action_list)
+    deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
     return render_template('experiment_builder.html', instrument=instrument, script_type=script_type, history=deck_list,
                            script=script_dict, defined_variables=deck_variables, local_variables=defined_variables,
                            functions=functions, config=config(script_dict),
@@ -308,7 +301,7 @@ def publish():
         flash("Deck cannot be empty, try to re-submit deck configuration on the left panel")
     row = cursor.execute(f"SELECT * FROM workflow WHERE name = '{script_dict['name']}'").fetchone()
     if row is not None and row["status"] == "finalized":
-        flash("This is a finalized script, edit name to create a new entry")
+        flash("This is a protected script, use save as to rename.")
     else:
         cursor.execute("""INSERT OR REPLACE INTO workflow(name, deck, status, script, prep, cleanup)
                                     VALUES (:name,:deck, :status,:script, :prep, :cleanup);""", script_dict)
@@ -537,6 +530,7 @@ def import_deck():
         spec = importlib.util.spec_from_file_location(name, filepath)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
+
         # deck format checking
         count = 0
         for var in set(dir(module)):
@@ -549,6 +543,7 @@ def import_deck():
         globals()["deck"] = module
         save_to_history(filepath)
         parse_deck(deck, save=update)
+
         if script_dict['deck'] == "" or script_dict['deck'] is None:
             script_dict['deck'] = module.__name__
     # file path error exception
@@ -572,7 +567,7 @@ def import_pseudo():
             flash(f"Choose the deck with name {script_dict['deck']}")
     # file path error exception
     except Exception as e:
-        flash(e.__str__())
+        flash(traceback.format_exc())
     return redirect(url_for("experiment_builder"))
 
 
@@ -637,6 +632,8 @@ def find_instrument_by_name(name: str):
 def parse_deck(deck, save=None):
     global pseudo_deck
     parse_dict = {}
+
+    # TODO
     if "gui_functions" in set(dir(deck)):
         deck_variables = ["deck." + var for var in deck.gui_functions]
     else:
@@ -647,9 +644,10 @@ def parse_deck(deck, save=None):
         instrument = eval(var)
         functions = parse_functions(instrument)
         parse_dict[var] = functions
-    parse_dict["deck_name"] = deck.__name__
+
     if deck is not None and save:
         # pseudo_deck = parse_dict
+        parse_dict["deck_name"] = deck.__name__
         with open("static/pseudo_deck/" + deck.__name__ + ".pkl", 'wb') as file:
             pickle.dump(parse_dict, file)
 
