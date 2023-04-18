@@ -21,17 +21,25 @@
 
     <div>
         {% if grid %}
-            <form role="form" method='POST' action='/vial'>
-            {% for row in grid %}
-                {% for col in row %}
-{#                    <button>{{ col }}</button>#}
-                    <input type="checkbox" class="btn-check" name="{{ col }}" id="{{ col }}" autocomplete="off" value="{{ col }}">
-                    <label class="btn btn-outline-primary" for="{{ col }}">{{ col }}</label>
-                {% endfor %}
-                <br>
-            {% endfor %}
-            <button class="form-control" type="submit" class="btn btn-dark">Create</button>
-            </form>
+<!--            <div class="p-4">-->
+                <form role="form" method='POST' action='/vial'>
+                    {% for row in grid %}
+                    <div class="row">
+                        {% for col in row %}
+                        <div class="tray">
+
+                                <input type="checkbox" class="btn btn-check" style="" name="{{ col }}" id="{{ col }}" autocomplete="off" value="{{ col }}">
+                                <label class="btn btn-vial" for="{{ col }}">{{ col }}</label>
+
+<!--                                <button class="circle">{{ col }}</button>-->
+<!--                            <div class="circle"></div>-->
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                    <button class="form-control" type="submit" class="btn btn-dark">Create</button>
+                </form>
+<!--            </div>-->
         {% endif %}
     </div>
 </div>

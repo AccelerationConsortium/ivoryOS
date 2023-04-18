@@ -93,3 +93,27 @@ hr.vertical {
 .list-group a {
     text-align: left;
 }
+
+.tray input[type="checkbox"]:checked + label{
+    background: radial-gradient(circle, white 40%, midnightblue, dodgerblue 43%);
+}
+
+.btn-vial{
+    height: 50px;
+    width: 50px;
+    border-radius: 50%;
+    background: lightgray;
+    margin-right: 10px;
+    margin-top: 10px;
+    /*text-align: center;*/
+
+}
+
+.tray {
+    width: 70px;
+    height: 70px;
+    display: inline-block;
+    background: darkgrey;
+    /*text-align:center;*/
+    vertical-align: middle;
+}
