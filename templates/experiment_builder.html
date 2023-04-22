@@ -198,9 +198,9 @@
                             <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#newScriptModal">New</button>
                             <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#jsonModal">Import (.json <i class="bi bi-filetype-json"></i>)</button>
                             <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#renameModal">Rename</button>
-                            <a role="button" class="dropdown-item {{'disabled' if script['name'] == '' or script['status'] == 'finalized'}}" type="button" href="{{url_for('publish')}}">Save</a></li>
+                            <a role="button" class="dropdown-item {{'disabled' if not script.name or script.status == 'finalized'}}" type="button" href="{{url_for('publish')}}">Save</a></li>
                             <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#saveasModal">Save as</button>
-                            {% if not script['status'] == 'finalized' %}
+                            {% if not script.status == 'finalized' %}
                                 <a role="button" class="dropdown-item" type="button" href="{{url_for('finalize')}}">Disable editing</a>
                             {% endif %}
                             <a  class="dropdown-item" role="button" type="button" href="/download/script">Export (.json <i class="bi bi-filetype-json"></i>)</a>
@@ -231,9 +231,9 @@
 {#                            </li>#}
 {#                        </ul>#}
                     <li class="nav-item"><a class="nav-link" aria-current="page" data-bs-toggle="collapse" href="#info">Info</a></li>
-                    <li class="nav-item"><a class="{{'nav-link active' if script_type=='prep' else 'nav-link'}}" aria-current="page" href="/toggle_script_type/prep">Prep</a></li>
-                    <li class="nav-item"><a class="{{'nav-link active' if script_type=='script' else 'nav-link'}}" aria-current="page" href="/toggle_script_type/script">Experiment</a></li>
-                    <li class="nav-item"><a class="{{'nav-link active' if script_type=='cleanup' else 'nav-link'}}" aria-current="page" href="/toggle_script_type/cleanup">Clean up</a></li>
+                    <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='prep' else 'nav-link'}}" aria-current="page" href="/toggle_script_type/prep">Prep</a></li>
+                    <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='script' else 'nav-link'}}" aria-current="page" href="/toggle_script_type/script">Experiment</a></li>
+                    <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='cleanup' else 'nav-link'}}" aria-current="page" href="/toggle_script_type/cleanup">Clean up</a></li>
                 </ul>
             </div>
 
@@ -241,16 +241,16 @@
                 <div class="collapse" id="info">
                     <table class="table script-table">
                         <tbody>
-                            <tr><th scope="row">Deck Name</th><td>{{script['deck']}}</td></tr>
-                            <tr><th scope="row">Script Name</th><td>{{ script['name'] }}</td></tr>
+                            <tr><th scope="row">Deck Name</th><td>{{script.deck}}</td></tr>
+                            <tr><th scope="row">Script Name</th><td>{{ script.name }}</td></tr>
                             <tr>
                                 <th scope="row">Editing status <a role="button" data-bs-toggle="popover" data-bs-title="How to use:" data-bs-content="You can choose to disable editing, so the script is finalized and cannot be edited. Use save as to rename the script"><i class="bi bi-info-circle"></i></a></th>
-                                <td>{{script['status']}}</td>
+                                <td>{{script.status}}</td>
                             </tr>
                             <tr>
                                 <th scope="row">Output Values <a role="button" data-bs-toggle="popover" data-bs-title="How to use:" data-bs-content="This will be your output data. If the return data is not a value, it will save as None is the result file"><i class="bi bi-info-circle"></i></a></th>
                                 <td>
-                                    {% for i in return_list %}
+                                    {% for i in script.config_return()[1] %}
                                         <input type="checkbox">{{i}}
                                     {% endfor %}
                                 </td>
@@ -259,7 +259,7 @@
                                 <th scope="row">Config Variables <a role="button" data-bs-toggle="popover" data-bs-title="How to use:" data-bs-content="This shows variables you want to configure later using .csv file"><i class="bi bi-info-circle"></i></a></th>
                                 <td>
                                     <ul>
-                                        {% for i in config %}
+                                        {% for i in script.config() %}
                                             <li>{{i}}</li>
                                         {% endfor %}
                                     </ul>
@@ -270,7 +270,7 @@
                 </div>
                 <div class="list-group" id="list" style="margin-top: 20px">
                     <ul class="reorder">
-                        {% for s in script[script_type] %}
+                        {% for s in script.currently_editing_script %}
                             <li id="{{s['id']}}" style="list-style-type: none;">
 {#                                class="{{'unsortable' if s['instrument'] == 'if' or s['instrument'] == 'while' else ''}}"#}
 {#                                href="/edit/{{s['id']}}" #}
@@ -307,7 +307,7 @@
                 </div>
             </div>
             <div>
-                <a class="btn btn-dark {{ 'disabled' if script['name'] == "" or script['status'] == "finalized" else ''}}" href="{{url_for('publish')}}">Quick Save</a>
+                <a class="btn btn-dark {{ 'disabled' if not script.name or script.status == "finalized" else ''}}" href="{{url_for('publish')}}">Quick Save</a>
                 <a class="btn btn-dark " href="{{url_for('build_run_block')}}">Configure Run</a>
             </div>
         </div>

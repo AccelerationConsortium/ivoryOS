@@ -5,6 +5,7 @@ import datetime
 import traceback
 import logging
 from flask import flash
+
 stypes = ['prep', 'script', 'cleanup']
 
 
@@ -78,7 +79,7 @@ def parse_functions(class_object=None, call=True):
             try:
                 att = getattr(class_object, function)
 
-            # handle getter setters
+                # handle getter setters
                 if callable(att):
                     if is_compatible(att):
                         functions[function] = inspect.signature(att)
@@ -103,6 +104,7 @@ def is_compatible(att):
     except ValueError:
         return False
     return True
+
 
 def config(script_dict):
     """
@@ -163,7 +165,7 @@ def convert_type(args, parameters, configure=[]):
                         # except Exception as e:
                         #     flash(e)
                 else:
-                    #todo
+                    # todo
                     try:
                         args[arg] = eval(args[arg])
                     except Exception:
@@ -230,6 +232,7 @@ def logic_dict(key: str, current_len, args, var_name=None):
     }
     return logic_dict[key]
 
+
 # def make_grid(row:int=1,col:int=1):
 #     """
 #     return the tray index str list by defining the size
@@ -241,12 +244,36 @@ def logic_dict(key: str, current_len, args, var_name=None):
 #     return [i + str(j + 1) for i in letter_list[:col] for j in range(row)]
 
 
-def make_grid(row:int=1,col:int=1):
+def make_grid(row: int = 1, col: int = 1):
     """
     return the tray index str list by defining the size
     :param row: 1 to 26
-    :param col:
+    :param col: 1 to 26
     :return: return the tray index
     """
     letter_list = [chr(i) for i in range(65, 90)]
-    return [[i + str(j + 1) for j in range(row)] for i in letter_list[:col]]
+    return [[i + str(j + 1) for j in range(col)] for i in letter_list[:row]]
+
+
+tray_size_dict = {
+    "metal_4_6": {"row": 4, "col": 6},
+    "metal_4_6_landscape": {"row": 6, "col": 4},
+    "noah_hplc_tray": {"row": 4, "col": 7},
+    "solvent_tray": {"row": 5, "col": 2},
+}
+
+
+def import_module_by_filepath(filepath: str, name: str):
+    spec = importlib.util.spec_from_file_location(name, filepath)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def if_deck_valid(module):
+    count = 0
+    for var in set(dir(module)):
+        if not var.startswith("_") and not var[0].isupper() and not var.startswith("repackage") \
+                and not type(eval("module." + var)).__module__ == 'builtins':
+            count += 1
+    return False if count == 0 else True

@@ -4,44 +4,66 @@
 
 {% block body %}
 <div class= "container">
-    <form role="form" method='POST' action='/generate_grid'>
-        <div class="input-group mb-3">
-            <label class="input-group-text" for="row">Row </label>
-            <input class="form-control" type="number" id="row" name="row" min="1" max="26">
+    <div class="row">
+        <div class="col-6">
+            <form role="form" method='POST' action='/generate_grid'>
+                <div class="input-group mb-3">
+                    <label class="input-group-text" for="select_tray">Choose from available trays </label>
+                    <select class="form-control" id="select_tray" name="select_tray" required>
+                        <option selected disabled hidden style="overflow-wrap: break-word;"  value=""> -- choose deck --</option>
+                            {% for name in grid_dict %}
+                                <option style="overflow-wrap: break-word;" value="{{ name }}">{{ name }}</option>
+                            {% endfor %}
+                    </select>
+                </div>
+                <div class="input-group mb-3">
+                    <button class="form-control" type="submit" class="btn btn-dark">Create</button>
+                </div>
+            </form>
+            <form role="form" method='POST' action='/generate_grid'>
+                <div class="input-group mb-3">
+                    <label class="input-group-text" for="row">Row </label>
+                    <input class="form-control" type="number" id="row" name="row" min="1" max="26" required>
+                </div>
+                <div class="input-group mb-3">
+                    <label class="input-group-text" for="col">Col </label>
+                    <input class="form-control" type="number" id="col" name="col" min="1" max="30" required>
+                </div>
+                <div class="input-group mb-3">
+                    <button class="form-control" type="submit" class="btn btn-dark">Create</button>
+                </div>
+            </form>
         </div>
-        <div class="input-group mb-3">
-            <label class="input-group-text" for="col">Col </label>
-            <input class="form-control" type="number" id="col" name="col" min="1" max="30">
-        </div>
-        <div class="input-group mb-3">
-            <button class="form-control" type="submit" class="btn btn-dark">Create</button>
-        </div>
-    </form>
 
+        <div class="col-6">
+            <div class="p-4" style="align-content: center">
+            {% if grid %}
+    <!--            <div class="p-4">-->
+                    <form role="form" method='POST' action='/vial'>
+                        {% for row in grid %}
+                        <div class="row">
+                            {% for col in row %}
+                            <div class="tray">
 
-    <div>
-        {% if grid %}
-<!--            <div class="p-4">-->
-                <form role="form" method='POST' action='/vial'>
-                    {% for row in grid %}
-                    <div class="row">
-                        {% for col in row %}
-                        <div class="tray">
+                                    <input type="checkbox" class="btn btn-check" style="" name="{{ col }}" id="{{ col }}" autocomplete="off" value="{{ col }}">
+                                    <label class="btn btn-vial" for="{{ col }}">{{ col }}</label>
 
-                                <input type="checkbox" class="btn btn-check" style="" name="{{ col }}" id="{{ col }}" autocomplete="off" value="{{ col }}">
-                                <label class="btn btn-vial" for="{{ col }}">{{ col }}</label>
-
-<!--                                <button class="circle">{{ col }}</button>-->
-<!--                            <div class="circle"></div>-->
+    <!--                                <button class="circle">{{ col }}</button>-->
+    <!--                            <div class="circle"></div>-->
+                            </div>
+                            {% endfor %}
                         </div>
                         {% endfor %}
-                    </div>
-                    {% endfor %}
-                    <button class="form-control" type="submit" class="btn btn-dark">Create</button>
-                </form>
-<!--            </div>-->
-        {% endif %}
+                        <button class="form-control" type="submit" class="btn btn-dark">Create</button>
+                    </form>
+    <!--            </div>-->
+            {% endif %}
+            </div>
+        </div>
     </div>
 </div>
+
+
+
 
 {% endblock %}
