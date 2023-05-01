@@ -3,57 +3,37 @@ import json
 import os
 import csv
 import pickle
-import sqlite3
-import sys
 import traceback
 
 from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, render_template, session
 from werkzeug.utils import secure_filename
-from werkzeug.exceptions import HTTPException
 from utils import utils
-from utils.script import Script
-from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user
+from script import Script, User, db
+from flask_login import LoginManager, login_required, login_user, logout_user
+import bcrypt
 
-login_manager = LoginManager()
-
-# import sample_deck as deck
-deck = None
-pseudo_deck = None
-# import ur_deck as deck
 
 app = Flask(__name__)
 app.config['CSV_FOLDER'] = 'config_csv/'
 app.config['SCRIPT_FOLDER'] = 'scripts/'
+# basedir = os.path.abspath(os.path.dirname(__file__))
+
+app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///project.db"
+
 app.secret_key = "key"
+login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
-class User(UserMixin):
-    def __init__(self, id):
-        self.username = 'admin'
-        self.id = id
-        self.passward = "admin"
 
+# initialize database
+db.init_app(app)
 
-sqlite3.register_adapter(list, json.dumps)
-sqlite3.register_adapter(dict, json.dumps)
-con = sqlite3.connect("webapp.db", check_same_thread=False)
-cursor = con.cursor()
-cursor.row_factory = sqlite3.Row
-# cursor.execute("""create table IF NOT EXISTS workflow (name TEXT PRIMARY KEY NOT NULL,
-#                     deck TEXT NOT NULL, status TEXT NOT NULL, script NOT NULL, prep NOT NULL, cleanup NOT NULL)""")
-cursor.execute("""create table IF NOT EXISTS script_library (name TEXT PRIMARY KEY NOT NULL,
-                    deck TEXT NOT NULL, status TEXT NOT NULL, script_dict NOT NULL, time_created NOT NULL,
-                    last_modified NOT NULL, id_order NOT NULL, editing_type NOT NULL)""")
-# def get_db_connection():
-#     connect = sqlite3.connect("webapp.db")
-#     connect.row_factory = sqlite3.Row
-#     return connect
+with app.app_context():
+    db.create_all()
 
+deck = None
+pseudo_deck = None
 
-script_type = 'script'  # set default type to be 'script'
-# stypes = ['prep', 'script', 'cleanup']
-script_dict, order = utils.new_script(deck.__name__ if deck else '')
-dismiss = None
 libs = set(dir())
 
 # ---------API imports------------
@@ -72,48 +52,79 @@ user_variables = set(dir())
 defined_variables = user_variables - import_variables - set(["import_variables"])
 
 
-
 @app.route("/")
 @login_required
 def index():
     return render_template('home.html')
 
+
 def get_script_file():
     session_script = session.get("scripts")
-    print(session_script)
     if session_script:
         return Script(**session_script)
     else:
-        return Script()
+        return Script(author=session.get('username'))
 
-def post_script_file(script):
-    session['scripts'] = script.__dict__
+
+def post_script_file(script, is_dict=False):
+    if is_dict:
+        session['scripts'] = script
+    else:
+        session['scripts'] = script.as_dict()
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        if password == "admin":
-            user = User(username)
+
+        # session.query(User, User.name).all()
+        user = db.session.query(User).filter(User.username == username).first()
+        if user and bcrypt.checkpw(password.encode("utf-8"), user.hashPassword):
+            # password.encode("utf-8")
+            # user = User(username, password.encode("utf-8"))
             login_user(user)
             session['user'] = username
-            script_file = Script()
-            session["script"] = script_file.__dict__
-
+            script_file = Script(author=username)
+            session["script"] = script_file.as_dict()
+            post_script_file(script_file)
             return redirect(url_for('index'))
+        else:
+            flash("Incorrect username or password")
     return render_template('login.html')
+
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+        user = User(username, hashed)
+        try:
+            db.session.add(user)
+            db.session.commit()
+            return redirect(url_for('login'))
+        except Exception:
+            flash("username exists :(")
+    return render_template('signup.html')
+
 
 @app.route("/logout")
 @login_required
 def logout():
+    global pseudo_deck
+    pseudo_deck = None
     logout_user()
-    session.pop("scripts", None)
+    session.clear()
     return redirect(url_for('login'))
 
+
 @login_manager.user_loader
-def load_user(userid):
-    return User(userid)
+def load_user(username):
+    return User(username, password=None)
 
 
 @app.route("/help")
@@ -122,21 +133,23 @@ def help_info():
 
 
 @app.route("/controllers")
+@login_required
 def controllers_home():
     return render_template('controllers_home.html', defined_variables=defined_variables, deck='')
 
 
 @app.route("/experiment/build/", methods=['GET', 'POST'])
 @app.route("/experiment/build/<instrument>/", methods=['GET', 'POST'])
-# @app.route("/experiment/build/<instrument>/<action>", methods=['GET', 'POST'])
+@login_required
 def experiment_builder(instrument=None):
-    global script_dict, order, script_type, pseudo_deck
-
-    script_object = get_script_file()
+    global pseudo_deck
+    if not pseudo_deck:
+        pseudo_deck = load_deck(session.get('pseudo_deck'))
+    script = get_script_file()
     deck_list = utils.available_pseudo_deck()
-    # utils.sort_actions(script_dict, order, script_type)
-    script_object.sort_actions()
+    script.sort_actions()
     deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
+    deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
 
     functions = []
     if pseudo_deck is None:
@@ -144,7 +157,7 @@ def experiment_builder(instrument=None):
         # flash(f"Make sure to import {script_dict['deck'] if script_dict['deck'] else 'deck'} for this script")
     if instrument:
         # inst_object = find_instrument_by_name(instrument)
-        if instrument not in ['if', 'while', 'variable']:
+        if instrument not in ['if', 'while', 'variable', 'wait']:
             functions = pseudo_deck[instrument]
         # current_len = len(script_dict[script_type])
         if request.method == 'POST' and "add" in request.form:
@@ -156,64 +169,67 @@ def experiment_builder(instrument=None):
             # try:
             args = utils.convert_type(args, functions[function_name])
             # except Exception:
-                # flash(traceback.format_exc())
-                # return redirect(url_for("experiment_builder", instrument=instrument))
+            # flash(traceback.format_exc())
+            # return redirect(url_for("experiment_builder", instrument=instrument))
             if type(functions[function_name]) is dict:
                 args = list(args.values())[0]
-            # action_dict = {"id": current_len + 1, "instrument": instrument, "action": function_name,
-            #                "args": args, "return": save_data}
-            # order[script_type].append(str(current_len + 1))
-            # script_dict[script_type].append(action_dict)
-
-            script_object.editing_type = script_type
+            script.editing_type = script_type
             action = {"instrument": instrument, "action": function_name, "args": args, "return": save_data}
-            script_object.add_action(action=action)
+            script.add_action(action=action)
 
         elif request.method == 'POST':
             # handle while, if and define variables
             script_type = request.form.get('script_type')
+            script.editing_type = script_type
+
             statement = request.form.get('statement')
 
             if "if" in request.form:
-                args = 'True' if statement == '' else statement
-                script_object.add_logic_action(logic_type='if', args=args)
+                # args = 'True' if statement == '' else statement
+                script.add_logic_action(logic_type='if', args=statement)
             if "while" in request.form:
-                args = 'False' if statement == '' else statement
-                script_object.add_logic_action(logic_type='while', args=args)
+                # args = 'False' if statement == '' else statement
+                script.add_logic_action(logic_type='while', args=statement)
             if "variable" in request.form:
                 var_name = request.form.get('variable')
-                args = 'None' if statement == '' else statement
-                script_object.add_logic_action(logic_type='variable', args=args, var_name=var_name)
+                # args = 'None' if statement == '' else statement
+                script.add_logic_action(logic_type='variable', args=statement, var_name=var_name)
+            if "wait" in request.form:
+                script.add_logic_action(logic_type="wait", args=statement)
+        post_script_file(script)
 
-    deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
-    post_script_file(script_object)
     return render_template('experiment_builder.html', instrument=instrument, history=deck_list,
-                           script=script_object, defined_variables=deck_variables, local_variables=defined_variables,
+                           script=script, defined_variables=deck_variables, local_variables=defined_variables,
                            functions=functions)
 
 
 @app.route("/experiment", methods=['GET', 'POST'])
 @app.route("/experiment/<path:filename>", methods=['GET', 'POST'])
+@login_required
 def experiment_run(filename=None):
     # current_variables = set(dir())
-    script_object = get_script_file()
-    global order, script_dict
+    dismiss = session.get("dismiss", None)
+    script = get_script_file()
     prompt = False
-    run_name = script_object.name if script_object.name else "untitled"
+    run_name = script.name if script.name else "untitled"
     file = open("scripts/" + run_name + ".py", "r")
     script_py = file.read()
     file.close()
-    _, return_list = utils.config_return(script_dict['script'])
-    utils.sort_actions(script_dict, order)
+    _, return_list = script.config_return()
+    script.sort_actions()
+
     if deck is None:
         prompt = True
-    elif not script_dict['deck'] == '' and not script_dict['deck'] == deck.__name__:
-        flash("This script is not compatible with current deck, import ", script_dict['deck'])
+    elif script.deck and not script.deck == deck.__name__:
+        flash("This script is not compatible with current deck, import ", script.deck)
     if request.method == "POST":
         repeat = request.form.get('repeat')
         output_list = []
         try:
             # flash("Running!")
+            exec_string = script.compile()
+            # print(exec_string)
+            exec(exec_string)
             exec(run_name + "_prep()")
             if filename is not None and not filename == 'None':
                 df = csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename)))
@@ -235,12 +251,33 @@ def experiment_run(filename=None):
             flash("Run finished")
         except Exception as e:
             flash(e)
-    return render_template('experiment_run.html', script=script_dict, filename=filename, dot_py=script_py,
+    return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=script_py,
                            # return_list=return_list,
                            history=utils.import_history(), prompt=prompt, dismiss=dismiss)
 
 
+@app.route("/experiment_preview", methods=['GET', 'POST'])
+@login_required
+def experiment_preview():
+    # current_variables = set(dir())
+    script = get_script_file()
+    exec_string = script.compile()
+    try:
+        exec(exec_string)
+    except Exception:
+        flash("Please check syntax!!")
+        return redirect(url_for("experiment_builder"))
+    run_name = script.name if script.name else "untitled"
+    file = open("scripts/" + run_name + ".py", "r")
+    script_py = file.read()
+    file.close()
+    # _, return_list = script.config_return()
+
+    return render_template('experiment_preview.html', script=script.script_dict, dot_py=script_py, )
+
+
 @app.route("/my_deck")
+@login_required
 def deck_controllers():
     global deck
     deck_variables = parse_deck(deck)
@@ -250,6 +287,7 @@ def deck_controllers():
 
 @app.route("/new_controller/")
 @app.route("/new_controller/<instrument>", methods=['GET', 'POST'])
+@login_required
 def new_controller(instrument=None):
     device = None
     args = None
@@ -280,6 +318,7 @@ def new_controller(instrument=None):
 
 
 @app.route("/controllers/<instrument>", methods=['GET', 'POST'])
+@login_required
 def controllers(instrument):
     inst_object = find_instrument_by_name(instrument)
     functions = utils.parse_functions(inst_object)
@@ -300,7 +339,6 @@ def controllers(instrument):
 
             if callable(function_executable):
                 if args is not None:
-                    # print(args)
                     function_executable(**args)
                 else:
                     function_executable()
@@ -314,105 +352,82 @@ def controllers(instrument):
 
 # -----------------------handle action editing--------------------------------------------
 @app.route("/delete/<id>")
+@login_required
 def delete_action(id):
     back = request.referrer
-    script_object = get_script_file()
-    script_object.delete_action(id)
-    post_script_file(script_object)
-    # for action in script_dict[script_type]:
-    #     if action['id'] == int(id):
-    #         script_dict[script_type].remove(action)
-    # for i in order[script_type]:
-    #     if int(i) == int(id):
-    #         order[script_type].remove(i)
-    # print(script_object.__dict__)
+    script = get_script_file()
+    script.delete_action(id)
+    post_script_file(script)
     return redirect(back)
 
 
 # TODO
 @app.route("/edit/<id>")
+@login_required
 def edit_action(id):
-    for action in script_dict['script']:
+    script = get_script_file()
+    for action in script.script_dict:
         if action['id'] == int(id):
             return ""
             # return redirect(url_for('experiment_builder', edit_action=action))
 
 
 @app.route("/edit_workflow/<workflow_name>")
+@login_required
 def edit_workflow(workflow_name):
-    global script_dict
-    global order
-    row = cursor.execute(f"SELECT * FROM script_library WHERE name = '{workflow_name}'").fetchone()
-
-    script = dict(zip(row.keys(), row))
-    session['script'] = script
+    row = Script.query.get(workflow_name)
+    script = Script(**row.as_dict())
+    post_script_file(script)
     return redirect(url_for('experiment_builder'))
 
 
 @app.route("/delete_workflow/<workflow_name>")
+@login_required
 def delete_workflow(workflow_name):
-    global script_dict
-    cursor.execute(f"Delete FROM script_library WHERE name = '{workflow_name}'")
-    con.commit()
+    db.session.query(Script).filter(Script.name == workflow_name).delete()
+    db.session.commit()
     return redirect(url_for('load_from_database'))
 
 
 @app.route("/publish")
 def publish():
-    # cursor = con.cursor()
-    global script_dict, order
-    utils.sort_actions(script_dict, order)
-
-    script =get_script_file()
-
-    # if script_dict['name'] == "" or script_dict['deck'] == "":
-    #     flash("Deck cannot be empty, try to re-submit deck configuration on the left panel")
-
+    script = get_script_file()
     if not script.name or not script.deck:
         flash("Deck cannot be empty, try to re-submit deck configuration on the left panel")
-    row = cursor.execute(f"SELECT * FROM script_library WHERE name = '{script_dict['name']}'").fetchone()
-    # if row is not None and row["status"] == "finalized":
-    if row and row["status"] == "finalized":
+    row = Script.query.get(script.name)
+    if row and row.status == "finalized":
         flash("This is a protected script, use save as to rename.")
+    elif row and not session['user'] == row.author:
+        flash("You are not the author, use save as to rename.")
     else:
-        # cursor.execute("""INSERT OR REPLACE INTO workflow(name, deck, status, script, prep, cleanup)
-        #                             VALUES (:name,:deck, :status,:script, :prep, :cleanup);""", script_dict)
-        cursor.execute('''INSERT OR REPLACE INTO script_library(name, deck, status, script_dict, time_created, last_modified, id_order, editing_type) 
-                            VALUES(:name,:deck, :status,:script_dict, :time_created, :last_modified, :id_order, :editing_type);''', script.__dict__)
-        con.commit()
+        db.session.merge(script)
+        db.session.commit()
         flash("Saved!")
     return redirect(url_for('experiment_builder'))
 
 
 @app.route("/finalize")
 def finalize():
-    # cursor = con.cursor()
-    global script_dict
-    script_dict['status'] = "finalized"
-
     script = get_script_file()
     script.finalize()
-    post_script_file(script)
 
+    db.session.merge(script)
+    db.session.commit()
+    post_script_file(script)
     return redirect(url_for('experiment_builder'))
 
 
 @app.route("/database", methods=['GET', 'POST'])
 @app.route("/database/<deck_name>", methods=['GET', 'POST'])
+@login_required
 def load_from_database(deck_name=None):
-    # cursor = con.cursor()]
-    # deck_list = []
     if deck_name is None:
-        workflows = cursor.execute("""SELECT * FROM script_library""").fetchall()
-        temp = cursor.execute("""SELECT DISTINCT deck FROM script_library""")
-        deck_list = [i['deck'] for i in temp]
-        # workflows = cursor.execute("""SELECT * FROM workflow""").fetchall()
-        # temp = cursor.execute("""SELECT DISTINCT deck FROM workflow""")
-        # deck_list = [i['deck'] for i in temp]
+        temp = db.session.query(Script.deck).distinct().all()
+        deck_list = [i[0] for i in temp]
+        workflows = db.session.query(Script).all()
     else:
-        workflows = cursor.execute(f"""SELECT * FROM script_library WHERE deck = '{deck_name}'""").fetchall()
+        workflows = db.session.query(Script).filter(Script.deck == deck_name)
         deck_list = ["ALL"]
-    # con.commit()
     return render_template("experiment_database.html", workflows=workflows, deck_list=deck_list)
 
 
@@ -420,15 +435,11 @@ def load_from_database(deck_name=None):
 def edit_run_name():
     if request.method == "POST":
         run_name = request.form.get("run_name")
-        exist_script = cursor.execute(f"""SELECT * FROM script_library WHERE name ='{run_name}'""").fetchall()
-
-        if len(exist_script) == 0:
+        exist_script = Script.query.get(run_name)
+        if not exist_script:
             script = get_script_file()
             script.save_as(run_name)
             post_script_file(script)
-
-            script_dict['name'] = run_name
-            script_dict['status'] = 'editing'
         else:
             flash("Script name is already exist in database")
         return redirect(url_for("experiment_builder"))
@@ -436,17 +447,14 @@ def edit_run_name():
 
 @app.route("/save_as", methods=['GET', 'POST'])
 def save_as():
+    # script = get_script_file()
     if request.method == "POST":
         run_name = request.form.get("run_name")
-        exist_script = cursor.execute(f"""SELECT * FROM script_library WHERE name ='{run_name}'""").fetchall()
-        if len(exist_script) == 0:
-            script_dict['name'] = run_name
-            script_dict['status'] = 'editing'
-
+        exist_script = Script.query.get(run_name)
+        if not exist_script:
             script = get_script_file()
             script.save_as(run_name)
             post_script_file(script)
-
             publish()
         else:
             flash("Script name is already exist in database")
@@ -455,12 +463,10 @@ def save_as():
 
 @app.route("/toggle_script_type/<stype>")
 def toggle_script_type(stype=None):
-    # session['stype'] = stype
-
     script = get_script_file()
     script.editing_type = stype
     post_script_file(script)
-    return redirect(url_for('experiment_builder', script=script))
+    return redirect(url_for('experiment_builder'))
 
 
 @app.route("/updateList", methods=['GET', 'POST'])
@@ -472,107 +478,6 @@ def update_list():
     return jsonify('Successfully Updated')
 
 
-@app.route("/configure", methods=['GET', 'POST'])
-def build_run_block():
-    """
-
-    :param run_name:
-    :return:
-    """
-    global script_dict
-    global order
-    utils.sort_actions(script_dict, order)
-    run_name = script_dict['name'] if script_dict['name'] else "untitled"
-
-    # flash("Define deck first")
-    # return redirect(url_for("experiment_builder"))
-    with open("scripts/" + run_name + ".py", "w") as s:
-        if not script_dict['deck'] == '':
-            s.write("import " + script_dict['deck'] + " as deck")
-        else:
-            s.write("deck = None")
-        for i in utils.stypes:
-            indent_unit = 1
-            exec_string = "\n\ndef " + run_name + "_" + i + "("
-            configure = utils.config(script_dict)
-            if i == "script":
-                for j in configure:
-                    exec_string = exec_string + j + ","
-            exec_string = exec_string + "):"
-            exec_string = exec_string + utils.indent(indent_unit) + "global " + run_name + "_" + i
-
-            for index, action in enumerate(script_dict[i]):
-                instrument = action['instrument']
-                args = action['args']
-                save_data = action['return']
-                action = action['action']
-                next_ = None
-                if instrument == 'if':
-
-                    if index < (len(script_dict[i]) - 1):
-                        next_ = script_dict[i][index + 1]
-                    if action == 'if':
-                        exec_string = exec_string + utils.indent(indent_unit) + "if " + args + ":"
-                        indent_unit += 1
-                        if next_ and next_['instrument'] == 'if':
-                            exec_string = exec_string + utils.indent(indent_unit) + "pass"
-                    elif action == 'else':
-                        exec_string = exec_string + utils.indent(indent_unit - 1) + "else:"
-                        if next_['instrument'] == 'if' and next_['action'] == 'endif':
-                            exec_string = exec_string + utils.indent(indent_unit) + "pass"
-                    else:
-                        indent_unit -= 1
-                elif instrument == 'while':
-
-                    if index < (len(script_dict[i]) - 1):
-                        next_ = script_dict[i][index + 1]
-                    if action == 'while':
-                        exec_string = exec_string + utils.indent(indent_unit) + "while " + args + ":"
-                        indent_unit += 1
-                        if next_ and next_['instrument'] == 'while':
-                            exec_string = exec_string + utils.indent(indent_unit) + "pass"
-                        # else:
-                        #     indent = "\t"
-                    elif action == 'endwhile':
-                        indent_unit -= 1
-                elif instrument == 'variable':
-                    # args = "False" if args == '' else args
-                    exec_string = exec_string + utils.indent(indent_unit) + action + " = " + args
-                else:
-                    if args is not None:
-                        if type(args) is dict:
-                            temp = args.__str__()
-                            for arg in args:
-                                if type(args[arg]) is str and args[arg].startswith("#"):
-                                    temp = temp.replace("'#" + args[arg][1:] + "'", args[arg][1:])
-                            single_line = instrument + "." + action + "(**" + temp + ")"
-                        else:
-                            if type(args) is str and args.startswith("#"):
-                                args = args.replace("'#" + args[1:] + "'", args[1:])
-                            single_line = instrument + "." + action + " = " + str(args)
-                    else:
-                        single_line = instrument + "." + action + "()"
-                    if save_data == '':
-                        exec_string = exec_string + utils.indent(indent_unit) + single_line
-                    else:
-                        exec_string = exec_string + utils.indent(indent_unit) + save_data + " = " + single_line
-            return_str, return_list = utils.config_return(script_dict[i])
-            if len(return_list) > 0:
-                exec_string += utils.indent(indent_unit) + return_str
-            try:
-                exec(exec_string)
-            except Exception as e:
-                # flash(e.__str__())
-                flash("Please check syntax!!")
-                return redirect(url_for("experiment_builder"))
-            s.write(exec_string)
-    # create config_csv file
-    with open("empty_configure.csv", 'w') as f:
-        writer = csv.writer(f)
-        writer.writerow(configure)
-
-    return redirect(url_for("experiment_run"))
-
 
 # --------------------handle all the import/export and download/upload--------------------------
 @app.route("/clear")
@@ -583,7 +488,7 @@ def clear():
         deck_name = pseudo_deck["deck_name"]
     else:
         deck_name = ''
-    script = Script(deck=deck_name)
+    script = Script(deck=deck_name, author=session.get('username'))
     post_script_file(script)
     return redirect(url_for("experiment_builder"))
 
@@ -612,12 +517,13 @@ def import_api():
 
 @app.route("/import_deck", methods=['POST'])
 def import_deck():
-    global script_dict, deck, dismiss, pseudo_deck
+    global deck, pseudo_deck
+    script = get_script_file()
     filepath = request.form.get('filepath')
-    dismiss = request.form.get('dismiss')
+    session['dismiss'] = request.form.get('dismiss')
     update = request.form.get('update')
     back = request.referrer
-    if dismiss:
+    if session['dismiss']:
         return redirect(back)
     name = os.path.split(filepath)[-1].split('.')[0]
     try:
@@ -630,34 +536,39 @@ def import_deck():
         utils.save_to_history(filepath)
         parse_deck(deck, save=update)
 
-        if script_dict['deck'] == "" or script_dict['deck'] is None:
-            script_dict['deck'] = module.__name__
+        if script.deck is None:
+            script.deck = module.__name__
     # file path error exception
     except Exception as e:
         flash(e.__str__())
-    # return redirect(url_for("experiment_builder"))
     return redirect(back)
 
 
-@app.route("/import_pseudo", methods=['POST'])
+@app.route("/import_pseudo", methods=['GET', 'POST'])
 def import_pseudo():
     global pseudo_deck
     pkl_name = request.form.get('pkl_name')
     script = get_script_file()
     try:
-        with open('static/pseudo_deck/' + pkl_name, 'rb') as f:
-            pseudo_deck = pickle.load(f)
-        # if script_dict['deck'] == "" or script_dict['deck'] is None or \
-        #         not (script_dict['script'] and script_dict['prep'] and script_dict['cleanup']):
-        if script.deck is None or script.isEmpty():
-            script.deck = pkl_name.split('.')[0]
-        elif script.deck and not script.deck == pkl_name.split('.')[0]:
-            flash(f"Choose the deck with name {script.deck}")
-    # file path error exception
+        pseudo_deck = load_deck(pkl_name)
+        session['pseudo_deck'] = pkl_name
     except Exception:
         flash(traceback.format_exc())
-    post_script_file(script)
+
+    if script.deck is None or script.isEmpty():
+        script.deck = pkl_name.split('.')[0]
+        post_script_file(script)
+    elif script.deck and not script.deck == pkl_name.split('.')[0]:
+        flash(f"Choose the deck with name {script.deck}")
     return redirect(url_for("experiment_builder"))
+
+
+def load_deck(pkl_name):
+    if not pkl_name:
+        return None
+    with open('static/pseudo_deck/' + pkl_name, 'rb') as f:
+        pseudo_deck = pickle.load(f)
+    return pseudo_deck
 
 
 @app.route('/generate_grid', methods=['get', 'POST'])
@@ -679,7 +590,6 @@ def generate_grid():
 @app.route('/vial', methods=['POST'])
 def vial():
     if request.method == "POST":
-
         vials = request.form.to_dict()
         flash(list(vials.keys()))
     return redirect(url_for("generate_grid"))
@@ -712,8 +622,8 @@ def load_json():
         if 'file' not in request.files:
             flash('No file part')
         if f.filename.split('.')[-1] == "json":
-            global script_dict
             script_dict = json.load(f)
+            post_script_file(script_dict, is_dict=True)
         else:
             flash("Script file need to be JSON file")
     return redirect(url_for("experiment_builder"))
@@ -721,12 +631,16 @@ def load_json():
 
 @app.route('/download/<filetype>')
 def download(filetype):
-    run_name = script_dict['name'] if script_dict['name'] else "untitled"
+    script = get_script_file()
+    run_name = script.name if script.name else "untitled"
     if filetype == "configure":
+        with open("empty_configure.csv", 'w') as f:
+            writer = csv.writer(f)
+            writer.writerow(script.config())
         return send_file("empty_configure.csv", as_attachment=True)
     elif filetype == "script":
-        utils.sort_actions(script_dict, order)
-        json_object = json.dumps(script_dict)
+        script.sort_actions()
+        json_object = json.dumps(script.__dict__)
         with open(run_name + ".json", "w") as outfile:
             outfile.write(json_object)
         return send_file(run_name + ".json", as_attachment=True)
@@ -744,7 +658,7 @@ def find_instrument_by_name(name: str):
 
 
 def parse_deck(deck, save=None):
-    global pseudo_deck
+    pseudo_deck = session['pseudo_deck']
     parse_dict = {}
 
     # TODO

@@ -32,16 +32,17 @@
 {#                        background-color: aliceblue;#}
                         <h6  style=" text-align: center; ">{{ instrument }}</h6>
                     </div>
-                    {% if instrument == 'if' or instrument == 'while' or instrument == 'variable' %}
+                    {% if instrument == 'if' or instrument == 'while' or instrument == 'variable' or instrument == 'wait' %}
                         <form role="form" method='POST' name="{{instrument}}" action="/experiment/build/{{instrument}}" >
                             <div class="form-group">
-                                {% if instrument == 'variable'%}<div class="input-group mb-3">
-                                    <label class="input-group-text">Variable Name</label>
-                                    <input class="form-control" type="text" id="variable" name="variable" required="required" aria-labelledby="variableHelpBlock">
-                                    <div id="variableHelpBlock" class="form-text">
-                                        Your variable name cannot include space
+                                {% if instrument == 'variable'%}
+                                    <div class="input-group mb-3">
+                                        <label class="input-group-text">Variable Name</label>
+                                        <input class="form-control" type="text" id="variable" name="variable" required="required" aria-labelledby="variableHelpBlock">
+                                        <div id="variableHelpBlock" class="form-text">
+                                            Your variable name cannot include space
+                                        </div>
                                     </div>
-                                </div>
                                 {% endif %}
                                 <div class="input-group mb-3">
                                     <span class="input-group-text" >{% if instrument == 'variable' %} Variable Value {% else %} Statement {% endif %}</span>
@@ -135,7 +136,7 @@
                     </h5>
                     <div class="accordion-collapse collapse show" id="advanced">
                         <ul class="list-group">
-                            {% for instrument in ['if', 'while', 'variable'] %}
+                            {% for instrument in ['if', 'while', 'variable', 'wait'] %}
                                 <form role="form" method='GET' name="device" action="/experiment/build/{{instrument}}">
                                     <div class="form-group">
                                         <button class="list-group-item list-group-item-action" aria-current="true" type="submit">{{instrument}}</button>
@@ -308,7 +309,7 @@
             </div>
             <div>
                 <a class="btn btn-dark {{ 'disabled' if not script.name or script.status == "finalized" else ''}}" href="{{url_for('publish')}}">Quick Save</a>
-                <a class="btn btn-dark " href="{{url_for('build_run_block')}}">Configure Run</a>
+                <a class="btn btn-dark " href="{{ url_for('experiment_preview') }}">Compile and Preview</a>
             </div>
         </div>
 

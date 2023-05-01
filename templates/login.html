@@ -3,24 +3,29 @@
 
 
 {% block body %}
-<div class= "container">
+<div class= "login">
+    <div class="bg-white rounded shadow-sm flex-fill">
+    <div class="p-4" style="align-items: center">
+{#    <div class="form-control">#}
+        <h5>Log in</h5>
+        <form role="form" method='POST' name="login" action='/login'>
 
-<div class="form-control">
-    <form role="form" method='POST' name="login" action='/login'>
+            <div class="input-group mb-3">
+                <label class="input-group-text" for="username">Username</label>
+                <input class="form-control" type="text" id="username" name="username">
+            </div>
+            <div class="input-group mb-3">
+                <label class="input-group-text" for="password">Password</label>
+                <input class="form-control" type="password" id="password" name="password">
+            </div>
+            <button type="submit" class="btn btn-secondary" name="login" style="width: 100%;">login</button>
 
-        <div class="input-group mb-3">
-            <label class="input-group-text" for="username">Username</label>
-            <input class="form-control" type="text" id="username" name="username">
-        </div>
-        <div class="input-group mb-3">
-            <label class="input-group-text" for="password">Password</label>
-            <input class="form-control" type="password" id="password" name="password">
-        </div>
-        <button type="submit" class="btn btn-secondary" name="login" >login</button>
+        </form>
+        <p class="message">Not registered? <a href="{{ url_for('signup') }}">Create a new account</a>
 
-    </form>
-
-</div>
+    </div>
+    </div>
+{#    </div>#}
 </div>
 
 {% endblock %}

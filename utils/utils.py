@@ -64,11 +64,7 @@ def new_script(deck_name):
     return script_dict, order
 
 
-def indent(unit=0):
-    string = "\n"
-    for _ in range(unit):
-        string += "\t"
-    return string
+
 
 
 def parse_functions(class_object=None, call=True):
@@ -125,6 +121,7 @@ def config(script_dict):
                             and not args[arg][1:] in configure:
                         configure.append(args[arg][1:])
     return configure
+
 
 
 def config_return(script_dict):

@@ -6,57 +6,72 @@
 <div class= "container">
     <h1 style="align-self: center">Welcome</h1>
     <div class="p-4" >
-    <div class="row">
+        <div class="row">
 
-        <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
-            <div class="rounded shadow-sm position-relative flex-fill">
-                <div class="p-4" >
-                    <a style="text-decoration: none" class="h5 text-dark stretched-link" href="{{ url_for('load_from_database') }}">Browse workflows</a>
-                    <p>Browse all workflow scripts saved in the database</p>
+            <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
+                <div class="rounded shadow-sm position-relative flex-fill">
+                    <div class="p-4" >
+                        <a style="text-decoration: none" class="h5 text-dark stretched-link" href="{{ url_for('load_from_database') }}">Browse workflows</a>
+                        <p>Browse all workflows saved in the database</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
+                <div class="rounded shadow-sm position-relative flex-fill">
+                    <div class="p-4" >
+                        <a style="text-decoration: none" class="h5 text-dark stretched-link" href="{{ url_for('experiment_builder') }}">Edit workflow</a>
+                        <p>Build your workflow from current deck functions without coding</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
+                <div class="rounded shadow-sm position-relative flex-fill">
+                    <div class="p-4" >
+                        <a style="text-decoration: none" class="h5 text-dark stretched-link" href="{{ url_for('experiment_preview') }}">Compile workflow</a>
+                        <p>Compile your script and preview your python script</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
+                <div class="rounded shadow-sm position-relative flex-fill">
+                    <div class="p-4" >
+                        <a style="text-decoration: none" class="h5 text-dark stretched-link" href="{{ url_for('generate_grid') }}">Vial selection</a>
+                        <p>testing...</p>
+                        <p>Generate vial index list after section</p>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
-            <div class="rounded shadow-sm position-relative flex-fill">
-                <div class="p-4" >
-                    <a style="text-decoration: none" class="h5 text-dark stretched-link" href="{{ url_for('experiment_builder') }}">Edit workflow</a>
-                    <p>Compile your script and execute workflow</p>
+
+        <br><br><br>
+
+        <h5>Only available on lab computers</h5>
+        <hr>
+        <div class="row">
+
+            <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
+                <div class="rounded shadow-sm position-relative flex-fill">
+                    <div class="p-4" >
+                        <a style="text-decoration: none" class="h5 text-dark stretched-link" href="{{ url_for('experiment_run') }}">Run experiment</a>
+                        <p>Execute workflow by setting repeat times or using configuration CSV file </p>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <br>
-    <br><br>
-    <h5>Only available on lab computer</h5>
-    <hr>
-    <div class="row">
-
-        <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
-            <div class="rounded shadow-sm position-relative flex-fill">
-                <div class="p-4" >
-                    <a style="text-decoration: none" class="h5 text-dark stretched-link" href="{{ url_for('experiment_run') }}">Run experiment</a>
-                    <p>Compile and execute workflow</p>
+            <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
+                <div class="rounded shadow-sm position-relative flex-fill">
+                    <div class="p-4" >
+                        <a style="text-decoration: none" class="h5 text-dark stretched-link"  href="{{ url_for('deck_controllers') }}">Deck instruments</a>
+                        <p>Browse and control deck instruments: for simple task and preview deck functions</p>
+                    </div>
                 </div>
             </div>
-        </div>
-
-
-
-        <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
-            <div class="rounded shadow-sm position-relative flex-fill">
-                <div class="p-4" >
-                    <a style="text-decoration: none" class="h5 text-dark stretched-link"  href="{{ url_for('deck_controllers') }}">Deck instruments</a>
-                    <p>Browse and control deck instruments</p>
-                </div>
-            </div>
-        </div>
-        <br>
-        <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
-            <div class="rounded shadow-sm position-relative flex-fill">
-                <div class="p-4" >
-                    <a style="text-decoration: none" class="h5 text-dark stretched-link"  href="{{ url_for('controllers_home') }}">Individual instruments </a>
-                    <p>Browse, connect and control individual instrument. For simple configurations and testing purpose.</p>
+            <br>
+            <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
+                <div class="rounded shadow-sm position-relative flex-fill">
+                    <div class="p-4" >
+                        <a style="text-decoration: none" class="h5 text-dark stretched-link"  href="{{ url_for('controllers_home') }}">Individual instruments </a>
+                        <p>Connect and control individual instrument: for simple configurations and testing purpose.</p>
+                    </div>
                 </div>
             </div>
         </div>

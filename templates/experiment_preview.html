@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}HEIN LAB | Run Control{% endblock %}
+
+
+{% block body %}
+    <div class= "container">
+{% if prompt and not dismiss %}
+    <script type="text/javascript">
+        window.onload = function () {OpenBootstrapPopup();};
+    </script>
+{% endif %}
+        <div class="row">
+            <div class="col-md-6" >
+                <h5>Script
+<!--                    <a href="{{ url_for('experiment_builder') }}">(back to editing)</a>-->
+                </h5>
+<!---->
+                <div>
+                    {% for script_type in ['prep', 'script', 'cleanup'] %}
+                        {% if script[script_type] %}
+                            <h6>
+                                {% if script_type == 'prep' %} Preparation: {% elif script_type == 'script' %} Experiment:
+                                {% elif script_type == 'cleanup' %} Clean up: {% endif %}
+                            </h6>
+                            <ul>
+                                {% for s in script[script_type] %}
+                                {% if not s['instrument']=='if' and not s['instrument']=='while' %} &emsp; {% endif %}
+                                <li class="btn btn-light" id="{{s['id']}}" style="{{'background-color: tomato' if s['instrument']=='if' else 'background-color: darkcyan' if s['instrument']=='while' else ''}}">
+                                    {% if s['return'] %}{{s['return']}} = {% endif %}
+                                    {{s['action']}}
+                                    {% if s['action']== 'if' %} {% if s['args'] %}({{s['args']}}) {% else %} True {% endif %}
+                                    {% elif s['action']== 'while' %} {% if s['args'] %}({{s['args']}}) {% else %} False {% endif %}
+                                    {% elif s['instrument']== 'variable' %} = {{s['args']}}
+                                    {% else %} {% if s['args'] %} ({{s['args']}}) {% endif %}
+                                    {% endif %}
+                                </li>
+                                <div class="clear"></div>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h5>Export to Python </h5>
+                <div>
+                    <pre ><code class="python" >{{dot_py}}</code></pre>
+                    <a href="/download/python">Download <i class="bi bi-download"></i></a>
+                </div>
+
+            </div>
+        </div>
+
+
+
+    </div>
+{% endblock %}

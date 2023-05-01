@@ -20,23 +20,30 @@
   <table class="table table-hover">
     <thead>
       <tr>
-        <th scope="col">Workflow Name</th>
-        <th scope="col">Deck Name</th>
-        <th scope="col">Current Status</th>
+        <th scope="col">Workflow name</th>
+        <th scope="col">Deck </th>
+        <th scope="col">Current status</th>
+          <th scope="col">Time created</th>
+          <th scope="col">Last modified</th>
+          <th scope="col">Author</th>
         <th scope="col"></th>
       </tr>
     </thead>
     <tbody>
       {% for workflow in workflows %}
       <tr>
-        <td><a href="/edit_workflow/{{workflow['name']}}">{{workflow["name"]}}</a></td>
-        <td>{{workflow["deck"]}}</td>
-        <td>{{workflow["status"]}}</td>
+        <td><a href="/edit_workflow/{{ workflow.name }}">{{ workflow.name }}</a></td>
+        <td>{{ workflow.deck }}</td>
+        <td>{{ workflow.status }}</td>
+      <td>{{ workflow.time_created }}</td>
+      <td>{{ workflow.last_modified }}</td>
+      <td>{{ workflow.author }}</td>
         <td>
-
-          {% if not workflow["status"] == "finalized" or admin=='admin' %}
-          <a href="/delete_workflow/{{workflow['name']}}">delete</a>
+{#not workflow.status == "finalized" or#}
+          {% if  session['user'] =='admin' or  session['user'] == workflow.author %}
+              <a href="/delete_workflow/{{workflow.name}}">delete</a>
           {% else %}
+              <a class="disabled-link" href="/delete_workflow/{{workflow.name}}">delete</a>
           {% endif %}
 
         <td>

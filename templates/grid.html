@@ -6,11 +6,12 @@
 <div class= "container">
     <div class="row">
         <div class="col-6">
+        <h5>Choose from available trays </h5>
             <form role="form" method='POST' action='/generate_grid'>
                 <div class="input-group mb-3">
-                    <label class="input-group-text" for="select_tray">Choose from available trays </label>
+{#                    <label class="input-group-text" for="select_tray">Choose from available trays </label>#}
                     <select class="form-control" id="select_tray" name="select_tray" required>
-                        <option selected disabled hidden style="overflow-wrap: break-word;"  value=""> -- choose deck --</option>
+                        <option selected disabled hidden style="overflow-wrap: break-word;"  value=""> -- choose a tray --</option>
                             {% for name in grid_dict %}
                                 <option style="overflow-wrap: break-word;" value="{{ name }}">{{ name }}</option>
                             {% endfor %}
@@ -20,6 +21,7 @@
                     <button class="form-control" type="submit" class="btn btn-dark">Create</button>
                 </div>
             </form>
+        <h5>Customized tray size</h5>
             <form role="form" method='POST' action='/generate_grid'>
                 <div class="input-group mb-3">
                     <label class="input-group-text" for="row">Row </label>
