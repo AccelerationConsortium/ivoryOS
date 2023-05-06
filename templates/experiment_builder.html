@@ -21,15 +21,46 @@
                 </div>
             </form>
             <hr>
-            {% if instrument %}
-                <div>
-                    <a class="btn btn-primary" role="button" type="button" href="{{url_for('experiment_builder')}}">Back</a>
-
-                    {% if edit_action %}
-                        {{edit_action}}
+            {% if session["edit_action"] %}
+                {% with action = session["edit_action"] %}
+                    <h5> {{ action['action'] }} </h5>
+                <form role="form" method='POST' name="{{instrument}}" action="/edit/{{session["edit_action"]['uuid']}}" >
+                    {% if not action['args'] == None %}
+                    <div class="form-group">
+                        {% if not action['args'].__class__.__name__ == 'dict' %}
+                            <div class="input-group mb-3">
+                                <label class="input-group-text">{{ action['action'] }}</label>
+                                <input class="form-control" type="text" id="arg" name="arg" placeholder="{{ action['arg_types']}}" value="{{ action['args'] }}" aria-labelledby="variableHelpBlock">
+                            </div>
+                        {% else %}
+                            {% for arg in action['args'] %}
+                            <div class="input-group mb-3">
+                                <label class="input-group-text">{{ arg }}</label>
+                                <input class="form-control" type="text" id="{{ arg }}" name="{{ arg }}" placeholder="{{ action['arg_types'][arg] }}" value="{{ action['args'][arg] }}" aria-labelledby="variableHelpBlock">
+                            </div>
+                            {% endfor %}
+                            <div class="input-group mb-3">
+                                <label class="input-group-text">Save Output?</label>
+                                <input class="form-control" type="text" id="return" name="return"  value="{{ action['return'] }}" aria-labelledby="variableHelpBlock">
+                            </div>
+                        {% endif %}
+                    </div>
                     {% endif %}
+                    <button class="btn btn-primary" type="submit">Save</button>
+                    <button class="btn btn-primary" type="submit" name="back" id="back" value="back">Back</button>
+                </form>
+                {% endwith %}
+            {% else %}
+
+                {% if instrument %}
+                <div>
+
+
+
+
+                    <a class="btn btn-primary" role="button" type="button" href="{{url_for('experiment_builder')}}">Back</a>
                     <div class="rounded shadow-sm flex-fill" style="height: 30px;background-color: aliceblue">
-{#                        background-color: aliceblue;#}
+{#                           background-color: aliceblue;#}
                         <h6  style=" text-align: center; ">{{ instrument }}</h6>
                     </div>
                     {% if instrument == 'if' or instrument == 'while' or instrument == 'variable' or instrument == 'wait' %}
@@ -51,18 +82,19 @@
                                         {% if instrument == 'variable'%}Your variable can be numbers, boolean (True or False) or text ("text"){% endif %}
                                     </div>
                                 </div>
-                                <div class="input-group mb-3">
-                                    <span class="input-group-text">Add to</span>
-                                    <select class="form-select" name="script_type">
-                                        <option name="script_type" value="prep">Prep</option>
-                                        <option name="script_type" value="script" selected>Experiment</option>
-                                        <option name="script_type" value="cleanup">Clean up</option>
-                                    </select>
-                                </div>
+{#                                   <div class="input-group mb-3">#}
+{#                                       <span class="input-group-text">Add to</span>#}
+{#                                       <select class="form-select" name="script_type">#}
+{#                                           <option name="script_type" value="prep">Prep</option>#}
+{#                                           <option name="script_type" value="script" selected>Experiment</option>#}
+{#                                           <option name="script_type" value="cleanup">Clean up</option>#}
+{#                                       </select>#}
+{#                                   </div>#}
                                 <button type="submit" class="btn btn-secondary" name="{{instrument}}">add</button>
                             </div>
                         </form>
                     {% endif %}
+
             <div class="accordion accordion-flush" id="accordionActions" >
                 {% for function in functions %}
                     <div class="accordion-item">
@@ -108,14 +140,14 @@
                                                 <input class="form-control" type="text" id="return" name="return" placeholder="optional">
                                             </div>
                                         {% endif %}
-                                        <div class="input-group mb-3">
-                                            <span class="input-group-text">Add to</span>
-                                            <select class="form-select" name="script_type">
-                                                <option name="script_type" value="prep">Prep</option>
-                                                <option name="script_type" value="script" selected>Experiment</option>
-                                                <option name="script_type" value="cleanup">Clean up</option>
-                                            </select>
-                                        </div>
+{#                                        <div class="input-group mb-3">#}
+{#                                            <span class="input-group-text">Add to</span>#}
+{#                                            <select class="form-select" name="script_type">#}
+{#                                                <option name="script_type" value="prep" {{ 'selected' if script.editing_type == 'prep' else '' }}>Prep</option>#}
+{#                                                <option name="script_type" value="script" {{ 'selected' if script.editing_type == 'script' else '' }}>Experiment</option>#}
+{#                                                <option name="script_type" value="cleanup"{{ 'selected' if script.editing_type == 'cleanup' else '' }}>Clean up</option>#}
+{#                                            </select>#}
+{#                                        </div>#}
                                         <button type="submit" class="btn btn-dark" name="add" value="{{function}}" >add</button>
                                     </div>
                                 </form>
@@ -126,72 +158,73 @@
             </div>
         </div>
 
-            {% else %}
-                <div class="accordion accordion-flush">
-                <div class="accordion-item">
-                    <h5 class="accordion-header">
-                        <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#advanced" role="button" aria-expanded="false" aria-controls="collapseExample">
-                            Advanced Options:
-                        </button>
-                    </h5>
-                    <div class="accordion-collapse collapse show" id="advanced">
-                        <ul class="list-group">
-                            {% for instrument in ['if', 'while', 'variable', 'wait'] %}
-                                <form role="form" method='GET' name="device" action="/experiment/build/{{instrument}}">
-                                    <div class="form-group">
-                                        <button class="list-group-item list-group-item-action" aria-current="true" type="submit">{{instrument}}</button>
-                                    </div>
-                                </form>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="accordion-item">
-                    <h5 class="accordion-header">
-                        <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#deck" role="button" aria-expanded="false" aria-controls="collapseExample">
-                            Deck Actions:
-                        </button>
-                    </h5>
-                    <div class="accordion-collapse collapse show" id="deck">
-                        <ul class="list-group">
-                            {% for instrument in defined_variables %}
-                                <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}">
-                                    <div>
-                                        <button class="list-group-item list-group-item-action" type="submit">{{instrument}}</button>
-                                    </div>
-                                </form>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                </div>
-
-                {% if local_variables and not defined_variables %}
+                {% else %}
+                    <div class="accordion accordion-flush">
                     <div class="accordion-item">
                         <h5 class="accordion-header">
-                            <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#local" role="button" aria-expanded="false" aria-controls="collapseExample">
-                                Local Actions:
+                            <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#advanced" role="button" aria-expanded="false" aria-controls="collapseExample">
+                                Advanced Options:
                             </button>
                         </h5>
-                        <div class="accordion-collapse collapse show" id="local">
+                        <div class="accordion-collapse collapse show" id="advanced">
                             <ul class="list-group">
-                                {% for instrument in local_variables %}
-                                    <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}">
-                                        <div>
-                                            <button class="list-group-item list-group-item-action" type="submit"  name="device" value="{{instrument}}" >{{instrument}}</button>
+                                {% for instrument in ['if', 'while', 'variable', 'wait'] %}
+                                    <form role="form" method='GET' name="device" action="/experiment/build/{{instrument}}">
+                                        <div class="form-group">
+                                            <button class="list-group-item list-group-item-action" aria-current="true" type="submit">{{instrument}}</button>
                                         </div>
                                     </form>
-                                {% endfor%}
+                                {% endfor %}
                             </ul>
                         </div>
                     </div>
+
+                    <div class="accordion-item">
+                        <h5 class="accordion-header">
+                            <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#deck" role="button" aria-expanded="false" aria-controls="collapseExample">
+                                Deck Actions:
+                            </button>
+                        </h5>
+                        <div class="accordion-collapse collapse show" id="deck">
+                            <ul class="list-group">
+                                {% for instrument in defined_variables %}
+                                    <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}">
+                                        <div>
+                                            <button class="list-group-item list-group-item-action" type="submit">{{instrument}}</button>
+                                        </div>
+                                    </form>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+
+                    {% if local_variables and not defined_variables %}
+                        <div class="accordion-item">
+                            <h5 class="accordion-header">
+                                <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#local" role="button" aria-expanded="false" aria-controls="collapseExample">
+                                    Local Actions:
+                                </button>
+                            </h5>
+                            <div class="accordion-collapse collapse show" id="local">
+                                <ul class="list-group">
+                                    {% for instrument in local_variables %}
+                                        <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}">
+                                            <div>
+                                                <button class="list-group-item list-group-item-action" type="submit"  name="device" value="{{instrument}}" >{{instrument}}</button>
+                                            </div>
+                                        </form>
+                                    {% endfor%}
+                                </ul>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
                 {% endif %}
-            </div>
-            {% endif %}
+        {% endif %}
         </div>
         <div class="col-md-9 scroll-column">
-{#            <h5>Script Editor</h5>#}
             <div>
+{#                file dropdown menu    #}
                 <ul class="nav nav-tabs">
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">File tools <i class="bi bi-tools"></i></a>
@@ -260,7 +293,7 @@
                                 <th scope="row">Config Variables <a role="button" data-bs-toggle="popover" data-bs-title="How to use:" data-bs-content="This shows variables you want to configure later using .csv file"><i class="bi bi-info-circle"></i></a></th>
                                 <td>
                                     <ul>
-                                        {% for i in script.config() %}
+                                        {% for i in script.config("script")[0] %}
                                             <li>{{i}}</li>
                                         {% endfor %}
                                     </ul>
@@ -273,28 +306,21 @@
                     <ul class="reorder">
                         {% for s in script.currently_editing_script %}
                             <li id="{{s['id']}}" style="list-style-type: none;">
-{#                                class="{{'unsortable' if s['instrument'] == 'if' or s['instrument'] == 'while' else ''}}"#}
-{#                                href="/edit/{{s['id']}}" #}
-{#                                {{s['id']}}:#}
                                 {% if s['instrument'] == 'if' %}
-                                    <a type="button" class="btn btn-light" style="background-color: tomato">{{s['action']}} {% if s['args'] %}({{s['args']}}) {% endif %}</a>
+                                    <a href="/edit/{{s['uuid']}}" type="button" class="btn btn-light" style="background-color: tomato">{{s['action']}} {{s['args']}}</a>
                                 {% elif s['instrument'] == 'while' %}
-                                    <a type="button" class="btn btn-light" style="background-color: darkcyan">{{s['action']}} {% if s['args'] %}({{s['args']}}){% endif %}</a>
+                                    <a href="/edit/{{s['uuid']}}" type="button" class="btn btn-light" style="background-color: darkcyan">{{s['action']}} {{s['args']}}</a>
                                 {% elif s['instrument'] == 'variable' %}
-                                    <a type="button" class="btn btn-light" style="">{{s['action']}} = {{s['args']}}</a>
+                                    <a href="/edit/{{s['uuid']}}" type="button" class="btn btn-light" style="">{{s['action']}} = {{s['args']}}</a>
                                 {% else %}
-                                    <a  type="button" class="btn btn-light">
+                                    <a href="/edit/{{s['uuid']}}" type="button" class="btn btn-light">
                                     {% if not s['return'] == '' %}
                                         {{s['return']}} =
                                     {% endif %}
                                     {{s['instrument'].split(".")[1] if s['instrument'].startswith("deck") else s['instrument']}}.{{s.action}}
                                     {% if s['args'] %}
                                         {% if s['args'].__class__.__name__ == "dict" %}
-                                            (
-                                            {% for i in s['args'] %}
-                                            {{i}}={{s['args'][i]}},
-                                            {% endfor %}
-                                            )
+                                            ({% for i in s['args'] %}{{i}}={{s['args'][i]}},{% endfor %})
                                         {% else %}
                                             = {{s['args']}}
                                         {% endif %}
@@ -312,8 +338,6 @@
                 <a class="btn btn-dark " href="{{ url_for('experiment_preview') }}">Compile and Preview</a>
             </div>
         </div>
-
-
     </div>
 </div>
 

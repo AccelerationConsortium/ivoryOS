@@ -28,6 +28,7 @@ class User(db.Model, UserMixin):
     def get_id(self):
         return self.username
 
+
 # ma = Marshmallow()
 #
 # class ScriptSchema(ma.Schema):
@@ -48,7 +49,7 @@ class Script(db.Model):
     last_modified = db.Column(db.String(100), nullable=True)
     id_order = db.Column(JSONType, nullable=True)
     editing_type = db.Column(db.String(100), nullable=True)
-    author = db.Column(db.String(100), nullable=True)
+    author = db.Column(db.String(100), nullable=False)
 
     def __init__(self, name=None, deck=None, status=None, script_dict: dict = None, id_order: dict = None,
                  time_created=None, last_modified=None, editing_type=None, author: str = None):
@@ -84,11 +85,42 @@ class Script(db.Model):
         dict.pop('_sa_instance_state', None)
         return dict
 
-
     def get(self):
         workflows = db.session.query(Script).all()
         # result = script_schema.dump(workflows)
         return workflows
+
+    def find_by_uuid(self, uuid):
+        for stype in self.script_dict:
+            for action in self.script_dict[stype]:
+
+                if action['uuid'] == int(uuid):
+                    return action
+
+    def update_by_uuid(self, uuid, args, output):
+        bool_dict = {"True": True, "False": False}
+
+        action = self.find_by_uuid(uuid)
+        if type(action['args']) is dict:
+            for arg in action['args']:
+                if not args[arg].startswith("#"):
+                    if args[arg] in bool_dict.keys():
+                        args[arg] = bool_dict[args[arg]]
+                    else:
+                        args[arg] = eval(action['arg_types'][arg]+"("+args[arg] +")")
+        else:
+            args = list(args.values())[0]
+            if not args.startswith("#"):
+                if args in bool_dict.keys():
+                    args = bool_dict[args]
+
+                else:
+                    args = eval(action['arg_types'] + "(" + args + ")") if 'arg_types' in action else args
+                    # print(args)
+        action['args'] = args
+        print(action)
+        action['return'] = output
+
     @property
     def stypes(self):
         return list(self.script_dict.keys())
@@ -163,22 +195,29 @@ class Script(db.Model):
         logic_dict = {
             "if":
                 [
-                    {"id": current_len + 1, "instrument": 'if', "action": 'if', "args": 'True' if args == '' else args, "return": '', "uuid": uid},
-                    {"id": current_len + 2, "instrument": 'if', "action": 'else', "args": '', "return": '', "uuid": uid},
-                    {"id": current_len + 3, "instrument": 'if', "action": 'endif', "args": '', "return": '', "uuid": uid},
+                    {"id": current_len + 1, "instrument": 'if', "action": 'if', "args": 'True' if args == '' else args,
+                     "return": '', "uuid": uid},
+                    {"id": current_len + 2, "instrument": 'if', "action": 'else', "args": '', "return": '',
+                     "uuid": uid},
+                    {"id": current_len + 3, "instrument": 'if', "action": 'endif', "args": '', "return": '',
+                     "uuid": uid},
                 ],
             "while":
                 [
-                    {"id": current_len + 1, "instrument": 'while', "action": 'while', "args": 'False' if args == '' else args, "return": '', "uuid": uid},
-                    {"id": current_len + 2, "instrument": 'while', "action": 'endwhile', "args": '', "return": '', "uuid": uid},
+                    {"id": current_len + 1, "instrument": 'while', "action": 'while',
+                     "args": 'False' if args == '' else args, "return": '', "uuid": uid},
+                    {"id": current_len + 2, "instrument": 'while', "action": 'endwhile', "args": '', "return": '',
+                     "uuid": uid},
                 ],
             "variable":
                 [
-                    {"id": current_len + 1, "instrument": 'variable', "action": var_name, "args": 'None' if args == '' else args, "return": '', "uuid": uid},
+                    {"id": current_len + 1, "instrument": 'variable', "action": var_name,
+                     "args": 'None' if args == '' else args, "return": '', "uuid": uid},
                 ],
             "wait":
                 [
-                    {"id": current_len + 1, "instrument": 'wait', "action": "wait", "args": '0' if args == '' else args, "return": '', "uuid": uid},
+                    {"id": current_len + 1, "instrument": 'wait', "action": "wait", "args": '0' if args == '' else args,
+                     "return": '', "uuid": uid},
                 ],
         }
         action_list = logic_dict[logic_type]
@@ -187,39 +226,47 @@ class Script(db.Model):
         self.update_time_stamp()
 
     def delete_action(self, id: int):
+
         uid = next((action['uuid'] for action in self.currently_editing_script if action['id'] == int(id)), None)
         id_to_be_removed = [action['id'] for action in self.currently_editing_script if action['uuid'] == uid]
         order = self.currently_editing_order
         script = self.currently_editing_script
         self.currently_editing_order = [i for i in order if int(i) not in id_to_be_removed]
         self.currently_editing_script = [action for action in script if action['id'] not in id_to_be_removed]
+        self.sort_actions()
         self.update_time_stamp()
 
-    def config(self):
+    def config(self, stype):
         """
         take the global script_dict
         :return: list of variable that require input
         """
         configure = []
-        for action in self.script_dict['script']:
+        config_type_dict = {}
+        for action in self.script_dict[stype]:
             args = action['args']
             if args is not None:
                 if type(args) is not dict:
                     if type(args) is str and args.startswith("#") and not args[1:] in configure:
                         configure.append(args[1:])
+                        config_type_dict[args[1:]] = action['arg_types']
                 else:
                     for arg in args:
                         if type(args[arg]) is str \
                                 and args[arg].startswith("#") \
                                 and not args[arg][1:] in configure:
                             configure.append(args[arg][1:])
-        return configure
+
+                            config_type_dict[args[arg][1:]] = action['arg_types'][arg]
+        #todo
+        return configure, config_type_dict
 
     def config_return(self):
         """
         take the global script_dict
         :return: list of variable that require input
         """
+
         return_list = [action['return'] for action in self.script_dict['script'] if not action['return'] == '']
         output_str = "return {"
         for i in return_list:
@@ -245,12 +292,11 @@ class Script(db.Model):
     def compile(self):
         """
         compile the current script to python file
-        :return: Boolean, whether the compile is successful
+        :return: string to write to python file
         """
         self.sort_actions()
         run_name = self.name if self.name else "untitled"
         with open("scripts/" + run_name + ".py", "w") as s:
-
             if self.deck:
                 s.write("import " + self.deck + " as deck")
             else:
@@ -260,7 +306,7 @@ class Script(db.Model):
             for i in self.stypes:
                 indent_unit = 1
                 exec_string += "\n\ndef " + run_name + "_" + i + "("
-                configure = self.config()
+                configure, cfg_types = self.config(i)
                 if i == "script":
                     for j in configure:
                         exec_string = exec_string + j + ","
@@ -276,13 +322,13 @@ class Script(db.Model):
                         if index < (len(self.script_dict[i]) - 1):
                             next_ = self.script_dict[i][index + 1]
                         if action == 'if':
-                            exec_string = exec_string + self.indent(indent_unit) + "if " + args + ":"
+                            exec_string = exec_string + self.indent(indent_unit) + "if " + str(args) + ":"
                             indent_unit += 1
                             if next_ and next_['instrument'] == 'if':
                                 exec_string = exec_string + self.indent(indent_unit) + "pass"
                         elif action == 'else':
                             exec_string = exec_string + self.indent(indent_unit - 1) + "else:"
-                            if next_['instrument'] == 'if' and next_['action'] == 'endif':
+                            if next_ and next_['instrument'] == 'if' and next_['action'] == 'endif':
                                 exec_string = exec_string + self.indent(indent_unit) + "pass"
                         else:
                             indent_unit -= 1
@@ -294,16 +340,12 @@ class Script(db.Model):
                             indent_unit += 1
                             if next_ and next_['instrument'] == 'while':
                                 exec_string = exec_string + self.indent(indent_unit) + "pass"
-                            # else:
-                            #     indent = "\t"
                         elif action == 'endwhile':
                             indent_unit -= 1
                     elif instrument == 'variable':
-                        # args = "False" if args == '' else args
                         if not args.startswith("#"):
                             exec_string = exec_string + self.indent(indent_unit) + action + " = " + args
                     elif instrument == 'wait':
-                        # args = "False" if args == '' else args
                         exec_string = exec_string + self.indent(indent_unit) + "time.sleep(" + args + ")"
                     else:
                         if args:
@@ -315,7 +357,7 @@ class Script(db.Model):
                                 single_line = instrument + "." + action + "(**" + temp + ")"
                             else:
                                 if type(args) is str and args.startswith("#"):
-                                    args = args.replace("'#" + args[1:] + "'", args[1:])
+                                    args = args[1:]
                                 single_line = instrument + "." + action + " = " + str(args)
                         else:
                             single_line = instrument + "." + action + "()"
@@ -326,22 +368,9 @@ class Script(db.Model):
                 return_str, return_list = self.config_return()
                 if len(return_list) > 0 and i == "script":
                     exec_string += self.indent(indent_unit) + return_str
-            # try:
-            #
-            #     # exec(exec_string)
-            #
-            #     # print(exec_string)
-            # except Exception:
-            #     return ""
             s.write(exec_string)
-            # try:
-            #
-            #     exec(exec_string)
-            #
-            #     # print(exec_string)
-            # except Exception:
-            #     return ""
         return exec_string
+
 
 if __name__ == "__main__":
     a = Script()

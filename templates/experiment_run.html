@@ -8,6 +8,14 @@
     <script type="text/javascript">
         window.onload = function () {OpenBootstrapPopup();};
     </script>
+<script>
+                    function start() {
+                        var source = new EventSource("/progress");
+                        source.onmessage = function(event) {
+                            document.getElementById("progress").innerHTML = event.data;
+                        };
+                    }
+                </script>
 {% endif %}
         <div class="row">
             <div class="col-md-6" >

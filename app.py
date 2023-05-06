@@ -4,11 +4,11 @@ import os
 import csv
 import pickle
 import traceback
-
-from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, render_template, session
+import time
+from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, render_template, session, Response
 from werkzeug.utils import secure_filename
 from utils import utils
-from script import Script, User, db
+from model import Script, User, db
 from flask_login import LoginManager, login_required, login_user, logout_user
 import bcrypt
 
@@ -33,23 +33,25 @@ with app.app_context():
 
 deck = None
 pseudo_deck = None
+defined_variables = None
+api_variables = None
 
-libs = set(dir())
-
-# ---------API imports------------
-# from test import Test
-# from test_inner import TestInner
-
-api = set(dir())
-api_variables = api - libs - set(["libs"])
-
-import_variables = set(dir())
-
-# -----initialize functions here------
-# ran = Test(TestInner('test'))
-
-user_variables = set(dir())
-defined_variables = user_variables - import_variables - set(["import_variables"])
+# libs = set(dir())
+#
+# # ---------API imports------------
+# # from test.py import Test
+# # from test_inner import TestInner
+#
+# api = set(dir())
+# api_variables = api - libs - set(["libs"])
+#
+# import_variables = set(dir())
+#
+# # -----initialize functions here------
+# # ran = Test(TestInner('test.py'))
+#
+# user_variables = set(dir())
+# defined_variables = user_variables - import_variables - set(["import_variables"])
 
 
 @app.route("/")
@@ -63,7 +65,7 @@ def get_script_file():
     if session_script:
         return Script(**session_script)
     else:
-        return Script(author=session.get('username'))
+        return Script(author=session.get('user'))
 
 
 def post_script_file(script, is_dict=False):
@@ -164,35 +166,35 @@ def experiment_builder(instrument=None):
 
             args = request.form.to_dict()
             function_name = args.pop('add')
-            script_type = args.pop('script_type')
+            script_type = args.pop('script_type', None)
             save_data = args.pop('return') if 'return' in request.form else ''
             # try:
-            args = utils.convert_type(args, functions[function_name])
+            args, arg_types = utils.convert_type(args, functions[function_name])
             # except Exception:
             # flash(traceback.format_exc())
             # return redirect(url_for("experiment_builder", instrument=instrument))
             if type(functions[function_name]) is dict:
                 args = list(args.values())[0]
-            script.editing_type = script_type
-            action = {"instrument": instrument, "action": function_name, "args": args, "return": save_data}
+                arg_types = list(arg_types.values())[0]
+            if script_type:
+                script.editing_type = script_type
+            action = {"instrument": instrument, "action": function_name, "args": args, "return": save_data, 'arg_types': arg_types}
             script.add_action(action=action)
 
         elif request.method == 'POST':
             # handle while, if and define variables
-            script_type = request.form.get('script_type')
-            script.editing_type = script_type
+            script_type = request.form.get('script_type', None)
+            if script_type:
+                script.editing_type = script_type
 
             statement = request.form.get('statement')
 
             if "if" in request.form:
-                # args = 'True' if statement == '' else statement
                 script.add_logic_action(logic_type='if', args=statement)
             if "while" in request.form:
-                # args = 'False' if statement == '' else statement
                 script.add_logic_action(logic_type='while', args=statement)
             if "variable" in request.form:
                 var_name = request.form.get('variable')
-                # args = 'None' if statement == '' else statement
                 script.add_logic_action(logic_type='variable', args=statement, var_name=var_name)
             if "wait" in request.form:
                 script.add_logic_action(logic_type="wait", args=statement)
@@ -215,7 +217,7 @@ def experiment_run(filename=None):
     file = open("scripts/" + run_name + ".py", "r")
     script_py = file.read()
     file.close()
-    _, return_list = script.config_return()
+
     script.sort_actions()
 
     if deck is None:
@@ -224,30 +226,10 @@ def experiment_run(filename=None):
         flash("This script is not compatible with current deck, import ", script.deck)
     if request.method == "POST":
         repeat = request.form.get('repeat')
-        output_list = []
+
         try:
             # flash("Running!")
-            exec_string = script.compile()
-            # print(exec_string)
-            exec(exec_string)
-            exec(run_name + "_prep()")
-            if filename is not None and not filename == 'None':
-                df = csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename)))
-                for i in df:
-                    # todo
-                    # arg = convert_type(i,)
-                    output = eval(run_name + "_script(**" + str(i) + ")")
-                    output_list.append(output)
-            if not repeat == '' and repeat is not None:
-                for i in range(int(repeat)):
-                    output = eval(run_name + "_script()")
-                    output_list.append(output)
-            exec(run_name + "_cleanup()")
-            if len(return_list) > 0:
-                with open("results/" + run_name + "_data.csv", "w", newline='') as file:
-                    writer = csv.DictWriter(file, fieldnames=return_list)
-                    writer.writeheader()
-                    writer.writerows(output_list)
+            generate_progress(run_name, filename, repeat)
             flash("Run finished")
         except Exception as e:
             flash(e)
@@ -255,6 +237,37 @@ def experiment_run(filename=None):
                            # return_list=return_list,
                            history=utils.import_history(), prompt=prompt, dismiss=dismiss)
 
+@app.route('/progress')
+def progress(run_name, filename, repeat):
+    return Response(generate_progress(run_name, filename, repeat), mimetype='text/event-stream')
+def generate_progress(run_name, filename, repeat):
+    script = get_script_file()
+    exec_string = script.compile()
+    # print(exec_string)
+    exec(exec_string)
+    output_list = []
+    _, return_list = script.config_return()
+    exec(run_name + "_prep()")
+    if filename is not None and not filename == 'None':
+        df = csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename)))
+        for i in df:
+            # todo
+            # arg = convert_type(i,)
+            print(i)
+            output = eval(run_name + "_script(**" + str(i) + ")")
+            output_list.append(output)
+            # yield f"data: {i}/{len(df)} is done"
+    if not repeat == '' and repeat is not None:
+        for i in range(int(repeat)):
+            output = eval(run_name + "_script()")
+            output_list.append(output)
+            # yield f"data: {i}/{repeat} is done"
+    exec(run_name + "_cleanup()")
+    if len(return_list) > 0:
+        with open("results/" + run_name + "_data.csv", "w", newline='') as file:
+            writer = csv.DictWriter(file, fieldnames=return_list)
+            writer.writeheader()
+            writer.writerows(output_list)
 
 @app.route("/experiment_preview", methods=['GET', 'POST'])
 @login_required
@@ -327,7 +340,7 @@ def controllers(instrument):
         args = request.form.to_dict()
         function_name = args.pop('action')
         function_executable = getattr(inst_object, function_name)
-        args = utils.convert_type(args, functions[function_name])
+        args, _ = utils.convert_type(args, functions[function_name])
         # try:
         #     args = convert_type(args, functions[function_name])
         # except Exception as e:
@@ -362,14 +375,20 @@ def delete_action(id):
 
 
 # TODO
-@app.route("/edit/<id>")
+@app.route("/edit/<uuid>", methods=['GET', 'POST'])
 @login_required
-def edit_action(id):
+def edit_action(uuid):
     script = get_script_file()
-    for action in script.script_dict:
-        if action['id'] == int(id):
-            return ""
-            # return redirect(url_for('experiment_builder', edit_action=action))
+    action = script.find_by_uuid(uuid)
+    session['edit_action'] = action
+    if request.method == "POST":
+        if "back" not in request.form:
+            args = request.form.to_dict()
+            save_as = args.pop('return', '')
+            script.update_by_uuid(uuid=uuid, args=args, output=save_as)
+        session.pop('edit_action')
+    return redirect(url_for('experiment_builder'))
+
 
 
 @app.route("/edit_workflow/<workflow_name>")
@@ -410,10 +429,10 @@ def publish():
 def finalize():
     script = get_script_file()
     script.finalize()
+    post_script_file(script)
 
     db.session.merge(script)
     db.session.commit()
-    post_script_file(script)
     return redirect(url_for('experiment_builder'))
 
 
@@ -421,6 +440,7 @@ def finalize():
 @app.route("/database/<deck_name>", methods=['GET', 'POST'])
 @login_required
 def load_from_database(deck_name=None):
+    session.pop('edit_action', None)
     if deck_name is None:
         temp = db.session.query(Script.deck).distinct().all()
         deck_list = [i[0] for i in temp]
@@ -454,6 +474,7 @@ def save_as():
         if not exist_script:
             script = get_script_file()
             script.save_as(run_name)
+            script.author = session.get('user')
             post_script_file(script)
             publish()
         else:
@@ -634,9 +655,12 @@ def download(filetype):
     script = get_script_file()
     run_name = script.name if script.name else "untitled"
     if filetype == "configure":
-        with open("empty_configure.csv", 'w') as f:
+        with open("empty_configure.csv", 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(script.config())
+            cfg, cfg_types=script.config("script")
+
+            writer.writerow(cfg)
+            writer.writerow(list(cfg_types.values()))
         return send_file("empty_configure.csv", as_attachment=True)
     elif filetype == "script":
         script.sort_actions()
@@ -658,7 +682,7 @@ def find_instrument_by_name(name: str):
 
 
 def parse_deck(deck, save=None):
-    pseudo_deck = session['pseudo_deck']
+    # pseudo_deck = session.get('pseudo_deck', None)
     parse_dict = {}
 
     # TODO
@@ -683,4 +707,5 @@ def parse_deck(deck, save=None):
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=8080, debug=False)
+    # app.run(host="127.0.0.1", port=8080, debug=False)
+    app.run(debug=False)

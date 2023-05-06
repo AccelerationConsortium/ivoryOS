@@ -24,5 +24,5 @@ class MyTest:
     def test4(self, arg1: int = None):
         print("Test4: Testing for None default", arg1)
 
-    def test5(self, arg1: bool):
+    def test5(self, arg1: bool = False):
         print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))

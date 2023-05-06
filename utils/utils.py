@@ -136,42 +136,50 @@ def config_return(script_dict):
     output_str += "}"
     return output_str, return_list
 
+def _get_type_from_parameters(arg, parameters):
+    arg_type = ''
+    if type(parameters) is inspect.Signature:
+        p = parameters.parameters
+        if p[arg].annotation is not inspect._empty:
+            print(p[arg].annotation)
+            arg_type = p[arg].annotation.__name__
+    elif type(parameters) is dict:
+        if parameters[arg]:
+            arg_type = parameters[arg].__name__
+    return arg_type
 
-def convert_type(args, parameters, configure=[]):
+
+
+def convert_type(args, parameters):
     bool_dict = {"True": True, "False": False}
-
-    if not len(args) == 0:
+    arg_types = {}
+    if args:
         for arg in args:
             if args[arg] == '' or args[arg] == "None":
                 args[arg] = None
+                arg_types[arg] = _get_type_from_parameters(arg, parameters)
             elif args[arg] == "True" or args[arg] == "False":
                 args[arg] = bool_dict[args[arg]]
-            # configure parameter
+                arg_types[arg] = 'bool'
             elif args[arg].startswith("#"):
-                # configure_variables.append(args[arg][1:])
-                # exec(args[arg][1:]+"=None")
-                configure.append(args[arg][1:])
-                # args[arg] = args[arg][1:]
+                args[arg] = args[arg]
+                arg_types[arg] = _get_type_from_parameters(arg, parameters)
             elif type(parameters) is inspect.Signature:
                 p = parameters.parameters
                 if p[arg].annotation is not inspect._empty:
-                    # todo
-                    if not type(args[arg]) == p[arg].annotation:
-                        # try:
-                        args[arg] = p[arg].annotation(args[arg])
-                        # except Exception as e:
-                        #     flash(e)
+                    args[arg] = p[arg].annotation(args[arg])
+                    arg_types[arg] = p[arg].annotation.__name__
                 else:
-                    # todo
                     try:
                         args[arg] = eval(args[arg])
+                        arg_types[arg] = ''
                     except Exception:
                         pass
             elif type(parameters) is dict:
-                if parameters[arg] is not None:
-                    if not type(args[arg]) == parameters[arg]:
-                        args[arg] = parameters[arg](args[arg])
-        return args
+                if parameters[arg]:
+                    args[arg] = parameters[arg](args[arg])
+                    arg_types[arg] = parameters[arg].__name__
+    return args, arg_types
 
 
 def sort_actions(script_dict, order, script_type=None):
