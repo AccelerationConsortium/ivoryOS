@@ -141,8 +141,12 @@ def _get_type_from_parameters(arg, parameters):
     if type(parameters) is inspect.Signature:
         p = parameters.parameters
         if p[arg].annotation is not inspect._empty:
-            print(p[arg].annotation)
-            arg_type = p[arg].annotation.__name__
+            # print(p[arg].annotation)
+            if p[arg].annotation.__module__ == 'typing':
+                arg_type = p[arg].annotation.__args__
+            else:
+                arg_type = p[arg].annotation.__name__
+            print(arg_type)
     elif type(parameters) is dict:
         if parameters[arg]:
             arg_type = parameters[arg].__name__
@@ -167,8 +171,18 @@ def convert_type(args, parameters):
             elif type(parameters) is inspect.Signature:
                 p = parameters.parameters
                 if p[arg].annotation is not inspect._empty:
-                    args[arg] = p[arg].annotation(args[arg])
-                    arg_types[arg] = p[arg].annotation.__name__
+                    if p[arg].annotation.__module__ == 'typing':
+                        arg_types[arg] = p[arg].annotation.__args__
+                        for i in p[arg].annotation.__args__:
+                            try:
+                                args[arg] = i(args[arg])
+                                break
+                            except Exception:
+                                pass
+
+                    else:
+                        args[arg] = p[arg].annotation(args[arg])
+                        arg_types[arg] = p[arg].annotation.__name__
                 else:
                     try:
                         args[arg] = eval(args[arg])

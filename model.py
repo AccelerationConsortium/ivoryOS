@@ -118,7 +118,7 @@ class Script(db.Model):
                     args = eval(action['arg_types'] + "(" + args + ")") if 'arg_types' in action else args
                     # print(args)
         action['args'] = args
-        print(action)
+        # print(action)
         action['return'] = output
 
     @property

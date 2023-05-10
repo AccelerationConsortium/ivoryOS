@@ -13,6 +13,8 @@ from flask_login import LoginManager, login_required, login_user, logout_user
 import bcrypt
 
 
+off_line = True
+
 app = Flask(__name__)
 app.config['CSV_FOLDER'] = 'config_csv/'
 app.config['SCRIPT_FOLDER'] = 'scripts/'
@@ -33,26 +35,8 @@ with app.app_context():
 
 deck = None
 pseudo_deck = None
-defined_variables = None
-api_variables = None
-
-# libs = set(dir())
-#
-# # ---------API imports------------
-# # from test.py import Test
-# # from test_inner import TestInner
-#
-# api = set(dir())
-# api_variables = api - libs - set(["libs"])
-#
-# import_variables = set(dir())
-#
-# # -----initialize functions here------
-# # ran = Test(TestInner('test.py'))
-#
-# user_variables = set(dir())
-# defined_variables = user_variables - import_variables - set(["import_variables"])
-
+defined_variables = set()
+api_variables = set()
 
 @app.route("/")
 @login_required
@@ -253,7 +237,7 @@ def generate_progress(run_name, filename, repeat):
         for i in df:
             # todo
             # arg = convert_type(i,)
-            print(i)
+            # print(i)
             output = eval(run_name + "_script(**" + str(i) + ")")
             output_list.append(output)
             # yield f"data: {i}/{len(df)} is done"
@@ -335,7 +319,6 @@ def new_controller(instrument=None):
 def controllers(instrument):
     inst_object = find_instrument_by_name(instrument)
     functions = utils.parse_functions(inst_object)
-
     if request.method == 'POST':
         args = request.form.to_dict()
         function_name = args.pop('action')
