@@ -332,15 +332,15 @@ def controllers(instrument):
         if type(functions[function_name]) is dict:
             args = list(args.values())[0]
         try:
-
+            output = ''
             if callable(function_executable):
                 if args is not None:
-                    function_executable(**args)
+                    output = function_executable(**args)
                 else:
-                    function_executable()
+                    output = function_executable()
             else:  # for setter
                 function_executable = args
-            flash("Run Success!")
+            flash(f"{output}\nRun Success!")
         except Exception as e:
             flash(e)
     return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object)

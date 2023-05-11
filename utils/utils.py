@@ -82,7 +82,10 @@ def parse_functions(class_object=None, call=True):
                 else:
                     att = getattr(class_object.__class__, function)
                     if isinstance(att, property) and att.fset is not None:
-                        functions[function] = att.fset.__annotations__
+                        setter = att.fset.__annotations__
+                        setter.pop('return', None)
+                        if setter:
+                            functions[function] = setter
             except Exception:
                 pass
         # else:
