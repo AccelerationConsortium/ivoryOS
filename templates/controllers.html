@@ -6,37 +6,37 @@
     <h1>Controller for {{inst.__class__.__name__}} ({{instrument}})</h1>
     <div class="row">
         {% for function in functions %}
-        <div class="col-xl-3 col-lg-4 col-md-6 mb-4 d-flex align-items-stretch">
+        <div class="col-xl-3 col-lg-4 col-md-6 mb-4 ">
             <div class="bg-white rounded shadow-sm flex-fill">
                 <div class="p-4" >
-                    <form role="form" method='POST' name="{{function}}" action='/controllers/{{instrument}}'>
+                    <form role="form" method='POST' id="{{function}}" name="{{function}}" action='/controllers/{{instrument}}'>
                         <div class="form-group">
                             <div class="">
                                 {% if functions[function].__class__.__name__ == "dict" %}
-                                {% for arg in functions[function] %}
-                                <div class="input-group mb-3">
-                                    <label class="input-group-text" for="{{arg}}">{{arg}} = </label>
-                                    <input class="form-control" type="text" id="{{arg}}" name="{{arg}}" placeholder="{{functions[function][arg].__name__}}" value="">
-                                </div>
-                                {% endfor %}
-                                {% elif not functions[function].parameters.keys()|length == 0 %}
-                                {% for parameter in functions[function].parameters.keys() %}
-                                <div class="input-group mb-3">
-                                    <label class="input-group-text" for="{{parameter}}">{{parameter}} ({{'optional' if not functions[function].parameters[parameter].default.__name__ == '_empty' else 'required'}}):</label>
-                                    {% if functions[function].parameters[parameter].annotation.__name__ == 'bool' %}
-                                    <div class="btn-group">
-                                        <input class="btn-check" type="radio" id="True" name="{{parameter}}" value="True" {{"checked" if functions[function].parameters[parameter].default==True else ''}} {{"required" if functions[function].parameters[parameter].default.__name__ == '_empty' else ''}}>
-                                        <label class="btn btn-outline-secondary" for="True">True</label>
-                                        <input class="btn-check" type="radio" id="False" name="{{parameter}}" value="False" {{"checked" if functions[function].parameters[parameter].default==False else ''}}>
-                                        <label class="btn btn-outline-secondary" for="False">False</label>
+                                    {% for arg in functions[function] %}
+                                    <div class="input-group mb-3">
+                                        <label class="input-group-text" for="{{arg}}">{{arg}} = </label>
+                                        <input class="form-control" type="text" id="{{arg}}" name="{{arg}}" placeholder="{{functions[function][arg].__name__}}" value="">
                                     </div>
-                                    {% else %}
-                                    <input class="form-control" type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{functions[function].parameters[parameter].annotation.__name__}}"
-                                           value="{{'' if functions[function].parameters[parameter].default.__name__ == '_empty' or functions[function].parameters[parameter].default == None else functions[function].parameters[parameter].default}}"
-                                           {{"required" if functions[function].parameters[parameter].default.__name__ == '_empty' else ''}}>
-                                    {% endif %}
-                                </div>
-                                {% endfor %}
+                                    {% endfor %}
+                                {% elif not functions[function].parameters.keys()|length == 0 %}
+                                    {% for parameter in functions[function].parameters.keys() %}
+                                    <div class="input-group mb-3 {{ parameter }}">
+                                        <label class="input-group-text" for="{{parameter}}">{{parameter}} ({{'optional' if not functions[function].parameters[parameter].default.__name__ == '_empty' else 'required'}}):</label>
+                                        {% if functions[function].parameters[parameter].annotation.__name__ == 'bool' %}
+                                        <div class="btn-group">
+                                            <input class="btn-check" type="radio" id="{{parameter}}_true" name="{{parameter}}" value="True" {{"checked" if functions[function].parameters[parameter].default==True else ''}} {{"required" if functions[function].parameters[parameter].default.__name__ == '_empty' else ''}}>
+                                            <label class="btn btn-outline-secondary" for="{{parameter}}_true">True</label>
+                                            <input class="btn-check" type="radio" id="{{parameter}}_false" name="{{parameter}}" value="False" {{"checked" if functions[function].parameters[parameter].default==False else ''}}>
+                                            <label class="btn btn-outline-secondary" for="{{parameter}}_false">False</label>
+                                        </div>
+                                        {% else %}
+                                        <input class="form-control" type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{functions[function].parameters[parameter].annotation.__name__}}"
+                                               value="{{'' if functions[function].parameters[parameter].default.__name__ == '_empty' or functions[function].parameters[parameter].default == None else functions[function].parameters[parameter].default}}"
+                                               {{"required" if functions[function].parameters[parameter].default.__name__ == '_empty' else ''}}>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
                                 {% endif %}
 
                             </div>

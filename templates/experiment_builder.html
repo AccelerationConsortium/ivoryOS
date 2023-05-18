@@ -122,10 +122,10 @@
                                                     <label class="input-group-text" for="{{parameter}}">{{parameter}} ({{'optional' if not var.default.__name__ == '_empty' else 'required'}}):</label>
                                                     {% if var.annotation.__name__ == 'bool' %}
                                                         <div class="btn-group">
-                                                            <input class="btn-check" type="radio" id="True" name="{{parameter}}" value="True" {{"checked" if var.default==True else ''}} {{"required" if var.default.__name__ == '_empty' else ''}}>
-                                                            <label class="btn btn-default" for="True">True</label>
-                                                            <input class="btn-check" type="radio" id="False" name="{{parameter}}" value="False" {{"checked" if var.default==False else ''}}>
-                                                            <label class="btn btn-default" for="False">False</label>
+                                                            <input class="btn-check" type="radio" id="{{parameter}}_true" name="{{parameter}}" value="True" {{"checked" if var.default==True else ''}} {{"required" if var.default.__name__ == '_empty' else ''}}>
+                                                            <label class="btn btn-default" for="{{parameter}}_true">True</label>
+                                                            <input class="btn-check" type="radio" id="{{parameter}}_false" name="{{parameter}}" value="False" {{"checked" if var.default==False else ''}}>
+                                                            <label class="btn btn-default" for="{{parameter}}_false">False</label>
                                                         </div>
                                                     {% else %}
                                                         <input class="form-control" type="text" id="{{parameter}}" name="{{parameter}}"

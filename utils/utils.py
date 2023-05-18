@@ -194,8 +194,19 @@ def convert_type(args, parameters):
                         pass
             elif type(parameters) is dict:
                 if parameters[arg]:
-                    args[arg] = parameters[arg](args[arg])
-                    arg_types[arg] = parameters[arg].__name__
+                    if parameters[arg].__module__ == 'typing':
+                        # arg_types[arg] = parameters[arg].__args__
+                        for i in parameters[arg].__args__:
+                            print(i)
+                            try:
+                                args[arg] = i(args[arg])
+                                arg_types[arg] = i.__name__
+                                break
+                            except Exception:
+                                pass
+                    else:
+                        args[arg] = parameters[arg](args[arg])
+                        arg_types[arg] = parameters[arg].__name__
     return args, arg_types
 
 

@@ -1,56 +1,74 @@
 {% extends 'base.html' %}
 {% block title %}HEIN LAB | Workflow Database{% endblock %}
-
-
 {% block body %}
 <div class= "container">
-<!--  <div>-->
-<!--    <a class="btn btn-secondary" href="{{url_for('load_from_database',admin='admin')}}">Enable Admin Mode</a>-->
-<!--  </div>-->
-  <div>
-    {% for deck_name in deck_list %}
-      {% if deck_name == "ALL" %}
-      <a class="btn btn-secondary" href="{{url_for('load_from_database')}}">Back</a>
-      {% else %}
-      <a class="btn btn-secondary" href="{{url_for('load_from_database',deck_name=deck_name)}}">{{deck_name}}</a>
-      {% endif %}
-    {% endfor %}
-  </div>
+    <div class="database-filter">
+        {% for deck_name in deck_list %}
+            {% if deck_name == "ALL" %}<a class="btn btn-secondary" href="{{url_for('load_from_database')}}">Back</a>
+            {% else %}<a class="btn btn-secondary" href="{{url_for('load_from_database',deck_name=deck_name)}}">{{deck_name}}</a>
+            {% endif %}
+        {% endfor %}
 
-  <table class="table table-hover">
-    <thead>
-      <tr>
-        <th scope="col">Workflow name</th>
-        <th scope="col">Deck </th>
-        <th scope="col">Current status</th>
-          <th scope="col">Time created</th>
-          <th scope="col">Last modified</th>
-          <th scope="col">Author</th>
-        <th scope="col"></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for workflow in workflows %}
-      <tr>
-        <td><a href="/edit_workflow/{{ workflow.name }}">{{ workflow.name }}</a></td>
-        <td>{{ workflow.deck }}</td>
-        <td>{{ workflow.status }}</td>
-      <td>{{ workflow.time_created }}</td>
-      <td>{{ workflow.last_modified }}</td>
-      <td>{{ workflow.author }}</td>
-        <td>
-{#not workflow.status == "finalized" or#}
-          {% if  session['user'] =='admin' or  session['user'] == workflow.author %}
-              <a href="/delete_workflow/{{workflow.name}}">delete</a>
-          {% else %}
-              <a class="disabled-link" href="/delete_workflow/{{workflow.name}}">delete</a>
-          {% endif %}
+        <form id="search" style="display: inline-block;float: right;" action="{{url_for('load_from_database',deck_name=deck_name)}}" method="GET">
+            <div class="input-group">
+                <div class="form-outline">
+                    <input type="search" name="keyword" id="keyword" class="form-control" placeholder="Search workflows...">
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </form>
+    </div>
 
-        <td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th scope="col">Workflow name</th>
+                <th scope="col">Deck </th>
+                <th scope="col">Current status</th>
+                <th scope="col">Time created</th>
+                <th scope="col">Last modified</th>
+                <th scope="col">Author</th>
+                <th scope="col"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for workflow in workflows %}
+                <tr>
+                    <td><a href="/edit_workflow/{{ workflow.name }}">{{ workflow.name }}</a></td>
+                    <td>{{ workflow.deck }}</td>
+                    <td>{{ workflow.status }}</td>
+                    <td>{{ workflow.time_created }}</td>
+                    <td>{{ workflow.last_modified }}</td>
+                    <td>{{ workflow.author }}</td>
+                    <td>
+                        {#not workflow.status == "finalized" or#}
+                        {% if session['user'] == 'admin' or session['user'] == workflow.author %}
+                            <a href="/delete_workflow/{{workflow.name}}">delete</a>
+                        {% else %}
+                            <a class="disabled-link" href="/delete_workflow/{{workflow.name}}">delete</a>
+                        {% endif %}
+                    <td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination justify-content-center">
+        <div class="page-item {{ 'disabled' if not workflows.has_prev else '' }}">
+            <a class="page-link" href="{{ url_for('load_from_database', page=workflows.prev_num) }}">Previous</a>
+        </div>
+        {% for num in workflows.iter_pages() %}
+            <div class="page-item">
+                <a class="page-link {{ 'active' if num == workflows.page else '' }}" href="{{ url_for('load_from_database', page=num) }}">{{ num }}</a>
+            </div>
+        {% endfor %}
+        <div class="page-item {{ 'disabled' if not workflows.has_next else '' }}">
+            <a class="page-link" href="{{ url_for('load_from_database', page=workflows.next_num) }}">Next</a>
+        </div>
+    </div>
+
 </div>
 
 {% endblock %}

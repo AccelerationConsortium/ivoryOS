@@ -43,16 +43,19 @@
                             </div>
                         </div>
                         {% for arg in device.__init__.__annotations__ %}
-                        <div class="input-group mb-3">
-                            <span class="input-group-text" >{{arg}}</span>
-                            <input class="form-control"  type="text" id="{{arg}}" name="{{arg}}"
-                                   placeholder="{{device.__init__.__annotations__[arg].__name__}}"
-                                   value="{{args.parameters[arg].default if not args.parameters[arg].default.__name__ == '_empty' else ''}}">
-                            {% if not device.__init__.__annotations__[arg].__module__ == "builtins" %}
-                            <a role="button" href="/new_controller/{{device.__init__.__annotations__[arg].__name__}}"
-                               class="btn btn-secondary">initialize {{device.__init__.__annotations__[arg].__name__}} first</a>
+                            {% if not arg == "return" %}
+                                <div class="input-group mb-3">
+                                    <span class="input-group-text" >{{arg}}</span>
+                                    <input class="form-control"  type="text" id="{{arg}}" name="{{arg}}"
+                                           placeholder="{{device.__init__.__annotations__[arg].__name__}}"
+                                           value="{{args.parameters[arg].default if not args.parameters[arg].default.__name__ == '_empty' else ''}}">
+
+                                    {% if not device.__init__.__annotations__[arg].__module__ == "builtins" %}
+                                    <a role="button" href="/new_controller/{{device.__init__.__annotations__[arg].__name__}}"
+                                       class="btn btn-secondary">initialize {{device.__init__.__annotations__[arg].__name__}} first</a>
+                                    {% endif %}
+                                </div>
                             {% endif %}
-                        </div>
                         {% endfor %}
                         <button type="submit" class="btn btn-dark">Connect</button>
                     </div>

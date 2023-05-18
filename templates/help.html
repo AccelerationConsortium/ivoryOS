@@ -4,8 +4,123 @@
 
 {% block body %}
 <div class= "container">
-    <h2>First time launch manual</h2>
-    <object data="{{ url_for('static', filename='setup-help.pdf')}}" type="application/pdf" style="min-height:80vh;width:100%"></object>
+    <h2>FAQs</h2>
+    <div class="accordion accordion-flush" id="accordionActions" >
+
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#overall" aria-expanded="false" aria-controls="collapseExample">
+                    General information - What can this app do?
+                </button>
+            </h2>
+            <div id="overall" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
+                <div class="accordion-body">
+                    <p>This is a web-based Graphical User Interface (GUI) for controlling Python-driven instruments and editing automation workflow in the Hein Lab. This GUI is aimed to provide a visual programming tool to customize automation workflow with no or low coding, so that programming skills won't be a barrier for chemistry automation.</p>
+                    <p>Controller: single instrument mode and multi-instrument interface.</p>
+                    <p>Workflow editor: automation workflow editor
+
+                </div>
+            </div>
+        </div>
+{#        <p>In the Controller tab, you can connect any instrument or instruments from a complete automation deck. The GUI will parse and show available functions and prompt user to the input argument values if need.</p>#}
+{#        <p>In the Build Workflow tab, you can edit your own automation workflow from scratch or from the workflow library, where stores the ongoing projects and some basic example workflows.</p>#}
+
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#controller" aria-expanded="false" aria-controls="collapseExample">
+                    Controller - How to use controller interface?
+                </button>
+            </h2>
+            <div id="controller" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
+                <div class="accordion-body">
+                    <p>There are 2 options of connecting instrument:</p>
+                    <p>(1)     Connect devices in python script, and use Deck controller Tab to import the .py file. More details.</p>
+                    <p>(2)     User Instruments Controller and import the python API only, make in-app connection later. More details.</p>
+                </div>
+            </div>
+        </div>
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#deck" aria-expanded="false" aria-controls="collapseExample">
+                    Controller - Create my deck.py file
+                </button>
+            </h2>
+            <div id="deck" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
+                <div class="accordion-body">
+                    <p>When there are multiple instruments to connect, a deck file that had created the connection might be a better choice. Here is a sample deck.py file for a two-pump system</p>
+                    <pre ><code class="python" >{{dot_py}}</code></pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#library" aria-expanded="false" aria-controls="collapseExample">
+                    Script Editor - Library
+                </button>
+            </h2>
+            <div id="library" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
+                <div class="accordion-body">
+                    <p>In "Library" Tab, the interactive database displays all workflow information</p>
+                    <p>On top of the library page, you can click filter to choose your desired deck out of other automation platforms. You can also search for experiment keyword on the right</p>
+                    <p>Note that you can edit/delete your own workflow anytime, but in case you would like to adapt other author's workflow, you need to save as your own in a different file name.</p>
+                </div>
+            </div>
+        </div>
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#editor" aria-expanded="false" aria-controls="collapseExample">
+                    Script Editor - How to use script editor?
+                </button>
+            </h2>
+            <div id="editor" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
+                <div class="accordion-body">
+                    <p>You can browse and load other's workflow in "Library" Tab or go to "Build Workflow" Tab to build from scratch.</p>
+                    <p>On the workflow canvas, there are three coding blocks: Prep, Experiment and Clean up. As the names indicated, the Prep and Clean up are steps taken prior and after to the main experiment, they cannot be repeated. On the other hand, the Experiment section can be repeated by a designated times or <a href="#">a configuration file</a></p>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#install" aria-expanded="false" aria-controls="collapseExample">
+                    Supports - Installation
+                </button>
+            </h2>
+            <div id="install" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
+                <div class="accordion-body">
+                    If you want to install this on a new computer, follow the instructions below
+                    Link to installation documentation
+                    <object data="{{ url_for('static', filename='setup-help.pdf')}}" type="application/pdf" style="min-height:80vh;width:100%"></object>
+                </div>
+            </div>
+        </div>
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#debug" aria-expanded="false" aria-controls="collapseExample">
+                    Supports - Debugs help
+                </button>
+            </h2>
+            <div id="debug" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
+                <div class="accordion-body">
+                    Here are some common error messages and possible fixes.
+                </div>
+            </div>
+        </div>
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#more" aria-expanded="false" aria-controls="collapseExample">
+                    what else?
+                </button>
+            </h2>
+            <div id="more" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
+                <div class="accordion-body">
+                    developing.
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 {% endblock %}

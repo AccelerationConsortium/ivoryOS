@@ -152,11 +152,11 @@ def experiment_builder(instrument=None):
             function_name = args.pop('add')
             script_type = args.pop('script_type', None)
             save_data = args.pop('return') if 'return' in request.form else ''
-            # try:
-            args, arg_types = utils.convert_type(args, functions[function_name])
-            # except Exception:
-            # flash(traceback.format_exc())
-            # return redirect(url_for("experiment_builder", instrument=instrument))
+            try:
+                args, arg_types = utils.convert_type(args, functions[function_name])
+            except Exception:
+                flash(traceback.format_exc())
+                return redirect(url_for("experiment_builder", instrument=instrument))
             if type(functions[function_name]) is dict:
                 args = list(args.values())[0]
                 arg_types = list(arg_types.values())[0]
@@ -194,13 +194,21 @@ def experiment_builder(instrument=None):
 @login_required
 def experiment_run(filename=None):
     # current_variables = set(dir())
-    dismiss = session.get("dismiss", None)
     script = get_script_file()
-    prompt = False
+    exec_string = script.compile()
+    try:
+        exec(exec_string)
+    except Exception:
+        flash("Please check syntax!!")
+        return redirect(url_for("experiment_builder"))
     run_name = script.name if script.name else "untitled"
     file = open("scripts/" + run_name + ".py", "r")
     script_py = file.read()
     file.close()
+
+    dismiss = session.get("dismiss", None)
+    script = get_script_file()
+    prompt = False
 
     script.sort_actions()
 
@@ -301,9 +309,16 @@ def new_controller(instrument=None):
                                        device=device, args=args, defined_variables=defined_variables)
             kwargs = request.form.to_dict()
             kwargs.pop("name")
-            for arg in device.__init__.__annotations__:
-                if not device.__init__.__annotations__[arg].__module__ == "builtins":
-                    kwargs[arg] = globals()[kwargs[arg]]
+            print(kwargs)
+            for i in kwargs:
+                if kwargs[i] == '' or kwargs[i] == 'None':
+                    kwargs[i] = None
+                else:
+                    kwargs[i] = eval(kwargs[i])
+            # for arg in device.__init__.__annotations__:
+            #     if not device.__init__.__annotations__[arg].__module__ == "builtins":
+            #         if kwargs[arg]:
+            #             kwargs[arg] = globals()[kwargs[arg]]
             try:
                 globals()[device_name] = device(**kwargs)
                 defined_variables.add(device_name)
@@ -323,12 +338,13 @@ def controllers(instrument):
         args = request.form.to_dict()
         function_name = args.pop('action')
         function_executable = getattr(inst_object, function_name)
-        args, _ = utils.convert_type(args, functions[function_name])
+        try:
+            args, _ = utils.convert_type(args, functions[function_name])
         # try:
         #     args = convert_type(args, functions[function_name])
-        # except Exception as e:
-        #     flash(e)
-        # return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object)
+        except Exception as e:
+            flash(e)
+            return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object)
         if type(functions[function_name]) is dict:
             args = list(args.values())[0]
         try:
@@ -386,12 +402,13 @@ def edit_workflow(workflow_name):
 @app.route("/delete_workflow/<workflow_name>")
 @login_required
 def delete_workflow(workflow_name):
-    db.session.query(Script).filter(Script.name == workflow_name).delete()
+    Script.query.filter(Script.name == workflow_name).delete()
     db.session.commit()
     return redirect(url_for('load_from_database'))
 
 
 @app.route("/publish")
+@login_required
 def publish():
     script = get_script_file()
     if not script.name or not script.deck:
@@ -409,6 +426,7 @@ def publish():
 
 
 @app.route("/finalize")
+@login_required
 def finalize():
     script = get_script_file()
     script.finalize()
@@ -419,22 +437,31 @@ def finalize():
     return redirect(url_for('experiment_builder'))
 
 
-@app.route("/database", methods=['GET', 'POST'])
+@app.route("/database/", methods=['GET', 'POST'])
 @app.route("/database/<deck_name>", methods=['GET', 'POST'])
 @login_required
 def load_from_database(deck_name=None):
-    session.pop('edit_action', None)
+    session.pop('edit_action', None)    # reset cache
+    query = Script.query
+    search_term = request.args.get("keyword", None)
+    # search_term = request.form.get("keyword", None)
+    if search_term:
+        query = query.filter(Script.name.like(f'%{search_term}%'))
     if deck_name is None:
-        temp = db.session.query(Script.deck).distinct().all()
+        temp = Script.query.with_entities(Script.deck).distinct().all()
         deck_list = [i[0] for i in temp]
-        workflows = db.session.query(Script).all()
     else:
-        workflows = db.session.query(Script).filter(Script.deck == deck_name)
+        query = query.filter(Script.deck == deck_name)
         deck_list = ["ALL"]
-    return render_template("experiment_database.html", workflows=workflows, deck_list=deck_list)
+    page = request.args.get('page', default=1, type=int)
+    per_page = 10
+
+    workflows = query.paginate(page=page, per_page=per_page, error_out=False)
+    return render_template("experiment_database.html", workflows=workflows, deck_list=deck_list, deck_name=deck_name)
 
 
 @app.route("/edit_run_name", methods=['GET', 'POST'])
+@login_required
 def edit_run_name():
     if request.method == "POST":
         run_name = request.form.get("run_name")
@@ -449,6 +476,7 @@ def edit_run_name():
 
 
 @app.route("/save_as", methods=['GET', 'POST'])
+@login_required
 def save_as():
     # script = get_script_file()
     if request.method == "POST":
@@ -466,6 +494,7 @@ def save_as():
 
 
 @app.route("/toggle_script_type/<stype>")
+@login_required
 def toggle_script_type(stype=None):
     script = get_script_file()
     script.editing_type = stype
@@ -474,6 +503,7 @@ def toggle_script_type(stype=None):
 
 
 @app.route("/updateList", methods=['GET', 'POST'])
+@login_required
 def update_list():
     getorder = request.form['order']
     script = get_script_file()
@@ -485,6 +515,7 @@ def update_list():
 
 # --------------------handle all the import/export and download/upload--------------------------
 @app.route("/clear")
+@login_required
 def clear():
     if deck:
         deck_name = deck.__name__
@@ -517,6 +548,20 @@ def import_api():
     except Exception as e:
         flash(e.__str__())
     return redirect(url_for("new_controller"))
+
+@app.route("/clear_deck", methods=["GET"])
+def clear_deck():
+    back = request.referrer
+    deck_variables = ["deck." + var for var in set(dir(deck))
+                      if not (var.startswith("_") or var[0].isupper() or var.startswith("repackage"))
+                      and not type(eval("deck." + var)).__module__ == 'builtins']
+    for i in deck_variables:
+        try:
+            exec(i+".disconnect()")
+        except Exception:
+            pass
+    globals()["deck"] = None
+    return redirect(url_for('index'))
 
 
 @app.route("/import_deck", methods=['POST'])

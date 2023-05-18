@@ -26,3 +26,6 @@ class MyTest:
 
     def test5(self, arg1:bool= False):
         print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
+
+    def test6_another_bool(self, arg_542398:bool):
+        print("Test5: Testing for boolean input\nValue:", arg_542398, "   Type: ", type(arg_542398))

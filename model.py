@@ -104,8 +104,11 @@ class Script(db.Model):
         if type(action['args']) is dict:
             for arg in action['args']:
                 if not args[arg].startswith("#"):
+
                     if args[arg] in bool_dict.keys():
                         args[arg] = bool_dict[args[arg]]
+                    elif args[arg] == "None" or args[arg] == "":
+                        args[arg] = None
                     else:
                         args[arg] = eval(action['arg_types'][arg]+"("+args[arg] +")")
         else:
