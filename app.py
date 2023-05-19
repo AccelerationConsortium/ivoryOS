@@ -7,13 +7,16 @@ import traceback
 import time
 from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, render_template, session, Response
 from werkzeug.utils import secure_filename
+
+import instruments
 from utils import utils
 from model import Script, User, db
 from flask_login import LoginManager, login_required, login_user, logout_user
 import bcrypt
-
+from instruments import *
 
 off_line = True
+# if off_line:
 
 app = Flask(__name__)
 app.config['CSV_FOLDER'] = 'config_csv/'
@@ -37,6 +40,10 @@ deck = None
 pseudo_deck = None
 defined_variables = set()
 api_variables = set()
+if off_line:
+    api_variables = dir(instruments)
+    api_variables = set([i for i in api_variables if not i.startswith("_") and not i == "sys"])
+
 
 @app.route("/")
 @login_required
@@ -74,12 +81,35 @@ def login():
             session['user'] = username
             script_file = Script(author=username)
             session["script"] = script_file.as_dict()
+            session['hidden_functions'] = {}
             post_script_file(script_file)
             return redirect(url_for('index'))
         else:
             flash("Incorrect username or password")
     return render_template('login.html')
 
+
+@app.route('/hide_function/<instrument>/<function>')
+def hide_function(instrument, function):
+    back = request.referrer
+    functions = session.get("hidden_functions")
+    if instrument in functions.keys():
+        if function not in functions[instrument]:
+            functions[instrument].append(function)
+    else:
+        functions[instrument] = [function]
+    session['hidden_functions'] = functions
+    return redirect(back)
+
+@app.route('/remove_hidden/<instrument>/<function>')
+def remove_hidden(instrument, function):
+    back = request.referrer
+    functions = session.get("hidden_functions")
+    if instrument in functions.keys():
+        if function in functions[instrument]:
+            functions[instrument].remove(function)
+    session['hidden_functions'] = functions
+    return redirect(back)
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -162,7 +192,8 @@ def experiment_builder(instrument=None):
                 arg_types = list(arg_types.values())[0]
             if script_type:
                 script.editing_type = script_type
-            action = {"instrument": instrument, "action": function_name, "args": args, "return": save_data, 'arg_types': arg_types}
+            action = {"instrument": instrument, "action": function_name, "args": args, "return": save_data,
+                      'arg_types': arg_types}
             script.add_action(action=action)
 
         elif request.method == 'POST':
@@ -229,9 +260,12 @@ def experiment_run(filename=None):
                            # return_list=return_list,
                            history=utils.import_history(), prompt=prompt, dismiss=dismiss)
 
+
 @app.route('/progress')
 def progress(run_name, filename, repeat):
     return Response(generate_progress(run_name, filename, repeat), mimetype='text/event-stream')
+
+
 def generate_progress(run_name, filename, repeat):
     script = get_script_file()
     exec_string = script.compile()
@@ -260,6 +294,7 @@ def generate_progress(run_name, filename, repeat):
             writer = csv.DictWriter(file, fieldnames=return_list)
             writer.writeheader()
             writer.writerows(output_list)
+
 
 @app.route("/experiment_preview", methods=['GET', 'POST'])
 @login_required
@@ -302,14 +337,20 @@ def new_controller(instrument=None):
         args = utils.inspect.signature(device.__init__)
 
         if request.method == 'POST':
-            device_name = request.form["name"]
-            if device_name == '' or device_name in globals():
-                flash("Device name is NOT valid")
+            device_name = request.form.get("device_name", None)
+            if device_name and device_name in globals():
+                flash("Device name is defined. Try another name, or leave it as blank to auto-configure")
                 return render_template('create_controller.html', instrument=instrument, api_variables=api_variables,
                                        device=device, args=args, defined_variables=defined_variables)
+            if device_name == '' or device_name in None:
+                device_name = device.__name__.lower() + "_"
+                num = 1
+                while device_name + str(num) in globals():
+                    num += 1
+                device_name = device_name + str(num)
             kwargs = request.form.to_dict()
-            kwargs.pop("name")
-            print(kwargs)
+            kwargs.pop("device_name")
+
             for i in kwargs:
                 if kwargs[i] == '' or kwargs[i] == 'None':
                     kwargs[i] = None
@@ -389,7 +430,6 @@ def edit_action(uuid):
     return redirect(url_for('experiment_builder'))
 
 
-
 @app.route("/edit_workflow/<workflow_name>")
 @login_required
 def edit_workflow(workflow_name):
@@ -441,9 +481,10 @@ def finalize():
 @app.route("/database/<deck_name>", methods=['GET', 'POST'])
 @login_required
 def load_from_database(deck_name=None):
-    session.pop('edit_action', None)    # reset cache
+    session.pop('edit_action', None)  # reset cache
     query = Script.query
     search_term = request.args.get("keyword", None)
+    print(search_term)
     # search_term = request.form.get("keyword", None)
     if search_term:
         query = query.filter(Script.name.like(f'%{search_term}%'))
@@ -512,7 +553,6 @@ def update_list():
     return jsonify('Successfully Updated')
 
 
-
 # --------------------handle all the import/export and download/upload--------------------------
 @app.route("/clear")
 @login_required
@@ -549,6 +589,7 @@ def import_api():
         flash(e.__str__())
     return redirect(url_for("new_controller"))
 
+
 @app.route("/clear_deck", methods=["GET"])
 def clear_deck():
     back = request.referrer
@@ -557,7 +598,7 @@ def clear_deck():
                       and not type(eval("deck." + var)).__module__ == 'builtins']
     for i in deck_variables:
         try:
-            exec(i+".disconnect()")
+            exec(i + ".disconnect()")
         except Exception:
             pass
     globals()["deck"] = None
@@ -685,7 +726,7 @@ def download(filetype):
     if filetype == "configure":
         with open("empty_configure.csv", 'w', newline='') as f:
             writer = csv.writer(f)
-            cfg, cfg_types=script.config("script")
+            cfg, cfg_types = script.config("script")
 
             writer.writerow(cfg)
             writer.writerow(list(cfg_types.values()))
@@ -736,4 +777,4 @@ def parse_deck(deck, save=None):
 
 if __name__ == "__main__":
     # app.run(host="127.0.0.1", port=8080, debug=False)
-    app.run(debug=False)
+    app.run(host="0.0.0.0", port=5000)

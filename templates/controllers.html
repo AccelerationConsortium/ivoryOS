@@ -6,51 +6,75 @@
     <h1>Controller for {{inst.__class__.__name__}} ({{instrument}})</h1>
     <div class="row">
         {% for function in functions %}
-        <div class="col-xl-3 col-lg-4 col-md-6 mb-4 ">
-            <div class="bg-white rounded shadow-sm flex-fill">
-                <div class="p-4" >
-                    <form role="form" method='POST' id="{{function}}" name="{{function}}" action='/controllers/{{instrument}}'>
-                        <div class="form-group">
-                            <div class="">
-                                {% if functions[function].__class__.__name__ == "dict" %}
-                                    {% for arg in functions[function] %}
-                                    <div class="input-group mb-3">
-                                        <label class="input-group-text" for="{{arg}}">{{arg}} = </label>
-                                        <input class="form-control" type="text" id="{{arg}}" name="{{arg}}" placeholder="{{functions[function][arg].__name__}}" value="">
-                                    </div>
-                                    {% endfor %}
-                                {% elif not functions[function].parameters.keys()|length == 0 %}
-                                    {% for parameter in functions[function].parameters.keys() %}
-                                    <div class="input-group mb-3 {{ parameter }}">
-                                        <label class="input-group-text" for="{{parameter}}">{{parameter}} ({{'optional' if not functions[function].parameters[parameter].default.__name__ == '_empty' else 'required'}}):</label>
-                                        {% if functions[function].parameters[parameter].annotation.__name__ == 'bool' %}
-                                        <div class="btn-group">
-                                            <input class="btn-check" type="radio" id="{{parameter}}_true" name="{{parameter}}" value="True" {{"checked" if functions[function].parameters[parameter].default==True else ''}} {{"required" if functions[function].parameters[parameter].default.__name__ == '_empty' else ''}}>
-                                            <label class="btn btn-outline-secondary" for="{{parameter}}_true">True</label>
-                                            <input class="btn-check" type="radio" id="{{parameter}}_false" name="{{parameter}}" value="False" {{"checked" if functions[function].parameters[parameter].default==False else ''}}>
-                                            <label class="btn btn-outline-secondary" for="{{parameter}}_false">False</label>
-                                        </div>
-                                        {% else %}
-                                        <input class="form-control" type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{functions[function].parameters[parameter].annotation.__name__}}"
-                                               value="{{'' if functions[function].parameters[parameter].default.__name__ == '_empty' or functions[function].parameters[parameter].default == None else functions[function].parameters[parameter].default}}"
-                                               {{"required" if functions[function].parameters[parameter].default.__name__ == '_empty' else ''}}>
+            {% if function not in session['hidden_functions'][instrument] %}
+                <div class="col-xl-3 col-lg-4 col-md-6 mb-4 ">
+
+                    <div class="bg-white rounded shadow-sm flex-fill">
+                        <a style="float: right" aria-label="Close" href="/hide_function/{{ instrument }}/{{ function }}"><i class="bi bi-eye-slash-fill"></i></a>
+                        <div class="p-4" >
+                            <form role="form" method='POST' id="{{function}}" name="{{function}}" action='/controllers/{{instrument}}'>
+                                <div class="form-group">
+                                    <div class="">
+                                        {% if functions[function].__class__.__name__ == "dict" %}
+                                            {% for arg in functions[function] %}
+                                            <div class="input-group mb-3">
+                                                <label class="input-group-text" for="{{arg}}">{{arg}} = </label>
+                                                <input class="form-control" type="text" id="{{arg}}" name="{{arg}}" placeholder="{{functions[function][arg].__name__}}" value="">
+                                            </div>
+                                            {% endfor %}
+                                        {% elif not functions[function].parameters.keys()|length == 0 %}
+                                            {% for parameter in functions[function].parameters.keys() %}
+                                            <div class="input-group mb-3 {{ parameter }}">
+                                                <label class="input-group-text" for="{{parameter}}">{{parameter}} ({{'optional' if not functions[function].parameters[parameter].default.__name__ == '_empty' else 'required'}}):</label>
+                                                {% if functions[function].parameters[parameter].annotation.__name__ == 'bool' %}
+                                                <div class="btn-group">
+                                                    <input class="btn-check" type="radio" id="{{parameter}}_true" name="{{parameter}}" value="True" {{"checked" if functions[function].parameters[parameter].default==True else ''}} {{"required" if functions[function].parameters[parameter].default.__name__ == '_empty' else ''}}>
+                                                    <label class="btn btn-outline-secondary" for="{{parameter}}_true">True</label>
+                                                    <input class="btn-check" type="radio" id="{{parameter}}_false" name="{{parameter}}" value="False" {{"checked" if functions[function].parameters[parameter].default==False else ''}}>
+                                                    <label class="btn btn-outline-secondary" for="{{parameter}}_false">False</label>
+                                                </div>
+                                                {% else %}
+                                                <input class="form-control" type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{functions[function].parameters[parameter].annotation.__name__}}"
+                                                       value="{{'' if functions[function].parameters[parameter].default.__name__ == '_empty' or functions[function].parameters[parameter].default == None else functions[function].parameters[parameter].default}}"
+                                                       {{"required" if functions[function].parameters[parameter].default.__name__ == '_empty' else ''}}>
+                                                {% endif %}
+                                            </div>
+                                            {% endfor %}
                                         {% endif %}
+
                                     </div>
-                                    {% endfor %}
-                                {% endif %}
 
-                            </div>
+                                    <div class="d-grid gap-2">
+                                        <button type="submit" class="btn btn-secondary" name="action" value="{{function}}" style="float: right;">{{function}}</button>
+                                    </div>
+                                </div>
+                            </form>
 
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-secondary" name="action" value="{{function}}" style="float: right;">{{function}}</button>
-                            </div>
                         </div>
-                    </form>
-
+                    </div>
                 </div>
+            {% endif %}
+
+        {% endfor %}
+    </div>
+    <div class="accordion accordion-flush" id="accordionActions" >
+        <div class="accordion-item">
+            <h4 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#hidden">
+                    Hidden functions
+                </button>
+            </h4>
+        </div>
+        <div id="hidden" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
+            <div class="accordion-body">
+                {% for function in session['hidden_functions'][instrument] %}
+                    <div>
+                        {{ function }} <a href="/remove_hidden/{{ instrument }}/{{ function }}"><i class="bi bi-eye-fill"></i></a>
+                    </div>
+                {% endfor %}
             </div>
         </div>
-        {% endfor %}
+
     </div>
 </div>
 

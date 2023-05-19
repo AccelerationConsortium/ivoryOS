@@ -2,24 +2,34 @@
 {% block title %}HEIN LAB | Connect Instrument{% endblock %}
 
 {% block body %}
-
-    <div class="container">
-        <div class = "collapse {{'show' if not api_variables else ''}}" id="import">
-
+<div class="modal fade" id="importAPI" tabindex="-1" aria-labelledby="importModal" aria-hidden="true" >
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="importModal">Import API by file path</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
             <form method="POST" action="/import_api" enctype="multipart/form-data">
-                <div class="input-group">
-                    <label class="input-group-text" for="filepath">Import API by File Path:</label>
-                    <input type="text" class="form-control" name="filepath" id="filepath" required="required">
-                    <input class="btn btn-secondary" type="submit" value="Import">
+                <div class="modal-body">
+                    <h5>input manually</h5>
+                    <div class="input-group mb-3">
+                        <label class="input-group-text" for="filepath">File Path:</label>
+                        <input type="text" class="form-control" name="filepath" id="filepath">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Close </button>
+                        <button type="submit"  class="btn btn-primary"> Save </button>
+                    </div>
                 </div>
             </form>
         </div>
+    </div>
+</div>
 
-
-
+    <div class="container">
         <div class="row">
             <div class="col-4">
-                <h5>Available Python API <a role="button" class="btn btn-secondary" data-bs-toggle="collapse" href="#import">import another</a></h5>
+                <h5>Available Python API <a data-bs-toggle="modal" href="#importAPI"><i class="bi bi-plus-lg"></i>import</a></h5>
                 <hr>
                 {% if api_variables %}
                     {% for instrument in api_variables %}
@@ -37,7 +47,7 @@
                     <div class="form-group">
                         <div class="input-group mb-3">
                             <span class="input-group-text" >Name this device</span>
-                            <input class="form-control" type="text" id="name" name="name" aria-labelledby="nameHelpBlock" placeholder="e.g. {{device.__name__}}1" >
+                            <input class="form-control" type="text" id="device_name" name="device_name" aria-labelledby="nameHelpBlock" placeholder="e.g. {{device.__name__}}_1" >
                             <div id="nameHelpBlock" class="form-text">
                                 Name your instrument, avoid names that are defined on the right
                             </div>
@@ -50,7 +60,7 @@
                                            placeholder="{{device.__init__.__annotations__[arg].__name__}}"
                                            value="{{args.parameters[arg].default if not args.parameters[arg].default.__name__ == '_empty' else ''}}">
 
-                                    {% if not device.__init__.__annotations__[arg].__module__ == "builtins" %}
+                                    {% if device.__init__.__annotations__[arg].__module__ is not in ["builtins", "typing"] %}
                                     <a role="button" href="/new_controller/{{device.__init__.__annotations__[arg].__name__}}"
                                        class="btn btn-secondary">initialize {{device.__init__.__annotations__[arg].__name__}} first</a>
                                     {% endif %}

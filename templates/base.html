@@ -34,17 +34,24 @@
 {#                    <li class="nav-item">#}
 {#                        <a class="nav-link" href="{{ url_for('experiment_preview') }}">Preview Script</a>#}
 {#                    </li>#}
+
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('experiment_run') }}">Compile/Run</a>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Controllers</a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('deck_controllers') }}">Deck Controller</a></li>
-<!--                            <li><hr class="dropdown-divider"></li>-->
-                            <li><a class="dropdown-item" href="{{ url_for('controllers_home') }}">Instrument Controller</a></li>
-                        </ul>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('deck_controllers') }}">Deck devices</a></li>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('controllers_home') }}">New Device</a></li>
+                    </li>
+{#                    <li class="nav-item dropdown">#}
+{#                        #}
+{#                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Controllers</a>#}
+{#                        <ul class="dropdown-menu">#}
+{#                            <li><a class="dropdown-item" href="{{ url_for('deck_controllers') }}">Deck Controller</a></li>#}
+{#                            <li><a class="dropdown-item" href="{{ url_for('controllers_home') }}">Instrument Controller</a></li>#}
+{#                        </ul>#}
+{#                    </li>#}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('help_info') }}">About</a>
                     </li>
@@ -104,6 +111,7 @@
                             {% for connection in history %}
                                 <option style="overflow-wrap: break-word;" name="filepath" id="filepath" value="{{connection}}">{{connection}}</option>
                             {% endfor %}
+                            <option>clear history</option>
                             </select>
                         </div>
                         <h5>input manually</h5>
@@ -114,7 +122,7 @@
                         <div class="input-group mb-3">
                             <div class="form-check">
                                 <input type="checkbox" class="form-check-input" id="update" name="update" value="update">
-                                <label class="form-check-label" for="update">Update Deck</label>
+                                <label class="form-check-label" for="update">Update editor config</label>
                             </div>
                         </div>
 
