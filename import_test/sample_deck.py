@@ -1,6 +1,5 @@
-import repackage
-
-repackage.up()
+import sys,os
+sys.path.append(os.getcwd())
 
 from import_test.gui_test import MyTest
 from import_test.test_inner import TestInner

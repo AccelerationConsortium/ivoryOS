@@ -145,7 +145,19 @@ def load_user(username):
 
 @app.route("/help")
 def help_info():
-    return render_template('help.html')
+    sample_deck = """
+    import sys,os
+    sys.path.append(os.getcwd())
+                            
+    from new_era.peristaltic_pump_network import PeristalticPumpNetwork, NetworkedPeristalticPump
+    from vapourtec.sf10 import SF10
+    # --------------------new_era---------------------------
+    pump_network = PeristalticPumpNetwork('com5')
+    new_era = pump_network.add_pump(address=0, baudrate=9600)
+    
+    # --------------------  SF10  --------------------------
+    sf10 = SF10(device_port="com7")"""
+    return render_template('help.html', sample_deck=sample_deck)
 
 
 @app.route("/controllers")
@@ -246,7 +258,7 @@ def experiment_run(filename=None):
     if deck is None:
         prompt = True
     elif script.deck and not script.deck == deck.__name__:
-        flash("This script is not compatible with current deck, import ", script.deck)
+        flash(f"This script is not compatible with current deck, import {script.deck}")
     if request.method == "POST":
         repeat = request.form.get('repeat')
 
@@ -436,6 +448,8 @@ def edit_workflow(workflow_name):
     row = Script.query.get(workflow_name)
     script = Script(**row.as_dict())
     post_script_file(script)
+    if not script.deck == pseudo_deck["deck_name"]:
+        flash(f"Choose the deck with name {script.deck}")
     return redirect(url_for('experiment_builder'))
 
 
@@ -590,9 +604,18 @@ def import_api():
     return redirect(url_for("new_controller"))
 
 
-@app.route("/clear_deck", methods=["GET"])
-def clear_deck():
-    back = request.referrer
+@app.route("/disconnect", methods=["GET"])
+@app.route("/disconnect/<device_name>", methods=["GET"])
+def disconnect(device_name=None):
+    if device_name:
+        try:
+            exec(device_name + ".disconnect()")
+        except Exception:
+            pass
+        defined_variables.remove(device_name)
+        globals().pop(device_name)
+        return redirect(url_for('controllers_home'))
+
     deck_variables = ["deck." + var for var in set(dir(deck))
                       if not (var.startswith("_") or var[0].isupper() or var.startswith("repackage"))
                       and not type(eval("deck." + var)).__module__ == 'builtins']
@@ -602,7 +625,7 @@ def clear_deck():
         except Exception:
             pass
     globals()["deck"] = None
-    return redirect(url_for('index'))
+    return redirect(url_for('deck_controllers'))
 
 
 @app.route("/import_deck", methods=['POST'])
@@ -733,7 +756,7 @@ def download(filetype):
         return send_file("empty_configure.csv", as_attachment=True)
     elif filetype == "script":
         script.sort_actions()
-        json_object = json.dumps(script.__dict__)
+        json_object = json.dumps(script.as_dict())
         with open(run_name + ".json", "w") as outfile:
             outfile.write(json_object)
         return send_file(run_name + ".json", as_attachment=True)

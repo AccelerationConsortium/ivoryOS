@@ -9,15 +9,29 @@
     <h2>{{deck}} Controllers</h2>
     <div class="row">
     {% if defined_variables %}
+
         {% for instrument in defined_variables %}
         <div class="col-xl-3 col-lg-4 col-md-6 mb-4 ">
-            <div class="bg-white rounded shadow-sm position-relative ">
-                <div class="p-4" >
+            <div class="bg-white rounded shadow-sm ">
+
+                <div class="p-4 position-relative " >
                     <h5> <a href="/controllers/{{instrument}}" class="text-dark stretched-link">{{instrument}}</a></h5>
                 </div>
             </div>
+            {% if not deck == "Deck" %}
+                <a href="/disconnect/{{ instrument }}" style="float: right; color: orangered">Disconnect <i class="bi bi-x-square"></i></a></h5>
+            {% endif %}
         </div>
         {% endfor %}
+        {% if deck == "Deck" %}
+            <div class="col-xl-3 col-lg-4 col-md-6 mb-4 ">
+                <div class="rounded shadow-sm position-relative">
+                    <div class="p-4" >
+                        <h5> <a href="{{ url_for("disconnect") }}" class="stretched-link" style="color: orangered">Disconnect</a></h5>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
     {% endif %}
     </div>
 {#import deck or API using filepath#}

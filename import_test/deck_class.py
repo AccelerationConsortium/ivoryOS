@@ -1,6 +1,5 @@
-import sys
-
-sys.path.insert(1, r"C:\Users\Public\PycharmProjects\webapp\import_test")
+import sys,os
+sys.path.append(os.getcwd())
 from import_test.sample_deck import *
 
 deck = SampleDeck()

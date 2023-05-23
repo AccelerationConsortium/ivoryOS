@@ -335,7 +335,7 @@
             </div>
             <div>
                 <a class="btn btn-dark {{ 'disabled' if not script.name or script.status == "finalized" else ''}}" href="{{url_for('publish')}}">Quick Save</a>
-                <a class="btn btn-dark " href="{{ url_for('experiment_preview') }}">Compile and Preview</a>
+                <a class="btn btn-dark " href="{{ url_for('experiment_run') }}">Compile and Run</a>
             </div>
         </div>
     </div>
