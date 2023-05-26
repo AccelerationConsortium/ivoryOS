@@ -131,3 +131,8 @@ hr.vertical {
   opacity: 0.5;
   text-decoration: none;
 }
+
+
+.controller-card a {
+    text-decoration: none;
+}

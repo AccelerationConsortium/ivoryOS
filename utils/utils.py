@@ -149,10 +149,14 @@ def _get_type_from_parameters(arg, parameters):
                 arg_type = p[arg].annotation.__args__
             else:
                 arg_type = p[arg].annotation.__name__
-            print(arg_type)
+            # print(arg_type)
     elif type(parameters) is dict:
         if parameters[arg]:
-            arg_type = parameters[arg].__name__
+            print(parameters[arg])
+            if parameters[arg].__module__ == 'typing':
+                arg_type = [i.__name__ for i in parameters[arg].__args__]
+            else:
+                arg_type = parameters[arg].__name__
     return arg_type
 
 
@@ -197,7 +201,7 @@ def convert_type(args, parameters):
                     if parameters[arg].__module__ == 'typing':
                         # arg_types[arg] = parameters[arg].__args__
                         for i in parameters[arg].__args__:
-                            print(i)
+                            # print(i)
                             try:
                                 args[arg] = i(args[arg])
                                 arg_types[arg] = i.__name__
@@ -208,7 +212,52 @@ def convert_type(args, parameters):
                         args[arg] = parameters[arg](args[arg])
                         arg_types[arg] = parameters[arg].__name__
     return args, arg_types
+def _convert_by_str(args, arg_types):
+    # print(arg_types)
+    if type(arg_types) is not list:
+        arg_types = [arg_types]
+    for i in arg_types:
+        if i == "any":
+            try:
+                args = eval(args)
+            except Exception:
+                pass
+            return
+        try:
+            args = eval(i + "(" + args + ")")
+            return
+        except Exception:
+            pass
+    raise TypeError(f"Input type error: cannot convert '{args}' to {i}.")
 
+def _convert_by_class(args, arg_types):
+    if arg_types.__module__ == 'builtins':
+        args = arg_types(args)
+        return args
+    else:
+        for i in arg_types.__args__:    # for typing.Union
+            try:
+                args = i(args)
+                return args
+            except Exception:
+                pass
+    raise TypeError("Input type error.")
+
+def convert_config_type(args, arg_types, is_class:bool=False):
+    bool_dict = {"True": True, "False": False}
+    if args:
+        for arg in args:
+            if args[arg] == '' or args[arg] == "None":
+                args[arg] = None
+            elif args[arg] == "True" or args[arg] == "False":
+                args[arg] = bool_dict[args[arg]]
+            else:
+                arg_type = arg_types[arg]
+                if is_class:
+                    args[arg] = _convert_by_class(args[arg], arg_type)
+                else:
+                    _convert_by_str(args[arg], arg_type)
+    return args
 
 def sort_actions(script_dict, order, script_type=None):
     """

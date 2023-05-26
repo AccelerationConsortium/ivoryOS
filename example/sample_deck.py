@@ -1,8 +1,8 @@
 import sys,os
 sys.path.append(os.getcwd())
 
-from import_test.gui_test import MyTest
-from import_test.test_inner import TestInner
+from example.comfig_example import MyTest
+from example.test_inner import TestInner
 import ftdi_serial
 import numpy
 a = {"a": 1, "b": 3}

@@ -1,8 +1,7 @@
 import time
-
-import repackage
-repackage.up()
-from import_test.test_inner import TestInner
+import sys,os
+sys.path.append(os.getcwd())
+from example.test_inner import TestInner
 
 
 class MyTest:
@@ -15,9 +14,9 @@ class MyTest:
         time.sleep(3)
         print("Test1: no arg ", self.inner.a)
 
-    def test2_return_test(self, arg1: int = 2, arg2: str = "4"):
-        print("Test2: Testing for None default", arg1)
-        return arg2
+    def test2_return_test(self, arg1, arg2: str = "4"):
+        print("Test2: Testing for return output", arg1)
+        return arg1
     def test3_arg_required(self, arg1: int):
         print("Test3: Testing required arg", arg1)
 
@@ -27,5 +26,7 @@ class MyTest:
     def test5(self, arg1:bool= False):
         print("Test5: Testing for boolean input\nValue:", arg1, "   Type: ", type(arg1))
 
-    def test6_another_bool(self, arg_542398:bool):
-        print("Test5: Testing for boolean input\nValue:", arg_542398, "   Type: ", type(arg_542398))
+    def test6_another_bool(self, arg_1:bool):
+        print("Test6: Testing for boolean input No default\nValue:", arg_1, "   Type: ", type(arg_1))
+    def test7_return_test(self, arg1):
+        print("Test7: Testing for return output", arg1, type(arg1))

@@ -1,4 +1,5 @@
 # import inspect
+from datetime import datetime
 import json
 import os
 import csv
@@ -23,8 +24,9 @@ app.config['CSV_FOLDER'] = 'config_csv/'
 app.config['SCRIPT_FOLDER'] = 'scripts/'
 # basedir = os.path.abspath(os.path.dirname(__file__))
 
-app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///project.db"
-
+# app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///project.db"
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://sql9620530:bb6vamcmXB@sql9.freesqldatabase.com:3306/sql9620530'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = "key"
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -74,7 +76,8 @@ def login():
 
         # session.query(User, User.name).all()
         user = db.session.query(User).filter(User.username == username).first()
-        if user and bcrypt.checkpw(password.encode("utf-8"), user.hashPassword):
+        input_password = password.encode('utf-8')
+        if user and bcrypt.checkpw(input_password, user.hashPassword.encode('utf-8')):
             # password.encode("utf-8")
             # user = User(username, password.encode("utf-8"))
             login_user(user)
@@ -163,7 +166,7 @@ def help_info():
 @app.route("/controllers")
 @login_required
 def controllers_home():
-    return render_template('controllers_home.html', defined_variables=defined_variables, deck='')
+    return render_template('controllers_home.html', defined_variables=defined_variables)
 
 
 @app.route("/experiment/build/", methods=['GET', 'POST'])
@@ -233,12 +236,20 @@ def experiment_builder(instrument=None):
 
 
 @app.route("/experiment", methods=['GET', 'POST'])
-@app.route("/experiment/<path:filename>", methods=['GET', 'POST'])
+# @app.route("/experiment/<path:filename>", methods=['GET', 'POST'])
 @login_required
-def experiment_run(filename=None):
-    # current_variables = set(dir())
+def experiment_run():
+    config_preview = []
+    config_file_list = os.listdir('./config_csv')
     script = get_script_file()
     exec_string = script.compile()
+    config_file = request.args.get("filename")
+    if config_file:
+        session['config_file'] = request.args.get("filename")
+    filename = session.get("config_file")
+    if filename:
+        config_preview = list(csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename))))
+        config_preview = config_preview[1:6]
     try:
         exec(exec_string)
     except Exception:
@@ -254,46 +265,54 @@ def experiment_run(filename=None):
     prompt = False
 
     script.sort_actions()
-
+    _, return_list = script.config_return()
+    config_list, _ = script.config("script")
     if deck is None:
         prompt = True
     elif script.deck and not script.deck == deck.__name__:
         flash(f"This script is not compatible with current deck, import {script.deck}")
     if request.method == "POST":
-        repeat = request.form.get('repeat')
+        repeat = request.form.get('repeat', None)
 
         try:
-            # flash("Running!")
             generate_progress(run_name, filename, repeat)
-            flash("Run finished")
+
         except Exception as e:
             flash(e)
     return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=script_py,
-                           # return_list=return_list,
+                           return_list=return_list, config_list=config_list, config_file_list=config_file_list, config_preview=config_preview,
                            history=utils.import_history(), prompt=prompt, dismiss=dismiss)
 
 
+# @app.route('/progress')
+# def progress(run_name, filename, repeat):
+#     return Response(generate_progress(run_name, filename, repeat), mimetype='text/event-stream')
+
 @app.route('/progress')
-def progress(run_name, filename, repeat):
-    return Response(generate_progress(run_name, filename, repeat), mimetype='text/event-stream')
-
-
 def generate_progress(run_name, filename, repeat):
     script = get_script_file()
     exec_string = script.compile()
-    # print(exec_string)
+    arg_type = {}
     exec(exec_string)
     output_list = []
     _, return_list = script.config_return()
     exec(run_name + "_prep()")
-    if filename is not None and not filename == 'None':
-        df = csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename)))
+    if not repeat and not repeat == "":
+        df = list(csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename))))
+        arg_type = df.pop(0)
         for i in df:
-            # todo
-            # arg = convert_type(i,)
-            # print(i)
+            # try to convert types first
+            try:
+                i = utils.convert_config_type(i, arg_type)
+            except Exception as e:
+                flash(e)
+                return redirect(url_for("experiment_run"))
+
+        for i in df:
+            # output_list.append(i)
             output = eval(run_name + "_script(**" + str(i) + ")")
-            output_list.append(output)
+            i.update(output)
+            output_list.append(i)
             # yield f"data: {i}/{len(df)} is done"
     if not repeat == '' and repeat is not None:
         for i in range(int(repeat)):
@@ -302,10 +321,16 @@ def generate_progress(run_name, filename, repeat):
             # yield f"data: {i}/{repeat} is done"
     exec(run_name + "_cleanup()")
     if len(return_list) > 0:
-        with open("results/" + run_name + "_data.csv", "w", newline='') as file:
-            writer = csv.DictWriter(file, fieldnames=return_list)
+        args = list(arg_type.keys())
+        args.extend(return_list)
+        filename = run_name + "_" + datetime.now().strftime("%Y-%m-%d %H-%M")+".csv"
+        with open("results/" + filename, "w", newline='') as file:
+            writer = csv.DictWriter(file, fieldnames=args)
             writer.writeheader()
             writer.writerows(output_list)
+        session["most_recent_result"] = filename
+    flash("Run finished")
+    return redirect(url_for("experiment_run"))
 
 
 @app.route("/experiment_preview", methods=['GET', 'POST'])
@@ -333,7 +358,7 @@ def experiment_preview():
 def deck_controllers():
     global deck
     deck_variables = parse_deck(deck)
-    return render_template('controllers_home.html', defined_variables=deck_variables, deck="Deck",
+    return render_template('controllers_home.html', defined_variables=deck_variables, deck=True,
                            history=utils.import_history())
 
 
@@ -352,7 +377,7 @@ def new_controller(instrument=None):
             device_name = request.form.get("device_name", None)
             if device_name and device_name in globals():
                 flash("Device name is defined. Try another name, or leave it as blank to auto-configure")
-                return render_template('create_controller.html', instrument=instrument, api_variables=api_variables,
+                return render_template('controllers_new.html', instrument=instrument, api_variables=api_variables,
                                        device=device, args=args, defined_variables=defined_variables)
             if device_name == '' or device_name in None:
                 device_name = device.__name__.lower() + "_"
@@ -362,12 +387,15 @@ def new_controller(instrument=None):
                 device_name = device_name + str(num)
             kwargs = request.form.to_dict()
             kwargs.pop("device_name")
-
-            for i in kwargs:
-                if kwargs[i] == '' or kwargs[i] == 'None':
-                    kwargs[i] = None
-                else:
-                    kwargs[i] = eval(kwargs[i])
+            try:
+                utils.convert_config_type(kwargs, device.__init__.__annotations__, is_class=True)
+            except Exception as e:
+                flash(e)
+            # for i in kwargs:
+            #     if kwargs[i] == '' or kwargs[i] == 'None':
+            #         kwargs[i] = None
+            #     else:
+            #         kwargs[i] = eval(kwargs[i])
             # for arg in device.__init__.__annotations__:
             #     if not device.__init__.__annotations__[arg].__module__ == "builtins":
             #         if kwargs[arg]:
@@ -378,7 +406,7 @@ def new_controller(instrument=None):
                 return redirect(url_for('controllers_home'))
             except Exception as e:
                 flash(e)
-    return render_template('create_controller.html', instrument=instrument, api_variables=api_variables,
+    return render_template('controllers_new.html', instrument=instrument, api_variables=api_variables,
                            device=device, args=args, defined_variables=defined_variables)
 
 
@@ -409,7 +437,7 @@ def controllers(instrument):
                     output = function_executable()
             else:  # for setter
                 function_executable = args
-            flash(f"{output}\nRun Success!")
+            flash(f"\nRun Success! Output value: {output}.")
         except Exception as e:
             flash(e)
     return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object)
@@ -437,7 +465,10 @@ def edit_action(uuid):
         if "back" not in request.form:
             args = request.form.to_dict()
             save_as = args.pop('return', '')
-            script.update_by_uuid(uuid=uuid, args=args, output=save_as)
+            try:
+                script.update_by_uuid(uuid=uuid, args=args, output=save_as)
+            except Exception as e:
+                flash(e.__str__())
         session.pop('edit_action')
     return redirect(url_for('experiment_builder'))
 
@@ -498,7 +529,7 @@ def load_from_database(deck_name=None):
     session.pop('edit_action', None)  # reset cache
     query = Script.query
     search_term = request.args.get("keyword", None)
-    print(search_term)
+    # print(search_term)
     # search_term = request.form.get("keyword", None)
     if search_term:
         query = query.filter(Script.name.like(f'%{search_term}%'))
@@ -708,6 +739,9 @@ def vial():
     return redirect(url_for("generate_grid"))
 
 
+
+
+
 @app.route('/uploads', methods=['GET', 'POST'])
 def upload():
     """
@@ -721,7 +755,8 @@ def upload():
         if f.filename.split('.')[-1] == "csv":
             filename = secure_filename(f.filename)
             f.save(os.path.join(app.config['CSV_FOLDER'], filename))
-            return redirect(url_for("experiment_run", filename=filename))
+            session['config_file'] = filename
+            return redirect(url_for("experiment_run"))
         else:
             flash("Config file is in csv format")
             return redirect(url_for("experiment_run"))
@@ -747,13 +782,14 @@ def download(filetype):
     script = get_script_file()
     run_name = script.name if script.name else "untitled"
     if filetype == "configure":
-        with open("empty_configure.csv", 'w', newline='') as f:
+        filename = run_name + "_config.csv"
+        with open(filename, 'w', newline='') as f:
             writer = csv.writer(f)
             cfg, cfg_types = script.config("script")
-
+            print(cfg_types)
             writer.writerow(cfg)
             writer.writerow(list(cfg_types.values()))
-        return send_file("empty_configure.csv", as_attachment=True)
+        return send_file(filename, as_attachment=True)
     elif filetype == "script":
         script.sort_actions()
         json_object = json.dumps(script.as_dict())
@@ -762,8 +798,13 @@ def download(filetype):
         return send_file(run_name + ".json", as_attachment=True)
     elif filetype == "python":
         return send_file("scripts/" + run_name + ".py", as_attachment=True)
-    elif filetype == "data":
-        return send_file("results/" + run_name + "_data.csv", as_attachment=True)
+    # elif filetype == "data":
+    #     return send_file("results/" + run_name + "_data.csv", as_attachment=True)
+
+
+@app.route('/download_results/<filename>')
+def download_results(filename):
+    return send_file("results/" + filename, as_attachment=True)
 
 
 def find_instrument_by_name(name: str):

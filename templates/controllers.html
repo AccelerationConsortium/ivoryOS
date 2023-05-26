@@ -34,7 +34,7 @@
                                                     <label class="btn btn-outline-secondary" for="{{parameter}}_false">False</label>
                                                 </div>
                                                 {% else %}
-                                                <input class="form-control" type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{functions[function].parameters[parameter].annotation.__name__}}"
+                                                <input class="form-control" type="text" id="{{parameter}}" name="{{parameter}}" placeholder="{{'' if functions[function].parameters[parameter].annotation.__name__ == "_empty" else functions[function].parameters[parameter].annotation.__name__}}"
                                                        value="{{'' if functions[function].parameters[parameter].default.__name__ == '_empty' or functions[function].parameters[parameter].default == None else functions[function].parameters[parameter].default}}"
                                                        {{"required" if functions[function].parameters[parameter].default.__name__ == '_empty' else ''}}>
                                                 {% endif %}

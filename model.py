@@ -14,9 +14,9 @@ db = SQLAlchemy()
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
     # id = db.Column(db.Integer)
-    username = db.Column(db.String, primary_key=True, unique=True, nullable=False)
+    username = db.Column(db.String(50), primary_key=True, unique=True, nullable=False)
     # email = db.Column(db.String)
-    hashPassword = db.Column(db.String)
+    hashPassword = db.Column(db.String(255))
 
     # password = db.Column()
     def __init__(self, username, password):
@@ -40,16 +40,17 @@ class User(db.Model, UserMixin):
 
 
 class Script(db.Model):
+    __tablename__ = 'script'
     # id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), primary_key=True, unique=True)
-    deck = db.Column(db.String(100), nullable=True)
-    status = db.Column(db.String(100), nullable=True)
+    name = db.Column(db.String(50), primary_key=True, unique=True)
+    deck = db.Column(db.String(50), nullable=True)
+    status = db.Column(db.String(50), nullable=True)
     script_dict = db.Column(JSONType, nullable=True)
-    time_created = db.Column(db.String(100), nullable=True)
-    last_modified = db.Column(db.String(100), nullable=True)
+    time_created = db.Column(db.String(50), nullable=True)
+    last_modified = db.Column(db.String(50), nullable=True)
     id_order = db.Column(JSONType, nullable=True)
-    editing_type = db.Column(db.String(100), nullable=True)
-    author = db.Column(db.String(100), nullable=False)
+    editing_type = db.Column(db.String(50), nullable=True)
+    author = db.Column(db.String(50), nullable=False)
 
     def __init__(self, name=None, deck=None, status=None, script_dict: dict = None, id_order: dict = None,
                  time_created=None, last_modified=None, editing_type=None, author: str = None):
@@ -97,9 +98,19 @@ class Script(db.Model):
                 if action['uuid'] == int(uuid):
                     return action
 
+    def _convert(self, args, arg_types):
+        if type(arg_types) is not list:
+            arg_types = [arg_types]
+        for i in arg_types:
+            try:
+                args = eval(i + "(" + args + ")")
+                return
+            except Exception:
+                pass
+        raise TypeError(f"Input type error: cannot convert '{args}' to {i}.")
+
     def update_by_uuid(self, uuid, args, output):
         bool_dict = {"True": True, "False": False}
-
         action = self.find_by_uuid(uuid)
         if type(action['args']) is dict:
             for arg in action['args']:
@@ -110,7 +121,14 @@ class Script(db.Model):
                     elif args[arg] == "None" or args[arg] == "":
                         args[arg] = None
                     else:
-                        args[arg] = eval(action['arg_types'][arg]+"("+args[arg] +")")
+                        if arg in action['arg_types']:
+                            arg_types = action['arg_types'][arg]
+                            self._convert(args[arg], arg_types)
+                        else:
+                            try:
+                                args[arg] = eval(args[arg])
+                            except Exception:
+                                pass
         else:
             args = list(args.values())[0]
             if not args.startswith("#"):
@@ -118,7 +136,10 @@ class Script(db.Model):
                     args = bool_dict[args]
 
                 else:
-                    args = eval(action['arg_types'] + "(" + args + ")") if 'arg_types' in action else args
+                    if 'arg_types' in action:
+                        arg_types = action['arg_types']
+                        self._convert(args, arg_types)
+
                     # print(args)
         action['args'] = args
         # print(action)
@@ -259,9 +280,11 @@ class Script(db.Model):
                                 and args[arg].startswith("#") \
                                 and not args[arg][1:] in configure:
                             configure.append(args[arg][1:])
-
-                            config_type_dict[args[arg][1:]] = action['arg_types'][arg]
-        #todo
+                            if arg in action['arg_types']:
+                                config_type_dict[args[arg][1:]] = action['arg_types'][arg]
+                            else:
+                                config_type_dict[args[arg][1:]] = "any"
+        # todo
         return configure, config_type_dict
 
     def config_return(self):
