@@ -152,7 +152,7 @@ def _get_type_from_parameters(arg, parameters):
             # print(arg_type)
     elif type(parameters) is dict:
         if parameters[arg]:
-            print(parameters[arg])
+
             if parameters[arg].__module__ == 'typing':
                 arg_type = [i.__name__ for i in parameters[arg].__args__]
             else:
@@ -222,10 +222,10 @@ def _convert_by_str(args, arg_types):
                 args = eval(args)
             except Exception:
                 pass
-            return
+            return args
         try:
-            args = eval(i + "(" + args + ")")
-            return
+            args = eval(i + "('" + args + "')")
+            return args
         except Exception:
             pass
     raise TypeError(f"Input type error: cannot convert '{args}' to {i}.")
@@ -256,7 +256,7 @@ def convert_config_type(args, arg_types, is_class:bool=False):
                 if is_class:
                     args[arg] = _convert_by_class(args[arg], arg_type)
                 else:
-                    _convert_by_str(args[arg], arg_type)
+                    args[arg] = _convert_by_str(args[arg], arg_type)
     return args
 
 def sort_actions(script_dict, order, script_type=None):

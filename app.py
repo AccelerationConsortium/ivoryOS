@@ -25,7 +25,7 @@ app.config['SCRIPT_FOLDER'] = 'scripts/'
 # basedir = os.path.abspath(os.path.dirname(__file__))
 
 # app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///project.db"
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://sql9620530:bb6vamcmXB@sql9.freesqldatabase.com:3306/sql9620530'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://sql9620530:bb6vamcmXB@sql9.freesqldatabase.com:3306/sql9620530'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = "key"
 login_manager = LoginManager()
@@ -274,11 +274,11 @@ def experiment_run():
     if request.method == "POST":
         repeat = request.form.get('repeat', None)
 
-        try:
-            generate_progress(run_name, filename, repeat)
+        # try:
+        generate_progress(run_name, filename, repeat)
 
-        except Exception as e:
-            flash(e)
+        # except Exception as e:
+        #     flash(e)
     return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=script_py,
                            return_list=return_list, config_list=config_list, config_file_list=config_file_list, config_preview=config_preview,
                            history=utils.import_history(), prompt=prompt, dismiss=dismiss)
@@ -310,9 +310,11 @@ def generate_progress(run_name, filename, repeat):
 
         for i in df:
             # output_list.append(i)
+            print(i)
             output = eval(run_name + "_script(**" + str(i) + ")")
-            i.update(output)
-            output_list.append(i)
+            if output:
+                i.update(output)
+                output_list.append(i)
             # yield f"data: {i}/{len(df)} is done"
     if not repeat == '' and repeat is not None:
         for i in range(int(repeat)):

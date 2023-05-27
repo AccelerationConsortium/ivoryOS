@@ -15,7 +15,8 @@ class MyTest:
         print("Test1: no arg ", self.inner.a)
 
     def test2_return_test(self, arg1, arg2: str = "4"):
-        print("Test2: Testing for return output", arg1)
+        print("Test2: Testing for return output", arg1, type(arg1))
+        print("Test2: Testing for return output", arg2, type(arg2))
         return arg1
     def test3_arg_required(self, arg1: int):
         print("Test3: Testing required arg", arg1)

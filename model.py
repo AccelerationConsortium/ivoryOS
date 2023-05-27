@@ -103,7 +103,7 @@ class Script(db.Model):
             arg_types = [arg_types]
         for i in arg_types:
             try:
-                args = eval(i + "(" + args + ")")
+                args = eval(i + "('" + args + "')")
                 return
             except Exception:
                 pass
@@ -281,7 +281,10 @@ class Script(db.Model):
                                 and not args[arg][1:] in configure:
                             configure.append(args[arg][1:])
                             if arg in action['arg_types']:
-                                config_type_dict[args[arg][1:]] = action['arg_types'][arg]
+                                if action['arg_types'][arg] == '':
+                                    config_type_dict[args[arg][1:]] = "any"
+                                else:
+                                    config_type_dict[args[arg][1:]] = action['arg_types'][arg]
                             else:
                                 config_type_dict[args[arg][1:]] = "any"
         # todo
