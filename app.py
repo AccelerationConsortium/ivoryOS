@@ -6,6 +6,8 @@ import csv
 import pickle
 import traceback
 import time
+
+import sqlalchemy
 from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, render_template, session, Response
 from werkzeug.utils import secure_filename
 
@@ -55,8 +57,11 @@ def index():
 
 def get_script_file():
     session_script = session.get("scripts")
+    # print(session_script)
     if session_script:
-        return Script(**session_script)
+        s = Script()
+        s.__dict__.update(**session_script)
+        return s
     else:
         return Script(author=session.get('user'))
 
@@ -104,6 +109,7 @@ def hide_function(instrument, function):
     session['hidden_functions'] = functions
     return redirect(back)
 
+
 @app.route('/remove_hidden/<instrument>/<function>')
 def remove_hidden(instrument, function):
     back = request.referrer
@@ -113,6 +119,7 @@ def remove_hidden(instrument, function):
             functions[instrument].remove(function)
     session['hidden_functions'] = functions
     return redirect(back)
+
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -236,7 +243,6 @@ def experiment_builder(instrument=None):
 
 
 @app.route("/experiment", methods=['GET', 'POST'])
-# @app.route("/experiment/<path:filename>", methods=['GET', 'POST'])
 @login_required
 def experiment_run():
     config_preview = []
@@ -280,7 +286,8 @@ def experiment_run():
         # except Exception as e:
         #     flash(e)
     return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=script_py,
-                           return_list=return_list, config_list=config_list, config_file_list=config_file_list, config_preview=config_preview,
+                           return_list=return_list, config_list=config_list, config_file_list=config_file_list,
+                           config_preview=config_preview,
                            history=utils.import_history(), prompt=prompt, dismiss=dismiss)
 
 
@@ -325,7 +332,7 @@ def generate_progress(run_name, filename, repeat):
     if len(return_list) > 0:
         args = list(arg_type.keys())
         args.extend(return_list)
-        filename = run_name + "_" + datetime.now().strftime("%Y-%m-%d %H-%M")+".csv"
+        filename = run_name + "_" + datetime.now().strftime("%Y-%m-%d %H-%M") + ".csv"
         with open("results/" + filename, "w", newline='') as file:
             writer = csv.DictWriter(file, fieldnames=args)
             writer.writeheader()
@@ -393,15 +400,6 @@ def new_controller(instrument=None):
                 utils.convert_config_type(kwargs, device.__init__.__annotations__, is_class=True)
             except Exception as e:
                 flash(e)
-            # for i in kwargs:
-            #     if kwargs[i] == '' or kwargs[i] == 'None':
-            #         kwargs[i] = None
-            #     else:
-            #         kwargs[i] = eval(kwargs[i])
-            # for arg in device.__init__.__annotations__:
-            #     if not device.__init__.__annotations__[arg].__module__ == "builtins":
-            #         if kwargs[arg]:
-            #             kwargs[arg] = globals()[kwargs[arg]]
             try:
                 globals()[device_name] = device(**kwargs)
                 defined_variables.add(device_name)
@@ -423,8 +421,6 @@ def controllers(instrument):
         function_executable = getattr(inst_object, function_name)
         try:
             args, _ = utils.convert_type(args, functions[function_name])
-        # try:
-        #     args = convert_type(args, functions[function_name])
         except Exception as e:
             flash(e)
             return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object)
@@ -456,7 +452,6 @@ def delete_action(id):
     return redirect(back)
 
 
-# TODO
 @app.route("/edit/<uuid>", methods=['GET', 'POST'])
 @login_required
 def edit_action(uuid):
@@ -481,7 +476,7 @@ def edit_workflow(workflow_name):
     row = Script.query.get(workflow_name)
     script = Script(**row.as_dict())
     post_script_file(script)
-    if not script.deck == pseudo_deck["deck_name"]:
+    if pseudo_deck and not script.deck == pseudo_deck["deck_name"]:
         flash(f"Choose the deck with name {script.deck}")
     return redirect(url_for('experiment_builder'))
 
@@ -517,10 +512,9 @@ def publish():
 def finalize():
     script = get_script_file()
     script.finalize()
-    post_script_file(script)
-
     db.session.merge(script)
     db.session.commit()
+    post_script_file(script)
     return redirect(url_for('experiment_builder'))
 
 
@@ -531,8 +525,6 @@ def load_from_database(deck_name=None):
     session.pop('edit_action', None)  # reset cache
     query = Script.query
     search_term = request.args.get("keyword", None)
-    # print(search_term)
-    # search_term = request.form.get("keyword", None)
     if search_term:
         query = query.filter(Script.name.like(f'%{search_term}%'))
     if deck_name is None:
@@ -739,9 +731,6 @@ def vial():
         vials = request.form.to_dict()
         flash(list(vials.keys()))
     return redirect(url_for("generate_grid"))
-
-
-
 
 
 @app.route('/uploads', methods=['GET', 'POST'])

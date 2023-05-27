@@ -31,21 +31,19 @@
             <div class="col-xl-4 col-lg-4 col-md-6 mb-4 ">
                 <h5>Available Python API</h5>
                 <hr>
-                {% if api_variables %}
-                    {% for instrument in api_variables %}
-                        <div class="bg-white rounded shadow-sm position-relative">
-                            <h5 class="p-3 controller-card">
-                                <a href="/new_controller/{{instrument}}" class="text-dark stretched-link">{{instrument}}</a>
-                            </h5>
-                        </div>
-                    {% endfor %}
+
+                {% for instrument in api_variables %}
                     <div class="bg-white rounded shadow-sm position-relative">
                         <h5 class="p-3 controller-card">
-                            <a data-bs-toggle="modal" href="#importAPI" class="stretched-link"><i class="bi bi-folder-plus"></i> Import API</a>
+                            <a href="/new_controller/{{instrument}}" class="text-dark stretched-link">{{instrument}}</a>
                         </h5>
-{#                    <i class="bi bi-plus-lg"></i>#}
                     </div>
-                {% endif %}
+                {% endfor %}
+                <div class="bg-white rounded shadow-sm position-relative">
+                    <h5 class="p-3 controller-card">
+                        <a data-bs-toggle="modal" href="#importAPI" class="stretched-link"><i class="bi bi-folder-plus"></i> Import API</a>
+                    </h5>
+                </div>
             </div>
             <div class="col-xl-5 col-lg-5 col-md-6 mb-4 ">
                 {% if device %}
