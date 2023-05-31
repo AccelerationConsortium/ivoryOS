@@ -19,17 +19,20 @@ import bcrypt
 from instruments import *
 
 off_line = True
-# if off_line:
+
 
 app = Flask(__name__)
 app.config['CSV_FOLDER'] = 'config_csv/'
 app.config['SCRIPT_FOLDER'] = 'scripts/'
+app.config['DATA_FOLDER'] = 'results/'
 # basedir = os.path.abspath(os.path.dirname(__file__))
 
-# app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///project.db"
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://sql9620530:bb6vamcmXB@sql9.freesqldatabase.com:3306/sql9620530'
+app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///project.db"    # local DB
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://sql9620530:bb6vamcmXB@sql9.freesqldatabase.com:3306/sql9620530'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = "key"
+
+# login helper
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
@@ -57,7 +60,6 @@ def index():
 
 def get_script_file():
     session_script = session.get("scripts")
-    # print(session_script)
     if session_script:
         s = Script()
         s.__dict__.update(**session_script)
@@ -273,6 +275,8 @@ def experiment_run():
     script.sort_actions()
     _, return_list = script.config_return()
     config_list, _ = script.config("script")
+    data_list = os.listdir(app.config['DATA_FOLDER'])
+    data_list.remove(".gitkeep") if ".gitkeep" in data_list else data_list
     if deck is None:
         prompt = True
     elif script.deck and not script.deck == deck.__name__:
@@ -287,7 +291,7 @@ def experiment_run():
         #     flash(e)
     return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=script_py,
                            return_list=return_list, config_list=config_list, config_file_list=config_file_list,
-                           config_preview=config_preview,
+                           config_preview=config_preview, data_list=data_list,
                            history=utils.import_history(), prompt=prompt, dismiss=dismiss)
 
 
@@ -329,7 +333,7 @@ def generate_progress(run_name, filename, repeat):
             output_list.append(output)
             # yield f"data: {i}/{repeat} is done"
     exec(run_name + "_cleanup()")
-    if len(return_list) > 0:
+    if len(output_list) > 0:
         args = list(arg_type.keys())
         args.extend(return_list)
         filename = run_name + "_" + datetime.now().strftime("%Y-%m-%d %H-%M") + ".csv"
@@ -663,6 +667,8 @@ def import_deck():
     back = request.referrer
     if session['dismiss']:
         return redirect(back)
+    # if filepath == "manage history":
+
     name = os.path.split(filepath)[-1].split('.')[0]
     try:
         module = utils.import_module_by_filepath(filepath=filepath, name=name)

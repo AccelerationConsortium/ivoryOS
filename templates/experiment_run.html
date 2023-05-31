@@ -158,8 +158,15 @@
                 <div id="data" class="accordion-collapse collapse">
                     <div class="accordion-body">
                         {% if session["most_recent_result"] %}
-                            <a href="/download_results/{{ session["most_recent_result"] }}">Download last results<i class="bi bi-download"></i></a>
+                            <a href="/download_results/{{ session["most_recent_result"] }}">Download the latest data <i class="bi bi-download"></i></a>
                         {% endif %}
+                        <p> All data files</p>
+                        {% for datafile in data_list %}
+                            <div>
+                                {{ datafile }}<a href="/download_results/{{ datafile }}"><i class="bi bi-download"></i></a>
+                            </div>
+
+                        {% endfor %}
                     </div>
                 </div>
             </div>
