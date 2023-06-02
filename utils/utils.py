@@ -64,9 +64,6 @@ def new_script(deck_name):
     return script_dict, order
 
 
-
-
-
 def parse_functions(class_object=None, call=True):
     functions = {}
     for function in dir(class_object):
@@ -126,7 +123,6 @@ def config(script_dict):
     return configure
 
 
-
 def config_return(script_dict):
     """
     take the global script_dict
@@ -138,6 +134,7 @@ def config_return(script_dict):
         output_str += "'" + i + "':" + i + ","
     output_str += "}"
     return output_str, return_list
+
 
 def _get_type_from_parameters(arg, parameters):
     arg_type = ''
@@ -158,7 +155,6 @@ def _get_type_from_parameters(arg, parameters):
             else:
                 arg_type = parameters[arg].__name__
     return arg_type
-
 
 
 def convert_type(args, parameters):
@@ -212,6 +208,8 @@ def convert_type(args, parameters):
                         args[arg] = parameters[arg](args[arg])
                         arg_types[arg] = parameters[arg].__name__
     return args, arg_types
+
+
 def _convert_by_str(args, arg_types):
     # print(arg_types)
     if type(arg_types) is not list:
@@ -230,21 +228,28 @@ def _convert_by_str(args, arg_types):
             pass
     raise TypeError(f"Input type error: cannot convert '{args}' to {i}.")
 
+
 def _convert_by_class(args, arg_types):
     if arg_types.__module__ == 'builtins':
         args = arg_types(args)
         return args
-    else:
-        for i in arg_types.__args__:    # for typing.Union
+    elif arg_types.__module__ == "typing":
+        for i in arg_types.__args__:  # for typing.Union
             try:
                 args = i(args)
                 return args
             except Exception:
                 pass
-    raise TypeError("Input type error.")
+        raise TypeError("Input type error.")
+    # else:
+    #     args = globals()[args]
+    #     return args
 
-def convert_config_type(args, arg_types, is_class:bool=False):
+
+def convert_config_type(args, arg_types, is_class: bool = False):
     bool_dict = {"True": True, "False": False}
+    print(args, arg_types)
+    print(globals())
     if args:
         for arg in args:
             if args[arg] == '' or args[arg] == "None":
@@ -258,6 +263,7 @@ def convert_config_type(args, arg_types, is_class:bool=False):
                 else:
                     args[arg] = _convert_by_str(args[arg], arg_type)
     return args
+
 
 def sort_actions(script_dict, order, script_type=None):
     """

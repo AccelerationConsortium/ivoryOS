@@ -4,7 +4,7 @@
 
 {% block body %}
     <div class= "container">
-        {% if prompt and not dismiss %}
+        {% if no_deck_warning and not dismiss %}
             <script type="text/javascript">
                 window.onload = function () {OpenBootstrapPopup();};
             </script>
@@ -65,7 +65,7 @@
                                                 </form>
                                             </div>
                                         </div>
-                                        {% if filename %}
+                                        {% if filename and not no_deck_warning %}
 {#                                            <h6>#}
 {#                                                <a data-bs-toggle="collapse" href="#preview" role="button" aria-expanded="false"#}
 {#                                                   aria-controls="collapseExample">#}
@@ -91,9 +91,11 @@
                                                 <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="30">
                                                 <label class="input-group-text" for="repeat"> times</label>
                                             </div>
-                                            <div class="input-group mb-3">
-                                                <button class="form-control" type="submit" class="btn btn-dark">Run</button>
-                                            </div>
+                                            {% if not no_deck_warning%}
+                                                <div class="input-group mb-3">
+                                                    <button class="form-control" type="submit" class="btn btn-dark">Run</button>
+                                                </div>
+                                            {% endif %}
                                         </form>
 
                                     {% endif %}
@@ -157,16 +159,19 @@
                 </h2>
                 <div id="data" class="accordion-collapse collapse">
                     <div class="accordion-body">
+
                         {% if session["most_recent_result"] %}
-                            <a href="/download_results/{{ session["most_recent_result"] }}">Download the latest data <i class="bi bi-download"></i></a>
+                            <p><a href="/download_results/{{ session["most_recent_result"] }}">Download the latest data <i class="bi bi-download"></i></a></p>
                         {% endif %}
-                        <p> All data files</p>
+                        <p>
+                        <h5>All data files</h5>
                         {% for datafile in data_list %}
                             <div>
-                                {{ datafile }}<a href="/download_results/{{ datafile }}"><i class="bi bi-download"></i></a>
+                                {{ datafile }} <a href="/download_results/{{ datafile }} "><i class="bi bi-download"></i></a>
                             </div>
 
                         {% endfor %}
+                        </p>
                     </div>
                 </div>
             </div>

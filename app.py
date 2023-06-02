@@ -27,7 +27,8 @@ app.config['SCRIPT_FOLDER'] = 'scripts/'
 app.config['DATA_FOLDER'] = 'results/'
 # basedir = os.path.abspath(os.path.dirname(__file__))
 
-app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///project.db"    # local DB
+# app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///project.db"    # local DB
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://freedb_heinlab:#2PxSCTVJdrb%x*@sql.freedb.tech:3306/freedb_web_gui'
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://sql9620530:bb6vamcmXB@sql9.freesqldatabase.com:3306/sql9620530'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = "key"
@@ -270,7 +271,7 @@ def experiment_run():
 
     dismiss = session.get("dismiss", None)
     script = get_script_file()
-    prompt = False
+    no_deck_warning = False
 
     script.sort_actions()
     _, return_list = script.config_return()
@@ -278,21 +279,22 @@ def experiment_run():
     data_list = os.listdir(app.config['DATA_FOLDER'])
     data_list.remove(".gitkeep") if ".gitkeep" in data_list else data_list
     if deck is None:
-        prompt = True
+        no_deck_warning = True
+        flash(f"No deck is found, import {script.deck}")
     elif script.deck and not script.deck == deck.__name__:
         flash(f"This script is not compatible with current deck, import {script.deck}")
     if request.method == "POST":
         repeat = request.form.get('repeat', None)
 
-        # try:
-        generate_progress(run_name, filename, repeat)
+        try:
+            generate_progress(run_name, filename, repeat)
 
-        # except Exception as e:
-        #     flash(e)
+        except Exception as e:
+            flash(e)
     return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=script_py,
                            return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                            config_preview=config_preview, data_list=data_list,
-                           history=utils.import_history(), prompt=prompt, dismiss=dismiss)
+                           history=utils.import_history(), no_deck_warning=no_deck_warning, dismiss=dismiss)
 
 
 # @app.route('/progress')
@@ -320,8 +322,8 @@ def generate_progress(run_name, filename, repeat):
                 return redirect(url_for("experiment_run"))
 
         for i in df:
-            # output_list.append(i)
-            print(i)
+            # i is in OrderedDict on ur_deck
+            i = dict(i)
             output = eval(run_name + "_script(**" + str(i) + ")")
             if output:
                 i.update(output)
@@ -400,6 +402,9 @@ def new_controller(instrument=None):
                 device_name = device_name + str(num)
             kwargs = request.form.to_dict()
             kwargs.pop("device_name")
+            for i in kwargs:
+                if kwargs[i] in globals():
+                    kwargs[i] = globals()[kwargs[i]]
             try:
                 utils.convert_config_type(kwargs, device.__init__.__annotations__, is_class=True)
             except Exception as e:

@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <!--for python code displaying-->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.3/styles/default.min.css">
+
 </head>
 <!--style="background-color: #44d0d0;"-->
 <body>
@@ -111,7 +112,7 @@
                             {% for connection in history %}
                                 <option style="overflow-wrap: break-word;" name="filepath" id="filepath" value="{{connection}}">{{connection}}</option>
                             {% endfor %}
-                            <option>clear history</option>
+{#                            <option>clear history</option>#}
                             </select>
                         </div>
                         <h5>input manually</h5>
