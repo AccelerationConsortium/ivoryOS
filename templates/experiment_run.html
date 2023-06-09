@@ -1,24 +1,32 @@
 {% extends 'base.html' %}
 {% block title %}HEIN LAB | Run Control{% endblock %}
 
-
 {% block body %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+    <script type="text/javascript">
+        {#var socket = io.connect('http://' + document.domain + ':' + location.port);#}
+        var socket = io()
+        socket.on('connect', function() {
+            console.log('Connected');
+        });
+        socket.on('progress', function(data) {
+            var progress = data.progress;
+            console.log(progress);
+            $('#progress-bar-inner').css('width', progress + '%')
+        });
+        socket.on('log', function(data) {
+            var logMessage = data.message;
+            console.log(logMessage);
+            $('#logging-panel').append(logMessage+"<br>");
+            $('#logging-panel').scrollTop($('#logging-panel')[0].scrollHeight);
+        });
+    </script>
     <div class= "container">
         {% if no_deck_warning and not dismiss %}
             <script type="text/javascript">
                 window.onload = function () {OpenBootstrapPopup();};
             </script>
-
         {% endif %}
-        <script>
-            function start() {
-                var source = new EventSource("/progress");
-                source.onmessage = function(event) {
-                    document.getElementById("progress").innerHTML = event.data;
-                };
-            }
-        </script>
-
         <div class="accordion" id="accordionPanelsStayOpenExample">
             <div class="accordion-item">
                 <h2 class="accordion-header">
@@ -31,8 +39,27 @@
                         {% if script['script'] or script['prep'] or script['cleanup'] %}
                             <div class="row">
                                 <div class="col-6">
+                                    <p>
+                                        <h5>Configuration:</h5>
+                                        <ul class="list-group list-group-horizontal">
+                                            {% if not config_list %} no config required {% endif %}
+                                            {% for config in config_list %}
+                                                <li class="list-group-item">{{config}}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </p>
+                                    <p>
+                                        <h5>Data output:</h5>
+                                        <ul class="list-group  list-group-horizontal">
+                                            {% if not return_list %} no output values {% endif %}
+                                            {% for config in return_list %}
+                                                <li class="list-group-item">{{config}}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </p>
+                                    <p><h5>Control panel:</h5></p>
                                     {% if config_list %}
-                                        <p><h5>Current configure: {{ filename }}</h5></p>
+                                        <p>Current configure: {{ filename }}</p>
                                         <div>
                                             <p>
                                                 <form method="GET" action="{{ url_for("experiment_run") }}" enctype="multipart/form-data">
@@ -47,14 +74,19 @@
 
                                                     </div>
                                                 </form>
-                                                <a href="/download/configure" class="btn btn-secondary">Download empty config .csv</a>
-                                                <a class="btn btn-secondary" data-bs-toggle="collapse" href="#loadfile" role="button" aria-expanded="false">
-                                                    Upload .csv
-                                                </a>
-                                                <a  class="btn btn-secondary" data-bs-toggle="collapse" href="#preview" role="button" aria-expanded="false">
-                                                    Preview config file
-                                                </a>
+                                                    <div class="dropdown" style="float: right">
+                                                        <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                            <i class="bi bi-three-dots"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu">
+                                                            <li><a class="dropdown-item" data-bs-toggle="collapse" href="#preview" role="button" aria-expanded="false">Preview config</a></li>
+                                                            <li><a class="dropdown-item" href="/download/configure" >Download empty config .csv</a></li>
+                                                            <li><a class="dropdown-item" data-bs-toggle="collapse" href="#loadfile" role="button" aria-expanded="false">Upload .csv</a></li>
+                                                        </ul>
+                                                    </div>
 
+{#                                                <a href="/download/configure" class="btn btn-secondary">Download empty config .csv</a>#}
+{#                                                <a class="btn btn-secondary" data-bs-toggle="collapse" href="#loadfile" role="button" aria-expanded="false">Upload .csv</a>#}
                                             </p>
                                             <div class="collapse" id="loadfile">
                                                 <form method="POST" action="/uploads" enctype="multipart/form-data">
@@ -66,29 +98,21 @@
                                             </div>
                                         </div>
                                         {% if filename and not no_deck_warning %}
-{#                                            <h6>#}
-{#                                                <a data-bs-toggle="collapse" href="#preview" role="button" aria-expanded="false"#}
-{#                                                   aria-controls="collapseExample">#}
-{#                                                    Preview {{ filename }} (first 5 rows)#}
-{#                                                </a>#}
-{#                                            </h6>#}
 
                                             <form role="form" method='POST' name="run" action='/experiment'>
                                                 <div class="form-group">
+{#                                                    <a class="btn btn-secondary" data-bs-toggle="collapse" href="#preview" role="button" aria-expanded="false">Preview config</a>#}
                                                     <button type="submit" class="btn btn-dark">Run</button>
-{#                                                    <a class="btn btn-primary" data-bs-toggle="collapse" href="#preview" role="button" aria-expanded="false" aria-controls="preview">#}
-{#                                                        Preview config {{ filename }}#}
-{#                                                    </a>#}
+
                                                 </div>
                                             </form>
-
                                         {% endif %}
                                     {% else %}
-                                        <p><h5>No configuration:</h5></p>
+{#                                        <p><h5>No configuration:</h5></p>#}
                                         <form role="form" method='POST' name="run" action='/experiment'>
                                             <div class="input-group mb-3">
                                                 <label class="input-group-text" for="repeat">Repeat for </label>
-                                                <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="30">
+                                                <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="100">
                                                 <label class="input-group-text" for="repeat"> times</label>
                                             </div>
                                             {% if not no_deck_warning%}
@@ -99,23 +123,18 @@
                                         </form>
 
                                     {% endif %}
+
                                 </div>
                                 <div class="col-6">
                                     <p>
-                                    <h5>Configuration:</h5>
-                                        <ul class="list-group list-group-horizontal">
-                                            {% for config in config_list %}
-                                                <li class="list-group-item">{{config}}</li>
-                                            {% endfor %}
-                                        </ul>
+                                        <h5>Progress：</h5>
+                                        <div class="progress" role="progressbar" aria-label="Animated striped example" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100">
+                                            <div id="progress-bar-inner" class="progress-bar progress-bar-striped progress-bar-animated"></div>
+                                        </div>
                                     </p>
                                     <p>
-                                        <h5>Data output:</h5>
-                                        <ul class="list-group  list-group-horizontal">
-                                            {% for config in return_list %}
-                                                <li class="list-group-item">{{config}}</li>
-                                            {% endfor %}
-                                        </ul>
+                                        <h5>Logging：</h5>
+                                        <div id="logging-panel"></div>
                                     </p>
                                 </div>
                             </div>

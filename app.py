@@ -1,4 +1,6 @@
 # import inspect
+import logging
+import threading
 from datetime import datetime
 import json
 import os
@@ -9,6 +11,7 @@ import time
 
 import sqlalchemy
 from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, render_template, session, Response
+from flask_socketio import emit, SocketIO
 from werkzeug.utils import secure_filename
 
 import instruments
@@ -32,6 +35,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://freedb_heinlab:#2PxSCTVJdrb%x*@
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://sql9620530:bb6vamcmXB@sql9.freesqldatabase.com:3306/sql9620530'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = "key"
+socketio = SocketIO(app)
 
 # login helper
 login_manager = LoginManager()
@@ -53,6 +57,27 @@ if off_line:
     api_variables = set([i for i in api_variables if not i.startswith("_") and not i == "sys"])
 
 
+class SocketIOHandler(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.formatter = logging.Formatter('%(asctime)s - %(message)s')
+
+    def emit(self, record):
+        message = self.format(record)
+        socketio.emit('log', {'message': message})
+
+# def start_logger():
+    # logging.basicConfig( format='%(asctime)s - %(message)s')
+formatter = logging.Formatter(fmt='%(asctime)s - %(message)s')
+logger = logging.getLogger('gui_loggoer')
+logger.setLevel(logging.INFO)
+file_handler = logging.FileHandler(filename='example.log', )
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+# console_logger = logging.StreamHandler()
+# logger.addHandler(console_logger)
+socketio_handler = SocketIOHandler()
+logger.addHandler(socketio_handler)
 @app.route("/")
 @login_required
 def index():
@@ -286,11 +311,13 @@ def experiment_run():
     if request.method == "POST":
         repeat = request.form.get('repeat', None)
 
-        try:
-            generate_progress(run_name, filename, repeat)
+        # try:
+        thread = threading.Thread(target=generate_progress, args = (run_name, filename, repeat, script))
+        thread.start()
+            # generate_progress(run_name, filename, repeat)
 
-        except Exception as e:
-            flash(e)
+        # except Exception as e:
+        #     flash(e)
     return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=script_py,
                            return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                            config_preview=config_preview, data_list=data_list,
@@ -301,15 +328,17 @@ def experiment_run():
 # def progress(run_name, filename, repeat):
 #     return Response(generate_progress(run_name, filename, repeat), mimetype='text/event-stream')
 
-@app.route('/progress')
-def generate_progress(run_name, filename, repeat):
-    script = get_script_file()
+# @app.route('/progress')
+def generate_progress(run_name, filename, repeat, script):
+    time.sleep(1)
+    # script = get_script_file()
     exec_string = script.compile()
     arg_type = {}
     exec(exec_string)
     output_list = []
     _, return_list = script.config_return()
     exec(run_name + "_prep()")
+    logger.info('Executing preparation steps')
     if not repeat and not repeat == "":
         df = list(csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename))))
         arg_type = df.pop(0)
@@ -318,23 +347,35 @@ def generate_progress(run_name, filename, repeat):
             try:
                 i = utils.convert_config_type(i, arg_type)
             except Exception as e:
-                flash(e)
-                return redirect(url_for("experiment_run"))
+                logger.info(e)
+                # flash(e)
+                # return redirect(url_for("experiment_run"))
 
-        for i in df:
+        for i, kwargs in enumerate(df):
             # i is in OrderedDict on ur_deck
-            i = dict(i)
-            output = eval(run_name + "_script(**" + str(i) + ")")
+
+            kwargs = dict(kwargs)
+            logger.info(f'Executing {i+1} of {len(df)} with kwargs = {kwargs}')
+            progress = (i+1)*100/len(df)
+            socketio.emit('progress', {'progress': progress})
+            output = eval(run_name + "_script(**" + str(kwargs) + ")")
             if output:
-                i.update(output)
-                output_list.append(i)
+                kwargs.update(output)
+                output_list.append(kwargs)
             # yield f"data: {i}/{len(df)} is done"
     if not repeat == '' and repeat is not None:
         for i in range(int(repeat)):
+            logger.info(f'Executing {run_name}: {i+1}/{repeat}')
+            progress = (i+1)*100/int(repeat)
+            socketio.emit('progress', {'progress': progress})
+
             output = eval(run_name + "_script()")
-            output_list.append(output)
-            # yield f"data: {i}/{repeat} is done"
+            if output:
+                output_list.append(output)
+                logger.info(f'Output value: {output}')
     exec(run_name + "_cleanup()")
+    logger.info('Executing clean up steps')
+    # print(output_list)
     if len(output_list) > 0:
         args = list(arg_type.keys())
         args.extend(return_list)
@@ -343,9 +384,10 @@ def generate_progress(run_name, filename, repeat):
             writer = csv.DictWriter(file, fieldnames=args)
             writer.writeheader()
             writer.writerows(output_list)
-        session["most_recent_result"] = filename
-    flash("Run finished")
-    return redirect(url_for("experiment_run"))
+    logger.info('Finished')
+        # session["most_recent_result"] = filename
+    # flash("Run finished")
+    # return redirect(url_for("experiment_run"))
 
 
 @app.route("/experiment_preview", methods=['GET', 'POST'])
@@ -438,6 +480,8 @@ def controllers(instrument):
         try:
             output = ''
             if callable(function_executable):
+                # thread = threading.Thread(target=function_executable, kwargs=args)
+                # thread.start()
                 if args is not None:
                     output = function_executable(**args)
                 else:
@@ -788,7 +832,7 @@ def download(filetype):
         with open(filename, 'w', newline='') as f:
             writer = csv.writer(f)
             cfg, cfg_types = script.config("script")
-            print(cfg_types)
+            # print(cfg_types)
             writer.writerow(cfg)
             writer.writerow(list(cfg_types.values()))
         return send_file(filename, as_attachment=True)
@@ -843,4 +887,4 @@ def parse_deck(deck, save=None):
 
 if __name__ == "__main__":
     # app.run(host="127.0.0.1", port=8080, debug=False)
-    app.run(host="0.0.0.0", port=5000)
+    socketio.run(host="0.0.0.0", port=5000)

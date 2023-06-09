@@ -249,7 +249,7 @@ def _convert_by_class(args, arg_types):
 def convert_config_type(args, arg_types, is_class: bool = False):
     bool_dict = {"True": True, "False": False}
     print(args, arg_types)
-    print(globals())
+    # print(globals())
     if args:
         for arg in args:
             if args[arg] == '' or args[arg] == "None":

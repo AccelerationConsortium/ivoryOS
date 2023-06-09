@@ -136,3 +136,11 @@ hr.vertical {
 .controller-card a {
     text-decoration: none;
 }
+
+#logging-panel {
+    flex-grow: 1;
+    height: 50vh;
+    overflow-y: auto;
+    background-color: #f5f5f5;
+    padding: 10px;
+}
