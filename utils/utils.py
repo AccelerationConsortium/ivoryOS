@@ -5,6 +5,7 @@ import datetime
 import traceback
 import logging
 from flask import flash
+from flask_socketio import SocketIO
 
 stypes = ['prep', 'script', 'cleanup']
 
@@ -365,3 +366,30 @@ def if_deck_valid(module):
                 and not type(eval("module." + var)).__module__ == 'builtins':
             count += 1
     return False if count == 0 else True
+
+
+class SocketIOHandler(logging.Handler):
+    def __init__(self, socketio: SocketIO):
+        super().__init__()
+        self.formatter = logging.Formatter('%(asctime)s - %(message)s')
+        self.socketio = socketio
+
+    def emit(self, record):
+        message = self.format(record)
+        # session["last_log"] = message
+        self.socketio.emit('log', {'message': message})
+
+
+def start_logger(socketio: SocketIO):
+    # logging.basicConfig( format='%(asctime)s - %(message)s')
+    formatter = logging.Formatter(fmt='%(asctime)s - %(message)s')
+    logger = logging.getLogger('gui_loggoer')
+    logger.setLevel(logging.INFO)
+    file_handler = logging.FileHandler(filename='example.log', )
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    # console_logger = logging.StreamHandler()  # stream to console
+    # logger.addHandler(console_logger)
+    socketio_handler = SocketIOHandler(socketio)
+    logger.addHandler(socketio_handler)
+    return logger

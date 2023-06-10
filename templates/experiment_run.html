@@ -21,223 +21,217 @@
             $('#logging-panel').scrollTop($('#logging-panel')[0].scrollHeight);
         });
     </script>
-    <div class= "container">
-        {% if no_deck_warning and not dismiss %}
-            <script type="text/javascript">
-                window.onload = function () {OpenBootstrapPopup();};
-            </script>
-        {% endif %}
-        <div class="accordion" id="accordionPanelsStayOpenExample">
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#runpanel" aria-expanded="true" aria-controls="runpanel">
-                        Run Panel
-                    </button>
-                </h2>
-                <div id="runpanel" class="accordion-collapse collapse show">
-                    <div class="accordion-body">
-                        {% if script['script'] or script['prep'] or script['cleanup'] %}
-                            <div class="row">
-                                <div class="col-6">
-                                    <p>
-                                        <h5>Configuration:</h5>
-                                        <ul class="list-group list-group-horizontal">
-                                            {% if not config_list %} no config required {% endif %}
-                                            {% for config in config_list %}
-                                                <li class="list-group-item">{{config}}</li>
-                                            {% endfor %}
-                                        </ul>
-                                    </p>
-                                    <p>
-                                        <h5>Data output:</h5>
-                                        <ul class="list-group  list-group-horizontal">
-                                            {% if not return_list %} no output values {% endif %}
-                                            {% for config in return_list %}
-                                                <li class="list-group-item">{{config}}</li>
-                                            {% endfor %}
-                                        </ul>
-                                    </p>
-                                    <p><h5>Control panel:</h5></p>
-                                    {% if config_list %}
-                                        <p>Current configure: {{ filename }}</p>
-                                        <div>
-                                            <p>
-                                                <form method="GET" action="{{ url_for("experiment_run") }}" enctype="multipart/form-data">
-                                                    <div class="input-group mb-3">
-                                                        <select class="form-select" name="filename" id="filename" required>
-                                                            <option selected disabled hidden style="overflow-wrap: break-word;" name="filename" id="filename" value=""> -- choose config file --</option>
-                                                            {% for config_file in config_file_list %}
-                                                                <option {{'selected' if filename==config_file else '' }} style="overflow-wrap: break-word;" name="filename" id="filename" value="{{config_file}}">{{config_file}}</option>
-                                                            {% endfor %}
-                                                        </select>
-                                                        <button type="submit"  class="btn btn-primary"> Change config file </button>
+    {% if no_deck_warning and not dismiss %}
+{#      auto pop import when there is no deck#}
+        <script type="text/javascript">
+            function OpenBootstrapPopup() {
+                $("#importModal").modal('show');
+            }
+            window.onload = function () {
+                OpenBootstrapPopup();
+            };
+        </script>
+    {% endif %}
 
-                                                    </div>
-                                                </form>
-                                                    <div class="dropdown" style="float: right">
-                                                        <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                            <i class="bi bi-three-dots"></i>
-                                                        </button>
-                                                        <ul class="dropdown-menu">
-                                                            <li><a class="dropdown-item" data-bs-toggle="collapse" href="#preview" role="button" aria-expanded="false">Preview config</a></li>
-                                                            <li><a class="dropdown-item" href="/download/configure" >Download empty config .csv</a></li>
-                                                            <li><a class="dropdown-item" data-bs-toggle="collapse" href="#loadfile" role="button" aria-expanded="false">Upload .csv</a></li>
-                                                        </ul>
-                                                    </div>
-
-{#                                                <a href="/download/configure" class="btn btn-secondary">Download empty config .csv</a>#}
-{#                                                <a class="btn btn-secondary" data-bs-toggle="collapse" href="#loadfile" role="button" aria-expanded="false">Upload .csv</a>#}
-                                            </p>
-                                            <div class="collapse" id="loadfile">
-                                                <form method="POST" action="/uploads" enctype="multipart/form-data">
-                                                    <div class="input-group">
-                                                        <input class="form-control" name="file" type="file" required="required">
-                                                        <input class="btn btn-secondary" type="submit" value="Upload .csv">
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                        {% if filename and not no_deck_warning %}
-
-                                            <form role="form" method='POST' name="run" action='/experiment'>
-                                                <div class="form-group">
-{#                                                    <a class="btn btn-secondary" data-bs-toggle="collapse" href="#preview" role="button" aria-expanded="false">Preview config</a>#}
-                                                    <button type="submit" class="btn btn-dark">Run</button>
-
-                                                </div>
-                                            </form>
-                                        {% endif %}
-                                    {% else %}
-{#                                        <p><h5>No configuration:</h5></p>#}
-                                        <form role="form" method='POST' name="run" action='/experiment'>
-                                            <div class="input-group mb-3">
-                                                <label class="input-group-text" for="repeat">Repeat for </label>
-                                                <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="100">
-                                                <label class="input-group-text" for="repeat"> times</label>
-                                            </div>
-                                            {% if not no_deck_warning%}
-                                                <div class="input-group mb-3">
-                                                    <button class="form-control" type="submit" class="btn btn-dark">Run</button>
-                                                </div>
-                                            {% endif %}
-                                        </form>
-
-                                    {% endif %}
-
-                                </div>
-                                <div class="col-6">
-                                    <p>
-                                        <h5>Progress：</h5>
-                                        <div class="progress" role="progressbar" aria-label="Animated striped example" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100">
-                                            <div id="progress-bar-inner" class="progress-bar progress-bar-striped progress-bar-animated"></div>
-                                        </div>
-                                    </p>
-                                    <p>
-                                        <h5>Logging：</h5>
-                                        <div id="logging-panel"></div>
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="collapse" id="preview">
-                                {% if config_preview %}
-                                    <table class="table table-hover">
-                                        <thead>
-                                        <tr>
-                                            {% for line in config_preview[0].keys() %}
-                                                <th scope="col">{{ line }}</th>
-                                            {% endfor %}
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        {% for line in config_preview %}
-                                            <tr>
-                                                {% for i in line.values() %}
-                                                    <td>
-                                                        {{ i }}
-                                                    </td>
-                                                {% endfor %}
-                                            </tr>
-                                        {% endfor %}
-                                        </tbody>
-                                    </table>
-                                {% else %}
-                                    Empty config file
-                                {% endif %}
-                            </div>
-                        {% endif %}
-
-                    </div>
-                </div>
-            </div>
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#data" aria-expanded="false" aria-controls="script">
-                        Download experiment data csv
-                    </button>
-                </h2>
-                <div id="data" class="accordion-collapse collapse">
-                    <div class="accordion-body">
-
-                        {% if session["most_recent_result"] %}
-                            <p><a href="/download_results/{{ session["most_recent_result"] }}">Download the latest data <i class="bi bi-download"></i></a></p>
-                        {% endif %}
-                        <p>
-                        <h5>All data files</h5>
-                        {% for datafile in data_list %}
-                            <div>
-                                {{ datafile }} <a href="/download_results/{{ datafile }} "><i class="bi bi-download"></i></a>
-                            </div>
-
-                        {% endfor %}
-                        </p>
-                    </div>
-                </div>
-            </div>
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#script" aria-expanded="false" aria-controls="script">
-                        Script
-                    </button>
-                </h2>
-                <div id="script" class="accordion-collapse collapse">
-                    <div class="accordion-body">
-                        {% for script_type in ['prep', 'script', 'cleanup'] %}
-                            {% if script[script_type] %}
-                                <h6>
-                                    {% if script_type == 'prep' %} Preparation: {% elif script_type == 'script' %} Experiment:
-                                    {% elif script_type == 'cleanup' %} Clean up: {% endif %}
-                                </h6>
-                                <ul>
-                                    {% for s in script[script_type] %}{% if not s['instrument']=='if' and not s['instrument']=='while' %} &emsp; {% endif %}<li class="btn btn-light" id="{{s['id']}}" style="{{'background-color: tomato' if s['instrument']=='if' else 'background-color: darkcyan' if s['instrument']=='while' else ''}}">
-                                        {% if s['return'] %}{{s['return']}} = {% endif %}
-                                        {{s['action']}}
-                                        {% if s['action']== 'if' %} {% if s['args'] %}({{s['args']}}) {% else %} True {% endif %}
-                                        {% elif s['action']== 'while' %} {% if s['args'] %}({{s['args']}}) {% else %} False {% endif %}
-                                        {% elif s['instrument']== 'variable' %} = {{s['args']}}
-                                        {% else %} {% if s['args'] %} ({{s['args']}}) {% endif %}
-                                        {% endif %}
-                                    </li><div class="clear"></div>
+    <div class="accordion" id="accordionPanelsStayOpenExample">
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#runpanel" aria-expanded="true" aria-controls="runpanel">
+                    Run Panel
+                </button>
+            </h2>
+            <div id="runpanel" class="accordion-collapse collapse show">
+                <div class="accordion-body">
+                    {% if script['script'] or script['prep'] or script['cleanup'] %}
+                        <div class="row">
+                            <div class="col-6">
+                                <p>
+                                <h5>Configuration:</h5>
+                                <ul class="list-group list-group-horizontal">
+                                    {% if not config_list %} no config required {% endif %}
+                                    {% for config in config_list %}
+                                        <li class="list-group-item">{{config}}</li>
                                     {% endfor %}
                                 </ul>
+                                </p>
+                                <p>
+                                <h5>Data output:</h5>
+                                <ul class="list-group  list-group-horizontal">
+                                    {% if not return_list %} no output values {% endif %}
+                                    {% for config in return_list %}
+                                        <li class="list-group-item">{{config}}</li>
+                                    {% endfor %}
+                                </ul>
+                                </p>
+                                <p><h5>Control panel:</h5></p>
+                                {% if config_list %}
+                                    <p>Current configure: {{ filename }}</p>
+                                    <div>
+                                        <p>
+                                        <form method="GET" action="{{ url_for("experiment_run") }}" enctype="multipart/form-data">
+                                        <div class="input-group mb-3">
+                                            <select class="form-select" name="filename" id="filename" required>
+                                                <option selected disabled hidden style="overflow-wrap: break-word;" name="filename" id="filename" value=""> -- choose config file --</option>
+                                                {% for config_file in config_file_list %}
+                                                    <option {{'selected' if filename==config_file else '' }} style="overflow-wrap: break-word;" name="filename" id="filename" value="{{config_file}}">{{config_file}}</option>
+                                                {% endfor %}
+                                            </select>
+                                            <button type="submit"  class="btn btn-primary"> Change config file </button>
+                                        </div>
+                                    </form>
+                                        <div class="dropdown" style="float: right">
+                                            <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="bi bi-three-dots"></i>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li><a class="dropdown-item" data-bs-toggle="collapse" href="#preview" role="button" aria-expanded="false">Preview config</a></li>
+                                                <li><a class="dropdown-item" href="/download/configure" >Download empty config .csv</a></li>
+                                                <li><a class="dropdown-item" data-bs-toggle="collapse" href="#loadfile" role="button" aria-expanded="false">Upload .csv</a></li>
+                                            </ul>
+                                        </div>
+                                        </p>
+                                        <div class="collapse" id="loadfile">
+                                            <form method="POST" action="/uploads" enctype="multipart/form-data">
+                                                <div class="input-group">
+                                                    <input class="form-control" name="file" type="file" required="required">
+                                                    <input class="btn btn-secondary" type="submit" value="Upload .csv">
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    {% if filename and not no_deck_warning %}
+                                        <form role="form" method='POST' name="run" action='/experiment'>
+                                            <div class="form-group">
+                                                <button type="submit" class="btn btn-dark">Run</button>
+                                            </div>
+                                        </form>
+                                    {% endif %}
+                                {% else %}
+{#                                       No configuration#}
+                                    <form role="form" method='POST' name="run" action='/experiment'>
+                                        <div class="input-group mb-3">
+                                            <label class="input-group-text" for="repeat">Repeat for </label>
+                                            <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="100">
+                                            <label class="input-group-text" for="repeat"> times</label>
+                                        </div>
+                                        {% if not no_deck_warning%}
+                                            <div class="input-group mb-3">
+                                                <button class="form-control" type="submit" class="btn btn-dark">Run</button>
+                                            </div>
+                                        {% endif %}
+                                    </form>
+                                {% endif %}
+                            </div>
+                            <div class="col-6 logging-panel">
+                                <p>
+                                <h5>Progress：</h5>
+                                <div class="progress" role="progressbar" aria-label="Animated striped example" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100">
+                                    <div id="progress-bar-inner" class="progress-bar progress-bar-striped progress-bar-animated"></div>
+                                </div>
+                                </p>
+                                <p>
+                                <h5>Logging：</h5>
+                                <div id="logging-panel"></div>
+                                </p>
+                            </div>
+                        </div>
+{#                           Preview config file#}
+                        <div class="collapse" id="preview">
+                            {% if config_preview %}
+                                <table class="table table-hover">
+                                    <thead>
+                                    <tr>
+                                        {% for line in config_preview[0].keys() %}
+                                            <th scope="col">{{ line }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for line in config_preview %}
+                                        <tr>
+                                            {% for i in line.values() %}
+                                                <td>{{ i }}</td>
+                                            {% endfor %}
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            {% else %}
+                                Empty config file
                             {% endif %}
-                        {% endfor %}
-                    </div>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#python" aria-expanded="false" aria-controls="python">
-                        Python Script
-                    </button>
-                </h2>
-                <div id="python" class="accordion-collapse collapse">
-                    <div class="accordion-body">
-                        <pre ><code class="python" >{{dot_py}}</code></pre>
-                        <a href="/download/python">Download <i class="bi bi-download"></i></a>
-                    </div>
+        </div>
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#data" aria-expanded="false" aria-controls="script">
+                    Download experiment data csv
+                </button>
+            </h2>
+            <div id="data" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                    {% if session["most_recent_result"] %}
+                        <p><a href="/download_results/{{ session["most_recent_result"] }}">Download the latest data <i class="bi bi-download"></i></a></p>
+                    {% endif %}
+                    <p>
+                    <h5>All data files</h5>
+                    {% for datafile in data_list %}
+                        <div>
+                            {{ datafile }} <a href="/download_results/{{ datafile }} "><i class="bi bi-download"></i></a>
+                        </div>
+                    {% endfor %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#script" aria-expanded="false" aria-controls="script">
+                    Script
+                </button>
+            </h2>
+            <div id="script" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                    {% for script_type in ['prep', 'script', 'cleanup'] %}
+                        {% if script[script_type] %}
+                            <h6>
+                                {% if script_type == 'prep' %} Preparation: {% elif script_type == 'script' %} Experiment:
+                                {% elif script_type == 'cleanup' %} Clean up: {% endif %}
+                            </h6>
+                            <ul>
+                                {% for s in script[script_type] %}{% if not s['instrument']=='if' and not s['instrument']=='while' %} &emsp; {% endif %}
+                                    <li class="btn btn-light" id="{{s['id']}}" style="{{'background-color: tomato' if s['instrument']=='if' else 'background-color: darkcyan' if s['instrument']=='while' else ''}}">
+                                        {% if s['return'] %}{{ s['return'] }} = {% endif %}
+                                        {{ s['action'] }}
+{#                                           {% if s['action']== 'if' %} {% if s['args'] %}({{ s['args'] }}) {% else %} True {% endif %}#}
+{#                                           {% elif s['action']== 'while' %} {% if s['args'] %}({{ s['args'] }}) {% else %} False {% endif %}#}
+                                        {% if s['instrument']== 'variable' %} = {{ s['args'] }}
+                                        {% else %} {% if s['args'] %} ({{ s['args'] }}) {% endif %}
+                                        {% endif %}
+                                    </li>
+                                    <div class="clear"></div>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#python" aria-expanded="false" aria-controls="python">
+                    Python Script
+                </button>
+            </h2>
+            <div id="python" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                    <pre ><code class="python" >{{dot_py}}</code></pre>
+                    <a href="/download/python">Download <i class="bi bi-download"></i></a>
                 </div>
             </div>
         </div>
     </div>
+
 {% endblock %}

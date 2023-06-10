@@ -9,9 +9,10 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <!--for python code displaying-->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.3/styles/default.min.css">
-
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+{#    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.4/css/jquery.dataTables.min.css">#}
 </head>
-<!--style="background-color: #44d0d0;"-->
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
         <div class= "container">
@@ -45,23 +46,20 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('controllers_home') }}">New Device</a></li>
                     </li>
-{#                    <li class="nav-item dropdown">#}
-{#                        #}
-{#                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Controllers</a>#}
-{#                        <ul class="dropdown-menu">#}
-{#                            <li><a class="dropdown-item" href="{{ url_for('deck_controllers') }}">Deck Controller</a></li>#}
-{#                            <li><a class="dropdown-item" href="{{ url_for('controllers_home') }}">Instrument Controller</a></li>#}
-{#                        </ul>#}
-{#                    </li>#}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('help_info') }}">About</a>
                     </li>
                 </ul>
                 <ul class="navbar-nav ms-auto">
+
                     {% if session["user"] %}
-                        <li class="nav-item">User: {{ session["user"] }}
-                            <a href="{{ url_for("logout") }}">Logout</a>
-                        </li>
+                        <div class="dropdown">
+                            <li class="nav-item " aria-expanded="false"><i class="bi bi-person-circle"></i> {{ session["user"] }}</li>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for("logout") }}" role="button" aria-expanded="false">Logout</a></li>
+                            </ul>
+
+                        </div>
 {#                    <li class="nav-item">#}
 {#                        <a class="nav-link" href="{{ url_for("logout") }}">Logout</a>#}
 {##}
@@ -94,6 +92,7 @@
                 {% endif %}
             {% endwith %}
         </div>
+        {% block body %}{% endblock %}
     </div>
 
     <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModal" aria-hidden="true" >
@@ -133,7 +132,6 @@
                                 <label class="form-check-label" for="dismiss">Don't remind me</label>
                             </div>
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Close </button>
-
                             <button type="submit"  class="btn btn-primary"> Save </button>
                         </div>
                     </div>
@@ -141,64 +139,51 @@
             </div>
         </div>
     </div>
-    {% block body %}{% endblock %}
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/js/bootstrap.bundle.min.js" integrity="sha384-qKXV1j0HvMUeCBQ+QVp7JcfGl760yU08IQ+GpUo5hlbpg51QRiuqHAJz8+BrxE/N" crossorigin="anonymous"></script>
-
-    <!--    for dragable-->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
-    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
-
-    <!--    for displaying python code-->
+    {#for displaying python code#}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.3/highlight.min.js"></script>
-    <script>hljs.initHighlightingOnLoad();</script>
+
+
+{#    for datatable, doesn't seem to work...when there is links in the table #}
+{#    <script src="https://code.jquery.com/jquery-3.5.1.js"></script>#}
+{#    <script src="https://cdn.datatables.net/1.11.4/js/jquery.dataTables.min.js"></script>#}
+{#    <script>#}
+{#      $(document).ready(function() {#}
+{#        $('#workflowLibrary').DataTable();#}
+{#      });#}
+{#    </script>#}
+    {#for dragable#}
+
     <script type="text/javascript">
-
-$(document).ready(function(){
-   function slideout(){
-    setTimeout(function(){
-      $("#response").slideUp("slow", function () {
-    });
-    }, 2000);
-  }
-
-  $("#response").hide();
-  $(function() {
-    $("#list ul").sortable({ cancel: ".unsortable", opacity: 0.8, cursor: 'move', update: function() {
-      var item_order = new Array();
-      $('ul.reorder li').each(function() {
-          item_order.push($(this).attr("id"));
-      });
-      var order_string = 'order='+item_order;
-
-      $.ajax({
-        method: "POST",
-        url: "/updateList",
-        data: order_string,
-        cache: false,
-        success: function(data){
-            $("#response").html(data);
-            $("#response").slideDown('slow');
-            slideout();
-        }
-    });
-    }
-    });
-  });
-
-});
-
-$(document).ready(function(){
-const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]')
-const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl))
-});
-
-    function OpenBootstrapPopup() {
-        $("#importModal").modal('show');
-    }
-
-
+        $(document).ready(function(){
+            function slideout(){
+                setTimeout(function(){
+                    $("#response").slideUp("slow", function () {});
+                }, 2000);
+            }
+            $("#response").hide();
+            $(function() {
+                $("#list ul").sortable({ cancel: ".unsortable", opacity: 0.8, cursor: 'move', update: function() {
+                    var item_order = new Array();
+                    $('ul.reorder li').each(function() {
+                        item_order.push($(this).attr("id"));
+                    });
+                    var order_string = 'order='+item_order;
+                    $.ajax({
+                        method: "POST",
+                        url: "/updateList",
+                        data: order_string,
+                        cache: false,
+                        success: function(data){
+                            $("#response").html(data);
+                            $("#response").slideDown('slow');
+                            slideout();
+                        }
+                    });
+                }});
+            });
+        });
     </script>
-
 </body>
 </html>

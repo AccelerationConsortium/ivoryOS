@@ -2,8 +2,6 @@
 {% block title %}HEIN LAB | Workflow Builder{% endblock %}
 
 {% block body %}
-
-<div class="container" xmlns="http://www.w3.org/1999/html">
     <div class="row">
         <div class="col-md-3 scroll-column" >
             <form method="POST" action="/import_pseudo" enctype="multipart/form-data">
@@ -306,17 +304,15 @@
                     <ul class="reorder">
                         {% for s in script.currently_editing_script %}
                             <li id="{{s['id']}}" style="list-style-type: none;">
-                                {% if s['instrument'] == 'if' %}
+                                {% if s['instrument'] == 'if' or s['instrument'] == 'while' %}
                                     <a href="/edit/{{s['uuid']}}" type="button" class="btn btn-light" style="background-color: tomato">{{s['action']}} {{s['args']}}</a>
-                                {% elif s['instrument'] == 'while' %}
-                                    <a href="/edit/{{s['uuid']}}" type="button" class="btn btn-light" style="background-color: darkcyan">{{s['action']}} {{s['args']}}</a>
+{#                                {% elif s['instrument'] == 'while' %}#}
+{#                                    <a href="/edit/{{s['uuid']}}" type="button" class="btn btn-light" style="background-color: darkcyan">{{s['action']}} {{s['args']}}</a>#}
                                 {% elif s['instrument'] == 'variable' %}
                                     <a href="/edit/{{s['uuid']}}" type="button" class="btn btn-light" style="">{{s['action']}} = {{s['args']}}</a>
                                 {% else %}
                                     <a href="/edit/{{s['uuid']}}" type="button" class="btn btn-light">
-                                    {% if not s['return'] == '' %}
-                                        {{s['return']}} =
-                                    {% endif %}
+                                    {% if s['return'] %}    {{s['return']}} =   {% endif %}
                                     {{s['instrument'].split(".")[1] if s['instrument'].startswith("deck") else s['instrument']}}.{{s.action}}
                                     {% if s['args'] %}
                                         {% if s['args'].__class__.__name__ == "dict" %}
@@ -325,7 +321,7 @@
                                             = {{s['args']}}
                                         {% endif %}
                                     {% endif %}
-                                </a>
+                                    </a>
                                 {% endif %}
                                 <a href="/delete/{{s['id']}}" type="button" class="btn btn-light"><span class="bi bi-trash"></span></a>
                             </li>
@@ -339,11 +335,8 @@
             </div>
         </div>
     </div>
-</div>
 
-
-
-
+{#    modals#}
 <div class="modal fade" id="newScriptModal" tabindex="-1" aria-labelledby="newScriptModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -426,4 +419,6 @@
         </div>
     </div>
 </div>
+
 {% endblock %}
+

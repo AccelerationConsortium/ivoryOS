@@ -1,4 +1,3 @@
-# import inspect
 import logging
 import threading
 from datetime import datetime
@@ -9,20 +8,16 @@ import pickle
 import traceback
 import time
 
-import sqlalchemy
-from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, render_template, session, Response
-from flask_socketio import emit, SocketIO
+from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, render_template, session
+from flask_socketio import SocketIO
 from werkzeug.utils import secure_filename
-
-import instruments
-from utils import utils
-from model import Script, User, db
 from flask_login import LoginManager, login_required, login_user, logout_user
 import bcrypt
-from instruments import *
+from utils import utils
+from model import Script, User, db
+import instruments
 
 off_line = True
-
 
 app = Flask(__name__)
 app.config['CSV_FOLDER'] = 'config_csv/'
@@ -44,7 +39,6 @@ login_manager.login_view = "login"
 
 # initialize database
 db.init_app(app)
-
 with app.app_context():
     db.create_all()
 
@@ -52,32 +46,14 @@ deck = None
 pseudo_deck = None
 defined_variables = set()
 api_variables = set()
+
 if off_line:
     api_variables = dir(instruments)
     api_variables = set([i for i in api_variables if not i.startswith("_") and not i == "sys"])
 
+logger = utils.start_logger(socketio)
 
-class SocketIOHandler(logging.Handler):
-    def __init__(self):
-        super().__init__()
-        self.formatter = logging.Formatter('%(asctime)s - %(message)s')
 
-    def emit(self, record):
-        message = self.format(record)
-        socketio.emit('log', {'message': message})
-
-# def start_logger():
-    # logging.basicConfig( format='%(asctime)s - %(message)s')
-formatter = logging.Formatter(fmt='%(asctime)s - %(message)s')
-logger = logging.getLogger('gui_loggoer')
-logger.setLevel(logging.INFO)
-file_handler = logging.FileHandler(filename='example.log', )
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-# console_logger = logging.StreamHandler()
-# logger.addHandler(console_logger)
-socketio_handler = SocketIOHandler()
-logger.addHandler(socketio_handler)
 @app.route("/")
 @login_required
 def index():
@@ -312,9 +288,9 @@ def experiment_run():
         repeat = request.form.get('repeat', None)
 
         # try:
-        thread = threading.Thread(target=generate_progress, args = (run_name, filename, repeat, script))
+        thread = threading.Thread(target=generate_progress, args=(run_name, filename, repeat, script))
         thread.start()
-            # generate_progress(run_name, filename, repeat)
+        # generate_progress(run_name, filename, repeat)
 
         # except Exception as e:
         #     flash(e)
@@ -355,8 +331,8 @@ def generate_progress(run_name, filename, repeat, script):
             # i is in OrderedDict on ur_deck
 
             kwargs = dict(kwargs)
-            logger.info(f'Executing {i+1} of {len(df)} with kwargs = {kwargs}')
-            progress = (i+1)*100/len(df)
+            logger.info(f'Executing {i + 1} of {len(df)} with kwargs = {kwargs}')
+            progress = (i + 1) * 100 / len(df)
             socketio.emit('progress', {'progress': progress})
             output = eval(run_name + "_script(**" + str(kwargs) + ")")
             if output:
@@ -365,8 +341,8 @@ def generate_progress(run_name, filename, repeat, script):
             # yield f"data: {i}/{len(df)} is done"
     if not repeat == '' and repeat is not None:
         for i in range(int(repeat)):
-            logger.info(f'Executing {run_name}: {i+1}/{repeat}')
-            progress = (i+1)*100/int(repeat)
+            logger.info(f'Executing {run_name}: {i + 1}/{repeat}')
+            progress = (i + 1) * 100 / int(repeat)
             socketio.emit('progress', {'progress': progress})
 
             output = eval(run_name + "_script()")
@@ -385,7 +361,7 @@ def generate_progress(run_name, filename, repeat, script):
             writer.writeheader()
             writer.writerows(output_list)
     logger.info('Finished')
-        # session["most_recent_result"] = filename
+    # session["most_recent_result"] = filename
     # flash("Run finished")
     # return redirect(url_for("experiment_run"))
 
@@ -887,4 +863,4 @@ def parse_deck(deck, save=None):
 
 if __name__ == "__main__":
     # app.run(host="127.0.0.1", port=8080, debug=False)
-    socketio.run(host="0.0.0.0", port=5000)
+    socketio.run(app, host="0.0.0.0", debug=True, use_reloader=False, allow_unsafe_werkzeug=True)

@@ -2,9 +2,7 @@ import json
 import uuid
 from datetime import datetime
 
-from flask import jsonify
 from flask_login import UserMixin
-# from flask_marshmallow import Marshmallow
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy_utils import JSONType
 
@@ -220,7 +218,7 @@ class Script(db.Model):
             "if":
                 [
                     {"id": current_len + 1, "instrument": 'if', "action": 'if', "args": 'True' if args == '' else args,
-                     "return": '', "uuid": uid},
+                     "return": '', "uuid": uid, "arg_types": ''},
                     {"id": current_len + 2, "instrument": 'if', "action": 'else', "args": '', "return": '',
                      "uuid": uid},
                     {"id": current_len + 3, "instrument": 'if', "action": 'endif', "args": '', "return": '',
@@ -229,19 +227,19 @@ class Script(db.Model):
             "while":
                 [
                     {"id": current_len + 1, "instrument": 'while', "action": 'while',
-                     "args": 'False' if args == '' else args, "return": '', "uuid": uid},
+                     "args": 'False' if args == '' else args, "return": '', "uuid": uid, "arg_types": ''},
                     {"id": current_len + 2, "instrument": 'while', "action": 'endwhile', "args": '', "return": '',
                      "uuid": uid},
                 ],
             "variable":
                 [
                     {"id": current_len + 1, "instrument": 'variable', "action": var_name,
-                     "args": 'None' if args == '' else args, "return": '', "uuid": uid},
+                     "args": 'None' if args == '' else args, "return": '', "uuid": uid, "arg_types": ''},
                 ],
             "wait":
                 [
                     {"id": current_len + 1, "instrument": 'wait', "action": "wait", "args": '0' if args == '' else args,
-                     "return": '', "uuid": uid},
+                     "return": '', "uuid": uid, "arg_types": "float"},
                 ],
         }
         action_list = logic_dict[logic_type]
@@ -344,6 +342,8 @@ class Script(db.Model):
                 for index, action in enumerate(self.script_dict[i]):
                     instrument = action['instrument']
                     args = action['args']
+                    if type(args) is str and args.startswith("#"):
+                        args = args[1:]
                     save_data = action['return']
                     action = action['action']
                     next_ = None
@@ -353,7 +353,7 @@ class Script(db.Model):
                         if action == 'if':
                             exec_string = exec_string + self.indent(indent_unit) + "if " + str(args) + ":"
                             indent_unit += 1
-                            if next_ and next_['instrument'] == 'if':
+                            if next_ and next_['instrument'] == 'if' and next_['action'] == 'else':
                                 exec_string = exec_string + self.indent(indent_unit) + "pass"
                         elif action == 'else':
                             exec_string = exec_string + self.indent(indent_unit - 1) + "else:"
@@ -372,8 +372,7 @@ class Script(db.Model):
                         elif action == 'endwhile':
                             indent_unit -= 1
                     elif instrument == 'variable':
-                        if not args.startswith("#"):
-                            exec_string = exec_string + self.indent(indent_unit) + action + " = " + args
+                        exec_string = exec_string + self.indent(indent_unit) + action + " = " + args
                     elif instrument == 'wait':
                         exec_string = exec_string + self.indent(indent_unit) + "time.sleep(" + args + ")"
                     else:
@@ -384,16 +383,13 @@ class Script(db.Model):
                                     if type(args[arg]) is str and args[arg].startswith("#"):
                                         temp = temp.replace("'#" + args[arg][1:] + "'", args[arg][1:])
                                 single_line = instrument + "." + action + "(**" + temp + ")"
-                            else:
-                                if type(args) is str and args.startswith("#"):
-                                    args = args[1:]
+                            elif type(args) is str:
                                 single_line = instrument + "." + action + " = " + str(args)
                         else:
                             single_line = instrument + "." + action + "()"
-                        if save_data == '':
-                            exec_string = exec_string + self.indent(indent_unit) + single_line
-                        else:
-                            exec_string = exec_string + self.indent(indent_unit) + save_data + " = " + single_line
+                        if save_data:
+                            save_data += " = "
+                        exec_string = exec_string + self.indent(indent_unit) + save_data + single_line
                 return_str, return_list = self.config_return()
                 if len(return_list) > 0 and i == "script":
                     exec_string += self.indent(indent_unit) + return_str

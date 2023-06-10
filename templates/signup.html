@@ -5,30 +5,27 @@
 {% block body %}
 <div class= "login">
     <div class="bg-white rounded shadow-sm flex-fill">
-    <div class="p-4" style="align: center">
-{#    <div class="form-control">#}
-        <h5>Create a new account</h5>
-        <form role="form" method='POST' name="signup" action='/signup'>
+        <div class="p-4" style="align: center">
+            <h5>Create a new account</h5>
+            <form role="form" method='POST' name="signup" action='/signup'>
 
-            <div class="input-group mb-3">
-                <label class="input-group-text" for="username">Username</label>
-                <input class="form-control" type="text" id="username" name="username" required>
-            </div>
-            <div class="input-group mb-3">
-                <label class="input-group-text" for="password">Password</label>
-                <input class="form-control" type="password" id="password" name="password" required>
-            </div>
-{#            <div class="input-group mb-3">#}
-{#                <label class="input-group-text" for="confirm_password">Confirm Password</label>#}
-{#                <input class="form-control" type="confirm_password" id="confirm_password" name="confirm_password">#}
-{#            </div>#}
+                <div class="input-group mb-3">
+                    <label class="input-group-text" for="username">Username</label>
+                    <input class="form-control" type="text" id="username" name="username" required>
+                </div>
+                <div class="input-group mb-3">
+                    <label class="input-group-text" for="password">Password</label>
+                    <input class="form-control" type="password" id="password" name="password" required>
+                </div>
+{#                <div class="input-group mb-3">#}
+{#                    <label class="input-group-text" for="confirm_password">Confirm Password</label>#}
+{#                    <input class="form-control" type="confirm_password" id="confirm_password" name="confirm_password">#}
+{#                </div>#}
 
-            <button type="submit" class="btn btn-secondary" name="login" style="width: 100%;">Sign up</button>
-
-        </form>
-        <p class="message" >Already registered? <a href="{{ url_for('login') }}">Sign In</a></p>
-{#    </div>#}
-    </div>
+                <button type="submit" class="btn btn-secondary" name="login" style="width: 100%;">Sign up</button>
+            </form>
+            <p class="message" >Already registered? <a href="{{ url_for('login') }}">Sign In</a></p>
+        </div>
     </div>
 </div>
 

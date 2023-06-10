@@ -1,8 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}HEIN LAB | Controllers{% endblock %}
 {% block body %}
-<div class= "container">
-{#    <h2>{{deck}} Controllers</h2>#}
     <div class="row">
     {% if defined_variables %}
         {% for instrument in defined_variables %}
@@ -19,11 +17,6 @@
                         </div>
                     {% endif %}
                 </div>
-{#                <div class="rounded shadow-sm position-relative " style="background-color: red">#}
-{#                    {% if not deck %}#}
-{#                        <a href="/disconnect/{{ instrument }}" class="stretched-link controller-card" style="color: white; align: center">Disconnect <i class="bi bi-x-square"></i></a>#}
-{#                    {% endif %}#}
-{#                </div>#}
             </div>
         {% endfor %}
 
@@ -52,5 +45,4 @@
         </div>
     {% endif %}
     </div>
-</div>
 {% endblock %}

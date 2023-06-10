@@ -1,10 +1,7 @@
 {% extends 'base.html' %}
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.css">
-<script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.js"></script>
+
 {% block title %}HEIN LAB | Workflow Database{% endblock %}
 {% block body %}
-
-<div class= "container">
     <div class="database-filter">
         {% for deck_name in deck_list %}
             {% if deck_name == "ALL" %}<a class="btn btn-secondary" href="{{url_for('load_from_database')}}">Back</a>
@@ -58,12 +55,7 @@
         </tbody>
     </table>
 
-    <script type="javascript">
-    $(document).ready(function() {
-      $('#workflowLibrary').DataTable();
-    });
-    </script>
-
+{#    paging#}
     <div class="pagination justify-content-center">
         <div class="page-item {{ 'disabled' if not workflows.has_prev else '' }}">
             <a class="page-link" href="{{ url_for('load_from_database', page=workflows.prev_num) }}">Previous</a>
@@ -77,8 +69,4 @@
             <a class="page-link" href="{{ url_for('load_from_database', page=workflows.next_num) }}">Next</a>
         </div>
     </div>
-
-</div>
-
-
 {% endblock %}

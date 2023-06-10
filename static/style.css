@@ -57,15 +57,9 @@ label {
     bottom: 0;
 }
 
-/*.dropdown {*/
-/*  !*display: inline-block;*!*/
-/*    padding: 0;*/
-/*}*/
-
 
 /*Remove the scrollbar from Chrome, Safari, Edge and IE*/
 ::-webkit-scrollbar {
-
     background: transparent;
 }
 
@@ -143,4 +137,13 @@ hr.vertical {
     overflow-y: auto;
     background-color: #f5f5f5;
     padding: 10px;
+}
+
+.dropdown:hover .dropdown-menu {
+  display: block;
+}
+
+#reorder {
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
 }
