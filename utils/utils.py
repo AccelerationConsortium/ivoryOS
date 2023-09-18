@@ -65,18 +65,19 @@ def new_script(deck_name):
     return script_dict, order
 
 
-def parse_functions(class_object=None, call=True):
+def parse_functions(class_object=None, debug=False):
     functions = {}
+    under_score = "_"
+    if debug:
+        under_score = "__"
     for function in dir(class_object):
-        if not function.startswith("_") and not function.isupper():
-            # if call:
+        if not function.startswith(under_score) and not function.isupper():
             try:
                 att = getattr(class_object, function)
 
                 # handle getter setters
                 if callable(att):
-                    if is_compatible(att):
-                        functions[function] = inspect.signature(att)
+                    functions[function] = inspect.signature(att)
                 else:
                     att = getattr(class_object.__class__, function)
                     if isinstance(att, property) and att.fset is not None:
@@ -86,8 +87,6 @@ def parse_functions(class_object=None, call=True):
                             functions[function] = setter
             except Exception:
                 pass
-        # else:
-        #     functions[function] = function
     return functions
 
 
