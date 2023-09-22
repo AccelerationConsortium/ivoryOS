@@ -45,98 +45,81 @@
                     {% if script['script'] or script['prep'] or script['cleanup'] %}
                         <div class="row">
                             <div class="col-6">
-                                <p>
-                                <h5>Configuration:</h5>
-                                <ul class="list-group list-group-horizontal">
-                                    {% if not config_list %} no config required {% endif %}
-                                    {% for config in config_list %}
-                                        <li class="list-group-item">{{config}}</li>
-                                    {% endfor %}
+{#                                {% if not config_list  %} no config required#}
+{#                                {% elif config_list and return_list %}#}
+{#                                {% elif config_list and not return_list %}#}
+{#                                {% endif %}#}
+                                <ul class="nav nav-tabs" id="myTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <a class="nav-link {{ 'disabled' if config_list else '' }} {{ 'active' if not config_list else '' }}" id="tab1-tab" data-bs-toggle="tab" href="#tab1" role="tab" aria-controls="tab1" aria-selected="false">Simple repeat</a>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <a class="nav-link {{ 'disabled' if not config_list else '' }} {{ 'active' if config_list else '' }}" id="tab2-tab" data-bs-toggle="tab" href="#tab2" role="tab" aria-controls="tab2" aria-selected="false">Excel configuration</a>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <a class="nav-link {{ 'disabled' if not config_list or not return_list else '' }}" id="tab3-tab" data-bs-toggle="tab" href="#tab3" role="tab" aria-controls="tab3" aria-selected="false">Bayesian Optimization</a>
+                                    </li>
                                 </ul>
-                                </p>
-                                <p>
-                                <h5>Data output:</h5>
-                                <ul class="list-group  list-group-horizontal">
-                                    {% if not return_list %} no output values {% endif %}
-                                    {% for config in return_list %}
-                                        <li class="list-group-item">{{config}}</li>
-                                    {% endfor %}
-                                </ul>
-                                </p>
-                                <p><h5>Control panel:</h5></p>
-                                {% if config_list %}
-                                    <p>Current configure: {{ filename }}</p>
-                                    <div>
-                                        <p>
-                                        <form method="GET" action="{{ url_for("experiment_run") }}" enctype="multipart/form-data">
-                                        <div class="input-group mb-3">
-                                            <select class="form-select" name="filename" id="filename" required>
-                                                <option selected disabled hidden style="overflow-wrap: break-word;" name="filename" id="filename" value=""> -- choose config file --</option>
-                                                {% for config_file in config_file_list %}
-                                                    <option {{'selected' if filename==config_file else '' }} style="overflow-wrap: break-word;" name="filename" id="filename" value="{{config_file}}">{{config_file}}</option>
-                                                {% endfor %}
-                                            </select>
-                                            <button type="submit"  class="btn btn-primary"> Change config file </button>
-                                        </div>
-                                    </form>
-                                        <div class="dropdown" style="float: right">
-                                            <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="bi bi-three-dots"></i>
-                                            </button>
-                                            <ul class="dropdown-menu">
-                                                <li><a class="dropdown-item" data-bs-toggle="collapse" href="#preview" role="button" aria-expanded="false">Preview config</a></li>
-                                                <li><a class="dropdown-item" href="/download/configure" >Download empty config .csv</a></li>
-                                                <li><a class="dropdown-item" data-bs-toggle="collapse" href="#loadfile" role="button" aria-expanded="false">Upload .csv</a></li>
-                                            </ul>
-                                        </div>
-                                        </p>
-                                        <div class="collapse" id="loadfile">
-                                            <form method="POST" action="/uploads" enctype="multipart/form-data">
-                                                <div class="input-group">
-                                                    <input class="form-control" name="file" type="file" required="required">
-                                                    <input class="btn btn-secondary" type="submit" value="Upload .csv">
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                    {% if filename and not no_deck_warning %}
+                                <div class="tab-content" id="myTabsContent">
+                                    <div class="tab-pane fade" id="tab1" role="tabpanel" aria-labelledby="tab1-tab">
                                         <form role="form" method='POST' name="run" action='/experiment'>
-                                            <div class="form-group">
-                                                <button type="submit" class="btn btn-dark">Run</button>
+                                            <div class="input-group mb-3">
+                                                <label class="input-group-text" for="repeat">Repeat for </label>
+                                                <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="100">
+                                                <label class="input-group-text" for="repeat"> times</label>
+                                            </div>
+                                            {% if not no_deck_warning%}
+                                                <div class="input-group mb-3">
+                                                    <button class="form-control" type="submit" class="btn btn-dark">Run</button>
+                                                </div>
+                                            {% endif %}
+                                        </form>
+                                    </div>
+                                    <div class="tab-pane fade {{ 'show active' if config_list else '' }}" id="tab2" role="tabpanel" aria-labelledby="tab2-tab">
+                                        <p><h5>Control panel:</h5></p>
+                                        <p>Current configure: {{ filename }}</p>
+                                        <div>
+                                            <p>
+                                            <form method="GET" action="{{ url_for("experiment_run") }}" enctype="multipart/form-data">
+                                            <div class="input-group mb-3">
+                                                <select class="form-select" name="filename" id="filename" required>
+                                                    <option selected disabled hidden style="overflow-wrap: break-word;" name="filename" id="filename" value=""> -- choose config file --</option>
+                                                    {% for config_file in config_file_list %}
+                                                        <option {{'selected' if filename==config_file else '' }} style="overflow-wrap: break-word;" name="filename" id="filename" value="{{config_file}}">{{config_file}}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <button type="submit"  class="btn btn-primary"> Change config file </button>
                                             </div>
                                         </form>
-                                    {% endif %}
-                                {% else %}
-{#                                       No configuration#}
-                                    <form role="form" method='POST' name="run" action='/experiment'>
-                                        <div class="input-group mb-3">
-                                            <label class="input-group-text" for="repeat">Repeat for </label>
-                                            <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="100">
-                                            <label class="input-group-text" for="repeat"> times</label>
-                                        </div>
-                                        {% if not no_deck_warning%}
-                                            <div class="input-group mb-3">
-                                                <button class="form-control" type="submit" class="btn btn-dark">Run</button>
+                                            <div class="dropdown" style="float: right">
+                                                <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="bi bi-three-dots"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a class="dropdown-item" data-bs-toggle="collapse" href="#preview" role="button" aria-expanded="false">Preview config</a></li>
+                                                    <li><a class="dropdown-item" href="/download/configure" >Download empty config .csv</a></li>
+                                                    <li><a class="dropdown-item" data-bs-toggle="collapse" href="#loadfile" role="button" aria-expanded="false">Upload .csv</a></li>
+                                                </ul>
                                             </div>
+                                            </p>
+                                            <div class="collapse" id="loadfile">
+                                                <form method="POST" action="/uploads" enctype="multipart/form-data">
+                                                    <div class="input-group">
+                                                        <input class="form-control" name="file" type="file" required="required">
+                                                        <input class="btn btn-secondary" type="submit" value="Upload .csv">
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        {% if filename and not no_deck_warning %}
+                                            <form role="form" method='POST' name="run" action='/experiment'>
+                                                <div class="form-group">
+                                                    <button type="submit" class="btn btn-dark">Run</button>
+                                                </div>
+                                            </form>
                                         {% endif %}
-                                    </form>
-                                {% endif %}
-                            </div>
-                            <div class="col-6 logging-panel">
-                                <p>
-                                <h5>Progress：</h5>
-                                <div class="progress" role="progressbar" aria-label="Animated striped example" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100">
-                                    <div id="progress-bar-inner" class="progress-bar progress-bar-striped progress-bar-animated"></div>
-                                </div>
-                                </p>
-                                <p>
-                                <h5>Logging：</h5>
-                                <div id="logging-panel"></div>
-                                </p>
-                            </div>
-                        </div>
-{#                           Preview config file#}
-                        <div class="collapse" id="preview">
+                                        {#Preview config file#}
+                                        <div class="collapse" id="preview">
                             {% if config_preview %}
                                 <table class="table table-hover">
                                     <thead>
@@ -160,6 +143,84 @@
                                 Empty config file
                             {% endif %}
                         </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="tab3" role="tabpanel" aria-labelledby="tab3-tab">
+                                        <p>
+                                        <h5>Parameters:</h5>
+                                        <form class="row gy-2 gx-3 align-items-center">
+                                            {% for config in config_list %}
+                                            <div class="row">
+                                                <div class="col-auto">
+                                                    {{config}}
+                                                </div><div class="col-auto">
+                                                <label class="" for="{{config}}_type">Type</label>
+                                                <select class="form-control" id="{{config}}_type">
+                                                    <option selected>range</option>
+                                                    <option>choice</option>
+                                                    <option>fixed</option>
+                                                </select>
+                                            </div>
+                                                <div class="col-auto">
+                                                    <label class="" for="{{config}}_value">Values</label>
+                                                    <input type="text" class="form-control" id="{{config}}_value" placeholder="1, 2, 3">
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </form>
+                                        </p>
+                                        <p>
+                                        <h5>Objective:</h5>
+                                        <form class="row gy-2 gx-3 align-items-center">
+                                            {% for objective in return_list %}
+                                            <div class="row">
+                                                <div class="col-auto">
+                                                    {{objective}}
+                                                </div>
+                                                <div class="col-auto">
+                                                    <label class="" for="{{objective}}_min">Minimize</label>
+                                                    <select class="form-control" id="{{objective}}_min">
+                                                        <option selected>Minimize</option>
+                                                        <option>Maximize</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <label class="" for="{{objective}}_threshold">Threshold</label>
+                                                    <input type="text" class="form-control" id="{{objective}}_threshold" placeholder="None">
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </form>
+                                        </p>
+                                        <p>
+                                        <h5>Budget:</h5>
+                                        <form role="form" method='POST' name="run" action='/experiment'>
+                                            <div class="input-group mb-3">
+                                                <label class="input-group-text" for="repeat">Max iteration </label>
+                                                <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="100">
+                                            </div>
+                                            {% if not no_deck_warning%}
+                                                <div class="input-group mb-3">
+                                                    <button class="form-control" type="submit" class="btn btn-dark">Run</button>
+                                                </div>
+                                            {% endif %}
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 logging-panel">
+                                <p>
+                                <h5>Progress：</h5>
+                                <div class="progress" role="progressbar" aria-label="Animated striped example" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100">
+                                    <div id="progress-bar-inner" class="progress-bar progress-bar-striped progress-bar-animated"></div>
+                                </div>
+                                </p>
+                                <p>
+                                <h5>Logging：</h5>
+                                <div id="logging-panel"></div>
+                                </p>
+                            </div>
+                        </div>
+
                     {% endif %}
                 </div>
             </div>

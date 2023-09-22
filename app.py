@@ -16,7 +16,7 @@ import bcrypt
 from utils import utils
 from model import Script, User, db
 import instruments
-
+from instruments import *
 off_line = True
 
 app = Flask(__name__)
@@ -250,7 +250,7 @@ def experiment_builder(instrument=None):
 @login_required
 def experiment_run():
     config_preview = []
-    config_file_list = os.listdir('./config_csv')
+    config_file_list = [i for i in os.listdir('./config_csv') if not i == ".gitkeep"]
     script = get_script_file()
     exec_string = script.compile()
     config_file = request.args.get("filename")
@@ -402,8 +402,9 @@ def new_controller(instrument=None):
     device = None
     args = None
     if instrument:
+
         device = find_instrument_by_name(instrument)
-        # print(inst_object)
+        print(device)
         args = utils.inspect.signature(device.__init__)
 
         if request.method == 'POST':
