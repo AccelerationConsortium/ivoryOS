@@ -392,3 +392,43 @@ def start_logger(socketio: SocketIO):
     socketio_handler = SocketIOHandler(socketio)
     logger.addHandler(socketio_handler)
     return logger
+
+
+def ax_wrapper(data):
+    from ax.service.utils.instantiation import ObjectiveProperties
+    parameter = []
+    objectives = {}
+    # Iterate through the data dictionary
+    for key, value in data.items():
+        # Check if the key corresponds to a parameter type
+        if "_type" in key:
+            param_name = key.split("_type")[0]
+            param_type = value
+            param_value = data[f"{param_name}_value"].split(",")
+            try:
+                values = [float(v) for v in param_value]
+            except Exception:
+                values = param_value
+            if param_type == "range":
+                parameter.append({"name": param_name, "type": param_type, "bounds": values})
+            if param_type == "choice":
+                parameter.append({"name": param_name, "type": param_type, "values": values})
+            if param_type == "fixed":
+                parameter.append({"name": param_name, "type": param_type, "value": values[0]})
+        elif "_min" in key:
+            if not value == 'none':
+                obj_name = key.split("_min")[0]
+                is_min = True if value == "minimize" else False
+
+                threshold = None if not data[f"{obj_name}_threshold"] else data[f"{obj_name}_threshold"]
+                properties = ObjectiveProperties(minimize=is_min, threshold=threshold)
+                objectives[obj_name] = properties
+    return parameter, objectives
+
+
+def ax_initiation(data):
+    parameter, objectives = ax_wrapper(data)
+    from ax.service.ax_client import AxClient
+    ax_client = AxClient()
+    ax_client.create_experiment(parameter, objectives)
+    return ax_client

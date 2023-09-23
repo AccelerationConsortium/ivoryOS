@@ -285,10 +285,15 @@ def experiment_run():
     elif script.deck and not script.deck == deck.__name__:
         flash(f"This script is not compatible with current deck, import {script.deck}")
     if request.method == "POST":
+        bo_args = None
+        if "bo" in request.form:
+            bo_args = request.form.to_dict()
+            # ax_client = utils.ax_initiation(bo_args)
+
         repeat = request.form.get('repeat', None)
 
         # try:
-        thread = threading.Thread(target=generate_progress, args=(run_name, filename, repeat, script))
+        thread = threading.Thread(target=generate_progress, args=(run_name, filename, repeat, script, bo_args))
         thread.start()
         # generate_progress(run_name, filename, repeat)
 
@@ -305,7 +310,7 @@ def experiment_run():
 #     return Response(generate_progress(run_name, filename, repeat), mimetype='text/event-stream')
 
 # @app.route('/progress')
-def generate_progress(run_name, filename, repeat, script):
+def generate_progress(run_name, filename, repeat, script, bo_args):
     time.sleep(1)
     # script = get_script_file()
     exec_string = script.compile()
@@ -339,13 +344,28 @@ def generate_progress(run_name, filename, repeat, script):
                 kwargs.update(output)
                 output_list.append(kwargs)
             # yield f"data: {i}/{len(df)} is done"
-    if not repeat == '' and repeat is not None:
+    if repeat and not repeat == '':
+        if bo_args:
+            logger.info(f'Initializing optimizer...')
+            ax_client = utils.ax_initiation(bo_args)
         for i in range(int(repeat)):
             logger.info(f'Executing {run_name}: {i + 1}/{repeat}')
             progress = (i + 1) * 100 / int(repeat)
             socketio.emit('progress', {'progress': progress})
+            if bo_args:
 
-            output = eval(run_name + "_script()")
+                # ax_client = utils.ax_initiation(bo_args)
+                try:
+                    parameters, trial_index = ax_client.get_next_trial()
+                    logger.info(f'Output value: {parameters}')
+                    output = eval(f"{run_name}_script(**{parameters})")
+                    # print(output)
+                    ax_client.complete_trial(trial_index=trial_index, raw_data=output)
+                except Exception as e:
+                    logger.info(f'Optimization error: {e}')
+                    break
+            else:
+                output = eval(f"{run_name}_script()")
             if output:
                 output_list.append(output)
                 logger.info(f'Output value: {output}')

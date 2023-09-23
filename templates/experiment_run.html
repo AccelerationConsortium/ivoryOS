@@ -44,11 +44,7 @@
                 <div class="accordion-body">
                     {% if script['script'] or script['prep'] or script['cleanup'] %}
                         <div class="row">
-                            <div class="col-6">
-{#                                {% if not config_list  %} no config required#}
-{#                                {% elif config_list and return_list %}#}
-{#                                {% elif config_list and not return_list %}#}
-{#                                {% endif %}#}
+                            <div class="col-lg-6 col-sm-12">
                                 <ul class="nav nav-tabs" id="myTabs" role="tablist">
                                     <li class="nav-item" role="presentation">
                                         <a class="nav-link {{ 'disabled' if config_list else '' }} {{ 'active' if not config_list else '' }}" id="tab1-tab" data-bs-toggle="tab" href="#tab1" role="tab" aria-controls="tab1" aria-selected="false">Simple repeat</a>
@@ -61,7 +57,8 @@
                                     </li>
                                 </ul>
                                 <div class="tab-content" id="myTabsContent">
-                                    <div class="tab-pane fade" id="tab1" role="tabpanel" aria-labelledby="tab1-tab">
+                                    <div class="tab-pane fade {{ 'show active' if not config_list else '' }}" id="tab1" role="tabpanel" aria-labelledby="tab1-tab">
+                                        <p><h5>Control panel:</h5></p>
                                         <form role="form" method='POST' name="run" action='/experiment'>
                                             <div class="input-group mb-3">
                                                 <label class="input-group-text" for="repeat">Repeat for </label>
@@ -81,16 +78,16 @@
                                         <div>
                                             <p>
                                             <form method="GET" action="{{ url_for("experiment_run") }}" enctype="multipart/form-data">
-                                            <div class="input-group mb-3">
-                                                <select class="form-select" name="filename" id="filename" required>
-                                                    <option selected disabled hidden style="overflow-wrap: break-word;" name="filename" id="filename" value=""> -- choose config file --</option>
-                                                    {% for config_file in config_file_list %}
-                                                        <option {{'selected' if filename==config_file else '' }} style="overflow-wrap: break-word;" name="filename" id="filename" value="{{config_file}}">{{config_file}}</option>
-                                                    {% endfor %}
-                                                </select>
-                                                <button type="submit"  class="btn btn-primary"> Change config file </button>
-                                            </div>
-                                        </form>
+                                                <div class="input-group mb-3">
+                                                    <select class="form-select" name="filename" id="filename" required>
+                                                        <option selected disabled hidden style="overflow-wrap: break-word;" name="filename" id="filename" value=""> -- choose config file --</option>
+                                                        {% for config_file in config_file_list %}
+                                                            <option {{'selected' if filename==config_file else '' }} style="overflow-wrap: break-word;" name="filename" id="filename" value="{{config_file}}">{{config_file}}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                    <button type="submit"  class="btn btn-primary"> Change config file </button>
+                                                </div>
+                                            </form>
                                             <div class="dropdown" style="float: right">
                                                 <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                                     <i class="bi bi-three-dots"></i>
@@ -120,107 +117,108 @@
                                         {% endif %}
                                         {#Preview config file#}
                                         <div class="collapse" id="preview">
-                            {% if config_preview %}
-                                <table class="table table-hover">
-                                    <thead>
-                                    <tr>
-                                        {% for line in config_preview[0].keys() %}
-                                            <th scope="col">{{ line }}</th>
-                                        {% endfor %}
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {% for line in config_preview %}
-                                        <tr>
-                                            {% for i in line.values() %}
-                                                <td>{{ i }}</td>
-                                            {% endfor %}
-                                        </tr>
-                                    {% endfor %}
-                                    </tbody>
-                                </table>
-                            {% else %}
-                                Empty config file
-                            {% endif %}
-                        </div>
+                                        {% if config_preview %}
+                                            <table class="table table-hover">
+                                                <thead>
+                                                <tr>
+                                                    {% for line in config_preview[0].keys() %}
+                                                        <th scope="col">{{ line }}</th>
+                                                    {% endfor %}
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                {% for line in config_preview %}
+                                                    <tr>
+                                                        {% for i in line.values() %}
+                                                            <td>{{ i }}</td>
+                                                        {% endfor %}
+                                                    </tr>
+                                                {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        {% else %}
+                                            Empty config file
+                                        {% endif %}
+                                        </div>
                                     </div>
                                     <div class="tab-pane fade" id="tab3" role="tabpanel" aria-labelledby="tab3-tab">
-                                        <p>
-                                        <h5>Parameters:</h5>
-                                        <form class="row gy-2 gx-3 align-items-center">
+                                        <form role="form" method='POST' name="bo" action="/experiment">
+                                            <div class="form-group">
+                                            <p><h5>Parameters:</h5><p>
                                             {% for config in config_list %}
-                                            <div class="row">
-                                                <div class="col-auto">
-                                                    {{config}}
-                                                </div><div class="col-auto">
-                                                <label class="" for="{{config}}_type">Type</label>
-                                                <select class="form-control" id="{{config}}_type">
-                                                    <option selected>range</option>
-                                                    <option>choice</option>
-                                                    <option>fixed</option>
-                                                </select>
-                                            </div>
-                                                <div class="col-auto">
-                                                    <label class="" for="{{config}}_value">Values</label>
-                                                    <input type="text" class="form-control" id="{{config}}_value" placeholder="1, 2, 3">
+                                                <div class="row g-3 align-items-center">
+                                                    <div class="col-lg-3 col-sm-6 ">
+                                                        {{config}}:
+                                                    </div>
+{#                                                    <div class="col-auto">#}
+{#                                                        <label class="col-form-label" for="{{config}}_type">Type</label>#}
+{#                                                    </div>#}
+                                                    <div class="col-auto">
+                                                        <select class="form-select" id="{{config}}_type" name="{{config}}_type">
+                                                            <option selected value="range">range</option>
+                                                            <option value="choice">choice</option>
+                                                            <option value="fixed">fixed</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-auto">
+                                                        <label class="" for="{{config}}_value">Values</label>
+                                                    </div>
+                                                    <div class="col-auto">
+                                                        <input type="text" class="form-control" id="{{config}}_value" name="{{config}}_value" placeholder="1, 2, 3">
+                                                    </div>
+{#                                                    <div class="col-auto">#}
+{#                                                        <input type="text" class="form-control" id="{{config}}_value_max" style="display: none;" placeholder="1, 2, 3">#}
+{#                                                    </div>#}
                                                 </div>
-                                            </div>
                                             {% endfor %}
-                                        </form>
-                                        </p>
-                                        <p>
-                                        <h5>Objective:</h5>
-                                        <form class="row gy-2 gx-3 align-items-center">
+                                            <p><h5>Objective:</h5><p>
                                             {% for objective in return_list %}
-                                            <div class="row">
-                                                <div class="col-auto">
-                                                    {{objective}}
+                                                <div class="row gy-2 gx-3 align-items-center input-group">
+                                                    <div class="col-3">
+                                                        {{objective}}:
+                                                    </div>
+{#                                                    <div class="col-auto">#}
+{#                                                        <label class="" for="{{objective}}_min">Minimize</label>#}
+{#                                                    </div>#}
+                                                    <div class="col-auto">
+                                                        <select class="form-select" id="{{objective}}_min" name="{{objective}}_min">
+                                                            <option selected>minimize</option>
+                                                            <option>maximize</option>
+                                                            <option>none</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-auto">
+                                                        <label class=""  for="{{objective}}_threshold">Threshold</label>
+                                                    </div>
+                                                    <div class="col-auto">
+                                                        <input type="text" class="form-control" id="{{objective}}_threshold" name="{{objective}}_threshold" placeholder="None">
+                                                    </div>
                                                 </div>
-                                                <div class="col-auto">
-                                                    <label class="" for="{{objective}}_min">Minimize</label>
-                                                    <select class="form-control" id="{{objective}}_min">
-                                                        <option selected>Minimize</option>
-                                                        <option>Maximize</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-auto">
-                                                    <label class="" for="{{objective}}_threshold">Threshold</label>
-                                                    <input type="text" class="form-control" id="{{objective}}_threshold" placeholder="None">
-                                                </div>
-                                            </div>
                                             {% endfor %}
-                                        </form>
-                                        </p>
-                                        <p>
-                                        <h5>Budget:</h5>
-                                        <form role="form" method='POST' name="run" action='/experiment'>
+                                            <p><h5>Budget:</h5></p>
                                             <div class="input-group mb-3">
                                                 <label class="input-group-text" for="repeat">Max iteration </label>
                                                 <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="100">
                                             </div>
                                             {% if not no_deck_warning%}
                                                 <div class="input-group mb-3">
-                                                    <button class="form-control" type="submit" class="btn btn-dark">Run</button>
+                                                    <button class="form-control" type="submit" name="bo" class="btn btn-dark">Run</button>
                                                 </div>
                                             {% endif %}
+                                            </div>
                                         </form>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-6 logging-panel">
-                                <p>
-                                <h5>Progress：</h5>
+                            <div class="col-lg-6 col-sm-12 logging-panel">
+                                <p><h5>Progress：</h5></p>
                                 <div class="progress" role="progressbar" aria-label="Animated striped example" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100">
                                     <div id="progress-bar-inner" class="progress-bar progress-bar-striped progress-bar-animated"></div>
                                 </div>
-                                </p>
-                                <p>
-                                <h5>Logging：</h5>
+                                <p><h5>Logging：</h5></p>
                                 <div id="logging-panel"></div>
-                                </p>
                             </div>
                         </div>
-
                     {% endif %}
                 </div>
             </div>
@@ -295,4 +293,15 @@
         </div>
     </div>
 
+<script>
+    document.getElementById('{{config}}_type').addEventListener('change', function() {
+        const extraInputBox = document.getElementById('{{config}}_value_max');
+
+        if (this.value === 'range') {
+            extraInputBox.style.display = 'block';
+        } else {
+            extraInputBox.style.display = 'none';
+        }
+    });
+</script>
 {% endblock %}
