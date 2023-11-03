@@ -196,7 +196,8 @@
                         </div>
                     </div>
 
-                    {% if local_variables and not defined_variables %}
+{#                    {% if local_variables and not defined_variables %}#}
+                    {% if local_variables %}
                         <div class="accordion-item">
                             <h5 class="accordion-header">
                                 <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#local" role="button" aria-expanded="false" aria-controls="collapseExample">

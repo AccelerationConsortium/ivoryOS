@@ -143,6 +143,7 @@ def _get_type_from_parameters(arg, parameters):
         if p[arg].annotation is not inspect._empty:
             # print(p[arg].annotation)
             if p[arg].annotation.__module__ == 'typing':
+                print(p[arg].annotation.__args__)
                 arg_type = p[arg].annotation.__args__
             else:
                 arg_type = p[arg].annotation.__name__
@@ -175,7 +176,9 @@ def convert_type(args, parameters):
                 p = parameters.parameters
                 if p[arg].annotation is not inspect._empty:
                     if p[arg].annotation.__module__ == 'typing':
+                        print(p[arg].annotation.__args__)
                         arg_types[arg] = p[arg].annotation.__args__
+
                         for i in p[arg].annotation.__args__:
                             try:
                                 args[arg] = i(args[arg])

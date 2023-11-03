@@ -74,6 +74,7 @@ def post_script_file(script, is_dict=False):
     if is_dict:
         session['scripts'] = script
     else:
+        print(script.as_dict())
         session['scripts'] = script.as_dict()
 
 
@@ -200,14 +201,15 @@ def experiment_builder(instrument=None):
     if instrument:
         # inst_object = find_instrument_by_name(instrument)
         if instrument not in ['if', 'while', 'variable', 'wait']:
-            functions = pseudo_deck[instrument]
+            functions = pseudo_deck[instrument] if instrument in deck_variables else utils.parse_functions(find_instrument_by_name(instrument))
         # current_len = len(script_dict[script_type])
         if request.method == 'POST' and "add" in request.form:
-
             args = request.form.to_dict()
+
             function_name = args.pop('add')
             script_type = args.pop('script_type', None)
             save_data = args.pop('return') if 'return' in request.form else ''
+
             try:
                 args, arg_types = utils.convert_type(args, functions[function_name])
             except Exception:
@@ -225,6 +227,7 @@ def experiment_builder(instrument=None):
         elif request.method == 'POST':
             # handle while, if and define variables
             script_type = request.form.get('script_type', None)
+
             if script_type:
                 script.editing_type = script_type
 
@@ -252,6 +255,7 @@ def experiment_run():
     config_preview = []
     config_file_list = [i for i in os.listdir('./config_csv') if not i == ".gitkeep"]
     script = get_script_file()
+    print(script.as_dict())
     exec_string = script.compile()
     config_file = request.args.get("filename")
     if config_file:
@@ -433,7 +437,7 @@ def new_controller(instrument=None):
                 flash("Device name is defined. Try another name, or leave it as blank to auto-configure")
                 return render_template('controllers_new.html', instrument=instrument, api_variables=api_variables,
                                        device=device, args=args, defined_variables=defined_variables)
-            if device_name == '' or device_name in None:
+            if not device_name:
                 device_name = device.__name__.lower() + "_"
                 num = 1
                 while device_name + str(num) in globals():
