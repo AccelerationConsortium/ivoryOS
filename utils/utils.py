@@ -143,8 +143,8 @@ def _get_type_from_parameters(arg, parameters):
         if p[arg].annotation is not inspect._empty:
             # print(p[arg].annotation)
             if p[arg].annotation.__module__ == 'typing':
-                print(p[arg].annotation.__args__)
-                arg_type = p[arg].annotation.__args__
+                # print(p[arg].annotation.__args__)
+                arg_type = [i.__name__ for i in p[arg].annotation.__args__]
             else:
                 arg_type = p[arg].annotation.__name__
             # print(arg_type)
@@ -176,12 +176,11 @@ def convert_type(args, parameters):
                 p = parameters.parameters
                 if p[arg].annotation is not inspect._empty:
                     if p[arg].annotation.__module__ == 'typing':
-                        print(p[arg].annotation.__args__)
                         arg_types[arg] = p[arg].annotation.__args__
 
                         for i in p[arg].annotation.__args__:
                             try:
-                                args[arg] = i(args[arg])
+                                args[arg] = eval(f'{i}({args[arg]})')
                                 break
                             except Exception:
                                 pass
@@ -202,7 +201,8 @@ def convert_type(args, parameters):
                         for i in parameters[arg].__args__:
                             # print(i)
                             try:
-                                args[arg] = i(args[arg])
+                                # args[arg] = i(args[arg])
+                                args[arg] = eval(f'{i}({args[arg]})')
                                 arg_types[arg] = i.__name__
                                 break
                             except Exception:
@@ -225,7 +225,7 @@ def _convert_by_str(args, arg_types):
                 pass
             return args
         try:
-            args = eval(i + "('" + args + "')")
+            args = eval(f'{i}({args})')
             return args
         except Exception:
             pass
@@ -246,7 +246,7 @@ def _convert_by_class(args, arg_types):
         raise TypeError("Input type error.")
     # else:
     #     args = globals()[args]
-    #     return args
+    return args
 
 
 def convert_config_type(args, arg_types, is_class: bool = False):
@@ -261,7 +261,9 @@ def convert_config_type(args, arg_types, is_class: bool = False):
                 args[arg] = bool_dict[args[arg]]
             else:
                 arg_type = arg_types[arg]
+
                 if is_class:
+                    # if arg_type.__module__ == 'builtins':
                     args[arg] = _convert_by_class(args[arg], arg_type)
                 else:
                     args[arg] = _convert_by_str(args[arg], arg_type)

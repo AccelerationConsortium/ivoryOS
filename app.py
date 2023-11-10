@@ -1,4 +1,3 @@
-import logging
 import threading
 from datetime import datetime
 import json
@@ -13,10 +12,16 @@ from flask_socketio import SocketIO
 from werkzeug.utils import secure_filename
 from flask_login import LoginManager, login_required, login_user, logout_user
 import bcrypt
+
 from utils import utils
 from model import Script, User, db
 import instruments
 from instruments import *
+# from config import off_line
+import config
+global deck
+deck = config.deck
+
 off_line = True
 
 app = Flask(__name__)
@@ -42,14 +47,14 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
-deck = None
+# deck = None
 pseudo_deck = None
 defined_variables = set()
 api_variables = set()
 
 if off_line:
     api_variables = dir(instruments)
-    api_variables = set([i for i in api_variables if not i.startswith("_") and not i == "sys"])
+    api_variables = set([i for i in api_variables if not i.startswith("_") and i not in ["sys", "os"]])
 
 logger = utils.start_logger(socketio)
 
@@ -74,7 +79,7 @@ def post_script_file(script, is_dict=False):
     if is_dict:
         session['scripts'] = script
     else:
-        print(script.as_dict())
+        # print(script.as_dict())
         session['scripts'] = script.as_dict()
 
 
@@ -185,14 +190,17 @@ def controllers_home():
 @app.route("/experiment/build/<instrument>/", methods=['GET', 'POST'])
 @login_required
 def experiment_builder(instrument=None):
-    global pseudo_deck
+    global pseudo_deck, deck
     if not pseudo_deck:
         pseudo_deck = load_deck(session.get('pseudo_deck'))
     script = get_script_file()
     deck_list = utils.available_pseudo_deck()
     script.sort_actions()
-    deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
-    deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
+    if deck:
+        deck_variables = parse_deck(deck)
+    else:
+        deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
+        deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
 
     functions = []
     if pseudo_deck is None:
@@ -255,7 +263,6 @@ def experiment_run():
     config_preview = []
     config_file_list = [i for i in os.listdir('./config_csv') if not i == ".gitkeep"]
     script = get_script_file()
-    print(script.as_dict())
     exec_string = script.compile()
     config_file = request.args.get("filename")
     if config_file:
@@ -428,7 +435,7 @@ def new_controller(instrument=None):
     if instrument:
 
         device = find_instrument_by_name(instrument)
-        print(device)
+        # print(device)
         args = utils.inspect.signature(device.__init__)
 
         if request.method == 'POST':
@@ -478,20 +485,20 @@ def controllers(instrument):
             return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object)
         if type(functions[function_name]) is dict:
             args = list(args.values())[0]
-        try:
-            output = ''
-            if callable(function_executable):
-                # thread = threading.Thread(target=function_executable, kwargs=args)
-                # thread.start()
-                if args is not None:
-                    output = function_executable(**args)
-                else:
-                    output = function_executable()
-            else:  # for setter
-                function_executable = args
-            flash(f"\nRun Success! Output value: {output}.")
-        except Exception as e:
-            flash(e)
+        # try:
+        output = ''
+        if callable(function_executable):
+            # thread = threading.Thread(target=function_executable, kwargs=args)
+            # thread.start()
+            if args is not None:
+                output = function_executable(**args)
+            else:
+                output = function_executable()
+        else:  # for setter
+            function_executable = args
+        flash(f"\nRun Success! Output value: {output}.")
+        # except Exception as e:
+        #     flash(e)
     return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object)
 
 
@@ -864,14 +871,14 @@ def find_instrument_by_name(name: str):
 def parse_deck(deck, save=None):
     # pseudo_deck = session.get('pseudo_deck', None)
     parse_dict = {}
-
     # TODO
     if "gui_functions" in set(dir(deck)):
         deck_variables = ["deck." + var for var in deck.gui_functions]
     else:
         deck_variables = ["deck." + var for var in set(dir(deck))
                           if not (var.startswith("_") or var[0].isupper() or var.startswith("repackage"))
-                          and not type(eval("deck." + var)).__module__ == 'builtins']
+                          and not type(eval("deck." + var)).__module__ == 'builtins'
+                          ]
     for var in deck_variables:
         instrument = eval(var)
         functions = utils.parse_functions(instrument)
@@ -882,7 +889,6 @@ def parse_deck(deck, save=None):
         parse_dict["deck_name"] = deck.__name__
         with open("static/pseudo_deck/" + deck.__name__ + ".pkl", 'wb') as file:
             pickle.dump(parse_dict, file)
-
     return deck_variables
 
 

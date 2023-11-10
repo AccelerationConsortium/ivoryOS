@@ -1,5 +1,9 @@
+import os
 import sys
-sys.path.insert(1, r"C:\Users\Public\PycharmProjects\pump_system")
+
+import serial
+
+sys.path.insert(1, os.getcwd())
 
 from new_era.peristaltic_pump_network import PeristalticPumpNetwork, NetworkedPeristalticPump
 from vapourtec.sf10 import SF10
@@ -28,13 +32,27 @@ class MultiPumps:
         self.new_era.stop()
 
 
-# --------------------new_era---------------------------
-pump_network = PeristalticPumpNetwork('com5')
-new_era = pump_network.add_pump(address=0, baudrate=9600)
+# # --------------------new_era---------------------------
+# pump_network = PeristalticPumpNetwork('com5')
+# new_era = pump_network.add_pump(address=0, baudrate=9600)
+#
+# # --------------------  SF10  --------------------------
+# sf10 = SF10(device_port="com1")
+
+
+new_era = None
 
 # --------------------  SF10  --------------------------
-sf10 = SF10(device_port="com7")
-
+# sf10 = None
 # creating multi pumps
-multi_pumps = MultiPumps(sf10=sf10, new_era=new_era)
+multi_pumps = MultiPumps(sf10=serial.Serial(), new_era=new_era)
 gui_functions = ['multi_pumps', 'sf10', 'new_era']
+
+
+
+import config
+config.deck = multi_pumps
+# print("config",config.deck)
+from app import socketio, app
+socketio.run(app, host="0.0.0.0", port=8000, debug=True, use_reloader=False, allow_unsafe_werkzeug=True)
+
