@@ -316,14 +316,14 @@ class Script(db.Model):
             string += "\t"
         return string
 
-    def compile(self):
+    def compile(self, script_path):
         """
         compile the current script to python file
         :return: string to write to python file
         """
         self.sort_actions()
         run_name = self.name if self.name else "untitled"
-        with open("scripts/" + run_name + ".py", "w") as s:
+        with open(script_path + run_name + ".py", "w") as s:
             if self.deck:
                 s.write("import " + self.deck + " as deck")
             else:

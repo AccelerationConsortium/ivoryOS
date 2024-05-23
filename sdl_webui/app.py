@@ -13,25 +13,29 @@ from werkzeug.utils import secure_filename
 from flask_login import LoginManager, login_required, login_user, logout_user
 import bcrypt
 
-from utils import utils
-from model import Script, User, db
-import instruments
-from instruments import *
-# from config import off_line
-import config
-global deck
-deck = config.deck
+from sdl_webui.utils import utils
+from sdl_webui.utils.model import Script, User, db
 
+# import instruments
+# from instruments import *
+# from config import off_line
+# import config
+global deck
+deck = None
+autofill = False
 off_line = True
 
 app = Flask(__name__)
-app.config['CSV_FOLDER'] = 'config_csv/'
-app.config['SCRIPT_FOLDER'] = 'scripts/'
-app.config['DATA_FOLDER'] = 'results/'
+app.config['OUTPUT_FOLDER'] = 'webui_data'
+app.config['CSV_FOLDER'] = os.path.join(app.config['OUTPUT_FOLDER'], 'config_csv/')
+app.config['SCRIPT_FOLDER'] = os.path.join(app.config['OUTPUT_FOLDER'], 'scripts/')
+app.config['DATA_FOLDER'] = os.path.join(app.config['OUTPUT_FOLDER'], 'results/')
+app.config["DUMMY_DECK"] = os.path.join(app.config['OUTPUT_FOLDER'], 'pseudo_deck/')
+app.config["DECK_HISTORY"] = os.path.join(app.config['OUTPUT_FOLDER'], 'deck_history.txt')
 # basedir = os.path.abspath(os.path.dirname(__file__))
 
-# app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///project.db"    # local DB
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://freedb_heinlab:#2PxSCTVJdrb%x*@sql.freedb.tech:3306/freedb_web_gui'
+app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///project.db"  # local DB
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://freedb_heinlab:#2PxSCTVJdrb%x*@sql.freedb.tech:3306/freedb_web_gui'
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://sql9620530:bb6vamcmXB@sql9.freesqldatabase.com:3306/sql9620530'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = "key"
@@ -46,15 +50,15 @@ login_manager.login_view = "login"
 db.init_app(app)
 with app.app_context():
     db.create_all()
-
+utils.create_gui_dir(app.config['OUTPUT_FOLDER'])
 # deck = None
 pseudo_deck = None
 defined_variables = set()
 api_variables = set()
 
-if off_line:
-    api_variables = dir(instruments)
-    api_variables = set([i for i in api_variables if not i.startswith("_") and i not in ["sys", "os"]])
+# if off_line:
+#     api_variables = dir(instruments)
+#     api_variables = set([i for i in api_variables if not i.startswith("_") and i not in ["sys", "os"]])
 
 logger = utils.start_logger(socketio)
 
@@ -92,7 +96,8 @@ def login():
         # session.query(User, User.name).all()
         user = db.session.query(User).filter(User.username == username).first()
         input_password = password.encode('utf-8')
-        if user and bcrypt.checkpw(input_password, user.hashPassword.encode('utf-8')):
+        # if user and bcrypt.checkpw(input_password, user.hashPassword.encode('utf-8')):
+        if user and bcrypt.checkpw(input_password, user.hashPassword):
             # password.encode("utf-8")
             # user = User(username, password.encode("utf-8"))
             login_user(user)
@@ -190,11 +195,11 @@ def controllers_home():
 @app.route("/experiment/build/<instrument>/", methods=['GET', 'POST'])
 @login_required
 def experiment_builder(instrument=None):
-    global pseudo_deck, deck
+    global pseudo_deck, deck, autofill
     if not pseudo_deck:
         pseudo_deck = load_deck(session.get('pseudo_deck'))
     script = get_script_file()
-    deck_list = utils.available_pseudo_deck()
+    deck_list = utils.available_pseudo_deck(app.config["DUMMY_DECK"])
     script.sort_actions()
     if deck:
         deck_variables = parse_deck(deck)
@@ -209,7 +214,8 @@ def experiment_builder(instrument=None):
     if instrument:
         # inst_object = find_instrument_by_name(instrument)
         if instrument not in ['if', 'while', 'variable', 'wait']:
-            functions = pseudo_deck[instrument] if instrument in deck_variables else utils.parse_functions(find_instrument_by_name(instrument))
+            functions = pseudo_deck[instrument] if instrument in deck_variables else utils.parse_functions(
+                find_instrument_by_name(instrument))
         # current_len = len(script_dict[script_type])
         if request.method == 'POST' and "add" in request.form:
             args = request.form.to_dict()
@@ -231,7 +237,8 @@ def experiment_builder(instrument=None):
             action = {"instrument": instrument, "action": function_name, "args": args, "return": save_data,
                       'arg_types': arg_types}
             script.add_action(action=action)
-
+        elif request.method == 'POST' and "autofill" in request.form:
+            autofill = not autofill
         elif request.method == 'POST':
             # handle while, if and define variables
             script_type = request.form.get('script_type', None)
@@ -254,30 +261,56 @@ def experiment_builder(instrument=None):
 
     return render_template('experiment_builder.html', instrument=instrument, history=deck_list,
                            script=script, defined_variables=deck_variables, local_variables=defined_variables,
-                           functions=functions)
+                           functions=functions, autofill=autofill)
+
+
+def process_data(data, config_type):
+    rows = {}  # Dictionary to hold webui_data organized by rows
+
+    # Organize webui_data by rows
+    for key, value in data.items():
+        if value:  # Only process non-empty values
+            # Extract the field name and row index
+            field_name, row_index = key.split('[')
+            row_index = int(row_index.rstrip(']'))
+
+            # If row not in rows, create a new dictionary for that row
+            if row_index not in rows:
+                rows[row_index] = {}
+
+            # Add or update the field value in the specific row's dictionary
+            rows[row_index][field_name] = value
+
+    # Filter out any empty rows and create a list of dictionaries
+    filtered_rows = [row for row in rows.values() if len(row) == len(config_type)]
+
+    return filtered_rows
 
 
 @app.route("/experiment", methods=['GET', 'POST'])
 @login_required
 def experiment_run():
     config_preview = []
-    config_file_list = [i for i in os.listdir('./config_csv') if not i == ".gitkeep"]
+    config_file_list = [i for i in os.listdir(app.config["CSV_FOLDER"]) if not i == ".gitkeep"]
     script = get_script_file()
-    exec_string = script.compile()
+    exec_string = script.compile(app.config['SCRIPT_FOLDER'])
     config_file = request.args.get("filename")
+    config = []
     if config_file:
         session['config_file'] = request.args.get("filename")
     filename = session.get("config_file")
     if filename:
         config_preview = list(csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename))))
         config_preview = config_preview[1:6]
+        config = list(csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename))))
+        arg_type = config.pop(0)
     try:
         exec(exec_string)
     except Exception:
         flash("Please check syntax!!")
         return redirect(url_for("experiment_builder"))
     run_name = script.name if script.name else "untitled"
-    file = open("scripts/" + run_name + ".py", "r")
+    file = open(os.path.join(app.config['SCRIPT_FOLDER'], f"{run_name}.py"), "r")
     script_py = file.read()
     file.close()
 
@@ -287,7 +320,7 @@ def experiment_run():
 
     script.sort_actions()
     _, return_list = script.config_return()
-    config_list, _ = script.config("script")
+    config_list, config_type_list = script.config("script")
     data_list = os.listdir(app.config['DATA_FOLDER'])
     data_list.remove(".gitkeep") if ".gitkeep" in data_list else data_list
     if deck is None:
@@ -300,20 +333,24 @@ def experiment_run():
         if "bo" in request.form:
             bo_args = request.form.to_dict()
             # ax_client = utils.ax_initiation(bo_args)
-
+        if "online-config" in request.form:
+            # print("online-config")
+            # print(request.form.to_dict())
+            config = process_data(request.form.to_dict(), config_list)
         repeat = request.form.get('repeat', None)
 
-        # try:
-        thread = threading.Thread(target=generate_progress, args=(run_name, filename, repeat, script, bo_args))
-        thread.start()
+        try:
+
+            thread = threading.Thread(target=generate_progress, args=(run_name, config, repeat, script, bo_args))
+            thread.start()
         # generate_progress(run_name, filename, repeat)
 
-        # except Exception as e:
-        #     flash(e)
+        except Exception as e:
+            flash(e)
     return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=script_py,
                            return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                            config_preview=config_preview, data_list=data_list,
-                           history=utils.import_history(), no_deck_warning=no_deck_warning, dismiss=dismiss)
+                           history=utils.import_history(app.config["DECK_HISTORY"]), no_deck_warning=no_deck_warning, dismiss=dismiss)
 
 
 # @app.route('/progress')
@@ -321,40 +358,42 @@ def experiment_run():
 #     return Response(generate_progress(run_name, filename, repeat), mimetype='text/event-stream')
 
 # @app.route('/progress')
-def generate_progress(run_name, filename, repeat, script, bo_args):
+def generate_progress(run_name, config, repeat, script, bo_args):
     time.sleep(1)
+    compiled = True
+    _, arg_type = script.config("script")
     # script = get_script_file()
-    exec_string = script.compile()
-    arg_type = {}
+    exec_string = script.compile(app.config['SCRIPT_FOLDER'])
+    # arg_type = {}
     exec(exec_string)
     output_list = []
     _, return_list = script.config_return()
-    exec(run_name + "_prep()")
+    exec(f"{run_name}_prep()")
     logger.info('Executing preparation steps')
     if not repeat and not repeat == "":
-        df = list(csv.DictReader(open(os.path.join(app.config['CSV_FOLDER'], filename))))
-        arg_type = df.pop(0)
-        for i in df:
+
+        for i in config:
             # try to convert types first
             try:
                 i = utils.convert_config_type(i, arg_type)
             except Exception as e:
                 logger.info(e)
+                compiled = False
                 # flash(e)
                 # return redirect(url_for("experiment_run"))
+        if compiled:
+            for i, kwargs in enumerate(config):
+                # i is in OrderedDict on ur_deck
 
-        for i, kwargs in enumerate(df):
-            # i is in OrderedDict on ur_deck
-
-            kwargs = dict(kwargs)
-            logger.info(f'Executing {i + 1} of {len(df)} with kwargs = {kwargs}')
-            progress = (i + 1) * 100 / len(df)
-            socketio.emit('progress', {'progress': progress})
-            output = eval(run_name + "_script(**" + str(kwargs) + ")")
-            if output:
-                kwargs.update(output)
-                output_list.append(kwargs)
-            # yield f"data: {i}/{len(df)} is done"
+                kwargs = dict(kwargs)
+                logger.info(f'Executing {i + 1} of {len(config)} with kwargs = {kwargs}')
+                progress = (i + 1) * 100 / len(config)
+                socketio.emit('progress', {'progress': progress})
+                output = eval(f"{run_name}_script(**{str(kwargs)})")
+                if output:
+                    kwargs.update(output)
+                    output_list.append(kwargs)
+                # yield f"webui_data: {i}/{len(df)} is done"
     if repeat and not repeat == '':
         if bo_args:
             logger.info(f'Initializing optimizer...')
@@ -380,18 +419,21 @@ def generate_progress(run_name, filename, repeat, script, bo_args):
             if output:
                 output_list.append(output)
                 logger.info(f'Output value: {output}')
-    exec(run_name + "_cleanup()")
-    logger.info('Executing clean up steps')
-    # print(output_list)
-    if len(output_list) > 0:
-        args = list(arg_type.keys())
-        args.extend(return_list)
-        filename = run_name + "_" + datetime.now().strftime("%Y-%m-%d %H-%M") + ".csv"
-        with open("results/" + filename, "w", newline='') as file:
-            writer = csv.DictWriter(file, fieldnames=args)
-            writer.writeheader()
-            writer.writerows(output_list)
-    logger.info('Finished')
+    if compiled:
+        exec(run_name + "_cleanup()")
+        logger.info('Executing clean up steps')
+        # print(output_list)
+        if len(output_list) > 0:
+            args = list(arg_type.keys())
+            args.extend(return_list)
+            filename = run_name + "_" + datetime.now().strftime("%Y-%m-%d %H-%M") + ".csv"
+            with open(os.path.join(app.config["DATA_FOLDER"], filename), "w", newline='') as file:
+                writer = csv.DictWriter(file, fieldnames=args)
+                writer.writeheader()
+                writer.writerows(output_list)
+        logger.info('Finished')
+    else:
+        logger.info('Task abandoned')
     # session["most_recent_result"] = filename
     # flash("Run finished")
     # return redirect(url_for("experiment_run"))
@@ -402,14 +444,14 @@ def generate_progress(run_name, filename, repeat, script, bo_args):
 def experiment_preview():
     # current_variables = set(dir())
     script = get_script_file()
-    exec_string = script.compile()
+    exec_string = script.compile(app.config['SCRIPT_FOLDER'])
     try:
         exec(exec_string)
     except Exception:
         flash("Please check syntax!!")
         return redirect(url_for("experiment_builder"))
     run_name = script.name if script.name else "untitled"
-    file = open("scripts/" + run_name + ".py", "r")
+    file = open(os.path.join(app.config["CSV_FOLDER"], f"{run_name}.py"), "r")
     script_py = file.read()
     file.close()
     # _, return_list = script.config_return()
@@ -423,7 +465,7 @@ def deck_controllers():
     global deck
     deck_variables = parse_deck(deck)
     return render_template('controllers_home.html', defined_variables=deck_variables, deck=True,
-                           history=utils.import_history())
+                           history=utils.import_history(app.config["DECK_HISTORY"]))
 
 
 @app.route("/new_controller/")
@@ -734,7 +776,7 @@ def import_deck():
             flash("Invalid Deck import")
             return redirect(url_for("deck_controllers"))
         globals()["deck"] = module
-        utils.save_to_history(filepath)
+        utils.save_to_history(filepath, app.config["DECK_HISTORY"])
         parse_deck(deck, save=update)
 
         if script.deck is None:
@@ -767,7 +809,7 @@ def import_pseudo():
 def load_deck(pkl_name):
     if not pkl_name:
         return None
-    with open('static/pseudo_deck/' + pkl_name, 'rb') as f:
+    with open(os.path.join(app.config["DUMMY_DECK"], pkl_name), 'rb') as f:
         pseudo_deck = pickle.load(f)
     return pseudo_deck
 
@@ -836,7 +878,7 @@ def download(filetype):
     script = get_script_file()
     run_name = script.name if script.name else "untitled"
     if filetype == "configure":
-        filename = run_name + "_config.csv"
+        filename = f"{run_name}_config.csv"
         with open(filename, 'w', newline='') as f:
             writer = csv.writer(f)
             cfg, cfg_types = script.config("script")
@@ -847,18 +889,18 @@ def download(filetype):
     elif filetype == "script":
         script.sort_actions()
         json_object = json.dumps(script.as_dict())
-        with open(run_name + ".json", "w") as outfile:
+        with open(f"{run_name}.json", "w") as outfile:
             outfile.write(json_object)
-        return send_file(run_name + ".json", as_attachment=True)
+        return send_file(f"{run_name}.json", as_attachment=True)
     elif filetype == "python":
-        return send_file("scripts/" + run_name + ".py", as_attachment=True)
-    # elif filetype == "data":
+        return send_file(os.path.join(app.config["SCRIPT_FOLDER"], f"{run_name}.py"), as_attachment=True)
+    # elif filetype == "webui_data":
     #     return send_file("results/" + run_name + "_data.csv", as_attachment=True)
 
 
 @app.route('/download_results/<filename>')
 def download_results(filename):
-    return send_file("results/" + filename, as_attachment=True)
+    return send_file(os.path.join(app.config["DATA_FOLDER"], filename), as_attachment=True)
 
 
 def find_instrument_by_name(name: str):
@@ -887,9 +929,17 @@ def parse_deck(deck, save=None):
     if deck is not None and save:
         # pseudo_deck = parse_dict
         parse_dict["deck_name"] = deck.__name__
-        with open("static/pseudo_deck/" + deck.__name__ + ".pkl", 'wb') as file:
+        with open(os.path.join(app.config["DUMMY_DECK"], f"{deck.__name__}.pkl"), 'wb') as file:
             pickle.dump(parse_dict, file)
     return deck_variables
+
+
+def start_gui(module, host="0.0.0.0", port=8000, debug=True):
+    import sys
+    global deck
+    deck = sys.modules[module]
+    parse_deck(deck, save=True)
+    socketio.run(app, host=host, port=port, debug=debug, use_reloader=False, allow_unsafe_werkzeug=True)
 
 
 if __name__ == "__main__":

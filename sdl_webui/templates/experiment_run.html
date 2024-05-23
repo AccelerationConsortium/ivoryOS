@@ -3,6 +3,18 @@
 
 {% block body %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+    <script>
+        var rowCount = 0; // Initialize row count
+        function addRow() {
+            rowCount++; // Increment row count each time a row is added
+            var table = document.getElementById("dataInputTable");
+            var newRow = table.insertRow(-1); // Adds a row at the end of the table
+            {% for column in config_list  %}
+            var cell = newRow.insertCell(-1);
+            cell.innerHTML = '<input type="text" class="form-control" name="{{ column }}[' + rowCount + ']">';
+            {% endfor %}
+        }
+    </script>
     <script type="text/javascript">
         {#var socket = io.connect('http://' + document.domain + ':' + location.port);#}
         var socket = io()
@@ -74,9 +86,36 @@
                                     </div>
                                     <div class="tab-pane fade {{ 'show active' if config_list else '' }}" id="tab2" role="tabpanel" aria-labelledby="tab2-tab">
                                         <p><h5>Control panel:</h5></p>
+                                        {# todo web form #}
+                                        <div>
+                                            <form method="POST" name="online-config" id="online-config">
+                                                <table id="dataInputTable" class="table table-striped">
+                                                    <thead class="thead-dark">
+                                                        <tr>
+                                                            {% for column in config_list %}
+                                                            <th>{{ column }}</th>
+                                                            {% endfor %}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <script>
+                                                            {# // Initially add 5 rows when the page loads #}
+                                                            document.addEventListener("DOMContentLoaded", function() {
+                                                                for (let i = 0; i < 5; i++) {
+                                                                    addRow();
+                                                                }
+                                                            });
+                                                        </script>
+                                                    </tbody>
+                                                </table>
+                                                <i class="fas fa-plus-circle fa-2x add-row-icon" onclick="addRow()"></i>
+                                                <button type="submit" name="online-config" class="btn btn-success">Run</button>
+                                            </form>
+                                        </div>
+                                        <p><h5>Control with csv config:</h5></p>
                                         <p>Current configure: {{ filename }}</p>
                                         <div>
-                                            <p>
+                                            
                                             <form method="GET" action="{{ url_for("experiment_run") }}" enctype="multipart/form-data">
                                                 <div class="input-group mb-3">
                                                     <select class="form-select" name="filename" id="filename" required>
@@ -98,7 +137,7 @@
                                                     <li><a class="dropdown-item" data-bs-toggle="collapse" href="#loadfile" role="button" aria-expanded="false">Upload .csv</a></li>
                                                 </ul>
                                             </div>
-                                            </p>
+                                        
                                             <div class="collapse" id="loadfile">
                                                 <form method="POST" action="/uploads" enctype="multipart/form-data">
                                                     <div class="input-group">
@@ -141,6 +180,7 @@
                                         {% endif %}
                                         </div>
                                     </div>
+                                
                                     <div class="tab-pane fade" id="tab3" role="tabpanel" aria-labelledby="tab3-tab">
                                         <form role="form" method='POST' name="bo" action="/experiment">
                                             <div class="form-group">
@@ -184,15 +224,15 @@
                                                         <select class="form-select" id="{{objective}}_min" name="{{objective}}_min">
                                                             <option selected>minimize</option>
                                                             <option>maximize</option>
-                                                            <option>none</option>
+{#                                                            <option>none</option>#}
                                                         </select>
                                                     </div>
-                                                    <div class="col-auto">
-                                                        <label class=""  for="{{objective}}_threshold">Threshold</label>
-                                                    </div>
-                                                    <div class="col-auto">
-                                                        <input type="text" class="form-control" id="{{objective}}_threshold" name="{{objective}}_threshold" placeholder="None">
-                                                    </div>
+{#                                                    <div class="col-auto">#}
+{#                                                        <label class=""  for="{{objective}}_threshold">Threshold</label>#}
+{#                                                    </div>#}
+{#                                                    <div class="col-auto">#}
+{#                                                        <input type="text" class="form-control" id="{{objective}}_threshold" name="{{objective}}_threshold" placeholder="None">#}
+{#                                                    </div>#}
                                                 </div>
                                             {% endfor %}
                                             <p><h5>Budget:</h5></p>

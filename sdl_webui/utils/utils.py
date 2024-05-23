@@ -1,32 +1,37 @@
 import inspect
 import importlib.util
+import os
 import pickle
 import datetime
-import traceback
 import logging
-from flask import flash
 from flask_socketio import SocketIO
 
 stypes = ['prep', 'script', 'cleanup']
 
 
-def save_to_history(filepath):
+def create_gui_dir(parent_path):
+    os.makedirs(parent_path, exist_ok=True)
+    for path in ["config_csv", "scripts", "results", "pseudo_deck"]:
+        os.makedirs(os.path.join(parent_path, path), exist_ok=True)
+
+
+def save_to_history(filepath, history_path):
     connections = []
     try:
-        with open("deck_history.txt", 'r') as file:
+        with open(history_path, 'r') as file:
             lines = file.read()
             connections = lines.split('\n')
     except FileNotFoundError:
         pass
     if filepath not in connections:
-        with open("deck_history.txt", 'a') as file:
+        with open(history_path, 'a') as file:
             file.writelines(f"{filepath}\n")
 
 
-def import_history():
+def import_history(history_path):
     connections = []
     try:
-        with open("deck_history.txt", 'r') as file:
+        with open(history_path, 'r') as file:
             lines = file.read()
             connections = lines.split('\n')
     except FileNotFoundError:
@@ -35,9 +40,9 @@ def import_history():
     return connections
 
 
-def available_pseudo_deck():
+def available_pseudo_deck(path):
     import os
-    return os.listdir('./static/pseudo_deck')
+    return os.listdir(path)
 
 
 def new_script(deck_name):
@@ -255,6 +260,8 @@ def convert_config_type(args, arg_types, is_class: bool = False):
     # print(globals())
     if args:
         for arg in args:
+            if arg not in arg_types.keys():
+                raise ValueError("config file format not supported.")
             if args[arg] == '' or args[arg] == "None":
                 args[arg] = None
             elif args[arg] == "True" or args[arg] == "False":
@@ -375,7 +382,7 @@ def if_deck_valid(module):
 class SocketIOHandler(logging.Handler):
     def __init__(self, socketio: SocketIO):
         super().__init__()
-        self.formatter = logging.Formatter('%(asctime)s - %(message)s')
+        self.formatter = logging.Formatter('%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
         self.socketio = socketio
 
     def emit(self, record):
@@ -386,8 +393,8 @@ class SocketIOHandler(logging.Handler):
 
 def start_logger(socketio: SocketIO):
     # logging.basicConfig( format='%(asctime)s - %(message)s')
-    formatter = logging.Formatter(fmt='%(asctime)s - %(message)s')
-    logger = logging.getLogger('gui_loggoer')
+    formatter = logging.Formatter(fmt='%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    logger = logging.getLogger('gui_logger')
     logger.setLevel(logging.INFO)
     file_handler = logging.FileHandler(filename='example.log', )
     file_handler.setFormatter(formatter)
@@ -403,7 +410,7 @@ def ax_wrapper(data):
     from ax.service.utils.instantiation import ObjectiveProperties
     parameter = []
     objectives = {}
-    # Iterate through the data dictionary
+    # Iterate through the webui_data dictionary
     for key, value in data.items():
         # Check if the key corresponds to a parameter type
         if "_type" in key:

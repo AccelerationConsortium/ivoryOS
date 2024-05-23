@@ -120,17 +120,18 @@
                                                     <label class="input-group-text" for="{{parameter}}">{{parameter}} ({{'optional' if not var.default.__name__ == '_empty' else 'required'}}):</label>
                                                     {% if var.annotation.__name__ == 'bool' %}
                                                         <div class="btn-group">
-                                                            <input class="btn-check" type="radio" id="{{parameter}}_true" name="{{parameter}}" value="True" {{"checked" if var.default==True else ''}} {{"required" if var.default.__name__ == '_empty' else ''}}>
+                                                            <input class="btn-check" type="radio" id="{{parameter}}_true" name="{{parameter}}" value="True" {{"checked" if var.default==True else ''}} {{"required" if var.default.__name__ == '_empty' and not autofill else ''}}>
                                                             <label class="btn btn-default" for="{{parameter}}_true">True</label>
                                                             <input class="btn-check" type="radio" id="{{parameter}}_false" name="{{parameter}}" value="False" {{"checked" if var.default==False else ''}}>
                                                             <label class="btn btn-default" for="{{parameter}}_false">False</label>
                                                         </div>
-                                                    {% else %}
-                                                        <input class="form-control" type="text" id="{{parameter}}" name="{{parameter}}"
-                                                               placeholder="{{var.annotation.__name__ if not var.annotation.__name__ == '_empty' else ''}}"
-                                                               value="{{'' if var.default.__name__ == '_empty' or var.default == None else var.default }}"
-                                                                {{"required" if var.default.__name__ == '_empty' else ''}}>
-                                                    {% endif %}
+                                                    {% endif %}    
+                   
+                                                    <input class="form-control" type="text" id="{{parameter}}" name="{{parameter}}"
+                                                           placeholder="{{var.annotation.__name__ if not var.annotation.__name__ == '_empty' else ''}}"
+                                                           value="{{ "#"+parameter if autofill else '' if var.default.__name__ == '_empty' or var.default == None else var.default }}"
+                                                            {{"required" if var.default.__name__ == '_empty' and not var.annotation.__name__ == 'bool' else ''}}>
+                                                    
                                                 </div>
                                             {% endfor %}
                                             <div class="input-group mb-3">
@@ -148,6 +149,21 @@
 {#                                        </div>#}
                                         <button type="submit" class="btn btn-dark" name="add" value="{{function}}" >add</button>
                                     </div>
+                                </form>
+                            {# todo #}
+                                <script>
+                                    function submitForm() {
+                                        document.getElementById('autoFill').submit();  // Submit the form
+                                    }
+                                </script>
+                                <form role="form" method='POST' name="autofill" id="autoFill">
+                                    <div class="form-check form-switch">
+                                      <input class="form-check-input" type="checkbox" id="autoFillCheck" name="autofill" onchange="submitForm();" 
+                                             value="{{function}}"
+                                             {{ "checked" if autofill else "" }}>
+                                      <label class="form-check-label" for="autoFillCheck">Auto fill</label>
+                                    </div>
+                                    <button type="submit" class="btn btn-default" style="display: none;">Auto fill </button>
                                 </form>
                             </div>
                         </div>
@@ -240,20 +256,20 @@
                         </ul>
                     </li>
 {#                    <li class="nav-item dropdown">#}
-{#                        <a class="nav-link dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">File tools <i class="bi bi-tools"></i></a>#}
+{#                        <a class="nav-link dropdown-toggle" type="button" webui_data-bs-toggle="dropdown" aria-expanded="false">File tools <i class="bi bi-tools"></i></a>#}
 {#                        <ul class="dropdown-menu">#}
 {#                            <li style="display: inline-block">Deck Name: {{script['deck']}}</li>#}
 {#                            <li style="display: inline-block">Script Name: {{ script['name'] }}</li>#}
-{#                            <li style="display: inline-block">Editing status <a role="button" data-bs-toggle="popover" data-bs-title="How to use:" data-bs-content="You can choose to disable editing, so the script is finalized and cannot be edited. Use save as to rename the script"><i class="bi bi-info-circle"></i></a>#}
+{#                            <li style="display: inline-block">Editing status <a role="button" webui_data-bs-toggle="popover" webui_data-bs-title="How to use:" webui_data-bs-content="You can choose to disable editing, so the script is finalized and cannot be edited. Use save as to rename the script"><i class="bi bi-info-circle"></i></a>#}
 {#                                {{script['status']}}</li>#}
-{#                            <li style="display: inline-block">Output Values <a role="button" data-bs-toggle="popover" data-bs-title="How to use:" data-bs-content="This will be your output data. If the return data is not a value, it will save as None is the result file"><i class="bi bi-info-circle"></i></a>#}
+{#                            <li style="display: inline-block">Output Values <a role="button" webui_data-bs-toggle="popover" webui_data-bs-title="How to use:" webui_data-bs-content="This will be your output webui_data. If the return webui_data is not a value, it will save as None is the result file"><i class="bi bi-info-circle"></i></a>#}
 {##}
 {#                                    {% for i in return_list %}#}
 {#                                        <input type="checkbox">{{i}}#}
 {#                                    {% endfor %}#}
 {##}
 {#                            </li>#}
-{#                            <li style="display: inline-block">Config Variables <a role="button" data-bs-toggle="popover" data-bs-title="How to use:" data-bs-content="This shows variables you want to configure later using .csv file"><i class="bi bi-info-circle"></i></a>#}
+{#                            <li style="display: inline-block">Config Variables <a role="button" webui_data-bs-toggle="popover" webui_data-bs-title="How to use:" webui_data-bs-content="This shows variables you want to configure later using .csv file"><i class="bi bi-info-circle"></i></a>#}
 {##}
 {#                                    <ul>#}
 {#                                        {% for i in config %}#}

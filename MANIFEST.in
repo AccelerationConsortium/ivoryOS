@@ -1,0 +1,3 @@
+graft sdl_webui/static
+graft sdl_webui/templates
+global-exclude *.pyc
