@@ -14,7 +14,7 @@ class DummySDLDeck:
         self.pump.dose_liquid(amount_in_ml=amount_in_ml, rate_ml_per_minute=rate_ml_per_minute)
         self.balance.weigh_sample()
 
-    def dose_and_weigh(self, amount_in_mg: float = 5):
+    def dose_and_weigh(self, amount_in_mg: float = 5, bring_in: bool = False):
         self.balance.dose_solid(amount_in_mg=amount_in_mg)
         self.balance.weigh_sample()
 
