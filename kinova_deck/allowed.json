@@ -1,0 +1,81 @@
+{
+  "locations": [
+    {
+      "filter tray": {
+        "move": [
+          "filter cube",
+          "vial",
+          "liquid handler"
+        ]
+      }
+    },
+    {
+      "filter storage": {
+        "move": [
+          "filter cube",
+          "push filter cup"
+        ]
+      }
+    },
+    {
+      "cap storage": {
+        "move from": [
+          "vial cap"
+        ]
+      }
+    },
+    {
+      "capper": {
+        "move": [
+          "vial cup",
+          "vial",
+          "liquid handler"
+        ]
+      }
+    },
+    {
+      "vial tray": {
+        "move": [
+          "vial",
+          "liquid handler"
+        ]
+      }
+    },
+    {
+      "hplc": {
+        "move": [
+          "vial"
+        ]
+      }
+    },
+    {
+      "balance": {
+        "move": [
+          "vial"
+        ]
+      }
+    },
+    {
+      "shaker": {
+        "move": [
+          "vial",
+          "liquid handler"
+        ]
+      }
+    },
+    {
+      "solvent tray": {
+        "move": [
+          "liquid handler"
+        ]
+      }
+    },
+    {
+      "liquid handler base": {
+        "move": [
+          "liquid handler"
+        ]
+      }
+    }
+  ]
+}
