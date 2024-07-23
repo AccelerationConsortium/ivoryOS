@@ -9,9 +9,9 @@
             rowCount++; // Increment row count each time a row is added
             var table = document.getElementById("dataInputTable");
             var newRow = table.insertRow(-1); // Adds a row at the end of the table
-            {% for column in config_list  %}
+            {% for column, type in config_type_list.items()  %}
             var cell = newRow.insertCell(-1);
-            cell.innerHTML = '<input type="text" class="form-control" name="{{ column }}[' + rowCount + ']">';
+            cell.innerHTML = '<input type="text" class="form-control" name="{{ column }}[' + rowCount + ']" placeholder={{ type }}>';
             {% endfor %}
         }
     </script>
@@ -62,8 +62,12 @@
                                         <a class="nav-link {{ 'disabled' if config_list else '' }} {{ 'active' if not config_list else '' }}" id="tab1-tab" data-bs-toggle="tab" href="#tab1" role="tab" aria-controls="tab1" aria-selected="false">Simple repeat</a>
                                     </li>
                                     <li class="nav-item" role="presentation">
-                                        <a class="nav-link {{ 'disabled' if not config_list else '' }} {{ 'active' if config_list else '' }}" id="tab2-tab" data-bs-toggle="tab" href="#tab2" role="tab" aria-controls="tab2" aria-selected="false">Excel configuration</a>
+                                        <a class="nav-link {{ 'disabled' if config_list|count > 5 else '' }} {{ 'active' if config_list|count < 6 else '' }}" id="tab4-tab" data-bs-toggle="tab" href="#tab4" role="tab" aria-controls="tab4" aria-selected="false">Quick config</a>
                                     </li>
+                                    <li class="nav-item" role="presentation">
+                                        <a class="nav-link {{ 'disabled' if not config_list else '' }} {{ 'active' if config_list|count > 5 else '' }}" id="tab2-tab" data-bs-toggle="tab" href="#tab2" role="tab" aria-controls="tab2" aria-selected="false">Excel configuration</a>
+                                    </li>
+
                                     <li class="nav-item" role="presentation">
                                         <a class="nav-link {{ 'disabled' if not config_list or not return_list else '' }}" id="tab3-tab" data-bs-toggle="tab" href="#tab3" role="tab" aria-controls="tab3" aria-selected="false">Bayesian Optimization</a>
                                     </li>
@@ -84,34 +88,8 @@
 {#                                            {% endif %}#}
                                         </form>
                                     </div>
-                                    <div class="tab-pane fade {{ 'show active' if config_list else '' }}" id="tab2" role="tabpanel" aria-labelledby="tab2-tab">
-                                        <p><h5>Control panel:</h5></p>
-                                        {# todo web form #}
-                                        <div>
-                                            <form method="POST" name="online-config" id="online-config">
-                                                <table id="dataInputTable" class="table table-striped">
-                                                    <thead class="thead-dark">
-                                                        <tr>
-                                                            {% for column in config_list %}
-                                                            <th>{{ column }}</th>
-                                                            {% endfor %}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <script>
-                                                            {# // Initially add 5 rows when the page loads #}
-                                                            document.addEventListener("DOMContentLoaded", function() {
-                                                                for (let i = 0; i < 5; i++) {
-                                                                    addRow();
-                                                                }
-                                                            });
-                                                        </script>
-                                                    </tbody>
-                                                </table>
-                                                <i class="fas fa-plus-circle fa-2x add-row-icon" onclick="addRow()"></i>
-                                                <button type="submit" name="online-config" class="btn btn-success">Run</button>
-                                            </form>
-                                        </div>
+                                    <div class="tab-pane fade {{ 'show active' if config_list|count>5 else '' }}" id="tab2" role="tabpanel" aria-labelledby="tab2-tab">
+
                                         <p><h5>Control with csv config:</h5></p>
                                         <p>Current configure: {{ filename }}</p>
                                         <div>
@@ -148,7 +126,7 @@
                                             </div>
                                         </div>
                                         {% if filename and not no_deck_warning %}
-                                            <form role="form" method='POST' name="run" action='/experiment'>
+                                            <form role="form" method='POST' name="run" action="{{ url_for('experiment_run')}}">
                                                 <div class="form-group">
                                                     <button type="submit" class="btn btn-dark">Run</button>
                                                 </div>
@@ -181,72 +159,92 @@
                                         </div>
                                     </div>
                                 
-                                    <div class="tab-pane fade" id="tab3" role="tabpanel" aria-labelledby="tab3-tab">
-                                        <form role="form" method='POST' name="bo" action="/experiment">
+                                    <div class="tab-pane fade " id="tab3" role="tabpanel" aria-labelledby="tab3-tab">
+                                        <form role="form" method='POST' name="bo" action="{{ url_for('experiment_run')}}">
                                             <div class="form-group">
-                                            <p><h5>Parameters:</h5><p>
-                                            {% for config in config_list %}
-                                                <div class="row g-3 align-items-center">
-                                                    <div class="col-lg-3 col-sm-6 ">
-                                                        {{config}}:
+                                                <p><h5>Parameters:</h5><p>
+                                                {% for config in config_list %}
+                                                    <div class="row g-3 align-items-center">
+                                                        <div class="col-lg-3 col-sm-6 ">
+                                                            {{config}}:
+                                                        </div>
+{#                                                        <div class="col-auto">#}
+{#                                                            <label class="col-form-label" for="{{config}}_type">Type</label>#}
+{#                                                        </div>#}
+                                                        <div class="col-auto">
+                                                            <select class="form-select" id="{{config}}_type" name="{{config}}_type">
+                                                                <option selected value="range">range</option>
+                                                                <option value="choice">choice</option>
+                                                                <option value="fixed">fixed</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <label class="" for="{{config}}_value">Values</label>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <input type="text" class="form-control" id="{{config}}_value" name="{{config}}_value" placeholder="1, 2, 3">
+                                                        </div>
+{#                                                        <div class="col-auto">#}
+{#                                                            <input type="text" class="form-control" id="{{config}}_value_max" style="display: none;" placeholder="1, 2, 3">#}
+{#                                                        </div>#}
                                                     </div>
-{#                                                    <div class="col-auto">#}
-{#                                                        <label class="col-form-label" for="{{config}}_type">Type</label>#}
-{#                                                    </div>#}
-                                                    <div class="col-auto">
-                                                        <select class="form-select" id="{{config}}_type" name="{{config}}_type">
-                                                            <option selected value="range">range</option>
-                                                            <option value="choice">choice</option>
-                                                            <option value="fixed">fixed</option>
-                                                        </select>
+                                                {% endfor %}
+                                                <p><h5>Objective:</h5><p>
+                                                {% for objective in return_list %}
+                                                    <div class="row gy-2 gx-3 align-items-center input-group">
+                                                        <div class="col-3">
+                                                            {{objective}}:
+                                                        </div>
+{#                                                        <div class="col-auto">#}
+{#                                                            <label class="" for="{{objective}}_min">Minimize</label>#}
+{#                                                        </div>#}
+                                                        <div class="col-auto">
+                                                            <select class="form-select" id="{{objective}}_min" name="{{objective}}_min">
+                                                                <option selected>minimize</option>
+                                                                <option>maximize</option>
+                                                                <option>none</option>
+                                                            </select>
+                                                        </div>
+{#                                                        <div class="col-auto">#}
+{#                                                            <label class=""  for="{{objective}}_threshold">Threshold</label>#}
+{#                                                        </div>#}
+{#                                                        <div class="col-auto">#}
+{#                                                            <input type="text" class="form-control" id="{{objective}}_threshold" name="{{objective}}_threshold" placeholder="None">#}
+{#                                                        </div>#}
                                                     </div>
-                                                    <div class="col-auto">
-                                                        <label class="" for="{{config}}_value">Values</label>
-                                                    </div>
-                                                    <div class="col-auto">
-                                                        <input type="text" class="form-control" id="{{config}}_value" name="{{config}}_value" placeholder="1, 2, 3">
-                                                    </div>
-{#                                                    <div class="col-auto">#}
-{#                                                        <input type="text" class="form-control" id="{{config}}_value_max" style="display: none;" placeholder="1, 2, 3">#}
-{#                                                    </div>#}
-                                                </div>
-                                            {% endfor %}
-                                            <p><h5>Objective:</h5><p>
-                                            {% for objective in return_list %}
-                                                <div class="row gy-2 gx-3 align-items-center input-group">
-                                                    <div class="col-3">
-                                                        {{objective}}:
-                                                    </div>
-{#                                                    <div class="col-auto">#}
-{#                                                        <label class="" for="{{objective}}_min">Minimize</label>#}
-{#                                                    </div>#}
-                                                    <div class="col-auto">
-                                                        <select class="form-select" id="{{objective}}_min" name="{{objective}}_min">
-                                                            <option selected>minimize</option>
-                                                            <option>maximize</option>
-{#                                                            <option>none</option>#}
-                                                        </select>
-                                                    </div>
-{#                                                    <div class="col-auto">#}
-{#                                                        <label class=""  for="{{objective}}_threshold">Threshold</label>#}
-{#                                                    </div>#}
-{#                                                    <div class="col-auto">#}
-{#                                                        <input type="text" class="form-control" id="{{objective}}_threshold" name="{{objective}}_threshold" placeholder="None">#}
-{#                                                    </div>#}
-                                                </div>
-                                            {% endfor %}
-                                            <p><h5>Budget:</h5></p>
-                                            <div class="input-group mb-3">
-                                                <label class="input-group-text" for="repeat">Max iteration </label>
-                                                <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="100">
-                                            </div>
-                                            {% if not no_deck_warning%}
+                                                {% endfor %}
+                                                <p><h5>Budget:</h5></p>
                                                 <div class="input-group mb-3">
-                                                    <button class="form-control" type="submit" name="bo" class="btn btn-dark">Run</button>
+                                                    <label class="input-group-text" for="repeat">Max iteration </label>
+                                                    <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="100">
                                                 </div>
-                                            {% endif %}
+                                                {% if not no_deck_warning%}
+                                                    <div class="input-group mb-3">
+                                                        <button class="form-control" type="submit" name="bo" class="btn btn-dark">Run</button>
+                                                    </div>
+                                                {% endif %}
                                             </div>
                                         </form>
+                                    </div>
+                                    <div class="tab-pane fade {{ 'show active' if config_list|count<=5 else '' }}" id="tab4" role="tabpanel" aria-labelledby="tab4-tab">
+                                        <p><h5>Control panel:</h5></p>
+                                        <div>
+                                            <form method="POST" name="online-config" id="online-config">
+                                                <table id="dataInputTable" class="table table-striped">
+                                                    <thead class="thead-dark">
+                                                    <tr>
+                                                        {% for column in config_list %}
+                                                            <th>{{ column }}</th>
+                                                        {% endfor %}
+                                                    </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                    </tbody>
+                                                </table>
+                                                <div class="btn btn-light" onclick="addRow()"><i class="bi bi-plus-circle" ></i></div>
+                                                <button type="submit" name="online-config" class="btn btn-success">Run</button>
+                                            </form>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -333,15 +331,23 @@
         </div>
     </div>
 
-<script>
-    document.getElementById('{{config}}_type').addEventListener('change', function() {
-        const extraInputBox = document.getElementById('{{config}}_value_max');
+    <script>
+        document.getElementById('{{config}}_type').addEventListener('change', function() {
+            const extraInputBox = document.getElementById('{{config}}_value_max');
 
-        if (this.value === 'range') {
-            extraInputBox.style.display = 'block';
-        } else {
-            extraInputBox.style.display = 'none';
-        }
-    });
-</script>
+            if (this.value === 'range') {
+                extraInputBox.style.display = 'block';
+            } else {
+                extraInputBox.style.display = 'none';
+            }
+        });
+    </script>
+    <script>
+        {# // Initially add 5 rows when the page loads #}
+        document.addEventListener("DOMContentLoaded", function() {
+            for (let i = 0; i < 5; i++) {
+                addRow();
+            }
+        });
+    </script>
 {% endblock %}

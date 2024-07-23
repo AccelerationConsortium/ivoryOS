@@ -10,18 +10,31 @@ class DummySDLDeck:
         self.pump = pump
         self.balance = balance
 
-    def pump_and_weigh(self, amount_in_ml: float = 5, rate_ml_per_minute: float = 1):
+    def dose_solvent(self, name:str, amount_in_ml: float = 5, rate_ml_per_minute: float = 1):
         self.pump.dose_liquid(amount_in_ml=amount_in_ml, rate_ml_per_minute=rate_ml_per_minute)
         self.balance.weigh_sample()
 
-    def dose_and_weigh(self, amount_in_mg: float = 5, bring_in: bool = False):
+    def dose_solid(self, amount_in_mg: float = 5, bring_in: bool = False):
         self.balance.dose_solid(amount_in_mg=amount_in_mg)
         self.balance.weigh_sample()
 
+    def equilibrate(self, temp:float, duration:float):
+        pass
+
+    def sample(self, sample_volume:float):
+        pass
+
+    def dilute(self, solvent:str, factor:float):
+        pass
+    def analyze(self):
+        pass
+
+    def filtration(self):
+        pass
 
 balance = DummyBalance("Fake com port 1")
 pump = DummyPump("Fake com port 2")
-sdl = DummySDLDeck(balance, pump)
+sdl = DummySDLDeck(pump, balance)
 # gui_functions = ['inner_test1', 'test1', 'test2']
 
 

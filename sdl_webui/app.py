@@ -9,21 +9,23 @@ import time
 
 from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, render_template, session
 from flask_socketio import SocketIO
+from flask_wtf import FlaskForm
 from werkzeug.utils import secure_filename
 from flask_login import LoginManager, login_required, login_user, logout_user
 import bcrypt
 
 from sdl_webui.utils import utils
+from sdl_webui.utils.form import create_form_from_module, create_builtin_form, create_action_button, format_name
 from sdl_webui.utils.model import Script, User, db
 
 # import instruments
 # from instruments import *
 # from config import off_line
 # import config
-global deck
+global deck, autofill
 deck = None
 autofill = False
-off_line = True
+off_line = False
 
 app = Flask(__name__)
 app.config['OUTPUT_FOLDER'] = 'webui_data'
@@ -196,11 +198,13 @@ def controllers_home():
 @login_required
 def experiment_builder(instrument=None):
     global pseudo_deck, deck, autofill
-    if not pseudo_deck:
+    forms = None
+    if pseudo_deck is None:
         pseudo_deck = load_deck(session.get('pseudo_deck'))
     script = get_script_file()
     deck_list = utils.available_pseudo_deck(app.config["DUMMY_DECK"])
     script.sort_actions()
+
     if deck:
         deck_variables = parse_deck(deck)
     else:
@@ -208,60 +212,50 @@ def experiment_builder(instrument=None):
         deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
 
     functions = []
+
     if pseudo_deck is None:
         flash("Choose available deck below.")
         # flash(f"Make sure to import {script_dict['deck'] if script_dict['deck'] else 'deck'} for this script")
     if instrument:
+        functions = utils.parse_functions(find_instrument_by_name(instrument))
         # inst_object = find_instrument_by_name(instrument)
-        if instrument not in ['if', 'while', 'variable', 'wait']:
-            functions = pseudo_deck[instrument] if instrument in deck_variables else utils.parse_functions(
-                find_instrument_by_name(instrument))
-        # current_len = len(script_dict[script_type])
-        if request.method == 'POST' and "add" in request.form:
-            args = request.form.to_dict()
+        if instrument in ['if', 'while', 'variable', 'wait']:
+            forms = create_builtin_form(instrument)
+        else:
+            forms = create_form_from_module(sdl_module=find_instrument_by_name(instrument), autofill=autofill)
+        if request.method == 'POST' and "hidden_name" in request.form:
+            all_kwargs = request.form.copy()
+            method_name = all_kwargs.pop("hidden_name", None)
+            # if method_name is not None:
+            form = forms.get(method_name)
+            kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
+            if form and form.validate_on_submit():
+                # print(kwargs)
+                function_name = kwargs.pop("hidden_name")
+                save_data = kwargs.pop('return', '')
+                arg_types = utils.get_arg_type(kwargs, functions[function_name])
+                action = {"instrument": instrument, "action": function_name, "args": kwargs, "return": save_data,
+                          'arg_types': arg_types}
+                script.add_action(action=action)
+            else:
+                flash(form.errors)
 
-            function_name = args.pop('add')
-            script_type = args.pop('script_type', None)
-            save_data = args.pop('return') if 'return' in request.form else ''
+        # toggle autofill
+        elif request.method == 'POST' and "builtin_name" in request.form:
+            kwargs = {field.name: field.data for field in forms if field.name != 'csrf_token'}
+            if forms.validate_on_submit():
+                logic_type = kwargs.pop('builtin_name')
+                script.add_logic_action(logic_type=logic_type, **kwargs)
 
-            try:
-                args, arg_types = utils.convert_type(args, functions[function_name])
-            except Exception:
-                flash(traceback.format_exc())
-                return redirect(url_for("experiment_builder", instrument=instrument))
-            if type(functions[function_name]) is dict:
-                args = list(args.values())[0]
-                arg_types = list(arg_types.values())[0]
-            if script_type:
-                script.editing_type = script_type
-            action = {"instrument": instrument, "action": function_name, "args": args, "return": save_data,
-                      'arg_types': arg_types}
-            script.add_action(action=action)
+        # toggle autofill
         elif request.method == 'POST' and "autofill" in request.form:
             autofill = not autofill
-        elif request.method == 'POST':
-            # handle while, if and define variables
-            script_type = request.form.get('script_type', None)
-
-            if script_type:
-                script.editing_type = script_type
-
-            statement = request.form.get('statement')
-
-            if "if" in request.form:
-                script.add_logic_action(logic_type='if', args=statement)
-            if "while" in request.form:
-                script.add_logic_action(logic_type='while', args=statement)
-            if "variable" in request.form:
-                var_name = request.form.get('variable')
-                script.add_logic_action(logic_type='variable', args=statement, var_name=var_name)
-            if "wait" in request.form:
-                script.add_logic_action(logic_type="wait", args=statement)
+            forms = create_form_from_module(find_instrument_by_name(instrument), autofill=autofill)
         post_script_file(script)
-
-    return render_template('experiment_builder.html', instrument=instrument, history=deck_list,
+    buttons = [create_action_button(i) for i in script.currently_editing_script]
+    return render_template('experiment_builder.html', off_line=off_line,instrument=instrument, history=deck_list,
                            script=script, defined_variables=deck_variables, local_variables=defined_variables,
-                           functions=functions, autofill=autofill)
+                           functions=functions, autofill=autofill, forms=forms, buttons=buttons, format_name=format_name)
 
 
 def process_data(data, config_type):
@@ -321,6 +315,7 @@ def experiment_run():
     script.sort_actions()
     _, return_list = script.config_return()
     config_list, config_type_list = script.config("script")
+    # config = script.config("script")
     data_list = os.listdir(app.config['DATA_FOLDER'])
     data_list.remove(".gitkeep") if ".gitkeep" in data_list else data_list
     if deck is None:
@@ -347,9 +342,11 @@ def experiment_run():
 
         except Exception as e:
             flash(e)
+    print(config_list, config_type_list)
     return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=script_py,
                            return_list=return_list, config_list=config_list, config_file_list=config_file_list,
-                           config_preview=config_preview, data_list=data_list,
+                           config_preview=config_preview, data_list=data_list, config_type_list=config_type_list,
+
                            history=utils.import_history(app.config["DECK_HISTORY"]), no_deck_warning=no_deck_warning, dismiss=dismiss)
 
 
@@ -865,7 +862,7 @@ def load_json():
         f = request.files['file']
         if 'file' not in request.files:
             flash('No file part')
-        if f.filename.split('.')[-1] == "json":
+        if f.filename.endswith("json"):
             script_dict = json.load(f)
             post_script_file(script_dict, is_dict=True)
         else:
@@ -878,29 +875,31 @@ def download(filetype):
     script = get_script_file()
     run_name = script.name if script.name else "untitled"
     if filetype == "configure":
-        filename = f"{run_name}_config.csv"
-        with open(filename, 'w', newline='') as f:
+        filepath = f"{run_name}_config.csv"
+        with open(filepath, 'w', newline='') as f:
             writer = csv.writer(f)
             cfg, cfg_types = script.config("script")
-            # print(cfg_types)
             writer.writerow(cfg)
             writer.writerow(list(cfg_types.values()))
-        return send_file(filename, as_attachment=True)
     elif filetype == "script":
         script.sort_actions()
         json_object = json.dumps(script.as_dict())
-        with open(f"{run_name}.json", "w") as outfile:
+        filepath = os.path.join(app.config['SCRIPT_FOLDER'], f"{run_name}.json")
+        # print(filepath)
+        with open(filepath, "w") as outfile:
             outfile.write(json_object)
-        return send_file(f"{run_name}.json", as_attachment=True)
     elif filetype == "python":
-        return send_file(os.path.join(app.config["SCRIPT_FOLDER"], f"{run_name}.py"), as_attachment=True)
+        filepath = os.path.join(app.config["SCRIPT_FOLDER"], f"{run_name}.py")
+
+    return send_file(os.path.abspath(filepath), as_attachment=True)
     # elif filetype == "webui_data":
     #     return send_file("results/" + run_name + "_data.csv", as_attachment=True)
 
 
 @app.route('/download_results/<filename>')
 def download_results(filename):
-    return send_file(os.path.join(app.config["DATA_FOLDER"], filename), as_attachment=True)
+    filepath = os.path.join(app.config["DATA_FOLDER"], filename)
+    return send_file(os.path.abspath(filepath), as_attachment=True)
 
 
 def find_instrument_by_name(name: str):
@@ -936,9 +935,10 @@ def parse_deck(deck, save=None):
 
 def start_gui(module, host="0.0.0.0", port=8000, debug=True):
     import sys
-    global deck
+    global deck, off_line
     deck = sys.modules[module]
     parse_deck(deck, save=True)
+    off_line = True
     socketio.run(app, host=host, port=port, debug=debug, use_reloader=False, allow_unsafe_werkzeug=True)
 
 
