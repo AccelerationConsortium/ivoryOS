@@ -254,7 +254,7 @@ def experiment_builder(instrument=None):
                 script.add_logic_action(logic_type='while', args=statement)
             if "variable" in request.form:
                 var_name = request.form.get('variable')
-                script.add_logic_action(logic_type='variable', args=statement, var_name=var_name)
+                script.add_variable(args=statement, var_name=var_name)
             if "wait" in request.form:
                 script.add_logic_action(logic_type="wait", args=statement)
         post_script_file(script)

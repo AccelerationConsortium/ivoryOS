@@ -211,7 +211,16 @@ class Script(db.Model):
         self.currently_editing_order.append(str(current_len + 1))
         self.update_time_stamp()
 
-    def add_logic_action(self, logic_type: str, args, var_name=None):
+    def add_variable(self, args, var_name=None):
+        current_len = len(self.currently_editing_script)
+        uid = uuid.uuid4().fields[-1]
+        action_list = [{"id": current_len + 1, "instrument": 'variable', "action": var_name,
+                        "args": 'None' if args == '' else args, "return": '', "uuid": uid, "arg_types": ''}]
+        self.currently_editing_script.extend(action_list)
+        self.currently_editing_order.extend([str(current_len + i + 1) for i in range(len(action_list))])
+        self.update_time_stamp()
+
+    def add_logic_action(self, logic_type: str, args):
         current_len = len(self.currently_editing_script)
         uid = uuid.uuid4().fields[-1]
         logic_dict = {
@@ -230,11 +239,6 @@ class Script(db.Model):
                      "args": 'False' if args == '' else args, "return": '', "uuid": uid, "arg_types": ''},
                     {"id": current_len + 2, "instrument": 'while', "action": 'endwhile', "args": '', "return": '',
                      "uuid": uid},
-                ],
-            "variable":
-                [
-                    {"id": current_len + 1, "instrument": 'variable', "action": var_name,
-                     "args": 'None' if args == '' else args, "return": '', "uuid": uid, "arg_types": ''},
                 ],
             "wait":
                 [

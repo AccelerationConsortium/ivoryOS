@@ -14,12 +14,13 @@ acetone = Liquid(name='acetone', density=0, formula='C3H6O')
 
 
 class DummyKinovaDeck:
-    def __init__(self, arm, liquid_handler):
+    def __init__(self, arm, liquid_handler, locations):
         self.arm = arm
         self.liquid_handler = liquid_handler
+        self.locations = locations
 
 
-sdl = DummyKinovaDeck(kinova, europa)
+sdl = DummyKinovaDeck(kinova, europa, [home, europa_base])
 # gui_functions = ['inner_test1', 'test1', 'test2']
 
 
