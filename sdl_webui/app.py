@@ -6,6 +6,8 @@ import csv
 import pickle
 import traceback
 import time
+from inspect import Signature
+from typing import Optional
 
 from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, render_template, session
 from flask_socketio import SocketIO
@@ -213,8 +215,9 @@ def experiment_builder(instrument=None):
         # flash(f"Make sure to import {script_dict['deck'] if script_dict['deck'] else 'deck'} for this script")
     if instrument:
         # inst_object = find_instrument_by_name(instrument)
-        if instrument not in ['if', 'while', 'variable', 'wait']:
-            functions = pseudo_deck[instrument] if instrument in deck_variables else utils.parse_functions(
+        if instrument not in ['if', 'while', 'wait']:
+            functions: Optional[dict[str, Signature]] = pseudo_deck[
+                instrument] if instrument in deck_variables else utils.parse_functions(
                 find_instrument_by_name(instrument))
         # current_len = len(script_dict[script_type])
         if request.method == 'POST' and "add" in request.form:
@@ -225,7 +228,26 @@ def experiment_builder(instrument=None):
             save_data = args.pop('return') if 'return' in request.form else ''
 
             try:
-                args, arg_types = utils.convert_type(args, functions[function_name])
+                variable_args = {}
+                variable_args_types = {}
+                primitive_arg_types = {}
+                if args:
+                    try:
+                        variable_args, variable_args_types = utils.find_variable_in_script(script, args)
+
+                        for name in variable_args.keys():
+                            del args[name]
+
+                        args, primitive_arg_types = utils.convert_type(args, functions[function_name])
+
+                    except:
+                        args, primitive_arg_types = utils.convert_type(args, functions[function_name])
+
+                args.update(variable_args)
+                arg_types = {}
+                arg_types.update(variable_args_types)
+                arg_types.update(primitive_arg_types)
+
             except Exception:
                 flash(traceback.format_exc())
                 return redirect(url_for("experiment_builder", instrument=instrument))
@@ -350,7 +372,8 @@ def experiment_run():
     return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=script_py,
                            return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                            config_preview=config_preview, data_list=data_list,
-                           history=utils.import_history(app.config["DECK_HISTORY"]), no_deck_warning=no_deck_warning, dismiss=dismiss)
+                           history=utils.import_history(app.config["DECK_HISTORY"]), no_deck_warning=no_deck_warning,
+                           dismiss=dismiss)
 
 
 # @app.route('/progress')
