@@ -245,6 +245,8 @@ def experiment_builder(instrument=None):
                 kwargs.pop("return", None)
                 kwargs.pop("csrf_token", None)
 
+                kwargs = {field.name: field.data for field in form}
+
                 try:
                     variable_kwargs, variable_kwargs_types = utils.find_variable_in_script(script, kwargs)
 
