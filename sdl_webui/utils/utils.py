@@ -4,11 +4,7 @@ import os
 import pickle
 import datetime
 import logging
-from typing import Optional
-
 from flask_socketio import SocketIO
-
-from sdl_webui.utils.model import Script
 
 stypes = ['prep', 'script', 'cleanup']
 
@@ -166,24 +162,6 @@ def _get_type_from_parameters(arg, parameters):
             else:
                 arg_type = parameters[arg].__name__
     return arg_type
-
-
-def find_variable_in_script(script: Script,
-                            args: dict[str, str]) -> Optional[tuple[dict[str, str], dict[str, str]]]:
-    # TODO: need to search for if the variable exists
-    added_variables: list[dict[str, str]] = [action for action in script.currently_editing_script if
-                                             action["instrument"] == "variable"]
-
-    possible_variable_arguments = {}
-    possible_variable_types = {}
-
-    for arg_name, arg_val in args.items():
-        for added_variable in added_variables:
-            if added_variable["action"] == arg_val:
-                possible_variable_arguments[arg_name] = added_variable["action"]
-                possible_variable_types[arg_name] = "variable"
-
-    return possible_variable_arguments, possible_variable_types
 
 
 def convert_type(args, parameters):
