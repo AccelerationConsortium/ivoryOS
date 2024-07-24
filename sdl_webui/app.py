@@ -232,26 +232,23 @@ def experiment_builder(instrument=None):
             method_name = all_kwargs.get("hidden_name", None)
             # if method_name is not None:
             form = forms.get(method_name)
+            kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
+
             if form and form.validate_on_submit():
                 # print(kwargs)
-                function_name = all_kwargs.get("hidden_name")
-                save_data = all_kwargs.get('return', '')
+                function_name = kwargs.get("hidden_name")
+                save_data = kwargs.get('return', '')
                 # TODO convert variables in kwargs
                 variable_kwargs = {}
                 variable_kwargs_types = {}
-                kwargs = all_kwargs.copy()
-
-                kwargs.pop("hidden_name", None)
-                kwargs.pop("return", None)
-                kwargs.pop("csrf_token", None)
-
-                kwargs = {field.name: field.data for field in form}
 
                 try:
                     variable_kwargs, variable_kwargs_types = utils.find_variable_in_script(script, kwargs)
 
                     for name in variable_kwargs.keys():
                         del kwargs[name]
+
+                    print(kwargs)
 
                     primitive_arg_types = utils.get_arg_type(kwargs, functions[function_name])
 
