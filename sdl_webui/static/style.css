@@ -147,3 +147,13 @@ hr.vertical {
   overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
 }
+
+.accordion-button.collapsed {
+    background-color:#c1f2f1 !important;
+}
+.accordion-button {
+    background-color:#b3dad9 !important;
+}
+.accordion-button:hover {
+    background-color:#b3dad9 !important;
+}

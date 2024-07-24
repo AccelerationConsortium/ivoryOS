@@ -4,186 +4,147 @@
 {% block body %}
     <div class="row">
         <div class="col-md-3 scroll-column" >
-            <form method="POST" action="/import_pseudo" enctype="multipart/form-data">
-                <div class="input-group mb-3">
-{#                <div class="form-floating">#}
-{#                    <label for="pkl_name" class="form-label">Choose/Change deck:</label>#}
-                    <select class="form-select" name="pkl_name" id="pkl_name" required>
-                        <option selected disabled hidden style="overflow-wrap: break-word;" name="pkl_name" id="pkl_name" value=""> -- choose deck --</option>
-                        {% for connection in history %}
-                            <option style="overflow-wrap: break-word;" name="pkl_name" id="pkl_name" value="{{connection}}">{{connection.split('.')[0]}}</option>
-{#                            {{ 'selected' if connection.split('.')[0]==script['deck'] else '' }}#}
-                        {% endfor %}
-                    </select>
-                    <button type="submit"  class="btn btn-primary"> Submit </button>
-                </div>
-            </form>
-            <hr>
+            <h5>Functions:</h5>
+            {# select deck if this is online#}
+            {% if not off_line %}
+                <form id="select-deck" method="POST" action="/import_pseudo" enctype="multipart/form-data">
+                    <div class="input-group mb-3">
+{#                        <label for="pkl_name" class="form-label">Choose/Change deck:</label>#}
+                        <select class="form-select" name="pkl_name" id="pkl_name" required onchange="document.getElementById('select-deck').submit();">
+                            <option selected disabled hidden style="overflow-wrap: break-word;" name="pkl_name" id="pkl_name" value=""> -- choose deck --</option>
+                            {% for connection in history %}
+                                <option style="overflow-wrap: break-word;" name="pkl_name" id="pkl_name" value="{{connection}}">{{connection.split('.')[0]}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+                <hr>
+            {% endif %}
+
+            {# edit action #}
             {% if session["edit_action"] %}
                 {% with action = session["edit_action"] %}
-                    <h5> {{ action['action'] }} </h5>
-                <form role="form" method='POST' name="{{instrument}}" action="/edit/{{session["edit_action"]['uuid']}}" >
-                    {% if not action['args'] == None %}
-                    <div class="form-group">
-                        {% if not action['args'].__class__.__name__ == 'dict' %}
-                            <div class="input-group mb-3">
-                                <label class="input-group-text">{{ action['action'] }}</label>
-                                <input class="form-control" type="text" id="arg" name="arg" placeholder="{{ action['arg_types']}}" value="{{ action['args'] }}" aria-labelledby="variableHelpBlock">
-                            </div>
-                        {% else %}
-                            {% for arg in action['args'] %}
-                            <div class="input-group mb-3">
-                                <label class="input-group-text">{{ arg }}</label>
-                                <input class="form-control" type="text" id="{{ arg }}" name="{{ arg }}" placeholder="{{ action['arg_types'][arg] }}" value="{{ action['args'][arg] }}" aria-labelledby="variableHelpBlock">
-                            </div>
-                            {% endfor %}
-                            <div class="input-group mb-3">
-                                <label class="input-group-text">Save Output?</label>
-                                <input class="form-control" type="text" id="return" name="return"  value="{{ action['return'] }}" aria-labelledby="variableHelpBlock">
-                            </div>
+                    <h5> {{ format_name(action['action']) }} </h5>
+                    <form role="form" method='POST' name="{{instrument}}" action="/edit/{{session["edit_action"]['uuid']}}" >
+                        {% if not action['args'] == None %}
+                        <div class="form-group">
+                            {% if not action['args'].__class__.__name__ == 'dict' %}
+                                <div class="input-group mb-3">
+                                    <label class="input-group-text">{{ action['action'] }}</label>
+                                    <input class="form-control" type="text" id="arg" name="arg" placeholder="{{ action['arg_types']}}" value="{{ action['args'] }}" aria-labelledby="variableHelpBlock">
+                                </div>
+                            {% else %}
+                                {% for arg in action['args'] %}
+                                <div class="input-group mb-3">
+                                    <label class="input-group-text">{{ format_name(arg) }}</label>
+                                    <input class="form-control" type="text" id="{{ arg }}" name="{{ arg }}" placeholder="{{ action['arg_types'][arg] }}" value="{{ action['args'][arg] }}" aria-labelledby="variableHelpBlock">
+                                </div>
+                                {% endfor %}
+                                <div class="input-group mb-3">
+                                    <label class="input-group-text">Save Output?</label>
+                                    <input class="form-control" type="text" id="return" name="return"  value="{{ action['return'] }}" aria-labelledby="variableHelpBlock">
+                                </div>
+                            {% endif %}
+                        </div>
                         {% endif %}
-                    </div>
-                    {% endif %}
-                    <button class="btn btn-primary" type="submit">Save</button>
-                    <button class="btn btn-primary" type="submit" name="back" id="back" value="back">Back</button>
-                </form>
+                        <button class="btn btn-primary" type="submit">Save</button>
+                        <button class="btn btn-primary" type="submit" name="back" id="back" value="back">Back</button>
+                    </form>
                 {% endwith %}
-            {% else %}
-
-                {% if instrument %}
+            {% elif instrument %}
                 <div>
-
-
-
-
-                    <a class="btn btn-primary" role="button" type="button" href="{{url_for('experiment_builder')}}">Back</a>
-                    <div class="rounded shadow-sm flex-fill" style="height: 30px;background-color: aliceblue">
-{#                           background-color: aliceblue;#}
-                        <h6  style=" text-align: center; ">{{ instrument }}</h6>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a class="btn btn-primary" role="button" type="button" href="{{url_for('experiment_builder')}}">Back</a>
+                        {# Auto Fill Toggle #}
+                        <form role="form" method='POST' name="autoFill" id="autoFill">
+                            <div class="form-check form-switch">
+                                <input type="hidden" id="autofill" name="autofill" value="temp_value">
+                                <input class="form-check-input" type="checkbox" id="autoFillCheck" name="autoFillCheck" onchange="submitForm('autoFill');"
+                                       value="temp_value"
+                                        {{ "checked" if autofill else "" }}>
+                                <label class="form-check-label" for="autoFillCheck">Auto fill</label>
+                            </div>
+                            <button type="submit" class="btn btn-default" style="display: none;">Auto fill </button>
+                        </form>
                     </div>
-                    {% if instrument == 'if' or instrument == 'while' or instrument == 'variable' or instrument == 'wait' %}
-                        <form role="form" method='POST' name="{{instrument}}" action="/experiment/build/{{instrument}}" >
+                    <div class="rounded flex-fill" style="height: 30px;background-color: aliceblue">
+                        <h6  style=" text-align: center; ">{{ format_name(instrument) }}</h6>
+                    </div>
+                    {% if instrument in ['if' , 'while' , 'variable' ,'wait'] %}
+                        {# form for builtin functions #}
+                        <form role="form" method='POST' name="{{instrument}}" action="{{url_for('experiment_builder',instrument=instrument)}}" >
                             <div class="form-group">
-                                {% if instrument == 'variable'%}
-                                    <div class="input-group mb-3">
-                                        <label class="input-group-text">Variable Name</label>
-                                        <input class="form-control" type="text" id="variable" name="variable" required="required" aria-labelledby="variableHelpBlock">
-                                        <div id="variableHelpBlock" class="form-text">
-                                            Your variable name cannot include space
+                                {{ forms.hidden_tag() }}
+                                {% for field in forms %}
+                                    {% if field.type not in ['CSRFTokenField', 'HiddenField'] %}
+                                        <div class="input-group mb-3">
+                                            <label class="input-group-text">{{ field.label.text }}</label>
+                                            {{ field(class="form-control") }}
+                                            <div class="form-text">{{ field.description }} </div>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <button type="submit" class="btn btn-dark" onclick="submitForm('add')">Add </button>
+                        </form>
+                    {% else %}
+
+                        {# according for instrument #}
+                        <div class="accordion accordion-flush" id="accordionActions" >
+                            {% for name, form in forms.items() %}
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#{{name}}" aria-expanded="false" aria-controls="collapseExample">
+                                            {{ format_name(name) }}
+                                        </button>
+                                    </h2>
+                                    <div id="{{name}}" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
+                                        <div class="accordion-body">
+                                            <form role="form" method='POST' name="add" id="add">
+                                                <div class="form-group">
+                                                    {{ form.hidden_tag() }}
+{#                                                    {{ form.hidden_name() }}#}
+                                                    {% for field in form %}
+                                                        {% if field.type not in ['CSRFTokenField', 'HiddenField'] %}
+                                                            <div class="input-group mb-3">
+                                                                <label class="input-group-text">{{ field.label.text }}</label>
+                                                                {% if field.type == "SubmitField" %}
+                                                                    {{ field(class="btn btn-dark") }}
+                                                                {% elif field.type == "BooleanField" %}
+                                                                    {{ field(class="form-check-input") }}
+                                                                {% else %}
+                                                                    {{ field(class="form-control") }}
+                                                                {% endif %}
+                                                            </div>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                                <button type="submit" class="btn btn-dark" onclick="submitForm('add')">Add </button>
+                                            </form>
+
+
                                         </div>
                                     </div>
-                                {% endif %}
-                                <div class="input-group mb-3">
-                                    <span class="input-group-text" >{% if instrument == 'variable' %} Variable Value {% else %} Statement {% endif %}</span>
-                                    <input class="form-control" type="text" id="statement" name="statement" aria-labelledby="statementHelpBlock">
-                                    <div id="statementHelpBlock" class="form-text">
-                                        {% if instrument == 'variable'%}Your variable can be numbers, boolean (True or False) or text ("text"){% endif %}
-                                    </div>
                                 </div>
-{#                                   <div class="input-group mb-3">#}
-{#                                       <span class="input-group-text">Add to</span>#}
-{#                                       <select class="form-select" name="script_type">#}
-{#                                           <option name="script_type" value="prep">Prep</option>#}
-{#                                           <option name="script_type" value="script" selected>Experiment</option>#}
-{#                                           <option name="script_type" value="cleanup">Clean up</option>#}
-{#                                       </select>#}
-{#                                   </div>#}
-                                <button type="submit" class="btn btn-secondary" name="{{instrument}}">add</button>
-                            </div>
-                        </form>
-                    {% endif %}
-
-            <div class="accordion accordion-flush" id="accordionActions" >
-                {% for function in functions %}
-                    <div class="accordion-item">
-                        <h2 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#{{function}}" aria-expanded="false" aria-controls="collapseExample">
-                                {{function}}
-                            </button>
-                        </h2>
-                        <div id="{{function}}" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
-                            <div class="accordion-body">
-                                <form role="form" method='POST' name="add">
-                                    <div class="form-group">
-                                        {# for setters #}
-                                        {% if functions[function].__class__.__name__ == "dict" %}
-                                            {% for arg in functions[function] %}
-                                                <div class="input-group mb-3">
-                                                    <label class="input-group-text" for="{{arg}}">{{arg}} = </label>
-                                                    <input class="form-control" type="text" id="{{arg}}" name="{{arg}}" placeholder="{{functions[function][arg].__name__}}" value="">
-                                                </div>
-                                            {% endfor %}
-                                        {% else %}
-                                            {% for parameter in functions[function].parameters.keys() %}
-                                                {% set var = functions[function].parameters[parameter] %}
-                                                <div class="input-group mb-3">
-                                                    <label class="input-group-text" for="{{parameter}}">{{parameter}} ({{'optional' if not var.default.__name__ == '_empty' else 'required'}}):</label>
-                                                    {% if var.annotation.__name__ == 'bool' %}
-                                                        <div class="btn-group">
-                                                            <input class="btn-check" type="radio" id="{{parameter}}_true" name="{{parameter}}" value="True" {{"checked" if var.default==True else ''}} {{"required" if var.default.__name__ == '_empty' and not autofill else ''}}>
-                                                            <label class="btn btn-default" for="{{parameter}}_true">True</label>
-                                                            <input class="btn-check" type="radio" id="{{parameter}}_false" name="{{parameter}}" value="False" {{"checked" if var.default==False else ''}}>
-                                                            <label class="btn btn-default" for="{{parameter}}_false">False</label>
-                                                        </div>
-                                                    {% endif %}    
-                   
-                                                    <input class="form-control" type="text" id="{{parameter}}" name="{{parameter}}"
-                                                           placeholder="{{var.annotation.__name__ if not var.annotation.__name__ == '_empty' else ''}}"
-                                                           value="{{ "#"+parameter if autofill else '' if var.default.__name__ == '_empty' or var.default == None else var.default }}"
-                                                            {{"required" if var.default.__name__ == '_empty' and not var.annotation.__name__ == 'bool' else ''}}>
-                                                    
-                                                </div>
-                                            {% endfor %}
-                                            <div class="input-group mb-3">
-                                                <span class="input-group-text">Save value as</span>
-                                                <input class="form-control" type="text" id="return" name="return" placeholder="optional">
-                                            </div>
-                                        {% endif %}
-{#                                        <div class="input-group mb-3">#}
-{#                                            <span class="input-group-text">Add to</span>#}
-{#                                            <select class="form-select" name="script_type">#}
-{#                                                <option name="script_type" value="prep" {{ 'selected' if script.editing_type == 'prep' else '' }}>Prep</option>#}
-{#                                                <option name="script_type" value="script" {{ 'selected' if script.editing_type == 'script' else '' }}>Experiment</option>#}
-{#                                                <option name="script_type" value="cleanup"{{ 'selected' if script.editing_type == 'cleanup' else '' }}>Clean up</option>#}
-{#                                            </select>#}
-{#                                        </div>#}
-                                        <button type="submit" class="btn btn-dark" name="add" value="{{function}}" >add</button>
-                                    </div>
-                                </form>
-                            {# todo #}
-                                <script>
-                                    function submitForm() {
-                                        document.getElementById('autoFill').submit();  // Submit the form
-                                    }
-                                </script>
-                                <form role="form" method='POST' name="autofill" id="autoFill">
-                                    <div class="form-check form-switch">
-                                      <input class="form-check-input" type="checkbox" id="autoFillCheck" name="autofill" onchange="submitForm();" 
-                                             value="{{function}}"
-                                             {{ "checked" if autofill else "" }}>
-                                      <label class="form-check-label" for="autoFillCheck">Auto fill</label>
-                                    </div>
-                                    <button type="submit" class="btn btn-default" style="display: none;">Auto fill </button>
-                                </form>
-                            </div>
+                            {% endfor %}
                         </div>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
+                    {% endif %}
+                </div>
 
-                {% else %}
-                    <div class="accordion accordion-flush">
+
+            {# according for all actions #}
+            {% else %}
+                <div class="accordion accordion-flush">
                     <div class="accordion-item">
                         <h5 class="accordion-header">
                             <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#advanced" role="button" aria-expanded="false" aria-controls="collapseExample">
-                                Python Operations:
+                                Builtin Operations:
                             </button>
                         </h5>
                         <div class="accordion-collapse collapse show" id="advanced">
                             <ul class="list-group">
                                 {% for instrument in ['if', 'while', 'variable', 'wait'] %}
-                                    <form role="form" method='GET' name="device" action="/experiment/build/{{instrument}}">
+                                    <form role="form" method='GET' name="device" action="{{url_for('experiment_builder',instrument=instrument)}}">
                                         <div class="form-group">
                                             <button class="list-group-item list-group-item-action" aria-current="true" type="submit">{{instrument}}</button>
                                         </div>
@@ -202,9 +163,9 @@
                         <div class="accordion-collapse collapse show" id="deck">
                             <ul class="list-group">
                                 {% for instrument in defined_variables %}
-                                    <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}">
+                                    <form role="form" method='GET' name="{{instrument}}" action="{{url_for('experiment_builder',instrument=instrument)}}">
                                         <div>
-                                            <button class="list-group-item list-group-item-action" type="submit">{{instrument}}</button>
+                                            <button class="list-group-item list-group-item-action" type="submit">{{format_name(instrument)}}</button>
                                         </div>
                                     </form>
                                 {% endfor %}
@@ -223,7 +184,7 @@
                             <div class="accordion-collapse collapse show" id="local">
                                 <ul class="list-group">
                                     {% for instrument in local_variables %}
-                                        <form role="form" method='GET' name="{{instrument}}" action="/experiment/build/{{instrument}}">
+                                        <form role="form" method='GET' name="{{instrument}}" action="{{url_for('experiment_builder',instrument=instrument)}}">
                                             <div>
                                                 <button class="list-group-item list-group-item-action" type="submit"  name="device" value="{{instrument}}" >{{instrument}}</button>
                                             </div>
@@ -234,9 +195,10 @@
                         </div>
                     {% endif %}
                 </div>
-                {% endif %}
-        {% endif %}
+            {% endif %}
         </div>
+
+        {# canvas #}
         <div class="col-md-9 scroll-column">
             <div>
 {#                file dropdown menu    #}
@@ -252,33 +214,10 @@
                             {% if not script.status == 'finalized' %}
                                 <a role="button" class="dropdown-item" type="button" href="{{url_for('finalize')}}">Disable editing</a>
                             {% endif %}
-                            <a  class="dropdown-item" role="button" type="button" href="/download/script">Export (.json <i class="bi bi-filetype-json"></i>)</a>
+                            <a  class="dropdown-item" role="button" type="button" href="{{url_for('download', filetype='script')}}">Export (.json <i class="bi bi-filetype-json"></i>)</a>
                         </ul>
                     </li>
-{#                    <li class="nav-item dropdown">#}
-{#                        <a class="nav-link dropdown-toggle" type="button" webui_data-bs-toggle="dropdown" aria-expanded="false">File tools <i class="bi bi-tools"></i></a>#}
-{#                        <ul class="dropdown-menu">#}
-{#                            <li style="display: inline-block">Deck Name: {{script['deck']}}</li>#}
-{#                            <li style="display: inline-block">Script Name: {{ script['name'] }}</li>#}
-{#                            <li style="display: inline-block">Editing status <a role="button" webui_data-bs-toggle="popover" webui_data-bs-title="How to use:" webui_data-bs-content="You can choose to disable editing, so the script is finalized and cannot be edited. Use save as to rename the script"><i class="bi bi-info-circle"></i></a>#}
-{#                                {{script['status']}}</li>#}
-{#                            <li style="display: inline-block">Output Values <a role="button" webui_data-bs-toggle="popover" webui_data-bs-title="How to use:" webui_data-bs-content="This will be your output webui_data. If the return webui_data is not a value, it will save as None is the result file"><i class="bi bi-info-circle"></i></a>#}
-{##}
-{#                                    {% for i in return_list %}#}
-{#                                        <input type="checkbox">{{i}}#}
-{#                                    {% endfor %}#}
-{##}
-{#                            </li>#}
-{#                            <li style="display: inline-block">Config Variables <a role="button" webui_data-bs-toggle="popover" webui_data-bs-title="How to use:" webui_data-bs-content="This shows variables you want to configure later using .csv file"><i class="bi bi-info-circle"></i></a>#}
-{##}
-{#                                    <ul>#}
-{#                                        {% for i in config %}#}
-{#                                            <li>{{i}}</li>#}
-{#                                        {% endfor %}#}
-{#                                    </ul>#}
-{##}
-{#                            </li>#}
-{#                        </ul>#}
+
                     <li class="nav-item"><a class="nav-link" aria-current="page" data-bs-toggle="collapse" href="#info">Info</a></li>
                     <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='prep' else 'nav-link'}}" aria-current="page" href="/toggle_script_type/prep">Prep</a></li>
                     <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='script' else 'nav-link'}}" aria-current="page" href="/toggle_script_type/script">Experiment</a></li>
@@ -319,31 +258,14 @@
                 </div>
                 <div class="list-group" id="list" style="margin-top: 20px">
                     <ul class="reorder">
-                        {% for s in script.currently_editing_script %}
-                            <li id="{{s['id']}}" style="list-style-type: none;">
-                                {% if s['instrument'] == 'if' or s['instrument'] == 'while' %}
-                                    <a href="/edit/{{s['uuid']}}" type="button" class="btn btn-light" style="background-color: tomato">{{s['action']}} {{s['args']}}</a>
-{#                                {% elif s['instrument'] == 'while' %}#}
-{#                                    <a href="/edit/{{s['uuid']}}" type="button" class="btn btn-light" style="background-color: darkcyan">{{s['action']}} {{s['args']}}</a>#}
-                                {% elif s['instrument'] == 'variable' %}
-                                    <a href="/edit/{{s['uuid']}}" type="button" class="btn btn-light" style="">{{s['action']}} = {{s['args']}}</a>
-                                {% else %}
-                                    <a href="/edit/{{s['uuid']}}" type="button" class="btn btn-light">
-                                    {% if s['return'] %}    {{s['return']}} =   {% endif %}
-                                    {{s['instrument'].split(".")[1] if s['instrument'].startswith("deck") else s['instrument']}}.{{s.action}}
-                                    {% if s['args'] %}
-                                        {% if s['args'].__class__.__name__ == "dict" %}
-                                            ({% for i in s['args'] %}{{i}}={{s['args'][i]}},{% endfor %})
-                                        {% else %}
-                                            = {{s['args']}}
-                                        {% endif %}
-                                    {% endif %}
-                                    </a>
-                                {% endif %}
-                                <a href="/delete/{{s['id']}}" type="button" class="btn btn-light"><span class="bi bi-trash"></span></a>
-                            </li>
-                        {% endfor %}
+                    {% for button in buttons %}
+                        <li id="{{ button['id'] }}" style="list-style-type: none;">
+                        <a href="{{ url_for('edit_action', uuid=button['uuid']) }}" type="button" class="btn btn-light" style="{{ button['style'] }}">{{ button['label'] }}</a>
+                        <a href="/delete/{{ button['id'] }}" type="button" class="btn btn-light"><span class="bi bi-trash"></span></a>
+                        </li>
+                    {% endfor %}
                     </ul>
+
                 </div>
             </div>
             <div>
@@ -353,7 +275,7 @@
         </div>
     </div>
 
-{#    modals#}
+{# modals #}
 <div class="modal fade" id="newScriptModal" tabindex="-1" aria-labelledby="newScriptModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -437,5 +359,11 @@
     </div>
 </div>
 
+{# scripts #}
+<script>
+    function submitForm(formId) {
+        document.getElementById(formId).submit();
+    }
+</script>
 {% endblock %}
 

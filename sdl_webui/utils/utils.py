@@ -149,6 +149,7 @@ def _get_type_from_parameters(arg, parameters):
     arg_type = ''
     if type(parameters) is inspect.Signature:
         p = parameters.parameters
+        print(p[arg].annotation)
         if p[arg].annotation is not inspect._empty:
             # print(p[arg].annotation)
             if p[arg].annotation.__module__ == 'typing':
@@ -449,12 +450,12 @@ def ax_wrapper(data):
                 parameter.append({"name": param_name, "type": param_type, "values": values})
             if param_type == "fixed":
                 parameter.append({"name": param_name, "type": param_type, "value": values[0]})
-        elif "_min" in key:
+        elif key.endswith("_min"):
             if not value == 'none':
                 obj_name = key.split("_min")[0]
                 is_min = True if value == "minimize" else False
 
-                threshold = None if not data[f"{obj_name}_threshold"] else data[f"{obj_name}_threshold"]
+                threshold = None if not f"{obj_name}_threshold" in data else data[f"{obj_name}_threshold"]
                 properties = ObjectiveProperties(minimize=is_min, threshold=threshold)
                 objectives[obj_name] = properties
     return parameter, objectives
@@ -466,3 +467,12 @@ def ax_initiation(data):
     ax_client = AxClient()
     ax_client.create_experiment(parameter, objectives)
     return ax_client
+
+
+def get_arg_type(args, parameters):
+    arg_types = {}
+    print(args, parameters)
+    if args:
+        for arg in args:
+            arg_types[arg] = _get_type_from_parameters(arg, parameters)
+    return arg_types

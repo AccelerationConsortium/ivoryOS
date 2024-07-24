@@ -212,22 +212,23 @@ class Script(db.Model):
         self.currently_editing_order.append(str(current_len + 1))
         self.update_time_stamp()
 
-    def add_variable(self, args, var_name=None):
+    def add_variable(self, statement, variable):
         current_len = len(self.currently_editing_script)
         uid = uuid.uuid4().fields[-1]
-        action_list = [{"id": current_len + 1, "instrument": 'variable', "action": var_name,
-                        "args": 'None' if args == '' else args, "return": '', "uuid": uid, "arg_types": ''}]
+        action_list = [{"id": current_len + 1, "instrument": 'variable', "action": variable,
+                        "args": 'None' if statement == '' else statement, "return": '', "uuid": uid, "arg_types": ''}]
         self.currently_editing_script.extend(action_list)
         self.currently_editing_order.extend([str(current_len + i + 1) for i in range(len(action_list))])
         self.update_time_stamp()
 
-    def add_logic_action(self, logic_type: str, args):
+    def add_logic_action(self, logic_type: str, statement):
         current_len = len(self.currently_editing_script)
         uid = uuid.uuid4().fields[-1]
         logic_dict = {
             "if":
                 [
-                    {"id": current_len + 1, "instrument": 'if', "action": 'if', "args": 'True' if args == '' else args,
+                    {"id": current_len + 1, "instrument": 'if', "action": 'if',
+                     "args": 'True' if statement == '' else statement,
                      "return": '', "uuid": uid, "arg_types": ''},
                     {"id": current_len + 2, "instrument": 'if', "action": 'else', "args": '', "return": '',
                      "uuid": uid},
@@ -237,13 +238,15 @@ class Script(db.Model):
             "while":
                 [
                     {"id": current_len + 1, "instrument": 'while', "action": 'while',
-                     "args": 'False' if args == '' else args, "return": '', "uuid": uid, "arg_types": ''},
+                     "args": 'False' if statement == '' else statement, "return": '', "uuid": uid, "arg_types": ''},
                     {"id": current_len + 2, "instrument": 'while', "action": 'endwhile', "args": '', "return": '',
                      "uuid": uid},
                 ],
+
             "wait":
                 [
-                    {"id": current_len + 1, "instrument": 'wait', "action": "wait", "args": '0' if args == '' else args,
+                    {"id": current_len + 1, "instrument": 'wait', "action": "wait",
+                     "args": '0' if statement == '' else statement,
                      "return": '', "uuid": uid, "arg_types": "float"},
                 ],
         }
@@ -380,7 +383,7 @@ class Script(db.Model):
                     elif instrument == 'variable':
                         exec_string = exec_string + self.indent(indent_unit) + action + " = " + args
                     elif instrument == 'wait':
-                        exec_string = exec_string + self.indent(indent_unit) + "time.sleep(" + args + ")"
+                        exec_string = exec_string + f"{self.indent(indent_unit)}time.sleep({args})"
                     else:
                         if args:
                             if type(args) is dict:
