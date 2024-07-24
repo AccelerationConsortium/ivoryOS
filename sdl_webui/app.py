@@ -229,7 +229,7 @@ def experiment_builder(instrument=None):
                                             script=script)
         if request.method == 'POST' and "hidden_name" in request.form:
             all_kwargs = request.form.copy()
-            method_name = all_kwargs.get("hidden_name", None)
+            method_name = all_kwargs.pop("hidden_name", None)
             # if method_name is not None:
             form = forms.get(method_name)
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
