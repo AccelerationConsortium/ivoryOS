@@ -6,8 +6,6 @@ import csv
 import pickle
 import traceback
 import time
-from inspect import Signature
-from typing import Optional
 
 from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, render_template, session
 from flask_socketio import SocketIO
@@ -206,6 +204,7 @@ def experiment_builder(instrument=None):
     script = get_script_file()
     deck_list = utils.available_pseudo_deck(app.config["DUMMY_DECK"])
     script.sort_actions()
+
     if deck:
         deck_variables = parse_deck(deck)
     else:
@@ -213,6 +212,7 @@ def experiment_builder(instrument=None):
         deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
 
     functions = []
+
     if pseudo_deck is None:
         flash("Choose available deck below.")
         # flash(f"Make sure to import {script_dict['deck'] if script_dict['deck'] else 'deck'} for this script")
@@ -248,50 +248,6 @@ def experiment_builder(instrument=None):
                 script.add_logic_action(logic_type=logic_type, **kwargs)
 
         # toggle autofill
-        if instrument not in ['if', 'while', 'wait']:
-            functions: Optional[dict[str, Signature]] = pseudo_deck[
-                instrument] if instrument in deck_variables else utils.parse_functions(
-                find_instrument_by_name(instrument))
-        # current_len = len(script_dict[script_type])
-        if request.method == 'POST' and "add" in request.form:
-            args = request.form.to_dict()
-
-            function_name = args.pop('add')
-            script_type = args.pop('script_type', None)
-            save_data = args.pop('return') if 'return' in request.form else ''
-
-            try:
-                variable_args = {}
-                variable_args_types = {}
-                primitive_arg_types = {}
-                if args:
-                    try:
-                        variable_args, variable_args_types = utils.find_variable_in_script(script, args)
-
-                        for name in variable_args.keys():
-                            del args[name]
-
-                        args, primitive_arg_types = utils.convert_type(args, functions[function_name])
-
-                    except:
-                        args, primitive_arg_types = utils.convert_type(args, functions[function_name])
-
-                args.update(variable_args)
-                arg_types = {}
-                arg_types.update(variable_args_types)
-                arg_types.update(primitive_arg_types)
-
-            except Exception:
-                flash(traceback.format_exc())
-                return redirect(url_for("experiment_builder", instrument=instrument))
-            if type(functions[function_name]) is dict:
-                args = list(args.values())[0]
-                arg_types = list(arg_types.values())[0]
-            if script_type:
-                script.editing_type = script_type
-            action = {"instrument": instrument, "action": function_name, "args": args, "return": save_data,
-                      'arg_types': arg_types}
-            script.add_action(action=action)
         elif request.method == 'POST' and "autofill" in request.form:
             autofill = not autofill
             forms = create_form_from_module(find_instrument_by_name(instrument), autofill=autofill)
@@ -359,6 +315,7 @@ def experiment_run():
     script.sort_actions()
     _, return_list = script.config_return()
     config_list, config_type_list = script.config("script")
+    # config = script.config("script")
     data_list = os.listdir(app.config['DATA_FOLDER'])
     data_list.remove(".gitkeep") if ".gitkeep" in data_list else data_list
     if deck is None:
@@ -385,6 +342,7 @@ def experiment_run():
 
         except Exception as e:
             flash(e)
+    print(config_list, config_type_list)
     return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=script_py,
                            return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                            config_preview=config_preview, data_list=data_list, config_type_list=config_type_list,

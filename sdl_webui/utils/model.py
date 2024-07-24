@@ -1,7 +1,6 @@
 import json
 import uuid
 from datetime import datetime
-from sdl_webui.utils import utils
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
@@ -212,16 +211,6 @@ class Script(db.Model):
         self.currently_editing_order.append(str(current_len + 1))
         self.update_time_stamp()
 
-
-    def add_variable(self, args, var_name=None):
-        current_len = len(self.currently_editing_script)
-        uid = uuid.uuid4().fields[-1]
-        action_list = [{"id": current_len + 1, "instrument": 'variable', "action": var_name,
-                        "args": 'None' if args == '' else args, "return": '', "uuid": uid, "arg_types": ''}]
-        self.currently_editing_script.extend(action_list)
-        self.currently_editing_order.extend([str(current_len + i + 1) for i in range(len(action_list))])
-        self.update_time_stamp()
-
     def add_logic_action(self, logic_type: str, statement, variable=None):
         current_len = len(self.currently_editing_script)
         uid = uuid.uuid4().fields[-1]
@@ -352,7 +341,6 @@ class Script(db.Model):
                 exec_string = exec_string + self.indent(indent_unit) + "global " + run_name + "_" + i
                 for index, action in enumerate(self.script_dict[i]):
                     instrument = action['instrument']
-                    arg_types = action['arg_types'] if len(action['arg_types']) != 0 else {}
                     args = action['args']
                     if type(args) is str and args.startswith("#"):
                         args = args[1:]
@@ -394,8 +382,6 @@ class Script(db.Model):
                                 for arg in args:
                                     if type(args[arg]) is str and args[arg].startswith("#"):
                                         temp = temp.replace("'#" + args[arg][1:] + "'", args[arg][1:])
-                                    elif arg_types[arg] == "variable":
-                                        temp = temp.replace("'" + args[arg] + "'", args[arg])
                                 single_line = instrument + "." + action + "(**" + temp + ")"
                             elif type(args) is str:
                                 single_line = instrument + "." + action + " = " + str(args)
