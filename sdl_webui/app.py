@@ -238,7 +238,6 @@ def experiment_builder(instrument=None):
                 # print(kwargs)
                 function_name = kwargs.pop("hidden_name")
                 save_data = kwargs.pop('return', '')
-                # TODO convert variables in kwargs
                 variable_kwargs = {}
                 variable_kwargs_types = {}
 
