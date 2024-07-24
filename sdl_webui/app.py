@@ -236,8 +236,8 @@ def experiment_builder(instrument=None):
 
             if form and form.validate_on_submit():
                 # print(kwargs)
-                function_name = kwargs.get("hidden_name")
-                save_data = kwargs.get('return', '')
+                function_name = kwargs.pop("hidden_name")
+                save_data = kwargs.pop('return', '')
                 # TODO convert variables in kwargs
                 variable_kwargs = {}
                 variable_kwargs_types = {}
