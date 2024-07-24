@@ -225,7 +225,8 @@ def experiment_builder(instrument=None):
         if instrument in ['if', 'while', 'variable', 'wait']:
             forms = create_builtin_form(instrument)
         else:
-            forms = create_form_from_module(sdl_module=find_instrument_by_name(instrument), autofill=autofill)
+            forms = create_form_from_module(sdl_module=find_instrument_by_name(instrument), autofill=autofill,
+                                            script=script)
         if request.method == 'POST' and "hidden_name" in request.form:
             all_kwargs = request.form.copy()
             method_name = all_kwargs.get("hidden_name", None)
@@ -261,7 +262,9 @@ def experiment_builder(instrument=None):
                 arg_types.update(primitive_arg_types)
                 all_kwargs.update(variable_kwargs)
 
-                action = {"instrument": instrument, "action": function_name, "args": kwargs, "return": save_data,
+                action = {"instrument": instrument, "action": function_name,
+                          "args": {name: arg for (name, arg) in kwargs.items()},
+                          "return": save_data,
                           'arg_types': arg_types}
                 script.add_action(action=action)
             else:
@@ -278,7 +281,7 @@ def experiment_builder(instrument=None):
 
         elif request.method == 'POST' and "autofill" in request.form:
             autofill = not autofill
-            forms = create_form_from_module(find_instrument_by_name(instrument), autofill=autofill)
+            forms = create_form_from_module(find_instrument_by_name(instrument), autofill=autofill, script=script)
         post_script_file(script)
     buttons = [create_action_button(i) for i in script.currently_editing_script]
     return render_template('experiment_builder.html', off_line=off_line, instrument=instrument, history=deck_list,
