@@ -233,6 +233,7 @@ def experiment_builder(instrument=None):
                 # print(kwargs)
                 function_name = kwargs.pop("hidden_name")
                 save_data = kwargs.pop('return', '')
+                # TODO convert variables in kwargs
                 arg_types = utils.get_arg_type(kwargs, functions[function_name])
                 action = {"instrument": instrument, "action": function_name, "args": kwargs, "return": save_data,
                           'arg_types': arg_types}
