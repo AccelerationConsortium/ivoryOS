@@ -1,0 +1,31 @@
+{
+  "poses": {
+    "pose": [
+      {
+        "reachPose": {
+          "targetPose": {
+            "x": 0.2891058325767517,
+            "y": -0.250328004360199,
+            "z": 0.2338666170835495,
+            "thetaX": 90.01630401611328,
+            "thetaY": 0.010378837585449219,
+            "thetaZ": 0.00019434111891314387
+          },
+          "constraint": {
+            "speed": {
+              "translation": 0,
+              "orientation": 0
+            }
+          }
+        },
+        "applicationData": "{\"kinova\":{\"color\":0}}",
+        "handle": {
+          "identifier": 10157,
+          "permission": 7,
+          "actionType": 6
+        },
+        "name": "vial_tray_xy"
+      }
+    ]
+  }
+}

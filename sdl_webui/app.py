@@ -6,6 +6,8 @@ import csv
 import pickle
 import traceback
 import time
+from inspect import Signature
+from typing import Optional
 
 from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, render_template, session
 from flask_socketio import SocketIO
@@ -222,42 +224,68 @@ def experiment_builder(instrument=None):
     if instrument:
         functions = utils.parse_functions(find_instrument_by_name(instrument))
         # inst_object = find_instrument_by_name(instrument)
+
         if instrument in ['if', 'while', 'variable', 'wait']:
             forms = create_builtin_form(instrument)
         else:
-            forms = create_form_from_module(sdl_module=find_instrument_by_name(instrument), autofill=autofill)
+            forms = create_form_from_module(sdl_module=find_instrument_by_name(instrument), autofill=autofill,
+                                            script=script)
         if request.method == 'POST' and "hidden_name" in request.form:
             all_kwargs = request.form.copy()
             method_name = all_kwargs.pop("hidden_name", None)
             # if method_name is not None:
             form = forms.get(method_name)
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
+
             if form and form.validate_on_submit():
                 # print(kwargs)
                 function_name = kwargs.pop("hidden_name")
                 save_data = kwargs.pop('return', '')
-                # TODO convert variables in kwargs
-                arg_types = utils.get_arg_type(kwargs, functions[function_name])
-                action = {"instrument": instrument, "action": function_name, "args": kwargs, "return": save_data,
+                variable_kwargs = {}
+                variable_kwargs_types = {}
+
+                try:
+                    variable_kwargs, variable_kwargs_types = utils.find_variable_in_script(script, kwargs)
+
+                    for name in variable_kwargs.keys():
+                        del kwargs[name]
+
+                    print(kwargs)
+
+                    primitive_arg_types = utils.get_arg_type(kwargs, functions[function_name])
+
+                except:
+                    primitive_arg_types = utils.get_arg_type(kwargs, functions[function_name])
+
+                kwargs.update(variable_kwargs)
+                arg_types = {}
+                arg_types.update(variable_kwargs_types)
+                arg_types.update(primitive_arg_types)
+                all_kwargs.update(variable_kwargs)
+
+                action = {"instrument": instrument, "action": function_name,
+                          "args": {name: arg for (name, arg) in kwargs.items()},
+                          "return": save_data,
                           'arg_types': arg_types}
                 script.add_action(action=action)
             else:
                 flash(form.errors)
-
         # toggle autofill
         elif request.method == 'POST' and "builtin_name" in request.form:
             kwargs = {field.name: field.data for field in forms if field.name != 'csrf_token'}
             if forms.validate_on_submit():
                 logic_type = kwargs.pop('builtin_name')
-                script.add_logic_action(logic_type=logic_type, **kwargs)
+                if 'variable' in kwargs:
+                    script.add_variable(**kwargs)
+                else:
+                    script.add_logic_action(logic_type=logic_type, **kwargs)
 
-        # toggle autofill
         elif request.method == 'POST' and "autofill" in request.form:
             autofill = not autofill
-            forms = create_form_from_module(find_instrument_by_name(instrument), autofill=autofill)
+            forms = create_form_from_module(find_instrument_by_name(instrument), autofill=autofill, script=script)
         post_script_file(script)
     buttons = [create_action_button(i) for i in script.currently_editing_script]
-    return render_template('experiment_builder.html', off_line=off_line,instrument=instrument, history=deck_list,
+    return render_template('experiment_builder.html', off_line=off_line, instrument=instrument, history=deck_list,
                            script=script, defined_variables=deck_variables, local_variables=defined_variables,
                            functions=functions, autofill=autofill, forms=forms, buttons=buttons, format_name=format_name,
                            use_llm=use_llm)
@@ -375,15 +403,16 @@ def experiment_run():
     return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=script_py,
                            return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                            config_preview=config_preview, data_list=data_list, config_type_list=config_type_list,
+                           history=utils.import_history(app.config["DECK_HISTORY"]), no_deck_warning=no_deck_warning,
+                           dismiss=dismiss)
 
-                           history=utils.import_history(app.config["DECK_HISTORY"]), no_deck_warning=no_deck_warning, dismiss=dismiss)
+    # @app.route('/progress')
+    # def progress(run_name, filename, repeat):
+    #     return Response(generate_progress(run_name, filename, repeat), mimetype='text/event-stream')
+
+    # @app.route('/progress')
 
 
-# @app.route('/progress')
-# def progress(run_name, filename, repeat):
-#     return Response(generate_progress(run_name, filename, repeat), mimetype='text/event-stream')
-
-# @app.route('/progress')
 def generate_progress(run_name, config, repeat, script, bo_args):
     time.sleep(1)
     compiled = True
