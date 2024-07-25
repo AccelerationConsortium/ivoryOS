@@ -1,6 +1,7 @@
 import json
 import uuid
 from datetime import datetime
+from sdl_webui.utils import utils
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
@@ -211,13 +212,23 @@ class Script(db.Model):
         self.currently_editing_order.append(str(current_len + 1))
         self.update_time_stamp()
 
-    def add_logic_action(self, logic_type: str, statement, variable=None):
+    def add_variable(self, statement, variable):
+        current_len = len(self.currently_editing_script)
+        uid = uuid.uuid4().fields[-1]
+        action_list = [{"id": current_len + 1, "instrument": 'variable', "action": variable,
+                        "args": 'None' if statement == '' else statement, "return": '', "uuid": uid, "arg_types": ''}]
+        self.currently_editing_script.extend(action_list)
+        self.currently_editing_order.extend([str(current_len + i + 1) for i in range(len(action_list))])
+        self.update_time_stamp()
+
+    def add_logic_action(self, logic_type: str, statement):
         current_len = len(self.currently_editing_script)
         uid = uuid.uuid4().fields[-1]
         logic_dict = {
             "if":
                 [
-                    {"id": current_len + 1, "instrument": 'if', "action": 'if', "args": 'True' if statement == '' else statement,
+                    {"id": current_len + 1, "instrument": 'if', "action": 'if',
+                     "args": 'True' if statement == '' else statement,
                      "return": '', "uuid": uid, "arg_types": ''},
                     {"id": current_len + 2, "instrument": 'if', "action": 'else', "args": '', "return": '',
                      "uuid": uid},
@@ -231,14 +242,11 @@ class Script(db.Model):
                     {"id": current_len + 2, "instrument": 'while', "action": 'endwhile', "args": '', "return": '',
                      "uuid": uid},
                 ],
-            "variable":
-                [
-                    {"id": current_len + 1, "instrument": 'variable', "action": variable,
-                     "args": 'None' if statement == '' else statement, "return": '', "uuid": uid, "arg_types": ''},
-                ],
+
             "wait":
                 [
-                    {"id": current_len + 1, "instrument": 'wait', "action": "wait", "args": '0' if statement == '' else statement,
+                    {"id": current_len + 1, "instrument": 'wait', "action": "wait",
+                     "args": '0' if statement == '' else statement,
                      "return": '', "uuid": uid, "arg_types": "float"},
                 ],
         }
@@ -341,6 +349,7 @@ class Script(db.Model):
                 exec_string = exec_string + self.indent(indent_unit) + "global " + run_name + "_" + i
                 for index, action in enumerate(self.script_dict[i]):
                     instrument = action['instrument']
+                    arg_types = action['arg_types'] if len(action['arg_types']) != 0 else {}
                     args = action['args']
                     if type(args) is str and args.startswith("#"):
                         args = args[1:]
@@ -380,8 +389,11 @@ class Script(db.Model):
                             if type(args) is dict:
                                 temp = args.__str__()
                                 for arg in args:
+                                    print(arg_types[arg])
                                     if type(args[arg]) is str and args[arg].startswith("#"):
                                         temp = temp.replace("'#" + args[arg][1:] + "'", args[arg][1:])
+                                    elif arg_types[arg] == "variable":
+                                        temp = temp.replace("'" + args[arg] + "'", args[arg])
                                 single_line = instrument + "." + action + "(**" + temp + ")"
                             elif type(args) is str:
                                 single_line = instrument + "." + action + " = " + str(args)
