@@ -4,7 +4,7 @@ import os
 import pickle
 import datetime
 import logging
-from typing import Optional
+from typing import Optional, Dict, Tuple
 
 from flask_socketio import SocketIO
 
@@ -168,10 +168,9 @@ def _get_type_from_parameters(arg, parameters):
     return arg_type
 
 
-def find_variable_in_script(script: Script,
-                            args: dict[str, str]) -> Optional[tuple[dict[str, str], dict[str, str]]]:
+def find_variable_in_script(script: Script, args: Dict[str, str]) -> Optional[Tuple[Dict[str, str], Dict[str, str]]]:
     # TODO: need to search for if the variable exists
-    added_variables: list[dict[str, str]] = [action for action in script.currently_editing_script if
+    added_variables: list[Dict[str, str]] = [action for action in script.currently_editing_script if
                                              action["instrument"] == "variable"]
 
     possible_variable_arguments = {}
