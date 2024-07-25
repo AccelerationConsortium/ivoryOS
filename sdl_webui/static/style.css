@@ -20,7 +20,7 @@
     height: 70vh;
     overflow: hidden;
     overflow-y: scroll;
-    background: beige;
+    background: #e8e8cd;
     background-size: 20px 20px;
     background-image: radial-gradient(circle, cadetblue 1px, rgba(0, 0, 0, 0) 1px);
 }
@@ -156,4 +156,14 @@ hr.vertical {
 }
 .accordion-button:hover {
     background-color:#b3dad9 !important;
+}
+
+.accordion-item.text-to-code .accordion-button.collapsed {
+    background-color: #cdc1f2 !important;
+}
+.accordion-item.text-to-code .accordion-button {
+    background-color: #cdc1f2 !important;
+}
+.accordion-item.text-to-code .accordion-button:hover {
+    background-color: #b8afdc !important;
 }

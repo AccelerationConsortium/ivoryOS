@@ -4,7 +4,7 @@
 {% block body %}
     <div class="row">
         <div class="col-md-3 scroll-column" >
-            <h5>Functions:</h5>
+
             {# select deck if this is online#}
             {% if not off_line %}
                 <form id="select-deck" method="POST" action="/import_pseudo" enctype="multipart/form-data">
@@ -53,23 +53,17 @@
                 {% endwith %}
             {% elif instrument %}
                 <div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <a class="btn btn-primary" role="button" type="button" href="{{url_for('experiment_builder')}}">Back</a>
+                    <div class="d-flex justify-content-between align-items-center " style="margin-bottom: 1vh;margin-top: 1vh;">
+                        <a class="btn btn-primary" role="button" type="button" href="{{url_for('experiment_builder')}}"><i class="bi bi-arrow-return-left"></i></a>
                         {# Auto Fill Toggle #}
-                        <form role="form" method='POST' name="autoFill" id="autoFill">
-                            <div class="form-check form-switch">
-                                <input type="hidden" id="autofill" name="autofill" value="temp_value">
-                                <input class="form-check-input" type="checkbox" id="autoFillCheck" name="autoFillCheck" onchange="submitForm('autoFill');"
-                                       value="temp_value"
-                                        {{ "checked" if autofill else "" }}>
-                                <label class="form-check-label" for="autoFillCheck">Auto fill</label>
-                            </div>
-                            <button type="submit" class="btn btn-default" style="display: none;">Auto fill </button>
-                        </form>
+                        {{ format_name(instrument) }}
+
+
                     </div>
-                    <div class="rounded flex-fill" style="height: 30px;background-color: aliceblue">
-                        <h6  style=" text-align: center; ">{{ format_name(instrument) }}</h6>
-                    </div>
+
+<!--                    <div class="rounded flex-fill" style="height: 30px;background-color: aliceblue">-->
+<!--                        <h6  style=" text-align: center; ">{{ format_name(instrument) }}</h6>-->
+<!--                    </div>-->
                     {% if instrument in ['if' , 'while' , 'variable' ,'wait'] %}
                         {# form for builtin functions #}
                         <form role="form" method='POST' name="{{instrument}}" action="{{url_for('experiment_builder',instrument=instrument)}}" >
@@ -88,9 +82,38 @@
                             <button type="submit" class="btn btn-dark" onclick="submitForm('add')">Add </button>
                         </form>
                     {% else %}
-
+                        <form role="form" method='POST' name="autoFill" id="autoFill">
+                            <div class="form-check form-switch">
+                                <input type="hidden" id="autofill" name="autofill" value="temp_value">
+                                <input class="form-check-input" type="checkbox" id="autoFillCheck" name="autoFillCheck" onchange="submitForm('autoFill');"
+                                       value="temp_value"
+                                        {{ "checked" if autofill else "" }}>
+                                <label class="form-check-label" for="autoFillCheck">Auto fill</label>
+                            </div>
+                            <button type="submit" class="btn btn-default" style="display: none;">Auto fill </button>
+                        </form>
                         {# according for instrument #}
                         <div class="accordion accordion-flush" id="accordionActions" >
+                            <div class="accordion-item text-to-code">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button text-to-code" type="button" data-bs-toggle="collapse" data-bs-target="#text-to-code" aria-expanded="false" aria-controls="collapseExample">
+                                            Text-to-Code
+                                        </button>
+                                    </h2>
+                                    <div id="text-to-code" class="accordion-collapse collapse show" data-bs-parent="#accordionActions">
+                                        <div class="accordion-body">
+                                            <form role="form" method='POST' name="generate" id="generate" action="{{url_for('generate_code')}}">
+                                                <input type="hidden" id="instrument" name="instrument" value="{{instrument}}">
+                                                <textarea class="form-control" id="prompt" name="prompt" rows="6" aria-describedby="promptHelpBlock">{{ session['prompt'] }}</textarea>
+                                                <div id="promptHelpBlock" class="form-text">
+                                                    This will overwrite current design.
+                                                </div>
+                                                <button type="submit" class="btn btn-dark" id="clear" name="clear" onclick="submitForm('generate')">Clear</button>
+                                                <button type="submit" class="btn btn-dark" id="gen" name="gen" onclick="submitForm('generate')">Generate</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                            </div>
                             {% for name, form in forms.items() %}
                                 <div class="accordion-item">
                                     <h2 class="accordion-header">
@@ -173,7 +196,6 @@
                         </div>
                     </div>
 
-{#                    {% if local_variables and not defined_variables %}#}
                     {% if local_variables %}
                         <div class="accordion-item">
                             <h5 class="accordion-header">

@@ -62,7 +62,7 @@
                                         <a class="nav-link {{ 'disabled' if config_list else '' }} {{ 'active' if not config_list else '' }}" id="tab1-tab" data-bs-toggle="tab" href="#tab1" role="tab" aria-controls="tab1" aria-selected="false">Simple repeat</a>
                                     </li>
                                     <li class="nav-item" role="presentation">
-                                        <a class="nav-link {{ 'disabled' if config_list|count > 5 else '' }} {{ 'active' if config_list|count < 6 else '' }}" id="tab4-tab" data-bs-toggle="tab" href="#tab4" role="tab" aria-controls="tab4" aria-selected="false">Quick config</a>
+                                        <a class="nav-link {{ 'disabled' if (not config_list or config_list|count > 5) else '' }} {{ 'active' if config_list and config_list|count < 6 else '' }}" id="tab4-tab" data-bs-toggle="tab" href="#tab4" role="tab" aria-controls="tab4" aria-selected="false">Quick config</a>
                                     </li>
                                     <li class="nav-item" role="presentation">
                                         <a class="nav-link {{ 'disabled' if not config_list else '' }} {{ 'active' if config_list|count > 5 else '' }}" id="tab2-tab" data-bs-toggle="tab" href="#tab2" role="tab" aria-controls="tab2" aria-selected="false">Excel configuration</a>
@@ -75,7 +75,7 @@
                                 <div class="tab-content" id="myTabsContent">
                                     <div class="tab-pane fade {{ 'show active' if not config_list else '' }}" id="tab1" role="tabpanel" aria-labelledby="tab1-tab">
                                         <p><h5>Control panel:</h5></p>
-                                        <form role="form" method='POST' name="run" action='/experiment'>
+                                        <form role="form" method='POST' name="run" action="{{url_for('experiment_run')}}">
                                             <div class="input-group mb-3">
                                                 <label class="input-group-text" for="repeat">Repeat for </label>
                                                 <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="100">
@@ -226,10 +226,10 @@
                                             </div>
                                         </form>
                                     </div>
-                                    <div class="tab-pane fade {{ 'show active' if config_list|count<=5 else '' }}" id="tab4" role="tabpanel" aria-labelledby="tab4-tab">
+                                    <div class="tab-pane fade {{ 'show active' if config_list and config_list|count<=5 else '' }}" id="tab4" role="tabpanel" aria-labelledby="tab4-tab">
                                         <p><h5>Control panel:</h5></p>
                                         <div>
-                                            <form method="POST" name="online-config" id="online-config">
+                                            <form method="POST" name="online-config" id="online-config" action="{{url_for('experiment_run')}}">
                                                 <table id="dataInputTable" class="table table-striped">
                                                     <thead class="thead-dark">
                                                     <tr>

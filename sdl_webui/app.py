@@ -213,7 +213,7 @@ def experiment_builder(instrument=None):
 
     functions = []
 
-    if pseudo_deck is None:
+    if not off_line and pseudo_deck is None:
         flash("Choose available deck below.")
         # flash(f"Make sure to import {script_dict['deck'] if script_dict['deck'] else 'deck'} for this script")
     if instrument:
@@ -280,6 +280,30 @@ def process_data(data, config_type):
     filtered_rows = [row for row in rows.values() if len(row) == len(config_type)]
 
     return filtered_rows
+
+@app.route("/generate_code", methods=['POST'])
+@login_required
+def generate_code():
+    instrument = request.form.get("instrument")
+    if request.method == 'POST' and "clear" in request.form:
+        session['prompt'] = ''
+    if request.method == 'POST' and "gen" in request.form:
+        prompt = request.form.get("prompt")
+        session['prompt'] = prompt
+        sdl_module = find_instrument_by_name(instrument)
+        empty_script = Script(author=session.get('user'))
+
+        action_list = start_gpt(sdl_module, prompt)
+        for action in action_list:
+            action['instrument'] = instrument
+            action['return'] = ''
+            if "args" not in action:
+                action['args'] = {}
+            if "arg_types" not in action:
+                action['arg_types'] = {}
+            empty_script.add_action(action)
+        post_script_file(empty_script)
+    return redirect(url_for("experiment_builder", instrument=instrument, use_llm=True))
 
 
 @app.route("/experiment", methods=['GET', 'POST'])
