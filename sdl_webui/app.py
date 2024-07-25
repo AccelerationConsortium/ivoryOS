@@ -20,13 +20,16 @@ from sdl_webui.utils import utils
 from sdl_webui.utils.form import create_form_from_module, create_builtin_form, create_action_button, format_name
 from sdl_webui.utils.model import Script, User, db
 
+
 # import instruments
 # from instruments import *
 # from config import off_line
 # import config
-global deck, autofill
+global deck, autofill, use_llm, agent
+agent = None
 deck = None
 autofill = False
+use_llm = False
 off_line = False
 
 app = Flask(__name__)
@@ -215,7 +218,7 @@ def experiment_builder(instrument=None):
 
     functions = []
 
-    if pseudo_deck is None:
+    if not off_line and pseudo_deck is None:
         flash("Choose available deck below.")
         # flash(f"Make sure to import {script_dict['deck'] if script_dict['deck'] else 'deck'} for this script")
     if instrument:
@@ -284,8 +287,8 @@ def experiment_builder(instrument=None):
     buttons = [create_action_button(i) for i in script.currently_editing_script]
     return render_template('experiment_builder.html', off_line=off_line, instrument=instrument, history=deck_list,
                            script=script, defined_variables=deck_variables, local_variables=defined_variables,
-                           functions=functions, autofill=autofill, forms=forms, buttons=buttons,
-                           format_name=format_name)
+                           functions=functions, autofill=autofill, forms=forms, buttons=buttons, format_name=format_name,
+                           use_llm=use_llm)
 
 
 def process_data(data, config_type):
@@ -309,6 +312,30 @@ def process_data(data, config_type):
     filtered_rows = [row for row in rows.values() if len(row) == len(config_type)]
 
     return filtered_rows
+
+@app.route("/generate_code", methods=['POST'])
+@login_required
+def generate_code():
+    instrument = request.form.get("instrument")
+    if request.method == 'POST' and "clear" in request.form:
+        session['prompt'] = ''
+    if request.method == 'POST' and "gen" in request.form:
+        prompt = request.form.get("prompt")
+        session['prompt'] = prompt
+        sdl_module = find_instrument_by_name(instrument)
+        empty_script = Script(author=session.get('user'))
+
+        action_list = agent.start_gpt(sdl_module, prompt)
+        for action in action_list:
+            action['instrument'] = instrument
+            action['return'] = ''
+            if "args" not in action:
+                action['args'] = {}
+            if "arg_types" not in action:
+                action['arg_types'] = {}
+            empty_script.add_action(action)
+        post_script_file(empty_script)
+    return redirect(url_for("experiment_builder", instrument=instrument, use_llm=True))
 
 
 @app.route("/experiment", methods=['GET', 'POST'])
@@ -964,12 +991,17 @@ def parse_deck(deck, save=None):
     return deck_variables
 
 
-def start_gui(module, host="0.0.0.0", port=8000, debug=True):
+def start_gui(module, host="0.0.0.0", port=8000, debug=True, llm_server=None, model=None):
     import sys
-    global deck, off_line
+    global deck, off_line, use_llm, agent
     deck = sys.modules[module]
     parse_deck(deck, save=True)
     off_line = True
+
+    if llm_server and model:
+        use_llm = True
+        from sdl_webui.utils.llm_agent import LlmAgent
+        agent = LlmAgent(llm_server, model, os.path.dirname(os.path.abspath(module)))
     socketio.run(app, host=host, port=port, debug=debug, use_reloader=False, allow_unsafe_werkzeug=True)
 
 
