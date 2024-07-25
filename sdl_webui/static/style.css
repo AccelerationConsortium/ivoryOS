@@ -148,13 +148,13 @@ hr.vertical {
   -webkit-overflow-scrolling: touch;
 }
 
-.accordion-button.collapsed {
+.accordion-item.design-control .accordion-button.collapsed {
     background-color:#c1f2f1 !important;
 }
-.accordion-button {
+.accordion-item.design-control .accordion-button {
     background-color:#b3dad9 !important;
 }
-.accordion-button:hover {
+.accordion-item.design-control .accordion-button:hover {
     background-color:#b3dad9 !important;
 }
 
@@ -166,4 +166,18 @@ hr.vertical {
 }
 .accordion-item.text-to-code .accordion-button:hover {
     background-color: #b8afdc !important;
+}
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    z-index: 1000;
+    text-align: center;
+    color: white;
+    font-size: 24px;
+    padding-top: 20%;
 }

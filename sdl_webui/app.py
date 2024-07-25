@@ -18,13 +18,16 @@ from sdl_webui.utils import utils
 from sdl_webui.utils.form import create_form_from_module, create_builtin_form, create_action_button, format_name
 from sdl_webui.utils.model import Script, User, db
 
+
 # import instruments
 # from instruments import *
 # from config import off_line
 # import config
-global deck, autofill
+global deck, autofill, use_llm, agent
+agent = None
 deck = None
 autofill = False
+use_llm = False
 off_line = False
 
 app = Flask(__name__)
@@ -256,7 +259,8 @@ def experiment_builder(instrument=None):
     buttons = [create_action_button(i) for i in script.currently_editing_script]
     return render_template('experiment_builder.html', off_line=off_line,instrument=instrument, history=deck_list,
                            script=script, defined_variables=deck_variables, local_variables=defined_variables,
-                           functions=functions, autofill=autofill, forms=forms, buttons=buttons, format_name=format_name)
+                           functions=functions, autofill=autofill, forms=forms, buttons=buttons, format_name=format_name,
+                           use_llm=use_llm)
 
 
 def process_data(data, config_type):
@@ -293,7 +297,7 @@ def generate_code():
         sdl_module = find_instrument_by_name(instrument)
         empty_script = Script(author=session.get('user'))
 
-        action_list = start_gpt(sdl_module, prompt)
+        action_list = agent.start_gpt(sdl_module, prompt)
         for action in action_list:
             action['instrument'] = instrument
             action['return'] = ''
@@ -958,12 +962,17 @@ def parse_deck(deck, save=None):
     return deck_variables
 
 
-def start_gui(module, host="0.0.0.0", port=8000, debug=True):
+def start_gui(module, host="0.0.0.0", port=8000, debug=True, llm_server=None, model=None):
     import sys
-    global deck, off_line
+    global deck, off_line, use_llm, agent
     deck = sys.modules[module]
     parse_deck(deck, save=True)
     off_line = True
+
+    if llm_server and model:
+        use_llm = True
+        from sdl_webui.utils.llm_agent import LlmAgent
+        agent = LlmAgent(llm_server, model, os.path.dirname(os.path.abspath(module)))
     socketio.run(app, host=host, port=port, debug=debug, use_reloader=False, allow_unsafe_werkzeug=True)
 
 
