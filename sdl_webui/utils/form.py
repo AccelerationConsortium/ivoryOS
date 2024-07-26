@@ -1,16 +1,10 @@
-from flask_wtf.recaptcha import widgets
 from wtforms.fields.core import Field
-from wtforms.fields.simple import SubmitField
 from wtforms.utils import UnsetValue
 from wtforms.validators import InputRequired
 from wtforms.widgets.core import TextInput
 
-from example.dummy_balance import DummyBalance
-from example.dummy_deck import DummySDLDeck
-from example.dummy_pump import DummyPump
-
 from flask_wtf import FlaskForm
-from wtforms import StringField, FloatField, IntegerField, BooleanField, HiddenField
+from wtforms import StringField, FloatField, HiddenField
 import inspect
 
 
@@ -308,8 +302,3 @@ def create_action_button(s: dict):
         text = f"{prefix}{action_text}  {arg_string}"
     return dict(label=text, style=style, uuid=s["uuid"], id=s["id"])
 
-
-if __name__ == '__main__':
-    pump = DummyPump("COM1")
-    sdl_deck = DummySDLDeck(DummyPump("COM1"), DummyBalance("COM2"))
-    forms = create_form_from_module(pump)

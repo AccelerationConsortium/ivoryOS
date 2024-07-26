@@ -5,7 +5,6 @@ import re
 
 import ollama
 
-from sdl_webui.llm_agent import start_gpt
 
 # host = "137.82.65.246"
 # model = "llama3"
@@ -129,7 +128,7 @@ class LlmAgent:
 
 
 if __name__ == "__main__":
-    from example.dummy_deck import sdl
+    from example.dummy_ur.dummy_deck import sdl
     llm_agent = LlmAgent()
     # robot = IrohDeck()
     # extract_annotations_docstrings(DummySDLDeck)

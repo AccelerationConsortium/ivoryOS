@@ -1,5 +1,5 @@
-from example.dummy_balance import DummyBalance
-from example.dummy_pump import DummyPump
+from example.dummy_ur.dummy_balance import DummyBalance
+from example.dummy_ur.dummy_pump import DummyPump
 
 # some constant values
 a = {"a": 1, "b": 3}
@@ -55,7 +55,7 @@ class DummyExperiment:
                         solvent_B: str,
                         solvent_ratio: float
                         ):
-        pass
+        print(type(mass_mg))
 
     def reslurry(self):
         pass
