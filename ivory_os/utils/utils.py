@@ -4,7 +4,11 @@ import os
 import pickle
 import datetime
 import logging
+from typing import Optional, Dict, Tuple
+
 from flask_socketio import SocketIO
+
+from ivory_os.utils.model import Script
 
 stypes = ['prep', 'script', 'cleanup']
 
@@ -145,6 +149,7 @@ def _get_type_from_parameters(arg, parameters):
     arg_type = ''
     if type(parameters) is inspect.Signature:
         p = parameters.parameters
+        print(p[arg].annotation)
         if p[arg].annotation is not inspect._empty:
             # print(p[arg].annotation)
             if p[arg].annotation.__module__ == 'typing':
@@ -161,6 +166,23 @@ def _get_type_from_parameters(arg, parameters):
             else:
                 arg_type = parameters[arg].__name__
     return arg_type
+
+
+def find_variable_in_script(script: Script, args: Dict[str, str]) -> Optional[Tuple[Dict[str, str], Dict[str, str]]]:
+    # TODO: need to search for if the variable exists
+    added_variables: list[Dict[str, str]] = [action for action in script.currently_editing_script if
+                                             action["instrument"] == "variable"]
+
+    possible_variable_arguments = {}
+    possible_variable_types = {}
+
+    for arg_name, arg_val in args.items():
+        for added_variable in added_variables:
+            if added_variable["action"] == arg_val:
+                possible_variable_arguments[arg_name] = added_variable["action"]
+                possible_variable_types[arg_name] = "variable"
+
+    return possible_variable_arguments, possible_variable_types
 
 
 def convert_type(args, parameters):
@@ -427,12 +449,12 @@ def ax_wrapper(data):
                 parameter.append({"name": param_name, "type": param_type, "values": values})
             if param_type == "fixed":
                 parameter.append({"name": param_name, "type": param_type, "value": values[0]})
-        elif "_min" in key:
+        elif key.endswith("_min"):
             if not value == 'none':
                 obj_name = key.split("_min")[0]
                 is_min = True if value == "minimize" else False
 
-                threshold = None if not data[f"{obj_name}_threshold"] else data[f"{obj_name}_threshold"]
+                threshold = None if not f"{obj_name}_threshold" in data else data[f"{obj_name}_threshold"]
                 properties = ObjectiveProperties(minimize=is_min, threshold=threshold)
                 objectives[obj_name] = properties
     return parameter, objectives
@@ -444,3 +466,12 @@ def ax_initiation(data):
     ax_client = AxClient()
     ax_client.create_experiment(parameter, objectives)
     return ax_client
+
+
+def get_arg_type(args, parameters):
+    arg_types = {}
+    print(args, parameters)
+    if args:
+        for arg in args:
+            arg_types[arg] = _get_type_from_parameters(arg, parameters)
+    return arg_types

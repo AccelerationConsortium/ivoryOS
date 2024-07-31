@@ -20,7 +20,7 @@
     height: 70vh;
     overflow: hidden;
     overflow-y: scroll;
-    background: beige;
+    background: #e8e8cd;
     background-size: 20px 20px;
     background-image: radial-gradient(circle, cadetblue 1px, rgba(0, 0, 0, 0) 1px);
 }
@@ -146,4 +146,38 @@ hr.vertical {
 #reorder {
   overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
+}
+
+.accordion-item.design-control .accordion-button.collapsed {
+    background-color:#c1f2f1 !important;
+}
+.accordion-item.design-control .accordion-button {
+    background-color:#b3dad9 !important;
+}
+.accordion-item.design-control .accordion-button:hover {
+    background-color:#b3dad9 !important;
+}
+
+.accordion-item.text-to-code .accordion-button.collapsed {
+    background-color: #cdc1f2 !important;
+}
+.accordion-item.text-to-code .accordion-button {
+    background-color: #cdc1f2 !important;
+}
+.accordion-item.text-to-code .accordion-button:hover {
+    background-color: #b8afdc !important;
+}
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    z-index: 1000;
+    text-align: center;
+    color: white;
+    font-size: 24px;
+    padding-top: 20%;
 }
