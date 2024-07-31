@@ -1,3 +1,5 @@
+import time
+
 from example.dummy_ur.dummy_balance import DummyBalance
 from example.dummy_ur.dummy_pump import DummyPump
 
@@ -79,14 +81,33 @@ class DummyExperiment:
         pass
 
 
-sdl = DummyExperiment(deck)
+cryst_co = DummyExperiment(deck)
 
+
+class ShakerDemo:
+    def __init__(self, deck):
+        self.deck = deck
+
+    def move_sample_to_shaker(self, location:str="A1"):
+        pass
+
+    def shake_for_duration(self, duration: float):
+        time.sleep(duration)
+
+    def move_vial_to_tray(self,  location:str="A1"):
+        pass
+
+vial_shaker = ShakerDemo(deck)
 
 if __name__ == "__main__":
-    from sdl_webui.app import start_gui
+    from ivory_os.app import ivoryos
+    ivoryos(__name__, llm_server='localhost', model="llama3.1")
 
-    start_gui(__name__, llm_server='137.82.65.246', model="llama3.1")
+
+    # start_gui(__name__, llm_server='openai', model="gpt-3.5-turbo")
 
 """add 10 mg of acetaminophen, dose 1 ml of methanol, equilibrate for 10 minute at 50 degrees, filter the sample and analyze with HPLC"""
 """i want to run a cooling crystal experiment, with low temperature being 20, and high temperature being 40, cooling rate being 0.1, I want to dose 11 mg of my sample, and use 
 water as solvent a and isopropanol for solvent b, the solvent ratio being 0.1"""
+
+

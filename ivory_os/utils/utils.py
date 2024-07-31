@@ -8,7 +8,7 @@ from typing import Optional, Dict, Tuple
 
 from flask_socketio import SocketIO
 
-from sdl_webui.utils.model import Script
+from ivory_os.utils.model import Script
 
 stypes = ['prep', 'script', 'cleanup']
 

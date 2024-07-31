@@ -3,11 +3,12 @@ import json
 import os
 import re
 
-import ollama
+import openai
 
+# Replace 'your-api-key' with your actual API key
+openai.api_key = os.environ['OPENAI_API_KEY']
+print(openai.api_key)
 
-# host = "137.82.65.246"
-# model = "llama3"
 
 
 class LlmAgent:
@@ -70,7 +71,6 @@ class LlmAgent:
 
     def start_gpt(self, robot, prompt):
         # deck_info = update_docstring_file(deck_path)
-        ollama_client = ollama.Client(host=self.host)
 
         deck_info, name_list = self.extract_annotations_docstrings(type(robot))
         full_prompt = '''
@@ -99,11 +99,11 @@ class LlmAgent:
                             "args": {}
                         }
                         ]
-    
+
                         ''' + f'''
                         Now these are my callable functions,
                         {deck_info}
-    
+
                         and I want you to find the most appropriate function if I want to do these tasks
                         """{prompt}"""
                         ,and write a list of dictionary in json accordingly. Please only use these action names {name_list}, 
@@ -112,13 +112,12 @@ class LlmAgent:
 
         with open(os.path.join(self.output_path, "prompt.txt"), "w") as f:
             f.write(full_prompt)
-        output = ollama_client.chat(
-            model=self.model,
-            messages=[{'role': 'user',
-                       'content': full_prompt}],
-            stream=False,
+        response = openai.Completion.create(
+            engine="text-davinci-003",  # Specify the model you want to use
+            prompt=full_prompt,
+            max_tokens=60
         )
-        msg = output['message']['content']
+        msg = response.choices[0].text.strip()
         print(msg)
 
         code = self.parse_code_from_msg(msg)
@@ -128,16 +127,18 @@ class LlmAgent:
 
 
 if __name__ == "__main__":
-    from example.dummy_ur.dummy_deck import sdl
+    from example.dummy_ur.dummy_deck import deck
+
     llm_agent = LlmAgent()
     # robot = IrohDeck()
     # extract_annotations_docstrings(DummySDLDeck)
     prompt = '''I want to start with dosing 10 mg of current sample, and add 1 mL of toluene 
     and equilibrate for 10 minute at 40 degrees, then sample 20 ul of sample to analyze with hplc, and save result'''
-    llm_agent.start_gpt(sdl, prompt)
+    llm_agent.start_gpt(deck, prompt)
 
 """
 I want to dose 10mg, 6mg, 4mg, 3mg, 2mg, 1mg to 6 vials
 I want to add 10 mg to vial a3, and 10 ml of liquid, then shake them for 3 minutes
 
 """
+

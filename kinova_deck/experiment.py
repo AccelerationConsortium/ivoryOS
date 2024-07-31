@@ -25,6 +25,6 @@ sdl = DummyKinovaDeck(kinova, europa, [home, europa_base])
 
 
 if __name__ == "__main__":
-    from sdl_webui.app import start_gui
+    from ivory_os.app import ivoryos
 
-    start_gui(__name__)
+    ivoryos(__name__)

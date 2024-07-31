@@ -16,9 +16,9 @@ from werkzeug.utils import secure_filename
 from flask_login import LoginManager, login_required, login_user, logout_user
 import bcrypt
 
-from sdl_webui.utils import utils
-from sdl_webui.utils.form import create_form_from_module, create_builtin_form, create_action_button, format_name
-from sdl_webui.utils.model import Script, User, db
+from ivory_os.utils import utils
+from ivory_os.utils.form import create_form_from_module, create_builtin_form, create_action_button, format_name
+from ivory_os.utils.model import Script, User, db
 
 
 # import instruments
@@ -991,7 +991,7 @@ def parse_deck(deck, save=None):
     return deck_variables
 
 
-def start_gui(module, host="0.0.0.0", port=8000, debug=True, llm_server=None, model=None):
+def ivoryos(module, host="0.0.0.0", port=8000, debug=True, llm_server=None, model=None):
     import sys
     global deck, off_line, use_llm, agent
     deck = sys.modules[module]
@@ -1000,7 +1000,7 @@ def start_gui(module, host="0.0.0.0", port=8000, debug=True, llm_server=None, mo
 
     if llm_server and model:
         use_llm = True
-        from sdl_webui.utils.llm_agent import LlmAgent
+        from ivory_os.utils.llm_agent import LlmAgent
         agent = LlmAgent(llm_server, model, os.path.dirname(os.path.abspath(module)))
     socketio.run(app, host=host, port=port, debug=debug, use_reloader=False, allow_unsafe_werkzeug=True)
 

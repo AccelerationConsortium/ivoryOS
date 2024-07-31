@@ -13,9 +13,11 @@ pip install sdl-webui
 
 ## Usage
 in your self-driving platform script, use `start_gui(__name__)`. Example in [sample_code.py](example/dummy_ur/dummy_deck.py)
+
 ```python
-from sdl_webui.app import start_gui
-start_gui(__name__)
+from ivory_os.app import ivoryos
+
+ivoryos(__name__)
 ```
 
 
