@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Callable, Optional, Union
 
-from abstract_robot_classes.moveableconfig import MoveableSequence, MoveableConfig
+from example.abstract_robot_classes.moveableconfig import MoveableSequence, MoveableConfig
 
 
 @dataclass

@@ -1,6 +1,6 @@
 from typing import Union
 
-from kinova_deck.moving.kinova_movable_config import KinovaMoveableSequence, KinovaMoveableConfig
+from example.kinova_deck.moving.kinova_movable_config import KinovaMoveableSequence, KinovaMoveableConfig
 
 
 def pddl_object(name: str, kind: str, args: dict = None) -> dict:

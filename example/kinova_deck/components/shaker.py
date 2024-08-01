@@ -1,7 +1,7 @@
 from ika import Thermoshaker
 
-from abstract_robot_classes.container import Container
-from kinova_deck.kinova_location import KinovaGridLocation
+from example.abstract_robot_classes.container import Container
+from example.kinova_deck.kinova_location import KinovaGridLocation
 
 
 class Shaker(KinovaGridLocation):
