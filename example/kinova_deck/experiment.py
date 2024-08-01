@@ -1,8 +1,8 @@
-from kinova_deck.chemicals import Liquid
-from kinova_deck.kinova_arm import KinovaArm
-from kinova_deck.kinova_location import KinovaLocation
-from kinova_deck.moveable.europa import EuropaHandling
-from kinova_deck.moving.kinova_movable_config import KinovaMoveableConfig, KinovaMoveableSequence
+from example.kinova_deck.chemicals import Liquid
+from example.kinova_deck.kinova_arm import KinovaArm
+from example.kinova_deck.kinova_location import KinovaLocation
+from example.kinova_deck.moveable.europa import EuropaHandling
+from example.kinova_deck.moving.kinova_movable_config import KinovaMoveableConfig, KinovaMoveableSequence
 
 home = KinovaLocation(name='home', sequence_location_name='central_home')
 kinova = KinovaArm(name='kinova', home_coordinates='central_home')
@@ -25,6 +25,6 @@ sdl = DummyKinovaDeck(kinova, europa, [home, europa_base])
 
 
 if __name__ == "__main__":
-    from ivory_os.app import ivoryos
+    from ivoryos.app import ivoryos
 
     ivoryos(__name__)

@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import Optional
 
-from abstract_robot_classes.moveableconfig import MoveableConfig
+from example.abstract_robot_classes.moveableconfig import MoveableConfig
 
 
 class Moveable(ABC):

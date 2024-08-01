@@ -16,9 +16,9 @@ from werkzeug.utils import secure_filename
 from flask_login import LoginManager, login_required, login_user, logout_user
 import bcrypt
 
-from ivory_os.utils import utils
-from ivory_os.utils.form import create_form_from_module, create_builtin_form, create_action_button, format_name
-from ivory_os.utils.model import Script, User, db
+from ivoryos.utils import utils
+from ivoryos.utils.form import create_form_from_module, create_builtin_form, create_action_button, format_name
+from ivoryos.utils.model import Script, User, db
 
 
 # import instruments
@@ -90,7 +90,6 @@ def post_script_file(script, is_dict=False):
     if is_dict:
         session['scripts'] = script
     else:
-        # print(script.as_dict())
         session['scripts'] = script.as_dict()
 
 
@@ -238,7 +237,6 @@ def experiment_builder(instrument=None):
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
 
             if form and form.validate_on_submit():
-                # print(kwargs)
                 function_name = kwargs.pop("hidden_name")
                 save_data = kwargs.pop('return', '')
                 variable_kwargs = {}
@@ -249,9 +247,6 @@ def experiment_builder(instrument=None):
 
                     for name in variable_kwargs.keys():
                         del kwargs[name]
-
-                    print(kwargs)
-
                     primitive_arg_types = utils.get_arg_type(kwargs, functions[function_name])
 
                 except:
@@ -325,7 +320,7 @@ def generate_code():
         sdl_module = find_instrument_by_name(instrument)
         empty_script = Script(author=session.get('user'))
 
-        action_list = agent.start_gpt(sdl_module, prompt)
+        action_list = agent.generate_code(sdl_module, prompt)
         for action in action_list:
             action['instrument'] = instrument
             action['return'] = ''
@@ -386,8 +381,6 @@ def experiment_run():
             bo_args = request.form.to_dict()
             # ax_client = utils.ax_initiation(bo_args)
         if "online-config" in request.form:
-            # print("online-config")
-            # print(request.form.to_dict())
             config = process_data(request.form.to_dict(), config_list)
         repeat = request.form.get('repeat', None)
 
@@ -399,7 +392,6 @@ def experiment_run():
 
         except Exception as e:
             flash(e)
-    print(config_list, config_type_list)
     return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=script_py,
                            return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                            config_preview=config_preview, data_list=data_list, config_type_list=config_type_list,
@@ -464,7 +456,6 @@ def generate_progress(run_name, config, repeat, script, bo_args):
                     parameters, trial_index = ax_client.get_next_trial()
                     logger.info(f'Output value: {parameters}')
                     output = eval(f"{run_name}_script(**{parameters})")
-                    # print(output)
                     ax_client.complete_trial(trial_index=trial_index, raw_data=output)
                 except Exception as e:
                     logger.info(f'Optimization error: {e}')
@@ -477,7 +468,6 @@ def generate_progress(run_name, config, repeat, script, bo_args):
     if compiled:
         exec(run_name + "_cleanup()")
         logger.info('Executing clean up steps')
-        # print(output_list)
         if len(output_list) > 0:
             args = list(arg_type.keys())
             args.extend(return_list)
@@ -532,7 +522,6 @@ def new_controller(instrument=None):
     if instrument:
 
         device = find_instrument_by_name(instrument)
-        # print(device)
         args = utils.inspect.signature(device.__init__)
 
         if request.method == 'POST':
@@ -943,15 +932,12 @@ def download(filetype):
         script.sort_actions()
         json_object = json.dumps(script.as_dict())
         filepath = os.path.join(app.config['SCRIPT_FOLDER'], f"{run_name}.json")
-        # print(filepath)
         with open(filepath, "w") as outfile:
             outfile.write(json_object)
     elif filetype == "python":
         filepath = os.path.join(app.config["SCRIPT_FOLDER"], f"{run_name}.py")
 
     return send_file(os.path.abspath(filepath), as_attachment=True)
-    # elif filetype == "webui_data":
-    #     return send_file("results/" + run_name + "_data.csv", as_attachment=True)
 
 
 @app.route('/download_results/<filename>')
@@ -998,10 +984,10 @@ def ivoryos(module, host="0.0.0.0", port=8000, debug=True, llm_server=None, mode
     parse_deck(deck, save=True)
     off_line = True
 
-    if llm_server and model:
+    if model:
         use_llm = True
-        from ivory_os.utils.llm_agent import LlmAgent
-        agent = LlmAgent(llm_server, model, os.path.dirname(os.path.abspath(module)))
+        from ivoryos.utils.llm_agent import LlmAgent
+        agent = LlmAgent(host=llm_server, model=model, output_path=os.path.dirname(os.path.abspath(module)))
     socketio.run(app, host=host, port=port, debug=debug, use_reloader=False, allow_unsafe_werkzeug=True)
 
 

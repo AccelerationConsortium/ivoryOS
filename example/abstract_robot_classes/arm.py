@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from abstract_robot_classes.abclocation import ABCLocation
-from abstract_robot_classes.moveable import Moveable
+from example.abstract_robot_classes.abclocation import ABCLocation
+from example.abstract_robot_classes.moveable import Moveable
 
 
 class Arm(ABC):

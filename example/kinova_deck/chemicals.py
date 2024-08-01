@@ -1,4 +1,4 @@
-from abstract_robot_classes.chemical import Chemical
+from example.abstract_robot_classes.chemical import Chemical
 
 
 class Liquid(Chemical):

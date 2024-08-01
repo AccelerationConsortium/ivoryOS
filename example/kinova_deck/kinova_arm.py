@@ -3,13 +3,11 @@ from __future__ import annotations
 import time
 from typing import Optional, Union
 
-from hein_robots.kinova.kinova_gen3 import KinovaGen3Arm
-
-from abstract_robot_classes.arm import Arm
-from abstract_robot_classes.container import Container
-from abstract_robot_classes.moveable import Moveable
-from kinova_deck.kinova_location import extract_location_from_file, KinovaLocation, KinovaGridLocation
-from kinova_deck.moving.kinova_movable_config import KinovaMoveableConfig
+from example.abstract_robot_classes.arm import Arm
+from example.abstract_robot_classes.container import Container
+from example.abstract_robot_classes.moveable import Moveable
+from example.kinova_deck.kinova_location import extract_location_from_file, KinovaLocation, KinovaGridLocation
+from example.kinova_deck.moving.kinova_movable_config import KinovaMoveableConfig
 
 KINOVA_ADDRESS = "137.82.65.87"
 SAFE_VELOCITY = 50

@@ -5,7 +5,7 @@ import json
 from hein_robots.grids import Grid
 from hein_robots.robotics import Location, Cartesian
 
-from abstract_robot_classes.abclocation import ABCLocation
+from example.abstract_robot_classes.abclocation import ABCLocation
 
 
 def extract_location_from_file(sequence_location_name) -> Location:

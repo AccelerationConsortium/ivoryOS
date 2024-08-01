@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Union, Optional
 
-from abstract_robot_classes.chemical import Chemical
-from abstract_robot_classes.container import Container
-from kinova_deck.moving.kinova_movable_config import KinovaMoveableConfig
+from example.abstract_robot_classes.chemical import Chemical
+from example.abstract_robot_classes.container import Container
+from example.kinova_deck.moving.kinova_movable_config import KinovaMoveableConfig
 
 
 class Vial(Container):

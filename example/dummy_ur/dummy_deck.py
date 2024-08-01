@@ -100,11 +100,11 @@ class ShakerDemo:
 vial_shaker = ShakerDemo(deck)
 
 if __name__ == "__main__":
-    from ivory_os.app import ivoryos
-    ivoryos(__name__, llm_server='localhost', model="llama3.1")
+    from ivoryos.app import ivoryos
+    ivoryos(__name__, model="llama3.1", llm_server='localhost',)
 
 
-    # start_gui(__name__, llm_server='openai', model="gpt-3.5-turbo")
+    # ivoryos(__name__, model="gpt-3.5-turbo")
 
 """add 10 mg of acetaminophen, dose 1 ml of methanol, equilibrate for 10 minute at 50 degrees, filter the sample and analyze with HPLC"""
 """i want to run a cooling crystal experiment, with low temperature being 20, and high temperature being 40, cooling rate being 0.1, I want to dose 11 mg of my sample, and use 

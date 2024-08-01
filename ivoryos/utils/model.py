@@ -1,7 +1,7 @@
 import json
 import uuid
 from datetime import datetime
-from ivory_os.utils import utils
+from ivoryos.utils import utils
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
@@ -389,7 +389,7 @@ class Script(db.Model):
                             if type(args) is dict:
                                 temp = args.__str__()
                                 for arg in args:
-                                    print(arg_types[arg])
+                                    # print(arg_types[arg])
                                     if type(args[arg]) is str and args[arg].startswith("#"):
                                         temp = temp.replace("'#" + args[arg][1:] + "'", args[arg][1:])
                                     elif arg_types[arg] == "variable":
