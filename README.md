@@ -6,7 +6,7 @@ Granting SDLs flexibility and modularity makes it almost impossible to design a 
 This web UI aims to ease up the control of any Python-based SDLs by displaying functions and parameters for initialized modules dynamically. 
 The modules can be hardware API, high-level functions, or experiment workflow.
 With the least modification of the current workflow, user can design, save and run their experiment and monitor the process. 
-## Design AI-assistant
+## AI assistant
 To streamline the experimental design on SDLs, we also integrate Large Language Models (LLMs) to interpret the inspected functions and generate code according to task descriptions.
 
 ## Installation
@@ -15,7 +15,7 @@ pip install ivoryos
 ```
 
 ## Usage
-In your SDL script, use `ivoryos(__name__)`. Example in [sample_code.py](example/dummy_ur/dummy_deck.py)
+In your SDL script, use `ivoryos(__name__)`. Example in [sample_code.py](https://gitlab.com/heingroup/ivoryos/-/blob/main/example/dummy_ur/dummy_deck.py)
 
 ```python
 from ivoryos.app import ivoryos
@@ -24,7 +24,7 @@ ivoryos(__name__)
 
 
 ## Enable LLMs with [OpenAI API](https://github.com/openai/openai-python)
-1. Create a `.env` file in project repo for `OPENAI_API_KEY`
+1. Create a `.env` file for `OPENAI_API_KEY`
 ```
 OPENAI_API_KEY="Your API Key"
 ```
@@ -44,7 +44,7 @@ ivoryos(__name__, llm_server="localhost", model="llama3.1")
 ```
 
 ## Developing
-coming soon
+This is a wip project.
 
 ## Authors and Acknowledgement
 Ivory Zhang, Lucy Hao

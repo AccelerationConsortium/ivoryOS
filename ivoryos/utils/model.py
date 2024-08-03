@@ -349,7 +349,8 @@ class Script(db.Model):
                 exec_string = exec_string + self.indent(indent_unit) + "global " + run_name + "_" + i
                 for index, action in enumerate(self.script_dict[i]):
                     instrument = action['instrument']
-                    arg_types = action['arg_types'] if len(action['arg_types']) != 0 else {}
+                    if instrument not in ["if", "while"]:
+                        arg_types = action['arg_types'] if len(action['arg_types']) != 0 else {}
                     args = action['args']
                     if type(args) is str and args.startswith("#"):
                         args = args[1:]

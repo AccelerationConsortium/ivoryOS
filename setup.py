@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name='ivoryOS',
-    version='0.1.0',
-    packages=find_packages(),
+    version='0.1.3',
+    packages=find_packages(exclude=['example', 'example.*']),
     include_package_data=True,
     description='an open-source Python package enabling Self-Driving Labs (SDLs) interoperability',
     long_description=open('README.md').read(),
@@ -19,7 +19,6 @@ setup(
         "Flask-SocketIO",
         "Flask-SQLAlchemy",
         "Flask-WTF",
-        "mysqlclient==2.1.1",
         "SQLAlchemy-Utils",
         "openai",
         "python-dotenv",
