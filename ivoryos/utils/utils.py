@@ -4,6 +4,10 @@ import os
 import pickle
 import datetime
 import logging
+import importlib
+import subprocess
+import sys
+
 from typing import Optional, Dict, Tuple
 
 from flask_socketio import SocketIO
@@ -454,13 +458,14 @@ def ax_wrapper(data):
                 obj_name = key.split("_min")[0]
                 is_min = True if value == "minimize" else False
 
-                threshold = None if not f"{obj_name}_threshold" in data else data[f"{obj_name}_threshold"]
+                threshold = None if f"{obj_name}_threshold" not in data else data[f"{obj_name}_threshold"]
                 properties = ObjectiveProperties(minimize=is_min, threshold=threshold)
                 objectives[obj_name] = properties
     return parameter, objectives
 
 
 def ax_initiation(data):
+    install_and_import("ax", "ax-platform")
     parameter, objectives = ax_wrapper(data)
     from ax.service.ax_client import AxClient
     ax_client = AxClient()
@@ -470,8 +475,20 @@ def ax_initiation(data):
 
 def get_arg_type(args, parameters):
     arg_types = {}
-    print(args, parameters)
+    # print(args, parameters)
     if args:
         for arg in args:
             arg_types[arg] = _get_type_from_parameters(arg, parameters)
     return arg_types
+
+
+def install_and_import(package, package_name=None):
+    try:
+        # Check if the package is already installed
+        importlib.import_module(package)
+        # print(f"{package} is already installed.")
+    except ImportError:
+        # If not installed, install it
+        # print(f"{package} is not installed. Installing now...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package_name or package])
+        # print(f"{package} has been installed successfully.")

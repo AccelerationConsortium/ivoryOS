@@ -6,12 +6,10 @@ import csv
 import pickle
 import traceback
 import time
-from inspect import Signature
-from typing import Optional
+import sys
 
 from flask import Flask, redirect, url_for, flash, jsonify, send_file, request, render_template, session
 from flask_socketio import SocketIO
-from flask_wtf import FlaskForm
 from werkzeug.utils import secure_filename
 from flask_login import LoginManager, login_required, login_user, logout_user
 import bcrypt
@@ -21,10 +19,6 @@ from ivoryos.utils.form import create_form_from_module, create_builtin_form, cre
 from ivoryos.utils.model import Script, User, db
 
 
-# import instruments
-# from instruments import *
-# from config import off_line
-# import config
 global deck, autofill, use_llm, agent
 agent = None
 deck = None
@@ -559,33 +553,26 @@ def new_controller(instrument=None):
 @login_required
 def controllers(instrument):
     inst_object = find_instrument_by_name(instrument)
-    functions = utils.parse_functions(inst_object)
+    _forms = create_form_from_module(sdl_module=find_instrument_by_name(instrument), autofill=False, design=False)
+    order = session.get(f'card_order_{instrument}', _forms.keys())
+    forms = {name: _forms[name] for name in order if name in _forms}
     if request.method == 'POST':
-        args = request.form.to_dict()
-        function_name = args.pop('action')
-        function_executable = getattr(inst_object, function_name)
-        try:
-            args, _ = utils.convert_type(args, functions[function_name])
-        except Exception as e:
-            flash(e)
-            return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object)
-        if type(functions[function_name]) is dict:
-            args = list(args.values())[0]
-        # try:
-        output = ''
-        if callable(function_executable):
-            # thread = threading.Thread(target=function_executable, kwargs=args)
-            # thread.start()
-            if args is not None:
-                output = function_executable(**args)
-            else:
-                output = function_executable()
-        else:  # for setter
-            function_executable = args
-        flash(f"\nRun Success! Output value: {output}.")
-        # except Exception as e:
-        #     flash(e)
-    return render_template('controllers.html', instrument=instrument, functions=functions, inst=inst_object)
+        all_kwargs = request.form.copy()
+        method_name = all_kwargs.pop("hidden_name", None)
+        # if method_name is not None:
+        form = forms.get(method_name)
+        kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
+        function_executable = getattr(inst_object, method_name)
+        if form and form.validate_on_submit():
+            try:
+                kwargs.pop("hidden_name")
+                output = function_executable(**kwargs)
+                flash(f"\nRun Success! Output value: {output}.")
+            except Exception as e:
+                flash(e)
+        else:
+            flash(form.errors)
+    return render_template('controllers.html', instrument=instrument, inst=inst_object, forms=forms)
 
 
 # -----------------------handle action editing--------------------------------------------
@@ -946,6 +933,14 @@ def download_results(filename):
     return send_file(os.path.abspath(filepath), as_attachment=True)
 
 
+@app.route('/save-order/<group_name>', methods=['POST'])
+def save_order(group_name):
+    # Save the new order for the specified group to session
+    data = request.json
+    session[f'card_order_{group_name}'] = data['order']
+    return '', 204
+
+
 def find_instrument_by_name(name: str):
     if name.startswith("deck"):
         return eval(name)
@@ -978,7 +973,6 @@ def parse_deck(deck, save=None):
 
 
 def ivoryos(module, host="0.0.0.0", port=8000, debug=True, llm_server=None, model=None):
-    import sys
     global deck, off_line, use_llm, agent
     deck = sys.modules[module]
     parse_deck(deck, save=True)
@@ -986,6 +980,7 @@ def ivoryos(module, host="0.0.0.0", port=8000, debug=True, llm_server=None, mode
 
     if model:
         use_llm = True
+        utils.install_and_import('openai')
         from ivoryos.utils.llm_agent import LlmAgent
         agent = LlmAgent(host=llm_server, model=model, output_path=os.path.dirname(os.path.abspath(module)))
     socketio.run(app, host=host, port=port, debug=debug, use_reloader=False, allow_unsafe_werkzeug=True)

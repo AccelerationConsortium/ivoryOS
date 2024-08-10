@@ -4,7 +4,7 @@ from wtforms.validators import InputRequired
 from wtforms.widgets.core import TextInput
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, FloatField, HiddenField
+from wtforms import StringField, FloatField, HiddenField, BooleanField
 import inspect
 
 
@@ -189,7 +189,7 @@ def format_name(name):
     return text.capitalize()
 
 
-def create_form_for_method(method, method_name, autofill, script):
+def create_form_for_method(method, method_name, autofill, script=None):
     class DynamicForm(FlaskForm):
         pass
 
@@ -197,7 +197,7 @@ def create_form_for_method(method, method_name, autofill, script):
         int: (VariableOrIntField, 'Enter integer value'),
         float: (VariableOrFloatField, 'Enter numeric value'),
         str: (VariableOrStringField, 'Enter text'),
-        bool: (VariableOrBoolField, 'Enter bool value')
+        bool: (BooleanField, 'Enter bool value')
     }
 
     sig = inspect.signature(method)
@@ -206,20 +206,20 @@ def create_form_for_method(method, method_name, autofill, script):
         if param.name == 'self':
             continue
         formatted_param_name = format_name(param.name)
-
+        placeholder_text = ""
         if autofill:
             field_class = VariableOrStringField
             field_kwargs = {
                 "label": f'{formatted_param_name}',
                 "default": f'#{param.name}',
-                "script": script
+                # "script": script
             }
         else:
             # Decide the field type based on annotation
             field_kwargs = {
                 "label": f'{formatted_param_name}',
                 "default": param.default if param.default is not param.empty else "",
-                "script": script
+                # "script": script
             }
             field_class, placeholder_text = annotation_mapping.get(
                 param.annotation,
@@ -236,22 +236,23 @@ def create_form_for_method(method, method_name, autofill, script):
 
 
 # Create forms for each method in DummySDLDeck
-def create_add_form(attr, attr_name, autofill, script):
+def create_add_form(attr, attr_name, autofill, script=None, design=True):
     dynamic_form = create_form_for_method(attr, attr_name, autofill, script)
-    return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
-    setattr(dynamic_form, 'return', return_value)
+    if design:
+        return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
+        setattr(dynamic_form, 'return', return_value)
     hidden_method_name = HiddenField(name=f'hidden_name', render_kw={"value": f'{attr_name}'})
     setattr(dynamic_form, 'hidden_name', hidden_method_name)
     return dynamic_form
 
 
-def create_form_from_module(sdl_module, autofill, script):
+def create_form_from_module(sdl_module, autofill, script=None, design=True):
     # sdl_deck = DummySDLDeck(DummyPump("COM1"), DummyBalance("COM2"))
     method_forms = {}
     for attr_name in dir(sdl_module):
         attr = getattr(sdl_module, attr_name)
         if inspect.ismethod(attr) and not attr_name.startswith('_'):
-            form_class = create_add_form(attr, attr_name, autofill, script)
+            form_class = create_add_form(attr, attr_name, autofill, script, design)
             method_forms[attr_name] = form_class()
     return method_forms
 

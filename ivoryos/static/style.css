@@ -7,6 +7,13 @@
 .card{
     display: flex;
     justify-content: flex-end;
+    cursor: move;
+}
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 4 columns layout */
+    gap: 25px;
+    padding: 10px;
 }
 .navbar-nav {
     font-size: larger;

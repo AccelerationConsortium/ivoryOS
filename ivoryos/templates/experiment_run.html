@@ -96,44 +96,33 @@
                                             
                                             <form method="GET" action="{{ url_for("experiment_run") }}" enctype="multipart/form-data">
                                                 <div class="input-group mb-3">
-                                                    <select class="form-select" name="filename" id="filename" required>
+                                                    <select class="form-select" name="filename" id="filename" required onchange="document.getElementById('filename').submit();">
                                                         <option selected disabled hidden style="overflow-wrap: break-word;" name="filename" id="filename" value=""> -- choose config file --</option>
                                                         {% for config_file in config_file_list %}
                                                             <option {{'selected' if filename==config_file else '' }} style="overflow-wrap: break-word;" name="filename" id="filename" value="{{config_file}}">{{config_file}}</option>
                                                         {% endfor %}
                                                     </select>
-                                                    <button type="submit"  class="btn btn-primary"> Change config file </button>
+{#                                                    <button type="submit"  class="btn btn-primary"> Change config file </button>#}
                                                 </div>
                                             </form>
-                                            <div class="dropdown" style="float: right">
-                                                <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="bi bi-three-dots"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" data-bs-toggle="collapse" href="#preview" role="button" aria-expanded="false">Preview config</a></li>
-                                                    <li><a class="dropdown-item" href="/download/configure" >Download empty config .csv</a></li>
-                                                    <li><a class="dropdown-item" data-bs-toggle="collapse" href="#loadfile" role="button" aria-expanded="false">Upload .csv</a></li>
-                                                </ul>
-                                            </div>
+
+{#                                                    <li><a class="dropdown-item" data-bs-toggle="collapse" href="#preview" role="button" aria-expanded="false">Preview config</a></li>#}
+                                            <a class="btn btn-primary" href="/download/configure" >empty config</a>
+                                            <a class="btn btn-primary" data-bs-toggle="collapse" href="#loadfile" role="button" aria-expanded="false">Upload .csv</a>
+
                                         
                                             <div class="collapse" id="loadfile">
                                                 <form method="POST" action="/uploads" enctype="multipart/form-data">
                                                     <div class="input-group">
-                                                        <input class="form-control" name="file" type="file" required="required">
+                                                        <input class="form-control" name="file" type="file" required="required" onchange="document.getElementById('file').submit();">
                                                         <input class="btn btn-secondary" type="submit" value="Upload .csv">
                                                     </div>
                                                 </form>
                                             </div>
                                         </div>
-                                        {% if filename and not no_deck_warning %}
-                                            <form role="form" method='POST' name="run" action="{{ url_for('experiment_run')}}">
-                                                <div class="form-group">
-                                                    <button type="submit" class="btn btn-dark">Run</button>
-                                                </div>
-                                            </form>
-                                        {% endif %}
+
                                         {#Preview config file#}
-                                        <div class="collapse" id="preview">
+                                        <div id="preview">
                                         {% if config_preview %}
                                             <table class="table table-hover">
                                                 <thead>
@@ -157,6 +146,13 @@
                                             Empty config file
                                         {% endif %}
                                         </div>
+                                        {% if filename and not no_deck_warning %}
+                                            <form role="form" method='POST' name="run" action="{{ url_for('experiment_run')}}">
+                                                <div class="form-group">
+                                                    <button type="submit" class="btn btn-success">Run</button>
+                                                </div>
+                                            </form>
+                                        {% endif %}
                                     </div>
                                 
                                     <div class="tab-pane fade " id="tab3" role="tabpanel" aria-labelledby="tab3-tab">
@@ -220,7 +216,7 @@
                                                 </div>
                                                 {% if not no_deck_warning%}
                                                     <div class="input-group mb-3">
-                                                        <button class="form-control" type="submit" name="bo" class="btn btn-dark">Run</button>
+                                                        <button class="form-control" type="submit" name="bo">Run</button>
                                                     </div>
                                                 {% endif %}
                                             </div>
