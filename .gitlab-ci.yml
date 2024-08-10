@@ -3,32 +3,20 @@ image: python:3.9
 # Define stages
 stages:
   - install
-  - test
   - deploy
 
 # Install dependencies stage
 install_dependencies:
   stage: install
   script:
-    - pip install -r requirements.txt  # Install dependencies from requirements.txt
-    - pip install openai  # Install additional dependencies if necessary
+    - pip install -r requirements.txt
   artifacts:
     paths:
-      - .venv/  # Store the virtual environment as an artifact (optional)
+      - .venv/
 
-# Run tests (optional)
-run_tests:
-  stage: test
-  script:
-    - pytest  # Run your test suite
-  only:
-    - merge_requests
-    - main
-
-# Deploy (running the app)
 deploy:
   stage: deploy
   script:
-    - python app.py  # Replace with the name of your script that contains `ivoryos()`
+    - python example/sdl_example/abstract_sdl.py
   only:
     - main
