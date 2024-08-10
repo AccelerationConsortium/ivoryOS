@@ -193,14 +193,20 @@ def create_form_for_method(method, method_name, autofill, script):
     class DynamicForm(FlaskForm):
         pass
 
+    annotation_mapping = {
+        int: (VariableOrIntField, 'Enter integer value'),
+        float: (VariableOrFloatField, 'Enter numeric value'),
+        str: (VariableOrStringField, 'Enter text'),
+        bool: (VariableOrBoolField, 'Enter bool value')
+    }
+
     sig = inspect.signature(method)
 
     for param in sig.parameters.values():
         if param.name == 'self':
             continue
         formatted_param_name = format_name(param.name)
-        placeholder_text = f'Enter {param.annotation.__name__} value'
-        render_kwargs = {"placeholder": placeholder_text}
+
         if autofill:
             field_class = VariableOrStringField
             field_kwargs = {
@@ -210,22 +216,16 @@ def create_form_for_method(method, method_name, autofill, script):
             }
         else:
             # Decide the field type based on annotation
-            field_class = VariableOrStringField  # Default to StringField as a fallback
             field_kwargs = {
                 "label": f'{formatted_param_name}',
                 "default": param.default if param.default is not param.empty else "",
                 "script": script
             }
-            # print(param.name, param.default.__name__, param, type(param.default))
-
-            if param.annotation is int:
-                field_class = VariableOrIntField
-            elif param.annotation is float:
-                field_class = VariableOrFloatField
-            elif param.annotation is str:
-                field_class = VariableOrStringField
-            elif param.annotation is bool:
-                field_class = VariableOrBoolField
+            field_class, placeholder_text = annotation_mapping.get(
+                param.annotation,
+                (VariableOrStringField, f'Enter {param.annotation} value')
+            )
+        render_kwargs = {"placeholder": placeholder_text}
 
         # Create the field with additional rendering kwargs for placeholder text
         field = field_class(**field_kwargs, render_kw=render_kwargs)
@@ -250,7 +250,7 @@ def create_form_from_module(sdl_module, autofill, script):
     method_forms = {}
     for attr_name in dir(sdl_module):
         attr = getattr(sdl_module, attr_name)
-        if callable(attr) and not attr_name.startswith('_'):
+        if inspect.ismethod(attr) and not attr_name.startswith('_'):
             form_class = create_add_form(attr, attr_name, autofill, script)
             method_forms[attr_name] = form_class()
     return method_forms
