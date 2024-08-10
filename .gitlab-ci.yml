@@ -17,6 +17,6 @@ install_dependencies:
 deploy:
   stage: deploy
   script:
-    - python example/sdl_example/abstract_sdl.py
+    - python -m example.sdl_example.abstract_sdl
   only:
     - main

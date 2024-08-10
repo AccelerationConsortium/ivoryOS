@@ -5,7 +5,9 @@ docstring [optional]:   if given, docstring will be attached to the prompt when 
 _helper_function:       function names start with "_" will not be displayed
 types and default:      Types (str, float, bool) and default values are recommended
 """
-
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from example.sdl_example.abstract_balance import DummyBalance
 from example.sdl_example.abstract_pump import DummyPump
 
