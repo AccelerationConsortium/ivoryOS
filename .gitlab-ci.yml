@@ -1,4 +1,4 @@
-image: python:3.9
+image: python:3.9  # Specify the Docker image with Python
 
 # Define stages
 stages:
@@ -9,14 +9,18 @@ stages:
 install_dependencies:
   stage: install
   script:
-    - pip install -r requirements.txt
+    - python -m venv venv  # Create a virtual environment
+    - . venv/bin/activate  # Activate the virtual environment
+    - pip install -r requirements.txt  # Install dependencies from requirements.txt
   artifacts:
     paths:
-      - .venv/
+      - venv/  # Store the virtual environment as an artifact (optional)
 
+# Deploy stage
 deploy:
   stage: deploy
   script:
-    - python -m example.sdl_example.abstract_sdl
+    - . venv/bin/activate  # Activate the virtual environment
+    - python -m example.sdl_example.abstract_sdl  # Run the script
   only:
     - main
