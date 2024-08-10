@@ -21,6 +21,6 @@ deploy:
   stage: deploy
   script:
     - . venv/bin/activate  # Activate the virtual environment
-    - python -m example.sdl_example.abstract_sdl  # Run the script
+    - gunicorn -w 4 -b 0.0.0.0:8000 ivoryos.app:app  # Run the app with Gunicorn
   only:
     - main
