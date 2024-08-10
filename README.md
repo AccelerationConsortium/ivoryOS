@@ -15,7 +15,7 @@ pip install ivoryos
 ```
 
 ## Usage
-In your SDL script, use `ivoryos(__name__)`. Example in [sample_code.py](https://gitlab.com/heingroup/ivoryos/-/blob/main/example/dummy_ur/dummy_deck.py)
+In your SDL script, use `ivoryos(__name__)`. Example in [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/main/example/dummy_ur/dummy_deck.py)
 
 ```python
 from ivoryos.app import ivoryos
@@ -44,7 +44,11 @@ ivoryos(__name__, llm_server="localhost", model="llama3.1")
 ```
 
 ## Developing
-This is a wip project.
+This is a wip project. Here are some future actions.
+1. Support @setter decorator.
+2. Documentation: white paper wip
+3. Compatibility: compatability report to open-source lab hardware APIs will soon be added. As of now, due to the limitation of web form, the usability of APIs with object inputs (e.g. Opentron Python API) is very limited.
+
 
 ## Authors and Acknowledgement
 Ivory Zhang, Lucy Hao

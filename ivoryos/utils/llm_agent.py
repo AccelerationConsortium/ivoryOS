@@ -155,7 +155,7 @@ class LlmAgent:
 
 
 if __name__ == "__main__":
-    from example.dummy_ur.dummy_deck import deck
+    from example.sdl_example.abstract_sdl import deck
     # llm_agent = LlmAgent(host="openai", model="gpt-3.5-turbo")
     llm_agent = LlmAgent(host="localhost", model="llama3.1")
     # robot = IrohDeck()
