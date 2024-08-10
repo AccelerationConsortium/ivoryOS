@@ -9,9 +9,11 @@ stages:
 install_dependencies:
   stage: install
   script:
-    - python -m venv venv  # Create a virtual environment
-    - . venv/bin/activate  # Activate the virtual environment
-    - pip install -r requirements.txt  # Install dependencies from requirements.txt
+    - echo "installing"
+#    - python -m venv venv  # Create a virtual environment
+#    - . venv/bin/activate  # Activate the virtual environment
+#    - pip install -r requirements.txt  # Install dependencies from requirements.txt
+#    - pip install gunicorn==20.1.0
   artifacts:
     paths:
       - venv/  # Store the virtual environment as an artifact (optional)
@@ -20,7 +22,8 @@ install_dependencies:
 deploy:
   stage: deploy
   script:
-    - . venv/bin/activate  # Activate the virtual environment
-    - gunicorn -w 4 -b 0.0.0.0:8000 ivoryos.app:app  # Run the app with Gunicorn
+    - echo "deploying"
+#    - . venv/bin/activate  # Activate the virtual environment
+#    - python -m example.sdl_example.abstract_sdl  # Run the script
   only:
     - main
