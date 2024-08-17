@@ -1,7 +1,7 @@
 import json
 import uuid
 from datetime import datetime
-from ivoryos.utils import utils
+# from ivoryos.utils import utils
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
@@ -26,16 +26,6 @@ class User(db.Model, UserMixin):
 
     def get_id(self):
         return self.username
-
-
-# ma = Marshmallow()
-#
-# class ScriptSchema(ma.Schema):
-#     class Meta:
-#         fields = ('id','title','url','longitude','latitude')
-#
-# script_schema = ScriptSchema()
-# scripts_schema = ScriptSchema(many=True)
 
 
 class Script(db.Model):
@@ -324,90 +314,169 @@ class Script(db.Model):
             string += "\t"
         return string
 
-    def compile(self, script_path):
+    def compile(self, script_path=None):
         """
-        compile the current script to python file
-        :return: string to write to python file
+        Compile the current script to a Python file.
+        :return: String to write to a Python file.
         """
         self.sort_actions()
         run_name = self.name if self.name else "untitled"
+        exec_string = ''
+
+        for i in self.stypes:
+            exec_string += self._generate_function_header(run_name, i)
+            exec_string += self._generate_function_body(i)
+
+        if script_path:
+            self._write_to_file(script_path, run_name, exec_string)
+
+        return exec_string
+
+    def _generate_function_header(self, run_name, stype):
+        """
+        Generate the function header.
+        """
+        configure, _ = self.config(stype)
+        function_header = f"\n\ndef {run_name}_{stype}("
+
+        if stype == "script":
+            function_header += ",".join(configure)
+
+        function_header += "):"
+        function_header += self.indent(1) + f"global {run_name}_{stype}"
+        return function_header
+
+    def _generate_function_body(self, stype):
+        """
+        Generate the function body for each type in stypes.
+        """
+        body = ''
+        indent_unit = 1
+
+        for index, action in enumerate(self.script_dict[stype]):
+            text, indent_unit = self._process_action(indent_unit, action, index, stype)
+            body += text
+        return_str, return_list = self.config_return()
+        if return_list and stype == "script":
+            body += self.indent(indent_unit) + return_str
+
+        return body
+
+    def _process_action(self, indent_unit, action, index, stype):
+        """
+        Process each action within the script dictionary.
+        """
+        instrument = action['instrument']
+        args = self._process_args(action['args'])
+        save_data = action['return']
+        action_name = action['action']
+        next_action = self._get_next_action(stype, index)
+        if instrument == 'if':
+            return self._process_if(indent_unit, action_name, args, next_action)
+        elif instrument == 'while':
+            return self._process_while(indent_unit, action_name, args, next_action)
+        elif instrument == 'variable':
+            return self.indent(indent_unit) + f"{action_name} = {args}", indent_unit
+        elif instrument == 'wait':
+            return f"{self.indent(indent_unit)}time.sleep({args})", indent_unit
+        else:
+            return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data)
+
+    def _process_args(self, args):
+        """
+        Process arguments, handling any specific formatting needs.
+        """
+        if isinstance(args, str) and args.startswith("#"):
+            return args[1:]
+        return args
+
+    def _process_if(self, indent_unit, action, args, next_action):
+        """
+        Process 'if' and 'else' actions.
+        """
+        exec_string = ""
+        if action == 'if':
+            exec_string += self.indent(indent_unit) + f"if {args}:"
+            if next_action and next_action['instrument'] == 'if' and next_action['action'] == 'else':
+                exec_string += self.indent(indent_unit + 1) + "pass"
+            else:
+                indent_unit += 1
+        elif action == 'else':
+            exec_string += self.indent(indent_unit) + "else:"
+            if next_action and next_action['instrument'] == 'if' and next_action['action'] == 'endif':
+                exec_string += self.indent(indent_unit + 1) + "pass"
+            else:
+                indent_unit += 1
+        return exec_string, indent_unit
+
+    def _process_while(self, indent_unit, action, args, next_action):
+        """
+        Process 'while' and 'endwhile' actions.
+        """
+        exec_string = ""
+        if action == 'while':
+            exec_string += self.indent(indent_unit) + f"while {args}:"
+            indent_unit += 1
+            if next_action and next_action['instrument'] == 'while':
+                exec_string += self.indent(indent_unit) + "pass"
+        elif action == 'endwhile':
+            indent_unit -= 1
+        return exec_string, indent_unit
+
+    def _process_instrument_action(self, indent_unit, instrument, action, args, save_data):
+        """
+        Process actions related to instruments.
+        """
+        if isinstance(args, dict):
+            args_str = self._process_dict_args(args)
+            single_line = f"{instrument}.{action}(**{args_str})"
+        elif isinstance(args, str):
+            single_line = f"{instrument}.{action} = {args}"
+        else:
+            single_line = f"{instrument}.{action}()"
+
+        if save_data:
+            save_data += " = "
+
+        return self.indent(indent_unit) + save_data + single_line, indent_unit
+
+    def _process_dict_args(self, args):
+        """
+        Process dictionary arguments, handling special cases like variables.
+        """
+        args_str = args.__str__()
+        for arg in args:
+            if isinstance(args[arg], str) and args[arg].startswith("#"):
+                args_str = args_str.replace(f"'#{args[arg][1:]}'", args[arg][1:])
+            elif self._is_variable(arg):
+                args_str = args_str.replace(f"'{args[arg]}'", args[arg])
+        return args_str
+
+    def _get_next_action(self, stype, index):
+        """
+        Get the next action in the sequence if it exists.
+        """
+        if index < (len(self.script_dict[stype]) - 1):
+            return self.script_dict[stype][index + 1]
+        return None
+
+    def _is_variable(self, arg):
+        """
+        Check if the argument is of type 'variable'.
+        """
+        return arg in self.script_dict and self.script_dict[arg].get("arg_types") == "variable"
+
+    def _write_to_file(self, script_path, run_name, exec_string):
+        """
+        Write the compiled script to a file.
+        """
         with open(script_path + run_name + ".py", "w") as s:
             if self.deck:
-                s.write("import " + self.deck + " as deck")
+                s.write(f"import {self.deck} as deck")
             else:
                 s.write("deck = None")
             s.write("\nimport time")
-            exec_string = ''
-            for i in self.stypes:
-                indent_unit = 1
-                exec_string += "\n\ndef " + run_name + "_" + i + "("
-                configure, cfg_types = self.config(i)
-                if i == "script":
-                    for j in configure:
-                        exec_string = exec_string + j + ","
-                exec_string = exec_string + "):"
-                exec_string = exec_string + self.indent(indent_unit) + "global " + run_name + "_" + i
-                for index, action in enumerate(self.script_dict[i]):
-                    instrument = action['instrument']
-                    if instrument not in ["if", "while"]:
-                        arg_types = action['arg_types'] if len(action['arg_types']) != 0 else {}
-                    args = action['args']
-                    if type(args) is str and args.startswith("#"):
-                        args = args[1:]
-                    save_data = action['return']
-                    action = action['action']
-                    next_ = None
-                    if instrument == 'if':
-                        if index < (len(self.script_dict[i]) - 1):
-                            next_ = self.script_dict[i][index + 1]
-                        if action == 'if':
-                            exec_string = exec_string + self.indent(indent_unit) + "if " + str(args) + ":"
-                            indent_unit += 1
-                            if next_ and next_['instrument'] == 'if' and next_['action'] == 'else':
-                                exec_string = exec_string + self.indent(indent_unit) + "pass"
-                        elif action == 'else':
-                            exec_string = exec_string + self.indent(indent_unit - 1) + "else:"
-                            if next_ and next_['instrument'] == 'if' and next_['action'] == 'endif':
-                                exec_string = exec_string + self.indent(indent_unit) + "pass"
-                        else:
-                            indent_unit -= 1
-                    elif instrument == 'while':
-                        if index < (len(self.script_dict[i]) - 1):
-                            next_ = self.script_dict[i][index + 1]
-                        if action == 'while':
-                            exec_string = exec_string + self.indent(indent_unit) + "while " + args + ":"
-                            indent_unit += 1
-                            if next_ and next_['instrument'] == 'while':
-                                exec_string = exec_string + self.indent(indent_unit) + "pass"
-                        elif action == 'endwhile':
-                            indent_unit -= 1
-                    elif instrument == 'variable':
-                        exec_string = exec_string + self.indent(indent_unit) + action + " = " + args
-                    elif instrument == 'wait':
-                        exec_string = exec_string + f"{self.indent(indent_unit)}time.sleep({args})"
-                    else:
-                        if args:
-                            if type(args) is dict:
-                                temp = args.__str__()
-                                for arg in args:
-                                    # print(arg_types[arg])
-                                    if type(args[arg]) is str and args[arg].startswith("#"):
-                                        temp = temp.replace("'#" + args[arg][1:] + "'", args[arg][1:])
-                                    elif arg_types[arg] == "variable":
-                                        temp = temp.replace("'" + args[arg] + "'", args[arg])
-                                single_line = instrument + "." + action + "(**" + temp + ")"
-                            elif type(args) is str:
-                                single_line = instrument + "." + action + " = " + str(args)
-                        else:
-                            single_line = instrument + "." + action + "()"
-                        if save_data:
-                            save_data += " = "
-                        exec_string = exec_string + self.indent(indent_unit) + save_data + single_line
-                return_str, return_list = self.config_return()
-                if len(return_list) > 0 and i == "script":
-                    exec_string += self.indent(indent_unit) + return_str
             s.write(exec_string)
-        return exec_string
 
 
 if __name__ == "__main__":

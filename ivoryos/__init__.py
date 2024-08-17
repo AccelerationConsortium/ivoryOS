@@ -1,0 +1,2 @@
+def socketio():
+    return None

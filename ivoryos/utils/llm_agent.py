@@ -4,9 +4,10 @@ import os
 import re
 
 # import ollama
-from dotenv import load_dotenv
 from openai import OpenAI
-load_dotenv()
+
+
+# load_dotenv()
 
 # host = "137.82.65.246"
 # model = "llama3"
@@ -18,10 +19,9 @@ class LlmAgent:
         self.base_url = f"http://{self.host}:11434/v1/" if host is not None else ""
         self.model = model
         self.output_path = os.path.join(output_path, "llm_output")
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if host is None else OpenAI(api_key="ollama", base_url=self.base_url)
+        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if host is None else OpenAI(api_key="ollama",
+                                                                                              base_url=self.base_url)
         os.makedirs(self.output_path, exist_ok=True)
-
-
 
     def extract_annotations_docstrings(self, cls):
         extracted_methods = []
@@ -138,7 +138,7 @@ class LlmAgent:
         # print('\033[91m', code, '\033[0m')
         return code
 
-    def generate_code(self, robot, prompt, attempt_allowance:int=3):
+    def generate_code(self, robot, prompt, attempt_allowance: int = 3):
         attempt = 0
         while attempt < attempt_allowance:
             code = self._generate(robot, prompt)
@@ -146,16 +146,13 @@ class LlmAgent:
             if code:
                 break
 
-        print(attempt)
+        # print(attempt)
         return code
-
-
-
-
 
 
 if __name__ == "__main__":
     from example.sdl_example.abstract_sdl import deck
+
     # llm_agent = LlmAgent(host="openai", model="gpt-3.5-turbo")
     llm_agent = LlmAgent(host="localhost", model="llama3.1")
     # robot = IrohDeck()

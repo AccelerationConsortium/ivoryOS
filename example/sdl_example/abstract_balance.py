@@ -5,6 +5,7 @@ docstring [optional]:   if given, docstring will be attached to the prompt when 
 _helper_function:       function names start with "_" will not be displayed
 types and default:      Types (str, float, bool) and default values are recommended
 """
+import logging
 import typing
 
 class DummyBalance:
@@ -12,6 +13,7 @@ class DummyBalance:
     def __init__(self, com_port: str):
         self.com_port = com_port
         self._value = None
+        self.logger = logging.getLogger("balance")
 
     @property
     def setter_value(self):
@@ -22,12 +24,12 @@ class DummyBalance:
         self._value = value
 
     def weigh_sample(self):
-        print(f"Weighing sample using {self.com_port}")
+        self.logger.info(f"Weighing sample using {self.com_port}")
         return 1
 
     def dose_solid(self, amount_in_mg: float):
         """this function is used to dose solid"""
-        print(f"Dosing {amount_in_mg} mg using {self.com_port}")
+        self.logger.info(f"Dosing {amount_in_mg} mg using {self.com_port}")
         return 1
 
     def _helper(self):

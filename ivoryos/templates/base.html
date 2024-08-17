@@ -4,21 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}{% endblock %}</title>
+    {#bootstrap#}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/css/bootstrap.min.css" integrity="sha384-aFq/bzH65dt+w6FI2ooMVUpc+21e0SRygnTpmBvdBgSdnuTN7QbdgL+OapgHtvPp" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    {#static#}
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
-    <!--for python code displaying-->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.3/styles/default.min.css">
+    {#for python code displaying#}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/js/bootstrap.bundle.min.js" integrity="sha384-qKXV1j0HvMUeCBQ+QVp7JcfGl760yU08IQ+GpUo5hlbpg51QRiuqHAJz8+BrxE/N" crossorigin="anonymous"></script>
+    <script>hljs.highlightAll();</script>
+    {#drag design#}
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
+    {#drag card#}
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
-{#    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.4/css/jquery.dataTables.min.css">#}
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
         <div class= "container">
 
-            <a class="navbar-brand" href="{{ url_for('index') }}">
+            <a class="navbar-brand" href="{{ url_for('main.index') }}">
                 <img src="{{url_for('static', filename='logo.png')}}" alt="Logo" height="60" class="d-inline-block align-text-bottom">
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -28,22 +34,22 @@
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
                 <ul class="navbar-nav mr-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('load_from_database') }}" aria-current="page">Library</a>
+                        <a class="nav-link" href="{{ url_for('database.load_from_database') }}" aria-current="page">Library</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('experiment_builder') }}">Build Workflow</a>
+                        <a class="nav-link" href="{{ url_for('design.experiment_builder') }}">Design</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('experiment_run') }}">Compile/Run</a>
+                        <a class="nav-link" href="{{ url_for('design.experiment_run') }}">Compile/Run</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('deck_controllers') }}">Deck devices</a></li>
+                        <a class="nav-link" href="{{ url_for('control.deck_controllers') }}">Devices</a></li>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('controllers_home') }}">New Device</a></li>
+                        <a class="nav-link" href="{{ url_for('control.controllers_home') }}">Temp Devices</a></li>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('help_info') }}">About</a>
+                        <a class="nav-link" href="{{ url_for('main.help_info') }}">About</a>
                     </li>
                 </ul>
                 <ul class="navbar-nav ms-auto">
@@ -52,13 +58,13 @@
                         <div class="dropdown">
                             <li class="nav-item " aria-expanded="false"><i class="bi bi-person-circle"></i> {{ session["user"] }}</li>
                             <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{{ url_for("logout") }}" role="button" aria-expanded="false">Logout</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for("auth.logout") }}" role="button" aria-expanded="false">Logout</a></li>
                             </ul>
 
                         </div>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for("login") }}">Login</a>
+                            <a class="nav-link" href="{{ url_for("auth.login") }}">Login</a>
                         </li>
                     {% endif %}
 {#                    <li class="nav-item">#}
@@ -94,7 +100,7 @@
                     <h1 class="modal-title fs-5" id="importModal">Import deck by file path</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form method="POST" action="/import_deck" enctype="multipart/form-data">
+                <form method="POST" action="{{ url_for('control.import_deck') }}" enctype="multipart/form-data">
                     <div class="modal-body">
                         <h5>from connection history</h5>
                         <div class="form-group">
@@ -132,9 +138,6 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/js/bootstrap.bundle.min.js" integrity="sha384-qKXV1j0HvMUeCBQ+QVp7JcfGl760yU08IQ+GpUo5hlbpg51QRiuqHAJz8+BrxE/N" crossorigin="anonymous"></script>
-    {#for displaying python code#}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.3/highlight.min.js"></script>
 
 
 {#    for datatable, doesn't seem to work...when there is links in the table #}

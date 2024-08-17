@@ -1,38 +1,12 @@
 {% extends 'base.html' %}
-{% block title %}HEIN LAB | Run Control{% endblock %}
+{% block title %}IvoryOS | Design execution{% endblock %}
 
 {% block body %}
+    <div id="overlay" class="overlay">Please wait...</div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
-    <script>
-        var rowCount = 0; // Initialize row count
-        function addRow() {
-            rowCount++; // Increment row count each time a row is added
-            var table = document.getElementById("dataInputTable");
-            var newRow = table.insertRow(-1); // Adds a row at the end of the table
-            {% for column, type in config_type_list.items()  %}
-            var cell = newRow.insertCell(-1);
-            cell.innerHTML = '<input type="text" class="form-control" name="{{ column }}[' + rowCount + ']" placeholder={{ type }}>';
-            {% endfor %}
-        }
-    </script>
-    <script type="text/javascript">
-        {#var socket = io.connect('http://' + document.domain + ':' + location.port);#}
-        var socket = io()
-        socket.on('connect', function() {
-            console.log('Connected');
-        });
-        socket.on('progress', function(data) {
-            var progress = data.progress;
-            console.log(progress);
-            $('#progress-bar-inner').css('width', progress + '%')
-        });
-        socket.on('log', function(data) {
-            var logMessage = data.message;
-            console.log(logMessage);
-            $('#logging-panel').append(logMessage+"<br>");
-            $('#logging-panel').scrollTop($('#logging-panel')[0].scrollHeight);
-        });
-    </script>
+
+
     {% if no_deck_warning and not dismiss %}
 {#      auto pop import when there is no deck#}
         <script type="text/javascript">
@@ -75,7 +49,7 @@
                                 <div class="tab-content" id="myTabsContent">
                                     <div class="tab-pane fade {{ 'show active' if not config_list else '' }}" id="tab1" role="tabpanel" aria-labelledby="tab1-tab">
                                         <p><h5>Control panel:</h5></p>
-                                        <form role="form" method='POST' name="run" action="{{url_for('experiment_run')}}">
+                                        <form role="form" method='POST' name="run" action="{{url_for('design.experiment_run')}}">
                                             <div class="input-group mb-3">
                                                 <label class="input-group-text" for="repeat">Repeat for </label>
                                                 <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="100">
@@ -94,7 +68,7 @@
                                         <p>Current configure: {{ filename }}</p>
                                         <div>
                                             
-                                            <form method="GET" action="{{ url_for("experiment_run") }}" enctype="multipart/form-data">
+                                            <form method="GET" action="{{ url_for("design.experiment_run") }}" enctype="multipart/form-data">
                                                 <div class="input-group mb-3">
                                                     <select class="form-select" name="filename" id="filename" required onchange="document.getElementById('filename').submit();">
                                                         <option selected disabled hidden style="overflow-wrap: break-word;" name="filename" id="filename" value=""> -- choose config file --</option>
@@ -107,12 +81,12 @@
                                             </form>
 
 {#                                                    <li><a class="dropdown-item" data-bs-toggle="collapse" href="#preview" role="button" aria-expanded="false">Preview config</a></li>#}
-                                            <a class="btn btn-primary" href="/download/configure" >empty config</a>
+                                            <a class="btn btn-primary" href="{{ url_for('design.download', filetype='configure') }}" >empty config</a>
                                             <a class="btn btn-primary" data-bs-toggle="collapse" href="#loadfile" role="button" aria-expanded="false">Upload .csv</a>
 
                                         
                                             <div class="collapse" id="loadfile">
-                                                <form method="POST" action="/uploads" enctype="multipart/form-data">
+                                                <form method="POST" action="{{ url_for('design.upload') }}" enctype="multipart/form-data">
                                                     <div class="input-group">
                                                         <input class="form-control" name="file" type="file" required="required" onchange="document.getElementById('file').submit();">
                                                         <input class="btn btn-secondary" type="submit" value="Upload .csv">
@@ -147,7 +121,7 @@
                                         {% endif %}
                                         </div>
                                         {% if filename and not no_deck_warning %}
-                                            <form role="form" method='POST' name="run" action="{{ url_for('experiment_run')}}">
+                                            <form role="form" method='POST' name="run" action="{{ url_for('design.experiment_run')}}">
                                                 <div class="form-group">
                                                     <button type="submit" class="btn btn-success">Run</button>
                                                 </div>
@@ -156,7 +130,7 @@
                                     </div>
                                 
                                     <div class="tab-pane fade " id="tab3" role="tabpanel" aria-labelledby="tab3-tab">
-                                        <form role="form" method='POST' name="bo" action="{{ url_for('experiment_run')}}">
+                                        <form role="form" method='POST' name="bo" action="{{ url_for('design.experiment_run')}}">
                                             <div class="form-group">
                                                 <p><h5>Parameters:</h5><p>
                                                 {% for config in config_list %}
@@ -225,7 +199,7 @@
                                     <div class="tab-pane fade {{ 'show active' if config_list and config_list|count<=5 else '' }}" id="tab4" role="tabpanel" aria-labelledby="tab4-tab">
                                         <p><h5>Control panel:</h5></p>
                                         <div>
-                                            <form method="POST" name="online-config" id="online-config" action="{{url_for('experiment_run')}}">
+                                            <form method="POST" name="online-config" id="online-config" action="{{url_for('design.experiment_run')}}">
                                                 <table id="dataInputTable" class="table table-striped">
                                                     <thead class="thead-dark">
                                                     <tr>
@@ -245,11 +219,16 @@
                                 </div>
                             </div>
                             <div class="col-lg-6 col-sm-12 logging-panel">
-                                <p><h5>Progress：</h5></p>
+                                <p>
+                                <div class="p d-flex justify-content-between align-items-center">
+                                    <h5>Progress：</h5>
+                                    <button id="abort" class="btn btn-danger ">Abort Pending Actions</button>
+                                </div>
+                                </p>
                                 <div class="progress" role="progressbar" aria-label="Animated striped example" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100">
                                     <div id="progress-bar-inner" class="progress-bar progress-bar-striped progress-bar-animated"></div>
                                 </div>
-                                <p><h5>Logging：</h5></p>
+                                <p><h5>Log：</h5></p>
                                 <div id="logging-panel"></div>
                             </div>
                         </div>
@@ -266,13 +245,13 @@
             <div id="data" class="accordion-collapse collapse">
                 <div class="accordion-body">
                     {% if session["most_recent_result"] %}
-                        <p><a href="/download_results/{{ session["most_recent_result"] }}">Download the latest data <i class="bi bi-download"></i></a></p>
+                        <p><a href="{{ url_for('design.download_results', filename=session["most_recent_result"]) }}">Download the latest data <i class="bi bi-download"></i></a></p>
                     {% endif %}
                     <p>
                     <h5>All data files</h5>
                     {% for datafile in data_list %}
                         <div>
-                            {{ datafile }} <a href="/download_results/{{ datafile }} "><i class="bi bi-download"></i></a>
+                            {{ datafile }} <a href="{{ url_for('design.download_results', filename=datafile) }} "><i class="bi bi-download"></i></a>
                         </div>
                     {% endfor %}
                     </p>
@@ -321,7 +300,7 @@
             <div id="python" class="accordion-collapse collapse">
                 <div class="accordion-body">
                     <pre><code class="python" >{{dot_py}}</code></pre>
-                    <a href="/download/python">Download <i class="bi bi-download"></i></a>
+                    <a href="{{ url_for('design.download', filetype='python') }}">Download <i class="bi bi-download"></i></a>
                 </div>
             </div>
         </div>
@@ -346,4 +325,42 @@
             }
         });
     </script>
+    <script>
+        {#var socket = io.connect('http://' + document.domain + ':' + location.port);#}
+        var socket = io()
+        socket.on('connect', function() {
+            console.log('Connected');
+        });
+        socket.on('progress', function(data) {
+            var progress = data.progress;
+            console.log(progress);
+            $('#progress-bar-inner').css('width', progress + '%')
+        });
+        socket.on('log', function(data) {
+            var logMessage = data.message;
+            console.log(logMessage);
+            $('#logging-panel').append(logMessage+"<br>");
+            $('#logging-panel').scrollTop($('#logging-panel')[0].scrollHeight);
+        });
+        document.getElementById('abort').addEventListener('click', function() {
+            var confirmation = confirm("Are you sure you want to abort pending actions?");
+            if (confirmation) {
+                socket.emit('abort_action');
+                console.log('Abort action sent to server.');
+            }
+        });
+    </script>
+    <script>
+        var rowCount = 0; // Initialize row count
+        function addRow() {
+            rowCount++; // Increment row count each time a row is added
+            var table = document.getElementById("dataInputTable");
+            var newRow = table.insertRow(-1); // Adds a row at the end of the table
+            {% for column, type in config_type_list.items()  %}
+            var cell = newRow.insertCell(-1);
+            cell.innerHTML = '<input type="text" class="form-control" name="{{ column }}[' + rowCount + ']" placeholder={{ type }}>';
+            {% endfor %}
+        }
+    </script>
+
 {% endblock %}
