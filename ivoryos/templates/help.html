@@ -1,11 +1,9 @@
 {% extends 'base.html' %}
-{% block title %}HEIN LAB | Help Page{% endblock %}
-
+{% block title %}IvoryOS | Documentation {% endblock %}
 
 {% block body %}
-    <h2>FAQs</h2>
+    <h2>Documentations:</h2>
     <div class="accordion accordion-flush" id="helpPage" >
-
         <div class="accordion-item">
             <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#overall" aria-expanded="false" aria-controls="helpPageControl">
@@ -15,8 +13,8 @@
             <div id="overall" class="accordion-collapse collapse" data-bs-parent="#helpPage">
                 <div class="accordion-body">
                     <p>
-                        This web UI aims to ease up the control of any Python-based SDLs by displaying functions and parameters for initialized modules dynamically.
-                        The modules can be hardware API, high-level functions, or experiment workflow.
+                        This web app aims to ease up the control of any Python-based self-driving labs (SDLs) by extracting and displaying functions and parameters for initialized modules dynamically.
+                        The modules can be hardware API, high-level functions, or experiment workflow. This can potentially be used for general visual programming purposes.
                     </p>
 {#                    <p>Controller: single instrument mode and multi-instrument interface.</p>#}
 {#                    <p>Workflow editor: automation workflow editor#}
@@ -26,25 +24,18 @@
 {#        <p>In the Controller tab, you can connect any instrument or instruments from a complete automation deck. The GUI will parse and show available functions and prompt user to the input argument values if need.</p>#}
 {#        <p>In the Build Workflow tab, you can edit your own automation workflow from scratch or from the workflow library, where stores the ongoing projects and some basic example workflows.</p>#}
 
-
-
         <div class="accordion-item">
             <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#connect-device" aria-expanded="false" aria-controls="helpPageControl">
-                    General information - start ivoryOS from SDL script
+                    General information - start ivoryOS from script
                 </button>
             </h2>
             <div id="connect-device" class="accordion-collapse collapse" data-bs-parent="#helpPage">
                 <div class="accordion-body">
-                    <p>
-                    <pre>from ivoryos.app import ivoryos
-ivoryos(__name__)
-                    </pre></p>
+                    <pre ><code class="python" >{{ sample_deck }}</code></pre>
                 </div>
             </div>
         </div>
-
-
         <div class="accordion-item">
             <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#library" aria-expanded="false" aria-controls="helpPageControl">
@@ -95,9 +86,10 @@ ivoryos(__name__)
             </h2>
             <div id="config" class="accordion-collapse collapse" data-bs-parent="#helpPage">
                 <div class="accordion-body">
-                    <p>For workflow with no configuration, simply input repeat times to run.</p>
-                    <p>To configure your workflow, use the form or import a csv file</p>
-                    <p>If there is any output, Bayesian Optimization will be available for adaptive experimentation </p>
+                    <p>For workflow with no parameters, simply input repeat times to run.</p>
+                    <p>To configure your workflow, if there are less or equal than 5 parameters, one can use the web form or import a csv file.
+                    For workflow with more than 5 parameters, web form is not available.</p>
+                    <p>If there is any output, Bayesian Optimization will be available for adaptive experimentation. Note that the outputs need to be numeric values. </p>
 {#                    <img src="{{url_for('static', filename='gui_annotation/Slide3.PNG')}}">#}
                 </div>
             </div>
@@ -108,27 +100,27 @@ ivoryos(__name__)
         <div class="accordion-item">
             <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#controller" aria-expanded="false" aria-controls="helpPageControl">
-                    Controller - How to use controller interface?
+                    Control - How to use device interface?
                 </button>
             </h2>
             <div id="controller" class="accordion-collapse collapse" data-bs-parent="#helpPage">
                 <div class="accordion-body">
-                    <p>There are 2 options of connecting instrument:</p>
-                    <p>(1)     Import a python script where devices are connected using Deck Deice tab (e.g. applied to a complete automation deck with a deck.py file).</p>
-                    <p>(2)     Connect devices in the web app using New Deice tab. There are builtin instruments, but you can always import your own API.</p>
+                    <p>The function cards are draggable for customized layout. The hidden icon is to remove functions from the interface. </p>
+{#                    <p>(1)     Import a python script where devices are connected using Deck Deice tab (e.g. applied to a complete automation deck with a deck.py file).</p>#}
+{#                    <p>(2)     Connect devices in the web app using New Deice tab. There are builtin instruments, but you can always import your own API.</p>#}
                 </div>
             </div>
         </div>
         <div class="accordion-item">
             <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#deck" aria-expanded="false" aria-controls="helpPageControl">
-                    Controller- Connect devices using deck.py file
+                    Control - Connect new devices
                 </button>
             </h2>
             <div id="deck" class="accordion-collapse collapse" data-bs-parent="#helpPage">
                 <div class="accordion-body">
-                    <p>When there are multiple instruments to connect, a deck file that had created the connection might be a better choice. Here is a sample deck.py file for a two-pump system</p>
-                    <pre ><code class="python" >{{ sample_deck }}</code></pre>
+                    <p>When temporarily connecting instruments, New device -> New connection -> Import API. Use absolute path of your Python API file.
+                        Then enter required info (e.g. COM port) to connect a device.</p>
                 </div>
             </div>
         </div>
@@ -140,36 +132,13 @@ ivoryos(__name__)
             </h2>
             <div id="install" class="accordion-collapse collapse" data-bs-parent="#helpPage">
                 <div class="accordion-body">
-                    This is project is a work in progress. In case of any bugs or suggestions, reach out to Ivory: ivoryzhang@chem.ubc.ca or create an issue on GitLab.
+                    This is project is a work in progress. In case of any bugs or suggestions, reach out to Ivory: ivoryzhang@chem.ubc.ca or create an issue on GitLab:
+                    <a href="https://gitlab.com/heingroup/ivoryos">https://gitlab.com/heingroup/ivoryos</a>.
 {#                    <img src="{{url_for('static', filename='gui_annotation/installation_guide.PNG')}}">#}
 
 {#                    <object webui_data="{{ url_for('static', filename='setup-help.pdf')}}" type="application/pdf" style="min-height:80vh;width:100%"></object>#}
                 </div>
             </div>
         </div>
-{#        <div class="accordion-item">#}
-{#            <h2 class="accordion-header">#}
-{#                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#debug" aria-expanded="false" aria-controls="helpPageControl">#}
-{#                    Supports - Debugs help#}
-{#                </button>#}
-{#            </h2>#}
-{#            <div id="debug" class="accordion-collapse collapse" data-bs-parent="#helpPage">#}
-{#                <div class="accordion-body">#}
-{#                    Here are some common error messages and possible fixes.#}
-{#                </div>#}
-{#            </div>#}
-{#        </div>#}
-{#        <div class="accordion-item">#}
-{#            <h2 class="accordion-header">#}
-{#                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#more" aria-expanded="false" aria-controls="helpPageControl">#}
-{#                    wip#}
-{#                </button>#}
-{#            </h2>#}
-{#            <div id="more" class="accordion-collapse collapse" data-bs-parent="#helpPage">#}
-{#                <div class="accordion-body">#}
-{#                    wip#}
-{#                </div>#}
-{#            </div>#}
-{#        </div>#}
     </div>
 {% endblock %}

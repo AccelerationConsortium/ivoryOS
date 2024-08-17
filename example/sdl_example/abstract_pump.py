@@ -5,6 +5,7 @@ docstring [optional]:   if given, docstring will be attached to the prompt when 
 _helper_function:       function names start with "_" will not be displayed
 types and default:      Types (str, float, bool) and default values are recommended
 """
+import logging
 
 
 class DummyPump:
@@ -12,9 +13,11 @@ class DummyPump:
     def __init__(self, com_port: str):
         self.com_port = com_port
         self.dictionary = {}
+        self.logger = logging.getLogger("pump")
 
     def dose_liquid(self, amount_in_ml: float, rate_ml_per_minute: float):
-        print(f"pretending dosing {amount_in_ml} at {rate_ml_per_minute} ml/min")
+        self.logger.info("dosing liquid")
+        self.logger.info(f"pretending dosing {amount_in_ml} at {rate_ml_per_minute} ml/min")
         return 1
 
 

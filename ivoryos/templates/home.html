@@ -1,78 +1,68 @@
 {% extends 'base.html' %}
-{% block title %}HEIN LAB | Welcome{% endblock %}
+{% block title %}IvoryOS | Welcome{% endblock %}
 
 
 {% block body %}
-    <h1 style="align-self: center">Welcome</h1>
+    <h1 style=" font-size: 3rem;font-weight: bold;color: #343a40;margin-bottom: 40px;">
+        Welcome
+    </h1>
+
     <div class="p-4" >
         <div class="row">
 
-            <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
-                <div class="rounded shadow-sm position-relative flex-fill">
-                    <div class="p-4" >
-                        <a style="text-decoration: none" class="h5 text-dark stretched-link" href="{{ url_for('load_from_database') }}">Browse workflows</a>
-                        <p>Browse all workflows saved in the database</p>
+            <div class="col-lg-6 mb-4 d-flex align-items-stretch">
+                <div class="card rounded shadow-sm flex-fill">
+                    <div class="card-body">
+                        <h5 class="card-title">Browse designs</h5>
+                        <p class="card-text">Browse all workflows saved in the database.</p>
+                        <a href="{{ url_for('database.load_from_database') }}" class="stretched-link"></a>
                     </div>
                 </div>
             </div>
-            <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
-                <div class="rounded shadow-sm position-relative flex-fill">
-                    <div class="p-4" >
-                        <a style="text-decoration: none" class="h5 text-dark stretched-link" href="{{ url_for('experiment_builder') }}">Edit workflow</a>
-                        <p>Build your workflow from current deck functions without coding</p>
+            <div class="col-lg-6 mb-4 d-flex align-items-stretch">
+                <div class="card rounded shadow-sm flex-fill">
+                    <div class="card-body">
+                        <h5 class="card-title">Edit designs</h5>
+                        <p class="card-text">Build your workflow from current deck functions.</p>
+                        <a href="{{ url_for('design.experiment_builder') }}" class="stretched-link"></a>
                     </div>
                 </div>
             </div>
-{#            <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">#}
-{#                <div class="rounded shadow-sm position-relative flex-fill">#}
-{#                    <div class="p-4" >#}
-{#                        <a style="text-decoration: none" class="h5 text-dark stretched-link" href="{{ url_for('experiment_preview') }}">Compile workflow</a>#}
-{#                        <p>Compile your script and preview your python script</p>#}
-{#                    </div>#}
-{#                </div>#}
-{#            </div>#}
-{#            <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">#}
-{#                <div class="rounded shadow-sm position-relative flex-fill">#}
-{#                    <div class="p-4" >#}
-{#                        <a style="text-decoration: none" class="h5 text-dark stretched-link" href="{{ url_for('generate_grid') }}">Vial selection</a>#}
-{#                        <p>testing...</p>#}
-{#                        <p>Generate vial index list after section</p>#}
-{#                    </div>#}
-{#                </div>#}
-{#            </div>#}
         </div>
 
         <br><br><br>
-
-        <h5>Only available on lab computers</h5>
-        <hr>
-        <div class="row">
-
-            <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
-                <div class="rounded shadow-sm position-relative flex-fill">
-                    <div class="p-4" >
-                        <a style="text-decoration: none" class="h5 text-dark stretched-link" href="{{ url_for('experiment_run') }}">Run experiment</a>
-                        <p>Execute workflow by setting repeat times or using configuration CSV file </p>
+        {% if not off_line %}
+{#            <h5>Only available in online mode</h5>#}
+{#            <hr>#}
+            <div class="row">
+                <div class="col-lg-6 mb-4 d-flex align-items-stretch">
+                    <div class="card rounded shadow-sm flex-fill">
+                        <div class="card-body">
+                            <h5 class="card-title">Run experiment</h5>
+                            <p class="card-text">Execute workflows with repeat times or variable configs. </p>
+                            <a href="{{ url_for('design.experiment_run') }}" class="stretched-link"></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 mb-4 d-flex align-items-stretch">
+                    <div class="card rounded shadow-sm flex-fill">
+                        <div class="card-body">
+                            <h5 class="card-title">Control device</h5>
+                            <p class="card-text">Browse and control instruments of current platform</p>
+                            <a href="{{ url_for('control.deck_controllers') }}" class="stretched-link"></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 mb-4 d-flex align-items-stretch">
+                    <div class="card rounded shadow-sm flex-fill">
+                        <div class="card-body">
+                            <h5 class="card-title">Connect new device</h5>
+                            <p class="card-text">Connect new hardware: for simple/temporary configurations.</p>
+                            <a href="{{ url_for('control.controllers_home') }}" class="stretched-link"></a>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
-                <div class="rounded shadow-sm position-relative flex-fill">
-                    <div class="p-4" >
-                        <a style="text-decoration: none" class="h5 text-dark stretched-link"  href="{{ url_for('deck_controllers') }}">Deck instruments</a>
-                        <p>Browse and control deck instruments: for simple task and preview deck functions</p>
-                    </div>
-                </div>
-            </div>
-            <br>
-            <div class="col-xl-6 col-lg-6 col-md-6 mb-6 d-flex align-items-stretch">
-                <div class="rounded shadow-sm position-relative flex-fill">
-                    <div class="p-4" >
-                        <a style="text-decoration: none" class="h5 text-dark stretched-link"  href="{{ url_for('controllers_home') }}">New instruments </a>
-                        <p>Connect new instrument: for simple configurations and testing purpose.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {% endif %}
     </div>
 {% endblock %}

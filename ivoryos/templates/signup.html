@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}HEIN LAB | Create account{% endblock %}
+{% block title %}IvoryOS | Signup{% endblock %}
 
 
 {% block body %}
@@ -7,7 +7,7 @@
     <div class="bg-white rounded shadow-sm flex-fill">
         <div class="p-4" style="align: center">
             <h5>Create a new account</h5>
-            <form role="form" method='POST' name="signup" action='/signup'>
+            <form role="form" method='POST' name="signup" action="{{ url_for('auth.signup') }}">
 
                 <div class="input-group mb-3">
                     <label class="input-group-text" for="username">Username</label>

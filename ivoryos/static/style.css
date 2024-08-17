@@ -1,13 +1,23 @@
 .login {
-  width: 500px;
-  padding: 8% 0 0;
-  margin: auto;
+    width: 500px;
+    padding: 8% 0 0;
+    margin: auto;
     align-content: center;
 }
 .card{
     display: flex;
     justify-content: flex-end;
     cursor: move;
+    border: none;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+}
+
+.card a {
+    text-decoration: none;
+}
+.card-title {
+    color: #007bff; /* Bootstrap primary color */
 }
 .grid-container {
     display: grid;
@@ -36,7 +46,9 @@
     margin-top: 10px;
 }
 body {
-  padding-top: 100px;
+    padding-top: 100px;
+    background-color: #f8f9fa; /* Light grey background */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 /*.run-panel-row-height {*/
 /*    height: 80vh;*/

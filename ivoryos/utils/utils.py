@@ -10,11 +10,29 @@ import sys
 
 from typing import Optional, Dict, Tuple
 
+from flask import session
 from flask_socketio import SocketIO
 
-from ivoryos.utils.model import Script
+from .db_models import Script
 
 stypes = ['prep', 'script', 'cleanup']
+
+
+def get_script_file():
+    session_script = session.get("scripts")
+    if session_script:
+        s = Script()
+        s.__dict__.update(**session_script)
+        return s
+    else:
+        return Script(author=session.get('user'))
+
+
+def post_script_file(script, is_dict=False):
+    if is_dict:
+        session['scripts'] = script
+    else:
+        session['scripts'] = script.as_dict()
 
 
 def create_gui_dir(parent_path):
@@ -153,7 +171,7 @@ def _get_type_from_parameters(arg, parameters):
     arg_type = ''
     if type(parameters) is inspect.Signature:
         p = parameters.parameters
-        print(p[arg].annotation)
+        # print(p[arg].annotation)
         if p[arg].annotation is not inspect._empty:
             # print(p[arg].annotation)
             if p[arg].annotation.__module__ == 'typing':
@@ -282,7 +300,7 @@ def _convert_by_class(args, arg_types):
 
 def convert_config_type(args, arg_types, is_class: bool = False):
     bool_dict = {"True": True, "False": False}
-    print(args, arg_types)
+    # print(args, arg_types)
     # print(globals())
     if args:
         for arg in args:
@@ -417,12 +435,12 @@ class SocketIOHandler(logging.Handler):
         self.socketio.emit('log', {'message': message})
 
 
-def start_logger(socketio: SocketIO):
+def start_logger(socketio: SocketIO, logger_name: str, log_filename: str = None):
     # logging.basicConfig( format='%(asctime)s - %(message)s')
     formatter = logging.Formatter(fmt='%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-    logger = logging.getLogger('gui_logger')
+    logger = logging.getLogger(logger_name)
     logger.setLevel(logging.INFO)
-    file_handler = logging.FileHandler(filename='example.log', )
+    file_handler = logging.FileHandler(filename='default.log', )
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
     # console_logger = logging.StreamHandler()  # stream to console
@@ -492,3 +510,26 @@ def install_and_import(package, package_name=None):
         # print(f"{package} is not installed. Installing now...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", package_name or package])
         # print(f"{package} has been installed successfully.")
+
+
+def process_data(data, config_type):
+    rows = {}  # Dictionary to hold webui_data organized by rows
+
+    # Organize webui_data by rows
+    for key, value in data.items():
+        if value:  # Only process non-empty values
+            # Extract the field name and row index
+            field_name, row_index = key.split('[')
+            row_index = int(row_index.rstrip(']'))
+
+            # If row not in rows, create a new dictionary for that row
+            if row_index not in rows:
+                rows[row_index] = {}
+
+            # Add or update the field value in the specific row's dictionary
+            rows[row_index][field_name] = value
+
+    # Filter out any empty rows and create a list of dictionaries
+    filtered_rows = [row for row in rows.values() if len(row) == len(config_type)]
+
+    return filtered_rows

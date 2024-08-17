@@ -4,19 +4,21 @@ from wtforms.validators import InputRequired
 from wtforms.widgets.core import TextInput
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, FloatField, HiddenField, BooleanField
+from wtforms import StringField, FloatField, HiddenField, BooleanField, IntegerField
 import inspect
 
 
 def find_variable(data, script):
     # TODO: needs to check for valid order of variables, important when editting
     added_variables: list[dict[str, str]] = [action for action in script.currently_editing_script if
-                                             action["instrument"] == "variable"]
-
+                                             action["instrument"] == "variable"
+                                             # or action["return"] # TODO find returns
+                                             ]
     for added_variable in added_variables:
         if added_variable["action"] == data:
             return data, added_variable["args"]
-
+        # if added_variable["return"] == data:
+        #     return data, None
     return None, None
 
 
@@ -29,6 +31,8 @@ class VariableOrStringField(Field):
 
     def process_formdata(self, valuelist):
         if valuelist:
+            if not self.script.editing_type == "script" and valuelist[0].startswith("#"):
+                raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
             self.data = valuelist[0]
 
     def _value(self):
@@ -62,7 +66,11 @@ class VariableOrFloatField(Field):
     def process_formdata(self, valuelist):
         if not valuelist:
             return
-
+        elif valuelist[0].startswith("#"):
+            if not self.script.editing_type == "script":
+                raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
+            self.data = valuelist[0]
+            return
         try:
             if self.script:
                 try:
@@ -102,32 +110,29 @@ class VariableOrIntField(Field):
             return str(self.data)
         return ""
 
-    def process_data(self, value):
-
-        if self.script:
-            variable, var_value = find_variable(value, self.script)
-            if variable:
-                try:
-                    int(var_value)
-                    self.data = str(variable)
-                    return
-                except ValueError:
-                    pass
-
-        if value is None or value is unset_value:
-            self.data = None
-            return
-
-        try:
-            self.data = int(value)
-        except (ValueError, TypeError) as exc:
-            self.data = None
-            raise ValueError(self.gettext("Not a valid integer value.")) from exc
+    # def process_data(self, value):
+    #
+    #     if self.script:
+    #         variable, var_value = find_variable(value, self.script)
+    #         if variable:
+    #             try:
+    #                 int(var_value)
+    #                 self.data = str(variable)
+    #                 return
+    #             except ValueError:
+    #                 pass
+    #     if value is None or value is unset_value:
+    #         self.data = None
+    #         return
+    #     try:
+    #         self.data = int(value)
+    #     except (ValueError, TypeError) as exc:
+    #         self.data = None
+    #         raise ValueError(self.gettext("Not a valid integer value.")) from exc
 
     def process_formdata(self, valuelist):
         if not valuelist:
             return
-
         if self.script:
             variable, var_value = find_variable(valuelist[0], self.script)
             if variable:
@@ -137,6 +142,11 @@ class VariableOrIntField(Field):
                     return
                 except ValueError:
                     pass
+        if valuelist[0].startswith("#"):
+            if not self.script.editing_type == "script":
+                raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
+            self.data = valuelist[0]
+            return
         try:
             self.data = int(valuelist[0])
         except ValueError as exc:
@@ -144,7 +154,7 @@ class VariableOrIntField(Field):
             raise ValueError(self.gettext("Not a valid integer value.")) from exc
 
 
-class VariableOrBoolField(Field):
+class VariableOrBoolField(BooleanField):
     widget = TextInput()
 
     def __init__(self, label='', validators=None, script=None, **kwargs):
@@ -165,8 +175,12 @@ class VariableOrBoolField(Field):
         self.data = bool(value)
 
     def process_formdata(self, valuelist):
-        if not valuelist:
+        if not valuelist or type(valuelist) is list and valuelist[0] == '':
             self.data = False
+        elif valuelist and valuelist[0].startswith("#"):
+            if not self.script.editing_type == "script":
+                raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
+            self.data = valuelist[0]
         else:
             self.data = True
 
@@ -189,42 +203,31 @@ def format_name(name):
     return text.capitalize()
 
 
-def create_form_for_method(method, method_name, autofill, script=None):
+def create_form_for_method(method, method_name, autofill, script=None, design=True):
     class DynamicForm(FlaskForm):
         pass
 
     annotation_mapping = {
-        int: (VariableOrIntField, 'Enter integer value'),
-        float: (VariableOrFloatField, 'Enter numeric value'),
-        str: (VariableOrStringField, 'Enter text'),
-        bool: (BooleanField, 'Enter bool value')
+        int: (VariableOrIntField if design else IntegerField, 'Enter integer value'),
+        float: (VariableOrFloatField if design else FloatField, 'Enter numeric value'),
+        str: (VariableOrStringField if design else StringField, 'Enter text'),
+        bool: (VariableOrBoolField if design else BooleanField, 'Enter bool value')
     }
-
-    sig = inspect.signature(method)
+    sig = method if type(method) is inspect.Signature else inspect.signature(method)
 
     for param in sig.parameters.values():
         if param.name == 'self':
             continue
         formatted_param_name = format_name(param.name)
-        placeholder_text = ""
-        if autofill:
-            field_class = VariableOrStringField
-            field_kwargs = {
-                "label": f'{formatted_param_name}',
-                "default": f'#{param.name}',
-                # "script": script
-            }
-        else:
-            # Decide the field type based on annotation
-            field_kwargs = {
-                "label": f'{formatted_param_name}',
-                "default": param.default if param.default is not param.empty else "",
-                # "script": script
-            }
-            field_class, placeholder_text = annotation_mapping.get(
-                param.annotation,
-                (VariableOrStringField, f'Enter {param.annotation} value')
-            )
+        field_kwargs = {
+            "label": formatted_param_name,
+            "default": f'#{param.name}' if autofill else (param.default if param.default is not param.empty else ""),
+            **({"script": script} if (autofill or design) else {})
+        }
+        field_class, placeholder_text = annotation_mapping.get(
+            param.annotation,
+            (VariableOrStringField, f'Enter {param.annotation} value')
+        )
         render_kwargs = {"placeholder": placeholder_text}
 
         # Create the field with additional rendering kwargs for placeholder text
@@ -237,7 +240,7 @@ def create_form_for_method(method, method_name, autofill, script=None):
 
 # Create forms for each method in DummySDLDeck
 def create_add_form(attr, attr_name, autofill, script=None, design=True):
-    dynamic_form = create_form_for_method(attr, attr_name, autofill, script)
+    dynamic_form = create_form_for_method(attr, attr_name, autofill, script, design)
     if design:
         return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
         setattr(dynamic_form, 'return', return_value)
@@ -246,7 +249,7 @@ def create_add_form(attr, attr_name, autofill, script=None, design=True):
     return dynamic_form
 
 
-def create_form_from_module(sdl_module, autofill, script=None, design=True):
+def create_form_from_module(sdl_module, autofill: bool, script=None, design=True):
     # sdl_deck = DummySDLDeck(DummyPump("COM1"), DummyBalance("COM2"))
     method_forms = {}
     for attr_name in dir(sdl_module):
@@ -254,6 +257,15 @@ def create_form_from_module(sdl_module, autofill, script=None, design=True):
         if inspect.ismethod(attr) and not attr_name.startswith('_'):
             form_class = create_add_form(attr, attr_name, autofill, script, design)
             method_forms[attr_name] = form_class()
+    return method_forms
+
+
+def create_form_from_pseudo(pseudo: dict, autofill: bool, script=None, design=True):
+    '''{'dose_liquid': < Signature(amount_in_ml: float, rate_ml_per_minute: float) >}'''
+    method_forms = {}
+    for attr_name, signature in pseudo.items():
+        form_class = create_add_form(signature, attr_name, autofill, script, design)
+        method_forms[attr_name] = form_class()
     return method_forms
 
 
@@ -302,4 +314,3 @@ def create_action_button(s: dict):
 
         text = f"{prefix}{action_text}  {arg_string}"
     return dict(label=text, style=style, uuid=s["uuid"], id=s["id"])
-

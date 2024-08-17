@@ -4,9 +4,10 @@ import os
 import re
 
 # import ollama
-from dotenv import load_dotenv
 from openai import OpenAI
-load_dotenv()
+
+
+# load_dotenv()
 
 # host = "137.82.65.246"
 # model = "llama3"

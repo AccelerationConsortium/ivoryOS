@@ -19,6 +19,7 @@ In your SDL script, use `ivoryos(__name__)`. Example in [abstract_sdl.py](https:
 
 ```python
 from ivoryos.app import ivoryos
+
 ivoryos(__name__)
 ```
 
@@ -29,8 +30,10 @@ ivoryos(__name__)
 OPENAI_API_KEY="Your API Key"
 ```
 2. In your SDL script, define model, you can use any GPT models.
+
 ```python
 from ivoryos.app import ivoryos
+
 ivoryos(__name__, model="gpt-3.5-turbo")
 ```
 
@@ -38,8 +41,10 @@ ivoryos(__name__, model="gpt-3.5-turbo")
 1. Download Ollama.
 2. pull models from Ollama
 3. In your SDL script, define LLM server and model, you can use any models available on Ollama.
+
 ```python
 from ivoryos.app import ivoryos
+
 ivoryos(__name__, llm_server="localhost", model="llama3.1")
 ```
 

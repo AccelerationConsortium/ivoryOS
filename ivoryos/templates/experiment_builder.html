@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}HEIN LAB | Workflow Builder{% endblock %}
+{% block title %}IvoryOS | Design{% endblock %}
 
 {% block body %}
     <div id="overlay" class="overlay">Please wait...</div>
@@ -8,14 +8,14 @@
         <div class="col-md-3 scroll-column" >
 
             {# select deck if this is online#}
-            {% if not off_line %}
-                <form id="select-deck" method="POST" action="/import_pseudo" enctype="multipart/form-data">
+            {% if off_line %}
+                <form id="select-deck" method="POST" action="{{ url_for('design.import_pseudo') }}" enctype="multipart/form-data">
                     <div class="input-group mb-3">
 {#                        <label for="pkl_name" class="form-label">Choose/Change deck:</label>#}
                         <select class="form-select" name="pkl_name" id="pkl_name" required onchange="document.getElementById('select-deck').submit();">
-                            <option selected disabled hidden style="overflow-wrap: break-word;" name="pkl_name" id="pkl_name" value=""> -- choose deck --</option>
+                            <option {{ '' if 'pseudo_deck' in session else 'selected' }} disabled hidden style="overflow-wrap: break-word;" name="pkl_name" id="pkl_name" value=""> -- choose deck --</option>
                             {% for connection in history %}
-                                <option style="overflow-wrap: break-word;" name="pkl_name" id="pkl_name" value="{{connection}}">{{connection.split('.')[0]}}</option>
+                                <option {{ 'selected' if session['pseudo_deck']==connection else '' }} style="overflow-wrap: break-word;" name="pkl_name" id="pkl_name" value="{{connection}}">{{connection.split('.')[0]}}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -27,7 +27,7 @@
             {% if session["edit_action"] %}
                 {% with action = session["edit_action"] %}
                     <h5> {{ format_name(action['action']) }} </h5>
-                    <form role="form" method='POST' name="{{instrument}}" action="/edit/{{session["edit_action"]['uuid']}}" >
+                    <form role="form" method='POST' name="{{instrument}}" action="{{ url_for('design.edit_action', uuid=session["edit_action"]['uuid']) }}">
                         {% if not action['args'] == None %}
                         <div class="form-group">
                             {% if not action['args'].__class__.__name__ == 'dict' %}
@@ -57,7 +57,7 @@
                 <div>
                     <div class="d-flex justify-content-between align-items-center " style="margin-bottom: 1vh;margin-top: 1vh;">
 
-                        <a class="btn btn-primary" role="button" type="button" href="{{url_for('experiment_builder')}}"><i class="bi bi-arrow-return-left"></i></a>
+                        <a class="btn btn-primary" role="button" type="button" href="{{url_for('design.experiment_builder')}}"><i class="bi bi-arrow-return-left"></i></a>
 
                         {{ format_name(instrument) }}
 
@@ -69,7 +69,7 @@
 <!--                    </div>-->
                     {% if instrument in ['if' , 'while' , 'variable' ,'wait'] %}
                         {# form for builtin functions #}
-                        <form role="form" method='POST' name="{{instrument}}" action="{{url_for('experiment_builder',instrument=instrument)}}" >
+                        <form role="form" method='POST' name="{{instrument}}" action="{{url_for('design.experiment_builder',instrument=instrument)}}" >
                             <div class="form-group">
                                 {{ forms.hidden_tag() }}
                                 {% for field in forms %}
@@ -85,22 +85,24 @@
                             <button type="submit" class="btn btn-dark" onclick="submitForm('add')">Add </button>
                         </form>
                     {% else %}
+                        {% if script.editing_type == "script" %}
+                            {# Auto Fill Toggle #}
+                            <div class="d-flex justify-content-between align-items-center " style="margin-bottom: 1vh;margin-top: 1vh;">
 
-                        {# Auto Fill Toggle #}
-                        <div class="d-flex justify-content-between align-items-center " style="margin-bottom: 1vh;margin-top: 1vh;">
+                                <div></div>
+                                <form role="form" method='POST' name="autoFill" id="autoFill">
+                                    <div class="form-check form-switch">
+                                        <input type="hidden" id="autofill" name="autofill" value="temp_value">
+                                        <input class="form-check-input" type="checkbox" id="autoFillCheck" name="autoFillCheck" onchange="submitForm('autoFill');"
+                                               value="temp_value"
+                                                {{ "checked" if session["autofill"] else "" }}>
+                                        <label class="form-check-label" for="autoFillCheck">Auto fill</label>
+                                    </div>
+                                    <button type="submit" class="btn btn-default" style="display: none;">Auto fill </button>
+                                </form>
+                            </div>
+                        {% endif %}
 
-                            <div></div>
-                            <form role="form" method='POST' name="autoFill" id="autoFill">
-                                <div class="form-check form-switch">
-                                    <input type="hidden" id="autofill" name="autofill" value="temp_value">
-                                    <input class="form-check-input" type="checkbox" id="autoFillCheck" name="autoFillCheck" onchange="submitForm('autoFill');"
-                                           value="temp_value"
-                                            {{ "checked" if autofill else "" }}>
-                                    <label class="form-check-label" for="autoFillCheck">Auto fill</label>
-                                </div>
-                                <button type="submit" class="btn btn-default" style="display: none;">Auto fill </button>
-                            </form>
-                        </div>
                         {# according for instrument #}
                         <div class="accordion accordion-flush" id="accordionActions" >
                             {% if use_llm %}
@@ -112,9 +114,9 @@
                                     </h2>
                                     <div id="text-to-code" class="accordion-collapse collapse show" data-bs-parent="#accordionActions">
                                         <div class="accordion-body">
-                                            <form role="form" method='POST' name="generate" id="generate" action="{{url_for('generate_code')}}">
+                                            <form role="form" method='POST' name="generate" id="generate" action="{{url_for('design.generate_code')}}">
                                                 <input type="hidden" id="instrument" name="instrument" value="{{instrument}}">
-                                                <textarea class="form-control" id="prompt" name="prompt" rows="6" aria-describedby="promptHelpBlock">{{ session['prompt'] }}</textarea>
+                                                <textarea class="form-control" id="prompt" name="prompt" rows="6" aria-describedby="promptHelpBlock">{{ session['prompt'][instrument] if instrument in session['prompt'] else '' }}</textarea>
                                                 <div id="promptHelpBlock" class="form-text">
                                                     This will overwrite current design.
                                                 </div>
@@ -184,7 +186,7 @@
                         <div class="accordion-collapse collapse show" id="advanced">
                             <ul class="list-group">
                                 {% for instrument in ['if', 'while', 'variable', 'wait'] %}
-                                    <form role="form" method='GET' name="device" action="{{url_for('experiment_builder',instrument=instrument)}}">
+                                    <form role="form" method='GET' name="device" action="{{url_for('design.experiment_builder',instrument=instrument)}}">
                                         <div class="form-group">
                                             <button class="list-group-item list-group-item-action" aria-current="true" type="submit">{{instrument}}</button>
                                         </div>
@@ -203,7 +205,7 @@
                         <div class="accordion-collapse collapse show" id="deck">
                             <ul class="list-group">
                                 {% for instrument in defined_variables %}
-                                    <form role="form" method='GET' name="{{instrument}}" action="{{url_for('experiment_builder',instrument=instrument)}}">
+                                    <form role="form" method='GET' name="{{instrument}}" action="{{url_for('design.experiment_builder',instrument=instrument)}}">
                                         <div>
                                             <button class="list-group-item list-group-item-action" type="submit">{{format_name(instrument)}}</button>
                                         </div>
@@ -223,7 +225,7 @@
                             <div class="accordion-collapse collapse show" id="local">
                                 <ul class="list-group">
                                     {% for instrument in local_variables %}
-                                        <form role="form" method='GET' name="{{instrument}}" action="{{url_for('experiment_builder',instrument=instrument)}}">
+                                        <form role="form" method='GET' name="{{instrument}}" action="{{url_for('design.experiment_builder',instrument=instrument)}}">
                                             <div>
                                                 <button class="list-group-item list-group-item-action" type="submit"  name="device" value="{{instrument}}" >{{instrument}}</button>
                                             </div>
@@ -248,19 +250,19 @@
                             <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#newScriptModal">New</button>
                             <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#jsonModal">Import (.json <i class="bi bi-filetype-json"></i>)</button>
                             <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#renameModal">Rename</button>
-                            <a role="button" class="dropdown-item {{'disabled' if not script.name or script.status == 'finalized'}}" type="button" href="{{url_for('publish')}}">Save</a></li>
+                            <a role="button" class="dropdown-item {{'disabled' if not script.name or script.status == 'finalized'}}" type="button" href="{{url_for('database.publish')}}">Save</a></li>
                             <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#saveasModal">Save as</button>
                             {% if not script.status == 'finalized' %}
-                                <a role="button" class="dropdown-item" type="button" href="{{url_for('finalize')}}">Disable editing</a>
+                                <a role="button" class="dropdown-item" type="button" href="{{url_for('database.finalize')}}">Disable editing</a>
                             {% endif %}
-                            <a  class="dropdown-item" role="button" type="button" href="{{url_for('download', filetype='script')}}">Export (.json <i class="bi bi-filetype-json"></i>)</a>
+                            <a  class="dropdown-item" role="button" type="button" href="{{url_for('design.download', filetype='script')}}">Export (.json <i class="bi bi-filetype-json"></i>)</a>
                         </ul>
                     </li>
 
                     <li class="nav-item"><a class="nav-link" aria-current="page" data-bs-toggle="collapse" href="#info">Info</a></li>
-                    <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='prep' else 'nav-link'}}" aria-current="page" href="/toggle_script_type/prep">Prep</a></li>
-                    <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='script' else 'nav-link'}}" aria-current="page" href="/toggle_script_type/script">Experiment</a></li>
-                    <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='cleanup' else 'nav-link'}}" aria-current="page" href="/toggle_script_type/cleanup">Clean up</a></li>
+                    <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='prep' else 'nav-link'}}" aria-current="page" href="{{url_for('design.toggle_script_type', stype='prep') }}">Prep</a></li>
+                    <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='script' else 'nav-link'}}" aria-current="page" href="{{url_for('design.toggle_script_type', stype='script') }}">Experiment</a></li>
+                    <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='cleanup' else 'nav-link'}}" aria-current="page" href="{{url_for('design.toggle_script_type', stype='cleanup') }}">Clean up</a></li>
                 </ul>
             </div>
 
@@ -299,7 +301,7 @@
                     <ul class="reorder">
                     {% for button in buttons %}
                         <li id="{{ button['id'] }}" style="list-style-type: none;">
-                        <a href="{{ url_for('edit_action', uuid=button['uuid']) }}" type="button" class="btn btn-light" style="{{ button['style'] }}">{{ button['label'] }}</a>
+                        <a href="{{ url_for('design.edit_action', uuid=button['uuid']) }}" type="button" class="btn btn-light" style="{{ button['style'] }}">{{ button['label'] }}</a>
                         <a href="/delete/{{ button['id'] }}" type="button" class="btn btn-light"><span class="bi bi-trash"></span></a>
                         </li>
                     {% endfor %}
@@ -308,8 +310,8 @@
                 </div>
             </div>
             <div>
-                <a class="btn btn-dark {{ 'disabled' if not script.name or script.status == "finalized" else ''}}" href="{{url_for('publish')}}">Quick Save</a>
-                <a class="btn btn-dark " href="{{ url_for('experiment_run') }}">Compile and Run</a>
+                <a class="btn btn-dark {{ 'disabled' if not script.name or script.status == "finalized" else ''}}" href="{{url_for('database.publish')}}">Quick Save</a>
+                <a class="btn btn-dark " href="{{ url_for('design.experiment_run') }}">Compile and Run</a>
             </div>
         </div>
     </div>
@@ -327,7 +329,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Continue editing </button>
-                <a role="button" class="btn btn-primary" href="{{url_for('clear')}}"> Already saved, clear all </a>
+                <a role="button" class="btn btn-primary" href="{{url_for('design.clear')}}"> Already saved, clear all </a>
             </div>
         </div>
     </div>
@@ -339,7 +341,7 @@
                 <h1 class="modal-title fs-5" id="saveasModal">Save your script as </h1>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" name="run_name" action="{{ url_for('save_as') }}">
+            <form method="POST" name="run_name" action="{{ url_for('database.save_as') }}">
                 <div class="modal-body">
                     <div class="input-group mb-3">
                         <label class="input-group-text" for="run_name">Run Name</label>
@@ -361,7 +363,7 @@
                 <h1 class="modal-title fs-5" id="renameModal">Rename your script</h1>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" name="run_name" action="{{ url_for('edit_run_name') }}">
+            <form method="POST" name="run_name" action="{{ url_for('database.edit_run_name') }}">
                 <div class="modal-body">
                     <div class="input-group mb-3">
                         <label class="input-group-text" for="run_name">Run Name</label>
@@ -383,7 +385,7 @@
                 <h1 class="modal-title fs-5" id="jsonModal">Import from JSON</h1>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="/load_json" enctype="multipart/form-data">
+            <form method="POST" action="{{ url_for('design.load_json') }}" enctype="multipart/form-data">
                 <div class="modal-body">
                     <div class="input-group mb-3">
                         <input class="form-control" type="file" name="file" required="required">

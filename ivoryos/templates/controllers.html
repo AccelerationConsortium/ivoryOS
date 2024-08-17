@@ -1,13 +1,19 @@
 {% extends 'base.html' %}
-{% block title %}HEIN LAB | Controller for {{inst.__class__.__name__}}{% endblock %}
+{% block title %}IvoryOS | Controller for {{inst.__class__.__name__}}{% endblock %}
 {% block body %}
+    <div id="overlay" class="overlay">
+        <div>
+            <h3 id="overlay-text"></h3>
+            <div class="spinner-border" role="status"></div>
+        </div>
+    </div>
     <h1>Controller for {{inst.__class__.__name__}} ({{instrument}})</h1>
     <div class="grid-container" id="sortable-grid">
         {% for function, form in forms.items() %}
             {% if function not in session['hidden_functions'][instrument] %}
                 <div class="card" id="{{function}}">
                     <div class="bg-white rounded shadow-sm flex-fill">
-                        <a style="float: right" aria-label="Close" href="/hide_function/{{ instrument }}/{{ function }}"><i class="bi bi-eye-slash-fill"></i></a>
+                        <a style="float: right" aria-label="Close" href="{{ url_for('control.hide_function', instrument=instrument, function=function) }}"><i class="bi bi-eye-slash-fill"></i></a>
                         <div class="form-control" >
                             <form role="form" method='POST' name="{{function}}" id="{{function}}">
                                 <div class="form-group">
@@ -28,7 +34,7 @@
                                     {% endfor %}
                                 </div>
                                 <div class="input-group mb-3">
-                                    <button type="submit" class="form-control" style="background-color: #a5cece;" onclick="submitForm('{{function}}')">{{function}} </button>
+                                    <button type="submit" name="{{ function }}" id="{{ function }}" class="form-control" style="background-color: #a5cece;" onclick="submitForm('{{function}}')">{{function}} </button>
                                 </div>
                             </form>
                         </div>
@@ -49,7 +55,7 @@
             <div class="accordion-body">
                 {% for function in session['hidden_functions'][instrument] %}
                     <div>
-                        {{ function }} <a href="/remove_hidden/{{ instrument }}/{{ function }}"><i class="bi bi-eye-fill"></i></a>
+                        {{ function }} <a href="{{ url_for('control.remove_hidden', instrument=instrument, function=function) }}"><i class="bi bi-eye-fill"></i></a>
                     </div>
                 {% endfor %}
             </div>
@@ -69,7 +75,7 @@
             update: function(event, ui) {
                 const newOrder = $("#sortable-grid").sortable("toArray");
                 $.ajax({
-                    url: `/save-order/{{instrument}}`,
+                    url: `{{url_for("control.save_order", instrument=instrument)}}`,
                     method: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify({ order: newOrder }),
@@ -81,4 +87,19 @@
         }).disableSelection();
     });
 </script>
+    <script>
+        const buttonIds = {{ session['card_order'][instrument] | tojson }};
+
+        function addOverlayToButtons(buttonIds) {
+            buttonIds.forEach(function(buttonId) {
+                document.getElementById(buttonId).addEventListener('submit', function() {
+                    // Display the overlay
+                    document.getElementById('overlay').style.display = 'block';
+                    document.getElementById('overlay-text').innerText = `Processing ${buttonId}...`;
+                });
+            });
+        }
+
+        addOverlayToButtons(buttonIds);
+    </script>
 {% endblock %}
