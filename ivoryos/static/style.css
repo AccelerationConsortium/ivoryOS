@@ -21,7 +21,7 @@
 }
 .grid-container {
     display: grid;
-    grid-template-columns: repeat(3, 1fr); /* 4 columns layout */
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     gap: 25px;
     padding: 10px;
 }

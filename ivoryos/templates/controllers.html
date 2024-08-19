@@ -14,7 +14,7 @@
                 <div class="card" id="{{function}}">
                     <div class="bg-white rounded shadow-sm flex-fill">
                         <a style="float: right" aria-label="Close" href="{{ url_for('control.hide_function', instrument=instrument, function=function) }}"><i class="bi bi-eye-slash-fill"></i></a>
-                        <div class="form-control" >
+                        <div class="form-control" style="border: none">
                             <form role="form" method='POST' name="{{function}}" id="{{function}}">
                                 <div class="form-group">
                                     {{ form.hidden_tag() }}

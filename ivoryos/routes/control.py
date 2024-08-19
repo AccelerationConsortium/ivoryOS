@@ -8,7 +8,6 @@ from flask_login import login_required
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils import utils
 from ivoryos.utils.form import create_form_from_module
-from ivoryos.utils.utils import get_script_file
 
 global_config = GlobalConfig()
 
@@ -167,7 +166,7 @@ def disconnect(device_name=None):
 @control.route("/import_deck", methods=['POST'])
 def import_deck():
     global deck
-    script = get_script_file()
+    script = utils.get_script_file()
     filepath = request.form.get('filepath')
     session['dismiss'] = request.form.get('dismiss')
     update = request.form.get('update')

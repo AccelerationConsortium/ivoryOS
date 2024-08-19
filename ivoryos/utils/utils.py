@@ -13,7 +13,7 @@ from typing import Optional, Dict, Tuple
 from flask import session
 from flask_socketio import SocketIO
 
-from .db_models import Script
+from ivoryos.utils.db_models import Script
 
 stypes = ['prep', 'script', 'cleanup']
 
@@ -96,26 +96,33 @@ def new_script(deck_name):
     return script_dict, order
 
 
-def parse_functions(class_object=None, debug=False):
+def parse_functions(class_object=None, debug=False, doc_string=False):
     functions = {}
     under_score = "_"
     if debug:
         under_score = "__"
-    for function in dir(class_object):
+    for function, method in inspect.getmembers(type(class_object), predicate=inspect.isfunction):
         if not function.startswith(under_score) and not function.isupper():
             try:
-                att = getattr(class_object, function)
+                annotation = inspect.signature(method)
+                if doc_string:
+                    docstring = inspect.getdoc(method)
+                    functions[function] = (annotation, docstring)
+                else:
+                    functions[function] = annotation
+
+                # att = getattr(class_object, function)
 
                 # handle getter setters
-                if callable(att):
-                    functions[function] = inspect.signature(att)
-                else:
-                    att = getattr(class_object.__class__, function)
-                    if isinstance(att, property) and att.fset is not None:
-                        setter = att.fset.__annotations__
-                        setter.pop('return', None)
-                        if setter:
-                            functions[function] = setter
+                # if callable(att):
+                #     functions[function] = inspect.signature(att)
+                # else:
+                #     att = getattr(class_object.__class__, function)
+                #     if isinstance(att, property) and att.fset is not None:
+                #         setter = att.fset.__annotations__
+                #         setter.pop('return', None)
+                #         if setter:
+                #             functions[function] = setter
             except Exception:
                 pass
     return functions
@@ -223,7 +230,7 @@ def convert_type(args, parameters):
                 arg_types[arg] = _get_type_from_parameters(arg, parameters)
             elif type(parameters) is inspect.Signature:
                 p = parameters.parameters
-                if p[arg].annotation is not inspect._empty:
+                if p[arg].annotation is not p[arg].empty:
                     if p[arg].annotation.__module__ == 'typing':
                         arg_types[arg] = p[arg].annotation.__args__
 
