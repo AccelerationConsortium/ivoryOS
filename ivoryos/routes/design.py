@@ -36,7 +36,7 @@ def handle_abort_action():
 def experiment_builder(instrument=None):
     global deck
     if deck is None:
-        print("loading deck")
+        # print("loading deck")
         module = current_app.config.get('MODULE', '')
         deck = sys.modules[module] if module else None
     pseudo_deck_name = session.get('pseudo_deck', '')
@@ -146,7 +146,7 @@ def generate_code():
     if request.method == 'POST' and "gen" in request.form:
         prompt = request.form.get("prompt")
         session['prompt'][instrument] = prompt
-        sdl_module = find_instrument_by_name(instrument)
+        sdl_module = utils.parse_functions(find_instrument_by_name(instrument))
         empty_script = Script(author=session.get('user'))
         if enable_llm and agent is None:
             try:
@@ -175,7 +175,7 @@ def experiment_run():
     global deck
     off_line = current_app.config["OFF_LINE"]
     if not off_line and deck is None:
-        print("loading deck")
+        # print("loading deck")
         module = current_app.config.get('MODULE', '')
         deck = sys.modules[module] if module else None
     config_preview = []
