@@ -1,4 +1,4 @@
-![logo](https://gitlab.com/heingroup/ivoryos/-/blob/main/ivoryos.png)
+![logo](ivoryos.png)
 # ivoryOS: interoperable Web UI for SDLs
 ivoryOS is an open-source Python package enabling SDL interoperability. Add a web UI to SDLs anytime.
 ## Description
