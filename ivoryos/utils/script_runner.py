@@ -72,11 +72,12 @@ class ScriptRunner:
                 self.is_running = False  # Reset the running flag when done
 
     def _run_actions(self, actions, section_name="", run_name=None, logger=None):
+        logger.info(f'Executing {section_name} steps') if actions else logger.info(f'No {section_name} steps')
         for action in actions:
             if self.stop_event.is_set():
                 logger.info(f"Stopping execution during {section_name} section.")
                 break
-            logger.info(f'Executing {section_name} steps')
+            logger.info(f'Executing {action.get("action", "")} action')
             fname = f"{run_name}_{section_name}"
             function = self.globals_dict[fname]
             function()
@@ -111,7 +112,7 @@ class ScriptRunner:
             if self.stop_event.is_set():
                 logger.info(f'Stopping execution during {run_name}: {i + 1}/{int(repeat_count)}')
                 break
-            logger.info(f'Executing {run_name}: {i + 1}/{int(repeat_count)}')
+            logger.info(f'Executing {run_name} experiment: {i + 1}/{int(repeat_count)}')
             progress = (i + 1) * 100 / int(repeat_count)
             socketio.emit('progress', {'progress': progress})
             if bo_args:

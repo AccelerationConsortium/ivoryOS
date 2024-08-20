@@ -11,7 +11,7 @@ from ivoryos.utils.form import create_form_from_module
 
 global_config = GlobalConfig()
 
-control = Blueprint('control', __name__)
+control = Blueprint('control', __name__, template_folder='templates/control')
 
 global deck
 deck = None

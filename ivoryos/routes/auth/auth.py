@@ -6,7 +6,7 @@ from ivoryos.utils.db_models import Script, User, db
 from ivoryos.utils.utils import post_script_file
 login_manager = LoginManager()
 
-auth = Blueprint('auth', __name__)
+auth = Blueprint('auth', __name__, template_folder='templates/auth')
 
 
 @auth.route('/login', methods=['GET', 'POST'])
@@ -57,7 +57,7 @@ def signup():
 def logout():
     logout_user()
     session.clear()
-    return redirect(url_for('auth.login'))
+    return redirect(url_for('control.login'))
 
 
 @login_manager.user_loader

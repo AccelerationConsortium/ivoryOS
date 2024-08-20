@@ -18,7 +18,7 @@ from ivoryos.utils.db_models import Script
 from ivoryos.utils.script_runner import ScriptRunner
 
 socketio = SocketIO()
-design = Blueprint('design', __name__)
+design = Blueprint('design', __name__, template_folder='templates/design')
 
 runner = ScriptRunner(globals())
 global_config = GlobalConfig()

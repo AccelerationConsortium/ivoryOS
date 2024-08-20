@@ -5,7 +5,7 @@ from ivoryos.utils.db_models import Script, User, db
 from ivoryos.utils.utils import get_script_file, post_script_file
 global deck
 
-database = Blueprint('database', __name__)
+database = Blueprint('database', __name__, template_folder='templates/database')
 
 
 @database.route("/delete/<id>")

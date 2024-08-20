@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, current_app
 from flask_login import login_required
 
-main = Blueprint('main', __name__)
+main = Blueprint('main', __name__, template_folder='templates/main')
 
 @main.route("/")
 @login_required

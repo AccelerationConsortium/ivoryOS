@@ -63,7 +63,7 @@ if __name__ == "__main__":
     pump = DummyPump("Fake com port 2")
     deck = DummySDLDeck(pump, balance)
 
-    from ivoryos.app import ivoryos
+    from ivoryos import ivoryos
     # ivoryos()
     ivoryos(__name__, logger='logger_name')
 

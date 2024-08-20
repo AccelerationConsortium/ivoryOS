@@ -1,4 +1,4 @@
-![ivoryos.png](ivoryos.png)
+![logo](https://gitlab.com/heingroup/ivoryos/-/blob/main/ivoryos.png)
 # ivoryOS: interoperable Web UI for SDLs
 ivoryOS is an open-source Python package enabling SDL interoperability. Add a web UI to SDLs anytime.
 ## Description
@@ -18,7 +18,7 @@ pip install ivoryos
 In your SDL script, use `ivoryos(__name__)`. Example in [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/main/example/dummy_ur/dummy_deck.py)
 
 ```python
-from ivoryos.app import ivoryos
+from ivoryos import ivoryos
 
 ivoryos(__name__)
 ```
@@ -32,7 +32,7 @@ OPENAI_API_KEY="Your API Key"
 2. In your SDL script, define model, you can use any GPT models.
 
 ```python
-from ivoryos.app import ivoryos
+from ivoryos import ivoryos
 
 ivoryos(__name__, model="gpt-3.5-turbo")
 ```
@@ -43,7 +43,7 @@ ivoryos(__name__, model="gpt-3.5-turbo")
 3. In your SDL script, define LLM server and model, you can use any models available on Ollama.
 
 ```python
-from ivoryos.app import ivoryos
+from ivoryos import ivoryos
 
 ivoryos(__name__, llm_server="localhost", model="llama3.1")
 ```
