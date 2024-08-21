@@ -39,7 +39,10 @@ class LlmAgent:
         class_str = ""
 
         for name, value in module_sigs.items():
-            sig, docstring = value
+            if type(value) is tuple:
+                sig, docstring = value
+            else:
+                sig, docstring = value, None
             class_str += f'\tdef {name}{sig}:\n'
             class_str += f'\t\t"""\n\t\t{docstring}\n\t\t"""' + '\n' if docstring else ''
         class_str = class_str.replace('self, ', '')
@@ -123,12 +126,13 @@ can you also help find the default value you can't find the info from my request
         # msg = output.choices[0].message.parsed
 
         code = self.parse_code_from_msg(msg)
-        code = [action for action in code if action['action'] in name_list]
+        code = [action for action in code if action.get('action', '') in name_list]
         # print('\033[91m', code, '\033[0m')
         return code
 
     def generate_code(self, robot_signature, prompt, attempt_allowance: int = 3):
         attempt = 0
+
         while attempt < attempt_allowance:
             _code = self._generate(robot_signature, prompt)
             attempt += 1
@@ -147,7 +151,6 @@ can you also help find the default value you can't find the info from my request
             args = action.get("args", {})
             arg_types = action.get("arg_types", {})
             for param in action_signature.parameters.values():
-
                 if param.name == 'self':
                     continue
                 if param.name not in args:

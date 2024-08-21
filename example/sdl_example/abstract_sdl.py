@@ -65,10 +65,10 @@ if __name__ == "__main__":
 
     from ivoryos import ivoryos
     # ivoryos()
-    ivoryos(__name__, logger='logger_name')
+    # ivoryos(__name__, logger='logger_name')
 
     # # LLM using local model with Ollama
-    # ivoryos(__name__, model="llama3.1", llm_server='localhost',)
+    ivoryos(__name__, model="llama3.1", llm_server='localhost',)
 
     # # LLM with OpenAI api
     # ivoryos(__name__, model="gpt-3.5-turbo")

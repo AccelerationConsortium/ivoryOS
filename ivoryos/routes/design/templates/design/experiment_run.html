@@ -2,8 +2,6 @@
 {% block title %}IvoryOS | Design execution{% endblock %}
 
 {% block body %}
-    <div id="overlay" class="overlay">Please wait...</div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
 
 
@@ -266,25 +264,22 @@
             </h2>
             <div id="script" class="accordion-collapse collapse">
                 <div class="accordion-body">
-                    {% for script_type in ['prep', 'script', 'cleanup'] %}
-                        {% if script[script_type] %}
+                    {% set labels = {
+                        'prep': 'Preparation:',
+                        'script': 'Experiment:',
+                        'cleanup': 'Clean up:'
+                    } %}
+                    {% for key, buttons in design_buttons.items() %}
+                        {% if buttons %}
                             <h6>
-                                {% if script_type == 'prep' %} Preparation: {% elif script_type == 'script' %} Experiment:
-                                {% elif script_type == 'cleanup' %} Clean up: {% endif %}
+                                {{labels[key]}}
                             </h6>
                             <ul>
-                                {% for s in script[script_type] %}{% if not s['instrument']=='if' and not s['instrument']=='while' %} &emsp; {% endif %}
-                                    <li class="btn btn-light" id="{{s['id']}}" style="{{'background-color: tomato' if s['instrument']=='if' else 'background-color: darkcyan' if s['instrument']=='while' else ''}}">
-                                        {% if s['return'] %}{{ s['return'] }} = {% endif %}
-                                        {{ s['action'] }}
-{#                                           {% if s['action']== 'if' %} {% if s['args'] %}({{ s['args'] }}) {% else %} True {% endif %}#}
-{#                                           {% elif s['action']== 'while' %} {% if s['args'] %}({{ s['args'] }}) {% else %} False {% endif %}#}
-                                        {% if s['instrument']== 'variable' %} = {{ s['args'] }}
-                                        {% else %} {% if s['args'] %} ({{ s['args'] }}) {% endif %}
-                                        {% endif %}
-                                    </li>
-                                    <div class="clear"></div>
-                                {% endfor %}
+                            {% for button in buttons %}
+                            <li id="{{ button['id'] }}" style="list-style-type: none;">
+                            <button type="button" class="btn btn-light" style="{{ button['style'] }}">{{ button['label'] }}</button>
+                            </li>
+                            {% endfor %}
                             </ul>
                         {% endif %}
                     {% endfor %}
@@ -305,62 +300,9 @@
             </div>
         </div>
     </div>
-
     <script>
-        document.getElementById('{{config}}_type').addEventListener('change', function() {
-            const extraInputBox = document.getElementById('{{config}}_value_max');
-
-            if (this.value === 'range') {
-                extraInputBox.style.display = 'block';
-            } else {
-                extraInputBox.style.display = 'none';
-            }
-        });
+        const configTypeList = {{ config_type_list | tojson }};
     </script>
-    <script>
-        {# // Initially add 5 rows when the page loads #}
-        document.addEventListener("DOMContentLoaded", function() {
-            for (let i = 0; i < 5; i++) {
-                addRow();
-            }
-        });
-    </script>
-    <script>
-        {#var socket = io.connect('http://' + document.domain + ':' + location.port);#}
-        var socket = io()
-        socket.on('connect', function() {
-            console.log('Connected');
-        });
-        socket.on('progress', function(data) {
-            var progress = data.progress;
-            console.log(progress);
-            $('#progress-bar-inner').css('width', progress + '%')
-        });
-        socket.on('log', function(data) {
-            var logMessage = data.message;
-            console.log(logMessage);
-            $('#logging-panel').append(logMessage+"<br>");
-            $('#logging-panel').scrollTop($('#logging-panel')[0].scrollHeight);
-        });
-        document.getElementById('abort').addEventListener('click', function() {
-            var confirmation = confirm("Are you sure you want to abort pending actions?");
-            if (confirmation) {
-                socket.emit('abort_action');
-                console.log('Abort action sent to server.');
-            }
-        });
-    </script>
-    <script>
-        var rowCount = 0; // Initialize row count
-        function addRow() {
-            rowCount++; // Increment row count each time a row is added
-            var table = document.getElementById("dataInputTable");
-            var newRow = table.insertRow(-1); // Adds a row at the end of the table
-            {% for column, type in config_type_list.items()  %}
-            var cell = newRow.insertCell(-1);
-            cell.innerHTML = '<input type="text" class="form-control" name="{{ column }}[' + rowCount + ']" placeholder={{ type }}>';
-            {% endfor %}
-        }
-    </script>
-
+    <script src="{{ url_for('static', filename='js/create_entries.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/socket_handler.js') }}"></script>
 {% endblock %}

@@ -61,45 +61,11 @@
             </div>
         </div>
     </div>
-<script>
-    $(function() {
-        $("#sortable-grid").sortable({
-            items: ".card",
-            cursor: "move",
-            opacity: 0.7,
-            revert: true,
-            placeholder: "ui-state-highlight",
-            start: function(event, ui) {
-                ui.placeholder.height(ui.item.height());
-            },
-            update: function(event, ui) {
-                const newOrder = $("#sortable-grid").sortable("toArray");
-                $.ajax({
-                    url: `{{url_for("control.save_order", instrument=instrument)}}`,
-                    method: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({ order: newOrder }),
-                    success: function() {
-                        console.log('Order saved');
-                    }
-                });
-            }
-        }).disableSelection();
-    });
-</script>
+
     <script>
+        const saveOrderUrl = `{{ url_for('control.save_order', instrument=instrument) }}`;
         const buttonIds = {{ session['card_order'][instrument] | tojson }};
-
-        function addOverlayToButtons(buttonIds) {
-            buttonIds.forEach(function(buttonId) {
-                document.getElementById(buttonId).addEventListener('submit', function() {
-                    // Display the overlay
-                    document.getElementById('overlay').style.display = 'block';
-                    document.getElementById('overlay-text').innerText = `Processing ${buttonId}...`;
-                });
-            });
-        }
-
-        addOverlayToButtons(buttonIds);
     </script>
+    <script src="{{ url_for('static', filename='js/sortable_card.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/overlay.js') }}"></script>
 {% endblock %}

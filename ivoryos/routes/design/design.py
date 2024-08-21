@@ -35,16 +35,18 @@ def handle_abort_action():
 @login_required
 def experiment_builder(instrument=None):
     global deck
+    script = utils.get_script_file()
+    script.sort_actions()
     if deck is None:
         # print("loading deck")
         module = current_app.config.get('MODULE', '')
         deck = sys.modules[module] if module else None
+        script.deck = os.path.splitext(os.path.basename(deck.__file__))[0]
     pseudo_deck_name = session.get('pseudo_deck', '')
     off_line = current_app.config["OFF_LINE"]
     enable_llm = current_app.config["ENABLE_LLM"]
     autofill = session.get('autofill')
-    script = utils.get_script_file()
-    script.sort_actions()
+
     # autofill is not allowed for prep and cleanup
     autofill = autofill if script.editing_type == "script" else False
     forms = None
@@ -173,14 +175,17 @@ def generate_code():
 @login_required
 def experiment_run():
     global deck
+    script = utils.get_script_file()
+    script.sort_actions()
     off_line = current_app.config["OFF_LINE"]
     if not off_line and deck is None:
         # print("loading deck")
         module = current_app.config.get('MODULE', '')
         deck = sys.modules[module] if module else None
+        script.deck = os.path.splitext(os.path.basename(deck.__file__))[0]
+    design_buttons = {stype: [create_action_button(i) for i in script.get_script(stype)] for stype in script.stypes}
     config_preview = []
     config_file_list = [i for i in os.listdir(current_app.config["CSV_FOLDER"]) if not i == ".gitkeep"]
-    script = utils.get_script_file()
     exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
     # print(exec_string)
     config_file = request.args.get("filename")
@@ -239,7 +244,7 @@ def experiment_run():
     return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=exec_string,
                            return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                            config_preview=config_preview, data_list=data_list, config_type_list=config_type_list,
-                           no_deck_warning=no_deck_warning, dismiss=dismiss)
+                           no_deck_warning=no_deck_warning, dismiss=dismiss, design_buttons=design_buttons)
 
 
 @design.route("/toggle_script_type/<stype>")

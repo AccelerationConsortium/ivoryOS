@@ -1,9 +1,8 @@
-from flask import Blueprint, redirect, url_for, flash, request, render_template, session
+from flask import Blueprint, redirect, url_for, flash, request, render_template, session, current_app
 from flask_login import login_required
 
-from ivoryos.utils.db_models import Script, User, db
+from ivoryos.utils.db_models import Script, db
 from ivoryos.utils.utils import get_script_file, post_script_file
-global deck
 
 database = Blueprint('database', __name__, template_folder='templates/database')
 
@@ -25,7 +24,8 @@ def edit_workflow(workflow_name):
     script = Script(**row.as_dict())
     post_script_file(script)
     pseudo_name = session.get("pseudo_deck", "")
-    if not deck and pseudo_name and not script.deck == pseudo_name:
+    off_line = current_app.config["OFF_LINE"]
+    if off_line and pseudo_name and not script.deck == pseudo_name:
         flash(f"Choose the deck with name {script.deck}")
     return redirect(url_for('design.experiment_builder'))
 
