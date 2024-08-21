@@ -5,10 +5,13 @@ docstring [optional]:   if given, docstring will be attached to the prompt when 
 _helper_function:       function names start with "_" will not be displayed
 types and default:      Types (str, float, bool) and default values are recommended
 """
-import logging
-import typing
 
-class DummyBalance:
+import logging
+import time
+from abc import ABC
+
+
+class AbstractBalance(ABC):
 
     def __init__(self, com_port: str):
         self.com_port = com_port
@@ -24,11 +27,13 @@ class DummyBalance:
         self._value = value
 
     def weigh_sample(self):
+        time.sleep(1)
         self.logger.info(f"Weighing sample using {self.com_port}")
         return 1
 
     def dose_solid(self, amount_in_mg: float):
         """this function is used to dose solid"""
+        time.sleep(1)
         self.logger.info(f"Dosing {amount_in_mg} mg using {self.com_port}")
         return 1
 
@@ -38,9 +43,9 @@ class DummyBalance:
 
 
 if __name__ == "__main__":
-    balance = DummyBalance("com_port")
+    balance = AbstractBalance("com_port")
 
     # example of using ivoryOS for individual hardware
-    from ivoryos.app import ivoryos
+    import ivoryos
 
-    ivoryos(__name__)
+    ivoryos.run(__name__)

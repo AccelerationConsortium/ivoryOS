@@ -8,7 +8,7 @@ types and default:      Types (str, float, bool) and default values are recommen
 import logging
 
 
-class DummyPump:
+class AbstractPump:
 
     def __init__(self, com_port: str):
         self.com_port = com_port
@@ -22,9 +22,9 @@ class DummyPump:
 
 
 if __name__ == "__main__":
-    balance = DummyPump("com_port")
+    balance = AbstractPump("com_port")
 
     # example of using ivoryOS for individual hardware
-    from ivoryos.app import ivoryos
+    import ivoryos
 
-    ivoryos(__name__)
+    ivoryos.run(__name__)

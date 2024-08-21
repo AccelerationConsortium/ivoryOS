@@ -10,14 +10,15 @@ import logging
 import os
 import sys
 import time
+from abc import ABC
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-from example.sdl_example.abstract_balance import DummyBalance
-from example.sdl_example.abstract_pump import DummyPump
+from example.sdl_example.abstract_balance import AbstractBalance
+from example.sdl_example.abstract_pump import AbstractPump
 
 
-class DummySDLDeck:
-    def __init__(self, pump: DummyPump, balance: DummyBalance):
+class AbstractSDL(ABC):
+    def __init__(self, pump: AbstractPump, balance: AbstractBalance):
         self.pump = pump
         self.balance = balance
         self.logger = logging.getLogger(f"logger_name")
@@ -56,22 +57,28 @@ class DummySDLDeck:
 # some constant values, non-module variables are currently not extracted to UI
 a = {"a": 1, "b": 3}
 
+# initializing hardware
+balance = AbstractBalance("Fake com port 1")
+pump = AbstractPump("Fake com port 2")
+sdl = AbstractSDL(pump, balance)
 
 if __name__ == "__main__":
-    # initializing hardware
-    balance = DummyBalance("Fake com port 1")
-    pump = DummyPump("Fake com port 2")
-    deck = DummySDLDeck(pump, balance)
+    import ivoryos
 
-    from ivoryos import ivoryos
-    # ivoryos()
-    # ivoryos(__name__, logger='logger_name')
+    # USE CASE 1 - start OS using current module
+    ivoryos.run(__name__)
 
-    # # LLM using local model with Ollama
-    ivoryos(__name__, model="llama3.1", llm_server='localhost',)
+    # # USE CASE 2 - start OS using current module and enable LLM with Ollama
+    # ivoryos.run(__name__, model="llama3.1", llm_server='localhost')
 
-    # # LLM with OpenAI api
-    # ivoryos(__name__, model="gpt-3.5-turbo")
+    # # USE CASE 3 - start OS using current module and enable LLM with OpenAI api key in .env
+    # ivoryos.run(__name__, model="gpt-3.5-turbo")
+
+    # # USE CASE 4 - start OS without using current module
+    # ivoryos.run()
+
+    # # LOGGER EXAMPLE - start OS using current module and include logger
+    # ivoryos.run(__name__, logger='logger_name')
 
     """
     Example prompt when using text-to-code:
