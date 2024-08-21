@@ -96,7 +96,7 @@ def new_script(deck_name):
     return script_dict, order
 
 
-def parse_functions(class_object=None, debug=False, doc_string=False):
+def parse_functions(class_object=None, debug=False):
     functions = {}
     under_score = "_"
     if debug:
@@ -105,13 +105,9 @@ def parse_functions(class_object=None, debug=False, doc_string=False):
         if not function.startswith(under_score) and not function.isupper():
             try:
                 annotation = inspect.signature(method)
-                if doc_string:
-                    docstring = inspect.getdoc(method)
-                    functions[function] = (annotation, docstring)
-                else:
-                    functions[function] = annotation
-
-                # att = getattr(class_object, function)
+                # if doc_string:
+                docstring = inspect.getdoc(method)
+                functions[function] = dict(signature=annotation, docstring=docstring)
 
                 # handle getter setters
                 # if callable(att):
@@ -421,15 +417,6 @@ def import_module_by_filepath(filepath: str, name: str):
     return module
 
 
-def if_deck_valid(module):
-    count = 0
-    for var in set(dir(module)):
-        if not var.startswith("_") and not var[0].isupper() and not var.startswith("repackage") \
-                and not type(eval("module." + var)).__module__ == 'builtins':
-            count += 1
-    return False if count == 0 else True
-
-
 class SocketIOHandler(logging.Handler):
     def __init__(self, socketio: SocketIO):
         super().__init__()
@@ -447,7 +434,7 @@ def start_logger(socketio: SocketIO, logger_name: str, log_filename: str = None)
     formatter = logging.Formatter(fmt='%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging.INFO)
-    file_handler = logging.FileHandler(filename='default.log', )
+    file_handler = logging.FileHandler(filename=log_filename, )
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
     # console_logger = logging.StreamHandler()  # stream to console
@@ -540,3 +527,18 @@ def process_data(data, config_type):
     filtered_rows = [row for row in rows.values() if len(row) == len(config_type)]
 
     return filtered_rows
+
+
+def parse_deck(deck, save=False, output_path=''):
+    deck_variables = {f"deck.{name}": parse_functions(val) for name, val in vars(deck).items()
+                      if not type(val).__module__ == 'builtins'
+                      and not name[0].isupper()
+                      and not name.startswith("_")}
+    if deck_variables and save:
+        # pseudo_deck = parse_dict
+        parse_dict = deck_variables.copy()
+        parse_dict["deck_name"] = os.path.splitext(os.path.basename(deck.__file__))[
+            0] if deck.__name__ == "__main__" else deck.__name__
+        with open(os.path.join(output_path, f"{parse_dict['deck_name']}.pkl"), 'wb') as file:
+            pickle.dump(parse_dict, file)
+    return deck_variables

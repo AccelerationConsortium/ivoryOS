@@ -13,22 +13,13 @@ global_config = GlobalConfig()
 
 control = Blueprint('control', __name__, template_folder='templates/control')
 
-global deck
-deck = None
-
 
 @control.route("/my_deck")
 @login_required
 def deck_controllers():
-    global deck
-    if deck is None:
-        # print("loading deck")
-        module = current_app.config.get('MODULE', '')
-        deck = sys.modules[module] if module else None
-        # global_config.deck = deck
-    deck_variables = parse_deck(deck)
-    # deck_variables = session.get("deck_variables")
-    return render_template('controllers_home.html', defined_variables=deck_variables, deck=True)
+    deck_variables = global_config.deck_variables.keys()
+    deck_list = utils.import_history(os.path.join(current_app.config["OUTPUT_FOLDER"], 'deck_history.txt'))
+    return render_template('controllers_home.html', defined_variables=deck_variables, deck=True, history=deck_list)
 
 
 @control.route("/new_controller/")
@@ -58,8 +49,8 @@ def new_controller(instrument=None):
             kwargs = request.form.to_dict()
             kwargs.pop("device_name")
             for i in kwargs:
-                if kwargs[i] in globals():
-                    kwargs[i] = globals()[kwargs[i]]
+                if kwargs[i] in global_config.defined_variables:
+                    kwargs[i] = global_config.defined_variables[kwargs[i]]
             try:
                 utils.convert_config_type(kwargs, device.__init__.__annotations__, is_class=True)
             except Exception as e:
@@ -84,12 +75,8 @@ def controllers_home():
 @control.route("/controllers/<instrument>", methods=['GET', 'POST'])
 @login_required
 def controllers(instrument):
-    global deck
-    if instrument.startswith("deck") and deck is None:
-        module = current_app.config.get('MODULE', '')
-        deck = sys.modules[module] if module else None
     inst_object = find_instrument_by_name(instrument)
-    _forms = create_form_from_module(sdl_module=find_instrument_by_name(instrument), autofill=False, design=False)
+    _forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
     card_order = session.get('card_order')
     order = card_order.get(instrument, _forms.keys())
     if instrument not in card_order:
@@ -113,7 +100,7 @@ def controllers(instrument):
                 flash(e.__str__())
         else:
             flash(form.errors)
-    return render_template('controllers.html', instrument=instrument, inst=inst_object, forms=forms)
+    return render_template('controllers.html', instrument=instrument, forms=forms)
 
 
 @control.route("/import_api", methods=['GET', 'POST'])
@@ -138,34 +125,34 @@ def import_api():
     return redirect(url_for("control.new_controller"))
 
 
-@control.route("/disconnect", methods=["GET"])
-@control.route("/disconnect/<device_name>", methods=["GET"])
-def disconnect(device_name=None):
-    """TODO handle disconnect device"""
-    if device_name:
-        try:
-            exec(device_name + ".disconnect()")
-        except Exception:
-            pass
-        global_config.defined_variables.remove(device_name)
-        globals().pop(device_name)
-        return redirect(url_for('control.controllers_home'))
-
-    deck_variables = ["deck." + var for var in set(dir(deck))
-                      if not (var.startswith("_") or var[0].isupper() or var.startswith("repackage"))
-                      and not type(eval("deck." + var)).__module__ == 'builtins']
-    for i in deck_variables:
-        try:
-            exec(i + ".disconnect()")
-        except Exception:
-            pass
-    globals()["deck"] = None
-    return redirect(url_for('control.deck_controllers'))
+# @control.route("/disconnect", methods=["GET"])
+# @control.route("/disconnect/<device_name>", methods=["GET"])
+# def disconnect(device_name=None):
+#     """TODO handle disconnect device"""
+#     if device_name:
+#         try:
+#             exec(device_name + ".disconnect()")
+#         except Exception:
+#             pass
+#         global_config.defined_variables.remove(device_name)
+#         globals().pop(device_name)
+#         return redirect(url_for('control.controllers_home'))
+#
+#     deck_variables = ["deck." + var for var in set(dir(deck))
+#                       if not (var.startswith("_") or var[0].isupper() or var.startswith("repackage"))
+#                       and not type(eval("deck." + var)).__module__ == 'builtins']
+#     for i in deck_variables:
+#         try:
+#             exec(i + ".disconnect()")
+#         except Exception:
+#             pass
+#     globals()["deck"] = None
+#     return redirect(url_for('control.deck_controllers'))
 
 
 @control.route("/import_deck", methods=['POST'])
 def import_deck():
-    global deck
+    # global deck
     script = utils.get_script_file()
     filepath = request.form.get('filepath')
     session['dismiss'] = request.form.get('dismiss')
@@ -173,18 +160,16 @@ def import_deck():
     back = request.referrer
     if session['dismiss']:
         return redirect(back)
-    # if filepath == "manage history":
-
     name = os.path.split(filepath)[-1].split('.')[0]
     try:
         module = utils.import_module_by_filepath(filepath=filepath, name=name)
-        # deck format checking
-        if not utils.if_deck_valid(module):
-            flash("Invalid Deck import")
-            return redirect(url_for("control.deck_controllers"))
-        globals()["deck"] = module
         utils.save_to_history(filepath, current_app.config["DECK_HISTORY"])
-        parse_deck(deck, save=update)
+        module_sigs = utils.parse_deck(module, save=update, output_path=current_app.config["DUMMY_DECK"])
+        if not len(module_sigs) > 0:
+            flash("Invalid hardware deck, connect instruments in deck script", "error")
+            return redirect(url_for("control.deck_controllers"))
+        global_config.deck = module
+        global_config.deck_variables = module_sigs
 
         if script.deck is None:
             script.deck = module.__name__
@@ -238,30 +223,10 @@ def remove_hidden(instrument, function):
     return redirect(back)
 
 
-def parse_deck(deck, save=None):
-    parse_dict = {}
-    # TODO
-    deck_variables = ["deck." + var for var in set(dir(deck))
-                      if not (var.startswith("_") or var[0].isupper() or var.startswith("repackage"))
-                      and not type(eval("deck." + var)).__module__ == 'builtins'
-                      ]
-    session["deck_variables"] = deck_variables
-    for var in deck_variables:
-        instrument = eval(var)
-        functions = utils.parse_functions(instrument)
-        parse_dict[var] = functions
-    if deck is not None and save:
-        # pseudo_deck = parse_dict
-        parse_dict["deck_name"] = os.path.splitext(os.path.basename(deck.__file__))[
-            0] if deck.__name__ == "__main__" else deck.__name__
-        with open(os.path.join(current_app.config["DUMMY_DECK"], f"{parse_dict['deck_name']}.pkl"), 'wb') as file:
-            pickle.dump(parse_dict, file)
-    return deck_variables
-
-
 def find_instrument_by_name(name: str):
     if name.startswith("deck"):
-        return eval(name)
+        name = name.replace("deck.", "")
+        return getattr(global_config.deck, name)
     elif name in global_config.defined_variables:
         return global_config.defined_variables[name]
     elif name in globals():

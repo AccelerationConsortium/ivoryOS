@@ -11,7 +11,8 @@ class GlobalConfig:
             cls._instance._agent = None
             cls._instance._defined_variables = {}
             cls._instance._api_variables = set()
-            # cls._instance._task_manager = ScriptRunner()
+            cls._instance._deck_variables = {}
+            cls._instance._runner = None
         return cls._instance
 
     @property
@@ -22,6 +23,16 @@ class GlobalConfig:
     def deck(self, value):
         if self._deck is None:
             self._deck = value
+
+
+    @property
+    def deck_variables(self):
+        return self._deck_variables
+
+    @deck_variables.setter
+    def deck_variables(self, value):
+        self._deck_variables = value
+
 
     @property
     def agent(self):
@@ -49,9 +60,9 @@ class GlobalConfig:
         self._api_variables = value
 
     @property
-    def task_manager(self):
-        return self._task_manager
+    def runner(self):
+        return self._runner
 
-    @task_manager.setter
-    def task_manager(self, value):
-        self.task_manager = value
+    @runner.setter
+    def runner(self, value):
+        self._runner = value

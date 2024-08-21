@@ -6,12 +6,16 @@ from datetime import datetime
 
 from ivoryos.utils import utils
 from ivoryos.utils.db_models import Script
+from ivoryos.utils.global_config import GlobalConfig
 
+global_config = GlobalConfig()
+global deck
+deck = None
 
 class ScriptRunner:
     def __init__(self, globals_dict=None):
         if globals_dict is None:
-            globals_dict = {}
+            globals_dict = globals()
         self.globals_dict = globals_dict
 
         self.stop_event = threading.Event()
@@ -27,6 +31,11 @@ class ScriptRunner:
 
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None, bo_args=None,
                    output_path=""):
+        global deck
+        if deck is None:
+            deck = global_config.deck
+        exec_string = script.compile()
+        exec(exec_string)
         time.sleep(1)
         with self.lock:
             if self.is_running:
@@ -51,17 +60,13 @@ class ScriptRunner:
             output_list = []
             _, arg_type = script.config("script")
             _, return_list = script.config_return()
-
             # Run "script" section multiple times
             if repeat_count:
                 self._run_repeat_section(repeat_count, bo_args, output_list, return_list, run_name, logger, socketio)
             elif config:
                 self._run_config_section(config, arg_type, output_list, return_list, run_name, logger, socketio)
-
             # Run "cleanup" section once
-
             self._run_actions(script_dict.get("cleanup", []), section_name="cleanup", run_name=run_name, logger=logger)
-
             # Save results if necessary
             if output_list:
                 self._save_results(run_name, arg_type, return_list, output_list, logger, output_path)

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}IvoryOS | Controller for {{inst.__class__.__name__}}{% endblock %}
+{% block title %}IvoryOS | Controller for {{instrument}}{% endblock %}
 {% block body %}
     <div id="overlay" class="overlay">
         <div>
@@ -7,7 +7,7 @@
             <div class="spinner-border" role="status"></div>
         </div>
     </div>
-    <h1>Controller for {{inst.__class__.__name__}} ({{instrument}})</h1>
+    <h1>{{instrument}} controller</h1>
     <div class="grid-container" id="sortable-grid">
         {% for function, form in forms.items() %}
             {% if function not in session['hidden_functions'][instrument] %}

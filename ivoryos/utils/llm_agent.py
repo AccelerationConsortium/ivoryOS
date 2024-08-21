@@ -12,7 +12,7 @@ from openai import OpenAI, BaseModel
 # host = "137.82.65.246"
 # model = "llama3"
 
-# structured output, Python >= 3.11 ?
+# structured output,
 # class Action(BaseModel):
 #     action: str
 #     args: dict
@@ -29,21 +29,20 @@ class LlmAgent:
         self.host = host
         self.base_url = f"http://{self.host}:11434/v1/" if host is not None else ""
         self.model = model
-        self.output_path = os.path.join(output_path, "llm_output")
+        self.output_path = os.path.join(output_path, "llm_output") if output_path is not None else None
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if host is None else OpenAI(api_key="ollama",
                                                                                               base_url=self.base_url)
-        os.makedirs(self.output_path, exist_ok=True)
+        if self.output_path is not None:
+            os.makedirs(self.output_path, exist_ok=True)
 
     @staticmethod
     def extract_annotations_docstrings(module_sigs):
         class_str = ""
 
         for name, value in module_sigs.items():
-            if type(value) is tuple:
-                sig, docstring = value
-            else:
-                sig, docstring = value, None
-            class_str += f'\tdef {name}{sig}:\n'
+            signature = value.get("signature")
+            docstring = value.get("docstring")
+            class_str += f'\tdef {name}{signature}:\n'
             class_str += f'\t\t"""\n\t\t{docstring}\n\t\t"""' + '\n' if docstring else ''
         class_str = class_str.replace('self, ', '')
         class_str = class_str.replace('self', '')
@@ -112,8 +111,9 @@ and I want you to find the most appropriate function if I want to do these tasks
 ,and write a list of dictionary in json accordingly. Please only use these action names {name_list}, 
 can you also help find the default value you can't find the info from my request.
 '''
-        with open(os.path.join(self.output_path, "prompt.txt"), "w") as f:
-            f.write(full_prompt)
+        if self.output_path is not None:
+            with open(os.path.join(self.output_path, "prompt.txt"), "w") as f:
+                f.write(full_prompt)
         messages = [{"role": "user",
                      "content": full_prompt}, ]
         # if self.host == "openai":
@@ -146,8 +146,7 @@ can you also help find the default value you can't find the info from my request
     def fill_blanks(actions, robot_signature):
         for action in actions:
             action_name = action['action']
-            _signature = robot_signature.get(action_name)
-            action_signature = _signature[0] if type(_signature) is tuple else _signature
+            action_signature = robot_signature.get(action_name).get('signature', {})
             args = action.get("args", {})
             arg_types = action.get("arg_types", {})
             for param in action_signature.parameters.values():

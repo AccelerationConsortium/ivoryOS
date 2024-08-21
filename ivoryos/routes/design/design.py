@@ -20,28 +20,39 @@ from ivoryos.utils.script_runner import ScriptRunner
 socketio = SocketIO()
 design = Blueprint('design', __name__, template_folder='templates/design')
 
-runner = ScriptRunner(globals())
 global_config = GlobalConfig()
-global deck
-deck = None
+runner = ScriptRunner()
+
 
 @socketio.on('abort_action')
 def handle_abort_action():
     runner.stop_execution()
     socketio.emit('log', {'message': "aborted pending tasks"})
 
+
+@socketio.on('connect')
+def handle_abort_action():
+    # Fetch log messages from local file
+    filename = os.path.join(current_app.config["OUTPUT_FOLDER"], current_app.config["LOGGERS_PATH"])
+    with open(filename, 'r') as log_file:
+        log_history = log_file.readlines()
+    for message in log_history[-10:]:
+        socketio.emit('log', {'message': message})
+
+
 @design.route("/experiment/build/", methods=['GET', 'POST'])
 @design.route("/experiment/build/<instrument>/", methods=['GET', 'POST'])
 @login_required
 def experiment_builder(instrument=None):
-    global deck
+    # global deck
+    deck = global_config.deck
     script = utils.get_script_file()
     script.sort_actions()
-    if deck is None:
-        # print("loading deck")
-        module = current_app.config.get('MODULE', '')
-        deck = sys.modules[module] if module else None
-        script.deck = os.path.splitext(os.path.basename(deck.__file__))[0]
+    # if deck is None:
+    #     # print("loading deck")
+    #     module = current_app.config.get('MODULE', '')
+    #     deck = sys.modules[module] if module else None
+    #     script.deck = os.path.splitext(os.path.basename(deck.__file__))[0]
     pseudo_deck_name = session.get('pseudo_deck', '')
     off_line = current_app.config["OFF_LINE"]
     enable_llm = current_app.config["ENABLE_LLM"]
@@ -58,20 +69,19 @@ def experiment_builder(instrument=None):
 
     functions = []
     if deck:
-        deck_variables = parse_deck(deck)
+        deck_variables = global_config.deck_variables.keys()
     else:
         deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
         deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
-
     if instrument:
         if instrument in ['if', 'while', 'variable', 'wait']:
             forms = create_builtin_form(instrument)
         else:
             if deck:
-                functions = utils.parse_functions(find_instrument_by_name(instrument))
+                function_metadata = global_config.deck_variables.get(instrument, {})
             elif pseudo_deck:
-                functions = pseudo_deck.get(instrument, [])
-
+                function_metadata = pseudo_deck.get(instrument, {})
+            functions = {key: data.get('signature', {}) for key, data in function_metadata.items()}
             forms = create_form_from_pseudo(pseudo=functions, autofill=autofill, script=script)
         if request.method == 'POST' and "hidden_name" in request.form:
             all_kwargs = request.form.copy()
@@ -135,20 +145,20 @@ def experiment_builder(instrument=None):
                            use_llm=enable_llm)
 
 
-
-
 @design.route("/generate_code", methods=['POST'])
 @login_required
 def generate_code():
     agent = global_config.agent
     enable_llm = current_app.config["ENABLE_LLM"]
     instrument = request.form.get("instrument")
+
     if request.method == 'POST' and "clear" in request.form:
         session['prompt'][instrument] = ''
     if request.method == 'POST' and "gen" in request.form:
         prompt = request.form.get("prompt")
         session['prompt'][instrument] = prompt
-        sdl_module = utils.parse_functions(find_instrument_by_name(instrument))
+        # sdl_module = utils.parse_functions(find_instrument_by_name(f'deck.{instrument}'), doc_string=True)
+        sdl_module = global_config.deck_variables.get(instrument, {})
         empty_script = Script(author=session.get('user'))
         if enable_llm and agent is None:
             try:
@@ -174,15 +184,17 @@ def generate_code():
 @design.route("/experiment", methods=['GET', 'POST'])
 @login_required
 def experiment_run():
-    global deck
+    # global deck
+    deck = global_config.deck
     script = utils.get_script_file()
     script.sort_actions()
     off_line = current_app.config["OFF_LINE"]
-    if not off_line and deck is None:
-        # print("loading deck")
-        module = current_app.config.get('MODULE', '')
-        deck = sys.modules[module] if module else None
-        script.deck = os.path.splitext(os.path.basename(deck.__file__))[0]
+    deck_list = utils.import_history(os.path.join(current_app.config["OUTPUT_FOLDER"], 'deck_history.txt'))
+    # if not off_line and deck is None:
+    #     # print("loading deck")
+    #     module = current_app.config.get('MODULE', '')
+    #     deck = sys.modules[module] if module else None
+    #     script.deck = os.path.splitext(os.path.basename(deck.__file__))[0]
     design_buttons = {stype: [create_action_button(i) for i in script.get_script(stype)] for stype in script.stypes}
     config_preview = []
     config_file_list = [i for i in os.listdir(current_app.config["CSV_FOLDER"]) if not i == ".gitkeep"]
@@ -200,10 +212,10 @@ def experiment_run():
         arg_type = config.pop(0)  # first entry is types
     try:
         exec(exec_string)
-        # runner.globals_dict.update(globals())
     except Exception:
         flash("Please check syntax!!")
         return redirect(url_for("design.experiment_builder"))
+    # runner.globals_dict.update(globals())
     run_name = script.name if script.name else "untitled"
 
     dismiss = session.get("dismiss", None)
@@ -244,7 +256,7 @@ def experiment_run():
     return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=exec_string,
                            return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                            config_preview=config_preview, data_list=data_list, config_type_list=config_type_list,
-                           no_deck_warning=no_deck_warning, dismiss=dismiss, design_buttons=design_buttons)
+                           no_deck_warning=no_deck_warning, dismiss=dismiss, design_buttons=design_buttons, history=deck_list)
 
 
 @design.route("/toggle_script_type/<stype>")
@@ -270,6 +282,7 @@ def update_list():
 @design.route("/clear")
 @login_required
 def clear():
+    deck = global_config.deck
     pseudo_name = session.get("pseudo_deck", "")
     if deck:
         deck_name = os.path.splitext(os.path.basename(deck.__file__))[
@@ -387,31 +400,3 @@ def load_deck(pkl_name):
         return pseudo_deck
     except FileNotFoundError:
         return None
-
-
-def parse_deck(deck, save=None):
-    parse_dict = {}
-    # TODO
-    deck_variables = ["deck." + var for var in set(dir(deck))
-                      if not (var.startswith("_") or var[0].isupper() or var.startswith("repackage"))
-                      and not type(eval("deck." + var)).__module__ == 'builtins'
-                      ]
-    session["deck_variables"] = deck_variables
-    for var in deck_variables:
-        instrument = eval(var)
-        functions = utils.parse_functions(instrument)
-        parse_dict[var] = functions
-    if deck is not None and save:
-        # pseudo_deck = parse_dict
-        parse_dict["deck_name"] = os.path.splitext(os.path.basename(deck.__file__))[
-            0] if deck.__name__ == "__main__" else deck.__name__
-        with open(os.path.join(current_app.config["DUMMY_DECK"], f"{parse_dict['deck_name']}.pkl"), 'wb') as file:
-            pickle.dump(parse_dict, file)
-    return deck_variables
-
-
-def find_instrument_by_name(name: str):
-    if name.startswith("deck"):
-        return eval(name)
-    elif name in global_config.defined_variables:
-        return global_config.defined_variables[name]

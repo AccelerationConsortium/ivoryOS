@@ -1,4 +1,5 @@
 import os
+import sys
 from typing import Union
 
 from flask import Flask
@@ -12,6 +13,7 @@ from ivoryos.routes.main.main import main
 from ivoryos.utils import utils
 from ivoryos.utils.db_models import db
 from ivoryos.utils.global_config import GlobalConfig
+from ivoryos.utils.script_runner import ScriptRunner
 
 global_config = GlobalConfig()
 
@@ -52,23 +54,26 @@ def create_app(config_class=None):
     return app
 
 
-def ivoryos(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, model=None,
-            config: Config = None,
-            logger: Union[str, list] = None,
-            logger_output_name: str = None,
-            ):
+def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, model=None,
+        config: Config = None,
+        logger: Union[str, list] = None,
+        logger_output_name: str = None,
+        ):
     app = create_app(config_class=config or get_config())  # Create app instance using factory function
 
     port = port or int(os.environ.get("PORT", 8000))
     debug = debug if debug is not None else app.config.get('DEBUG', True)
 
     app.config["LOGGERS"] = logger
-    app.config["LOGGERS_PATH"] = logger_output_name or app.config["LOGGERS_PATH"]
+    app.config["LOGGERS_PATH"] = logger_output_name or app.config["LOGGERS_PATH"] # default.log
     logger_path = os.path.join(app.config["OUTPUT_FOLDER"], app.config["LOGGERS_PATH"])
 
     if module:
         app.config["MODULE"] = module
         app.config["OFF_LINE"] = False
+        global_config.deck = sys.modules[module]
+        global_config.deck_variables = utils.parse_deck(global_config.deck, output_path=app.config["DUMMY_DECK"])
+        # global_config.runner = ScriptRunner(globals())
     else:
         app.config["OFF_LINE"] = True
     if model:
@@ -78,7 +83,7 @@ def ivoryos(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None,
         utils.install_and_import('openai')
         from ivoryos.utils.llm_agent import LlmAgent
         global_config.agent = LlmAgent(host=llm_server, model=model,
-                                       output_path=os.path.dirname(os.path.abspath(module)))
+                                       output_path=os.path.dirname(os.path.abspath(module)) if module is not None else None)
     else:
         app.config["ENABLE_LLM"] = False
     if logger and type(logger) is str:
