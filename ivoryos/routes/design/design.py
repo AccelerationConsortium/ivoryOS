@@ -50,6 +50,7 @@ def experiment_builder(instrument=None):
     script.sort_actions()
 
     pseudo_deck_name = session.get('pseudo_deck', '')
+    pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
     off_line = current_app.config["OFF_LINE"]
     enable_llm = current_app.config["ENABLE_LLM"]
     autofill = session.get('autofill')
@@ -57,7 +58,7 @@ def experiment_builder(instrument=None):
     # autofill is not allowed for prep and cleanup
     autofill = autofill if script.editing_type == "script" else False
     forms = None
-    pseudo_deck = load_deck(pseudo_deck_name) if off_line and pseudo_deck_name else None
+    pseudo_deck = utils.load_deck(pseudo_deck_path) if off_line and pseudo_deck_name else None
     if off_line and pseudo_deck is None:
         flash("Choose available deck below.")
 
@@ -218,7 +219,6 @@ def experiment_run():
     script = utils.get_script_file()
     no_deck_warning = False
 
-    script.sort_actions()
     _, return_list = script.config_return()
     config_list, config_type_list = script.config("script")
     # config = script.config("script")
@@ -272,7 +272,6 @@ def update_list():
     script = utils.get_script_file()
     script.currently_editing_order = order.split(",", len(script.currently_editing_script))
     utils.post_script_file(script)
-    print(script.currently_editing_order)
     return jsonify('Successfully Updated')
 
 
@@ -295,6 +294,7 @@ def clear():
 
 
 @design.route("/import_pseudo", methods=['GET', 'POST'])
+@login_required
 def import_pseudo():
     pkl_name = request.form.get('pkl_name')
     script = utils.get_script_file()
@@ -309,6 +309,7 @@ def import_pseudo():
 
 
 @design.route('/uploads', methods=['GET', 'POST'])
+@login_required
 def upload():
     """
     upload csv configuration file
@@ -329,12 +330,14 @@ def upload():
 
 
 @design.route('/download_results/<filename>')
+@login_required
 def download_results(filename):
     filepath = os.path.join(current_app.config["DATA_FOLDER"], filename)
     return send_file(os.path.abspath(filepath), as_attachment=True)
 
 
 @design.route('/load_json', methods=['GET', 'POST'])
+@login_required
 def load_json():
     if request.method == "POST":
         f = request.files['file']
@@ -349,6 +352,7 @@ def load_json():
 
 
 @design.route('/download/<filetype>')
+@login_required
 def download(filetype):
     script = utils.get_script_file()
     run_name = script.name if script.name else "untitled"
@@ -387,14 +391,3 @@ def edit_action(uuid):
                 flash(e.__str__())
         session.pop('edit_action')
     return redirect(url_for('design.experiment_builder'))
-
-
-def load_deck(pkl_name):
-    if not pkl_name:
-        return None
-    try:
-        with open(os.path.join(current_app.config["DUMMY_DECK"], pkl_name), 'rb') as f:
-            pseudo_deck = pickle.load(f)
-        return pseudo_deck
-    except FileNotFoundError:
-        return None

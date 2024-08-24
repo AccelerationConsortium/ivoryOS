@@ -57,7 +57,7 @@ def signup():
 def logout():
     logout_user()
     session.clear()
-    return redirect(url_for('control.login'))
+    return redirect(url_for('auth.login'))
 
 
 @login_manager.user_loader

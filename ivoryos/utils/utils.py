@@ -358,3 +358,14 @@ def parse_deck(deck, save=False, output_path=''):
         with open(os.path.join(output_path, f"{parse_dict['deck_name']}.pkl"), 'wb') as file:
             pickle.dump(parse_dict, file)
     return deck_variables
+
+
+def load_deck(pkl_name):
+    if not pkl_name:
+        return None
+    try:
+        with open(pkl_name, 'rb') as f:
+            pseudo_deck = pickle.load(f)
+        return pseudo_deck
+    except FileNotFoundError:
+        return None
