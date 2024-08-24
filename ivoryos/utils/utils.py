@@ -1,21 +1,16 @@
+import importlib
 import inspect
-import importlib.util
+import logging
 import os
 import pickle
-import datetime
-import logging
-import importlib
 import subprocess
 import sys
-
 from typing import Optional, Dict, Tuple
 
 from flask import session
 from flask_socketio import SocketIO
 
 from ivoryos.utils.db_models import Script
-
-stypes = ['prep', 'script', 'cleanup']
 
 
 def get_script_file():
@@ -71,31 +66,6 @@ def available_pseudo_deck(path):
     return os.listdir(path)
 
 
-def new_script(deck_name):
-    """
-    script dictionary structure
-    :param deck:
-    :return:
-    """
-    # .strftime("%Y-%m-%d %H:%M:%S")
-    current_time = datetime.datetime.now()
-    script_dict = {'name': '',
-                   'deck': deck_name,
-                   'status': 'editing',
-                   'prep': [],
-                   'script': [],
-                   'cleanup': [],
-                   # 'time_created': current_time,
-                   # 'time_modified': current_time,
-                   # 'author': '',
-                   }
-    order = {'prep': [],
-             'script': [],
-             'cleanup': [],
-             }
-    return script_dict, order
-
-
 def parse_functions(class_object=None, debug=False):
     functions = {}
     under_score = "_"
@@ -122,18 +92,6 @@ def parse_functions(class_object=None, debug=False):
             except Exception:
                 pass
     return functions
-
-
-def is_compatible(att):
-    try:
-        obj = inspect.signature(att)
-        try:
-            pickle.dumps(obj)
-        except Exception:
-            return False
-    except ValueError:
-        return False
-    return True
 
 
 def config(script_dict):
@@ -210,61 +168,6 @@ def find_variable_in_script(script: Script, args: Dict[str, str]) -> Optional[Tu
     return possible_variable_arguments, possible_variable_types
 
 
-def convert_type(args, parameters):
-    bool_dict = {"True": True, "False": False}
-    arg_types = {}
-    if args:
-        for arg in args:
-            if args[arg] == '' or args[arg] == "None":
-                args[arg] = None
-                arg_types[arg] = _get_type_from_parameters(arg, parameters)
-            elif args[arg] == "True" or args[arg] == "False":
-                args[arg] = bool_dict[args[arg]]
-                arg_types[arg] = 'bool'
-            elif args[arg].startswith("#"):
-                args[arg] = args[arg]
-                arg_types[arg] = _get_type_from_parameters(arg, parameters)
-            elif type(parameters) is inspect.Signature:
-                p = parameters.parameters
-                if p[arg].annotation is not p[arg].empty:
-                    if p[arg].annotation.__module__ == 'typing':
-                        arg_types[arg] = p[arg].annotation.__args__
-
-                        for i in p[arg].annotation.__args__:
-                            try:
-                                args[arg] = eval(f'{i}({args[arg]})')
-                                break
-                            except Exception:
-                                pass
-
-                    else:
-                        args[arg] = p[arg].annotation(args[arg])
-                        arg_types[arg] = p[arg].annotation.__name__
-                else:
-                    try:
-                        args[arg] = eval(args[arg])
-                        arg_types[arg] = ''
-                    except Exception:
-                        pass
-            elif type(parameters) is dict:
-                if parameters[arg]:
-                    if parameters[arg].__module__ == 'typing':
-                        # arg_types[arg] = parameters[arg].__args__
-                        for i in parameters[arg].__args__:
-                            # print(i)
-                            try:
-                                # args[arg] = i(args[arg])
-                                args[arg] = eval(f'{i}({args[arg]})')
-                                arg_types[arg] = i.__name__
-                                break
-                            except Exception:
-                                pass
-                    else:
-                        args[arg] = parameters[arg](args[arg])
-                        arg_types[arg] = parameters[arg].__name__
-    return args, arg_types
-
-
 def _convert_by_str(args, arg_types):
     # print(arg_types)
     if type(arg_types) is not list:
@@ -277,11 +180,10 @@ def _convert_by_str(args, arg_types):
                 pass
             return args
         try:
-            args = eval(f'{i}({args})')
+            args = eval(f'{i}("{args}")')
             return args
         except Exception:
-            pass
-    raise TypeError(f"Input type error: cannot convert '{args}' to {i}.")
+            raise TypeError(f"Input type error: cannot convert '{args}' to {i}.")
 
 
 def _convert_by_class(args, arg_types):
@@ -322,92 +224,6 @@ def convert_config_type(args, arg_types, is_class: bool = False):
                 else:
                     args[arg] = _convert_by_str(args[arg], arg_type)
     return args
-
-
-def sort_actions(script_dict, order, script_type=None):
-    """
-    sort all three types if script_type is None, otherwise sort the specified script type
-    :return:
-    """
-    if script_type:
-        sort(script_dict, order, script_type)
-    else:
-        for i in stypes:
-            sort(script_dict, order, i)
-
-
-def sort(script_dict, order, script_type):
-    if len(order[script_type]) > 0:
-        for action in script_dict[script_type]:
-            for i in range(len(order[script_type])):
-                if action['id'] == int(order[script_type][i]):
-                    # print(i+1)
-                    action['id'] = i + 1
-                    break
-        order[script_type].sort()
-        if not int(order[script_type][-1]) == len(script_dict[script_type]):
-            new_order = list(range(1, len(script_dict[script_type]) + 1))
-            order[script_type] = [str(i) for i in new_order]
-        script_dict[script_type].sort(key=lambda x: x['id'])
-
-
-def logic_dict(key: str, current_len, args, var_name=None):
-    """
-
-    :param key:
-    :param current_len:
-    :param args:
-    :param var_name:
-    :return:
-    """
-    logic_dict = {
-        "if":
-            [
-                {"id": current_len + 1, "instrument": 'if', "action": 'if', "args": args, "return": ''},
-                {"id": current_len + 2, "instrument": 'if', "action": 'else', "args": '', "return": ''},
-                {"id": current_len + 3, "instrument": 'if', "action": 'endif', "args": '', "return": ''},
-            ],
-        "while":
-            [
-                {"id": current_len + 1, "instrument": 'while', "action": 'while', "args": args, "return": ''},
-                {"id": current_len + 2, "instrument": 'while', "action": 'endwhile', "args": '', "return": ''},
-            ],
-        "variable":
-            [
-                {"id": current_len + 1, "instrument": 'variable', "action": var_name, "args": args, "return": ''},
-            ]
-    }
-    return logic_dict[key]
-
-
-# def make_grid(row:int=1,col:int=1):
-#     """
-#     return the tray index str list by defining the size
-#     :param row: 1 to 26
-#     :param col:
-#     :return: return the tray index
-#     """
-#     letter_list = [chr(i) for i in range(65, 90)]
-#     return [i + str(j + 1) for i in letter_list[:col] for j in range(row)]
-
-
-def make_grid(row: int = 1, col: int = 1):
-    """
-    return the tray index str list by defining the size
-    :param row: 1 to 26
-    :param col: 1 to 26
-    :return: return the tray index
-    """
-    letter_list = [chr(i) for i in range(65, 90)]
-    return [[i + str(j + 1) for j in range(col)] for i in letter_list[:row]]
-
-
-tray_size_dict = {
-    "metal_4_6": {"row": 4, "col": 6},
-    "metal_4_6_landscape": {"row": 6, "col": 4},
-    "noah_hplc_tray": {"row": 4, "col": 7},
-    "solvent_tray": {"row": 5, "col": 2},
-}
 
 
 def import_module_by_filepath(filepath: str, name: str):

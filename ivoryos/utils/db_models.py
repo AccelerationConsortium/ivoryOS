@@ -1,7 +1,8 @@
 import json
+import keyword
+import re
 import uuid
 from datetime import datetime
-# from ivoryos.utils import utils
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
@@ -270,6 +271,7 @@ class Script(db.Model):
                     if type(args) is str and args.startswith("#") and not args[1:] in configure:
                         configure.append(args[1:])
                         config_type_dict[args[1:]] = action['arg_types']
+
                 else:
                     for arg in args:
                         if type(args[arg]) is str \
@@ -321,6 +323,7 @@ class Script(db.Model):
         """
         self.sort_actions()
         run_name = self.name if self.name else "untitled"
+        run_name = self.validate_function_name(run_name)
         exec_string = ''
 
         for i in self.stypes:
@@ -331,6 +334,16 @@ class Script(db.Model):
             self._write_to_file(script_path, run_name, exec_string)
 
         return exec_string
+
+    @staticmethod
+    def validate_function_name(name):
+        # Replace invalid characters with underscores
+        name = re.sub(r'\W|^(?=\d)', '_', name)
+        # Check if it's a Python keyword and adjust if necessary
+        if keyword.iskeyword(name):
+            name += '_'
+        return name
+
 
     def _generate_function_header(self, run_name, stype):
         """
@@ -397,16 +410,19 @@ class Script(db.Model):
         exec_string = ""
         if action == 'if':
             exec_string += self.indent(indent_unit) + f"if {args}:"
+            indent_unit += 1
             if next_action and next_action['instrument'] == 'if' and next_action['action'] == 'else':
-                exec_string += self.indent(indent_unit + 1) + "pass"
-            else:
-                indent_unit += 1
+                exec_string += self.indent(indent_unit) + "pass"
+            # else:
+
         elif action == 'else':
+            indent_unit -= 1
             exec_string += self.indent(indent_unit) + "else:"
+            indent_unit += 1
             if next_action and next_action['instrument'] == 'if' and next_action['action'] == 'endif':
-                exec_string += self.indent(indent_unit + 1) + "pass"
-            else:
-                indent_unit += 1
+                exec_string += self.indent(indent_unit) + "pass"
+        else:
+            indent_unit -= 1
         return exec_string, indent_unit
 
     def _process_while(self, indent_unit, action, args, next_action):

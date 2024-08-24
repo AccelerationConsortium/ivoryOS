@@ -400,13 +400,14 @@
     </div>
 </div>
 
-{# scripts #}
-    <script>
+    {% if instrument and not instrument in ['if' , 'while' , 'variable' ,'wait'] and use_llm %}
+        <script>
+            const buttonIds = {{ ['generate'] | tojson }};
+        </script>
+        <script src="{{ url_for('static', filename='js/overlay.js') }}"></script>
+    {% endif %}
+     <script>
         const updateListUrl = "{{ url_for('design.update_list') }}";
     </script>
     <script src="{{ url_for('static', filename='js/sortable_design.js') }}"></script>
-    <script>
-        const buttonIds = {{ ['generate'] | tojson }};
-    </script>
-    <script src="{{ url_for('static', filename='js/overlay.js') }}"></script>
 {% endblock %}

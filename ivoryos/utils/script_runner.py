@@ -140,16 +140,16 @@ class ScriptRunner:
             if output:
                 output_list.append(output)
                 logger.info(f'Output value: {output}')
+        return output_list
 
     @staticmethod
     def _save_results(run_name, arg_type, return_list, output_list, logger, output_path):
-        if arg_type:
-            args = list(arg_type.keys())
-            args.extend(return_list)
-            filename = run_name + "_" + datetime.now().strftime("%Y-%m-%d %H-%M") + ".csv"
-            file_path = os.path.join(output_path, filename)
-            with open(file_path, "w", newline='') as file:
-                writer = csv.DictWriter(file, fieldnames=args)
-                writer.writeheader()
-                writer.writerows(output_list)
-            logger.info(f'Results saved to {file_path}')
+        args = list(arg_type.keys()) if arg_type else []
+        args.extend(return_list)
+        filename = run_name + "_" + datetime.now().strftime("%Y-%m-%d %H-%M") + ".csv"
+        file_path = os.path.join(output_path, filename)
+        with open(file_path, "w", newline='') as file:
+            writer = csv.DictWriter(file, fieldnames=args)
+            writer.writeheader()
+            writer.writerows(output_list)
+        logger.info(f'Results saved to {file_path}')

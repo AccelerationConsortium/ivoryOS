@@ -48,11 +48,7 @@ def experiment_builder(instrument=None):
     deck = global_config.deck
     script = utils.get_script_file()
     script.sort_actions()
-    # if deck is None:
-    #     # print("loading deck")
-    #     module = current_app.config.get('MODULE', '')
-    #     deck = sys.modules[module] if module else None
-    #     script.deck = os.path.splitext(os.path.basename(deck.__file__))[0]
+
     pseudo_deck_name = session.get('pseudo_deck', '')
     off_line = current_app.config["OFF_LINE"]
     enable_llm = current_app.config["ENABLE_LLM"]
@@ -136,7 +132,7 @@ def experiment_builder(instrument=None):
             autofill = not autofill
             forms = create_form_from_pseudo(functions, autofill=autofill, script=script)
             session['autofill'] = autofill
-        utils.post_script_file(script)
+    utils.post_script_file(script)
     design_buttons = [create_action_button(i) for i in script.currently_editing_script]
     return render_template('experiment_builder.html', off_line=off_line, instrument=instrument, history=deck_list,
                            script=script, defined_variables=deck_variables,
@@ -247,6 +243,7 @@ def experiment_run():
 
         try:
             datapath = current_app.config["DATA_FOLDER"]
+            run_name = script.validate_function_name(run_name)
             runner.run_script(script=script, run_name=run_name, config=config, bo_args=bo_args,
                               logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                               output_path=datapath
@@ -275,6 +272,7 @@ def update_list():
     script = utils.get_script_file()
     script.currently_editing_order = order.split(",", len(script.currently_editing_script))
     utils.post_script_file(script)
+    print(script.currently_editing_order)
     return jsonify('Successfully Updated')
 
 

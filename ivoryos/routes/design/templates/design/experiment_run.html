@@ -31,13 +31,13 @@
                             <div class="col-lg-6 col-sm-12">
                                 <ul class="nav nav-tabs" id="myTabs" role="tablist">
                                     <li class="nav-item" role="presentation">
-                                        <a class="nav-link {{ 'disabled' if config_list else '' }} {{ 'active' if not config_list else '' }}" id="tab1-tab" data-bs-toggle="tab" href="#tab1" role="tab" aria-controls="tab1" aria-selected="false">Simple repeat</a>
+                                        <a class="nav-link {{ 'disabled' if config_list else '' }} {{ 'active' if not config_list else '' }}" id="tab1-tab" data-bs-toggle="tab" href="#tab1" role="tab" aria-controls="tab1" aria-selected="false">Repeat</a>
                                     </li>
                                     <li class="nav-item" role="presentation">
                                         <a class="nav-link {{ 'disabled' if (not config_list or config_list|count > 5) else '' }} {{ 'active' if config_list and config_list|count < 6 else '' }}" id="tab4-tab" data-bs-toggle="tab" href="#tab4" role="tab" aria-controls="tab4" aria-selected="false">Quick config</a>
                                     </li>
                                     <li class="nav-item" role="presentation">
-                                        <a class="nav-link {{ 'disabled' if not config_list else '' }} {{ 'active' if config_list|count > 5 else '' }}" id="tab2-tab" data-bs-toggle="tab" href="#tab2" role="tab" aria-controls="tab2" aria-selected="false">Excel configuration</a>
+                                        <a class="nav-link {{ 'disabled' if not config_list else '' }} {{ 'active' if config_list|count > 5 else '' }}" id="tab2-tab" data-bs-toggle="tab" href="#tab2" role="tab" aria-controls="tab2" aria-selected="false">Excel config</a>
                                     </li>
 
                                     <li class="nav-item" role="presentation">
@@ -61,20 +61,21 @@
                                         </form>
                                     </div>
                                     <div class="tab-pane fade {{ 'show active' if config_list|count>5 else '' }}" id="tab2" role="tabpanel" aria-labelledby="tab2-tab">
+                                        <div>
 
+                                        </div>
                                         <p><h5>Control with csv config:</h5></p>
                                         <p>Current configure: {{ filename }}</p>
                                         <div>
-                                            
-                                            <form method="GET" action="{{ url_for("design.experiment_run") }}" enctype="multipart/form-data">
+
+                                            <form name="filenameForm" id="filenameForm" method="GET" action="{{ url_for('design.experiment_run') }}" enctype="multipart/form-data">
                                                 <div class="input-group mb-3">
-                                                    <select class="form-select" name="filename" id="filename" required onchange="document.getElementById('filename').submit();">
-                                                        <option selected disabled hidden style="overflow-wrap: break-word;" name="filename" id="filename" value=""> -- choose config file --</option>
+                                                    <select class="form-select" name="filename" id="filenameSelect" required onchange="document.getElementById('filenameForm').submit();">
+                                                        <option selected disabled hidden style="overflow-wrap: break-word;" value=""> -- choose config file --</option>
                                                         {% for config_file in config_file_list %}
-                                                            <option {{'selected' if filename==config_file else '' }} style="overflow-wrap: break-word;" name="filename" id="filename" value="{{config_file}}">{{config_file}}</option>
+                                                            <option {{'selected' if filename == config_file else '' }} style="overflow-wrap: break-word;" value="{{config_file}}">{{config_file}}</option>
                                                         {% endfor %}
                                                     </select>
-{#                                                    <button type="submit"  class="btn btn-primary"> Change config file </button>#}
                                                 </div>
                                             </form>
 
@@ -82,11 +83,11 @@
                                             <a class="btn btn-primary" href="{{ url_for('design.download', filetype='configure') }}" >empty config</a>
                                             <a class="btn btn-primary" data-bs-toggle="collapse" href="#loadfile" role="button" aria-expanded="false">Upload .csv</a>
 
-                                        
-                                            <div class="collapse" id="loadfile">
-                                                <form method="POST" action="{{ url_for('design.upload') }}" enctype="multipart/form-data">
+
+                                            <div class="collapse" id="loadfile" name="loadfile">
+                                                <form method="POST"  id="loadFile" name="loadFile" action="{{ url_for('design.upload') }}" enctype="multipart/form-data">
                                                     <div class="input-group">
-                                                        <input class="form-control" name="file" type="file" required="required" onchange="document.getElementById('file').submit();">
+                                                        <input class="form-control" name="file" type="file" required="required" onchange="document.getElementById('loadFile').submit();">
                                                         <input class="btn btn-secondary" type="submit" value="Upload .csv">
                                                     </div>
                                                 </form>
@@ -300,9 +301,25 @@
             </div>
         </div>
     </div>
-    <script>
-        const configTypeList = {{ config_type_list | tojson }};
-    </script>
-    <script src="{{ url_for('static', filename='js/create_entries.js') }}"></script>
     <script src="{{ url_for('static', filename='js/socket_handler.js') }}"></script>
+    <script>
+        var rowCount = 0; // Initialize row count
+        function addRow() {
+            rowCount++; // Increment row count each time a row is added
+            var table = document.getElementById("dataInputTable");
+            var newRow = table.insertRow(-1); // Adds a row at the end of the table
+            {% for column, type in config_type_list.items()  %}
+            var cell = newRow.insertCell(-1);
+            cell.innerHTML = '<input type="text" class="form-control" name="{{ column }}[' + rowCount + ']" placeholder={{ type }}>';
+            {% endfor %}
+        }
+    </script>
+    <script>
+         // Initially add 5 rows when the page loads
+        document.addEventListener("DOMContentLoaded", function() {
+            for (let i = 0; i < 5; i++) {
+                addRow();
+            }
+        });
+    </script>
 {% endblock %}
