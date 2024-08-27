@@ -7,7 +7,7 @@ from flask_login import login_required
 
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils import utils
-from ivoryos.utils.form import create_form_from_module
+from ivoryos.utils.form import create_form_from_module, format_name
 
 global_config = GlobalConfig()
 
@@ -100,7 +100,7 @@ def controllers(instrument):
                 flash(e.__str__())
         else:
             flash(form.errors)
-    return render_template('controllers.html', instrument=instrument, forms=forms)
+    return render_template('controllers.html', instrument=instrument, forms=forms, format_name=format_name)
 
 
 @control.route("/import_api", methods=['GET', 'POST'])
