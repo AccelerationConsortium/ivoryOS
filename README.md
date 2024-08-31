@@ -18,9 +18,9 @@ pip install ivoryos
 In your SDL script, use `ivoryos(__name__)`. Example in [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/main/example/dummy_ur/dummy_deck.py)
 
 ```python
-from ivoryos import ivoryos
+from ivoryos import run
 
-ivoryos(__name__)
+run(__name__)
 ```
 
 
@@ -32,9 +32,9 @@ OPENAI_API_KEY="Your API Key"
 2. In your SDL script, define model, you can use any GPT models.
 
 ```python
-from ivoryos import ivoryos
+from ivoryos import run
 
-ivoryos(__name__, model="gpt-3.5-turbo")
+run(__name__, model="gpt-3.5-turbo")
 ```
 
 ## Enable local LLMs with [Ollama](https://ollama.com/)
@@ -43,11 +43,12 @@ ivoryos(__name__, model="gpt-3.5-turbo")
 3. In your SDL script, define LLM server and model, you can use any models available on Ollama.
 
 ```python
-from ivoryos import ivoryos
+from ivoryos import run
 
-ivoryos(__name__, llm_server="localhost", model="llama3.1")
+run(__name__, llm_server="localhost", model="llama3.1")
 ```
-
+## Deck snapshot example
+![snapshot](demo.gif)
 ## Developing
 This is a wip project. Here are some future actions.
 1. Support @setter decorator.
