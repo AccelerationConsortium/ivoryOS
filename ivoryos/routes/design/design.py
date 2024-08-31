@@ -47,6 +47,9 @@ def experiment_builder(instrument=None):
     # global deck
     deck = global_config.deck
     script = utils.get_script_file()
+    if deck and script.deck is None:
+        script.deck = os.path.splitext(os.path.basename(deck.__file__))[
+            0] if deck.__name__ == "__main__" else deck.__name__
     script.sort_actions()
 
     pseudo_deck_name = session.get('pseudo_deck', '')
