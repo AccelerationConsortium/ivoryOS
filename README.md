@@ -1,11 +1,11 @@
 ![logo](ivoryos.png)
-# ivoryOS: interoperable Web UI for SDLs
-ivoryOS is an open-source Python package enabling SDL interoperability. Add a web UI to SDLs anytime.
+# ivoryOS: interoperable Web UI for self-driving laboratories (SDLs)
+ivoryOS is a "plug and play" web UI extension for flexible SDLs, enabling interoperability between SDLs.
 ## Description
 Granting SDLs flexibility and modularity makes it almost impossible to design a UI, yet it's a necessity for allowing more people to interact with it (democratisation). 
 This web UI aims to ease up the control of any Python-based SDLs by displaying functions and parameters for initialized modules dynamically. 
 The modules can be hardware API, high-level functions, or experiment workflow.
-With the least modification of the current workflow, user can design, save and run their experiment and monitor the process. 
+With the least modification of the current workflow, user can design, manage and execute their experimental designs and monitor the execution process. 
 ## AI assistant
 To streamline the experimental design on SDLs, we also integrate Large Language Models (LLMs) to interpret the inspected functions and generate code according to task descriptions.
 
@@ -15,16 +15,17 @@ pip install ivoryos
 ```
 
 ## Usage
+### Quick start
 In your SDL script, use `ivoryos(__name__)`. Example in [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/main/example/dummy_ur/dummy_deck.py)
 
 ```python
-from ivoryos import run
+import ivoryos
 
-run(__name__)
+ivoryos.run(__name__)
 ```
 
-
-## Enable LLMs with [OpenAI API](https://github.com/openai/openai-python)
+### Additional settings
+#### Enable LLMs with [OpenAI API](https://github.com/openai/openai-python)
 1. Create a `.env` file for `OPENAI_API_KEY`
 ```
 OPENAI_API_KEY="Your API Key"
@@ -32,20 +33,31 @@ OPENAI_API_KEY="Your API Key"
 2. In your SDL script, define model, you can use any GPT models.
 
 ```python
-from ivoryos import run
-
-run(__name__, model="gpt-3.5-turbo")
+ivoryos.run(__name__, model="gpt-3.5-turbo")
 ```
 
-## Enable local LLMs with [Ollama](https://ollama.com/)
+#### Enable local LLMs with [Ollama](https://ollama.com/)
 1. Download Ollama.
 2. pull models from Ollama
 3. In your SDL script, define LLM server and model, you can use any models available on Ollama.
 
 ```python
-from ivoryos import run
+ivoryos.run(__name__, llm_server="localhost", model="llama3.1")
+```
 
-run(__name__, llm_server="localhost", model="llama3.1")
+#### Add additional logger(s)
+```python
+ivoryos.run(__name__, logger="logger name")
+```
+or
+```python
+ivoryos.run(__name__, logger=["logger 1", "logger 2"])
+```
+#### Offline (design without hardware connection)
+After one successful connection, a blueprint will be automatically saved and made accessible without hardware connection. In a new Python script in the same directory, use `ivoryos.run()` to start offline mode.
+
+```python
+ivoryos.run()
 ```
 ## Deck snapshot example
 ![snapshot](demo.gif)
