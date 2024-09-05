@@ -1,0 +1,19 @@
+//pprint the deck snapshot dict
+
+{'deck.balance': {'dose_solid': {'docstring': 'this function is used to dose '
+                                              'solid',
+                                 'signature': <Signature (self, amount_in_mg: float)>},
+                  'weigh_sample': {'docstring': None,
+                                   'signature': <Signature (self)>}},
+ 'deck.pump': {'dose_liquid': {'docstring': None,
+                               'signature': <Signature (self, amount_in_ml: float, rate_ml_per_minute: float)>}},
+ 'deck.sdl': {'analyze': {'docstring': None, 'signature': <Signature (self)>},
+              'dose_solid': {'docstring': 'dose current chemical',
+                             'signature': <Signature (self, amount_in_mg: float = 5, bring_in: bool = False)>},
+              'dose_solvent': {'docstring': None,
+                               'signature': <Signature (self, name: str, amount_in_ml: float = 5, rate_ml_per_minute: float = 1)>},
+              'equilibrate': {'docstring': None,
+                              'signature': <Signature (self, temp: float, duration: float)>},
+              'filtration': {'docstring': None,
+                             'signature': <Signature (self)>}},
+ 'deck_name': 'abstract_sdl'}

@@ -94,40 +94,6 @@ def parse_functions(class_object=None, debug=False):
     return functions
 
 
-def config(script_dict):
-    """
-    take the global script_dict
-    :return: list of variable that require input
-    """
-    configure = []
-    for action in script_dict['script']:
-        args = action['args']
-        if args is not None:
-            if type(args) is not dict:
-                if type(args) is str and args.startswith("#") and not args[1:] in configure:
-                    configure.append(args[1:])
-            else:
-                for arg in args:
-                    if type(args[arg]) is str \
-                            and args[arg].startswith("#") \
-                            and not args[arg][1:] in configure:
-                        configure.append(args[arg][1:])
-    return configure
-
-
-def config_return(script_dict):
-    """
-    take the global script_dict
-    :return: list of variable that require input
-    """
-    return_list = [action['return'] for action in script_dict if not action['return'] == '']
-    output_str = "return {"
-    for i in return_list:
-        output_str += "'" + i + "':" + i + ","
-    output_str += "}"
-    return output_str, return_list
-
-
 def _get_type_from_parameters(arg, parameters):
     arg_type = ''
     if type(parameters) is inspect.Signature:

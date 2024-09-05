@@ -211,7 +211,7 @@ def create_form_for_method(method, method_name, autofill, script=None, design=Tr
         int: (VariableOrIntField if design else IntegerField, 'Enter integer value'),
         float: (VariableOrFloatField if design else FloatField, 'Enter numeric value'),
         str: (VariableOrStringField if design else StringField, 'Enter text'),
-        bool: (VariableOrBoolField if design else BooleanField, 'Enter bool value')
+        bool: (VariableOrBoolField if design else BooleanField, 'Empty for false')
     }
     sig = method if type(method) is inspect.Signature else inspect.signature(method)
 
@@ -226,7 +226,7 @@ def create_form_for_method(method, method_name, autofill, script=None, design=Tr
         }
         field_class, placeholder_text = annotation_mapping.get(
             param.annotation,
-            (VariableOrStringField, f'Enter {param.annotation} value')
+            (VariableOrStringField if design else StringField, f'Enter {param.annotation} value')
         )
         render_kwargs = {"placeholder": placeholder_text}
 
