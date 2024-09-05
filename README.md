@@ -1,4 +1,4 @@
-![logo](ivoryos.png)
+![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/ivoryos.png)
 # ivoryOS: interoperable Web UI for self-driving laboratories (SDLs)
 ivoryOS is a "plug and play" web UI extension for flexible SDLs, enabling interoperability between SDLs.
 ## Description
@@ -60,7 +60,7 @@ After one successful connection, a blueprint will be automatically saved and mad
 ivoryos.run()
 ```
 ## Deck snapshot example
-![snapshot](demo.gif)
+![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/demo.gif)
 ## Developing
 This is a wip project. Here are some future actions.
 1. Support @setter decorator.
