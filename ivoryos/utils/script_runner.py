@@ -99,6 +99,9 @@ class ScriptRunner:
         if compiled:
             for i, kwargs in enumerate(config):
                 kwargs = dict(kwargs)
+                if self.stop_event.is_set():
+                    logger.info(f'Stopping execution during {run_name}: {i + 1}/{len(config)}')
+                    break
                 logger.info(f'Executing {i + 1} of {len(config)} with kwargs = {kwargs}')
                 progress = (i + 1) * 100 / len(config)
                 socketio.emit('progress', {'progress': progress})
