@@ -9,7 +9,8 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'default_secret_key')
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', None)
 
-    OUTPUT_FOLDER = os.path.join(os.path.abspath(os.curdir), 'webui_data')
+    OUTPUT_FOLDER = os.path.join(os.path.abspath(os.curdir), 'ivoryos_data')
+    os.makedirs(OUTPUT_FOLDER, exist_ok=True)
     CSV_FOLDER = os.path.join(OUTPUT_FOLDER, 'config_csv/')
     SCRIPT_FOLDER = os.path.join(OUTPUT_FOLDER, 'scripts/')
     DATA_FOLDER = os.path.join(OUTPUT_FOLDER, 'results/')
@@ -17,7 +18,7 @@ class Config:
     DECK_HISTORY = os.path.join(OUTPUT_FOLDER, 'deck_history.txt')
     LOGGERS_PATH = "default.log"
 
-    SQLALCHEMY_DATABASE_URI = "sqlite:///project.db"
+    SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(OUTPUT_FOLDER, 'ivoryos.db')}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     ENABLE_LLM = True if OPENAI_API_KEY else False

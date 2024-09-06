@@ -83,7 +83,7 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
         utils.install_and_import('openai')
         from ivoryos.utils.llm_agent import LlmAgent
         global_config.agent = LlmAgent(host=llm_server, model=model,
-                                       output_path=os.path.dirname(os.path.abspath(module)) if module is not None else None)
+                                       output_path=app.config["OUTPUT_FOLDER"] if module is not None else None)
     else:
         app.config["ENABLE_LLM"] = False
     if logger and type(logger) is str:
