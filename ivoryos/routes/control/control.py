@@ -2,7 +2,7 @@ import os
 import pickle
 import sys
 
-from flask import Blueprint, redirect, url_for, flash, request, render_template, session, current_app
+from flask import Blueprint, redirect, url_for, flash, request, render_template, session, current_app, jsonify
 from flask_login import login_required
 
 from ivoryos.utils.global_config import GlobalConfig
@@ -77,7 +77,7 @@ def controllers_home():
 def controllers(instrument):
     inst_object = find_instrument_by_name(instrument)
     _forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
-    card_order = session.get('card_order')
+    card_order = session.get('card_order', {})
     order = card_order.get(instrument, _forms.keys())
     if instrument not in card_order:
         card_order[instrument] = list(order)
@@ -102,6 +102,30 @@ def controllers(instrument):
             flash(form.errors)
     return render_template('controllers.html', instrument=instrument, forms=forms, format_name=format_name)
 
+@control.route("/backend_control/<instrument>", methods=['GET', 'POST'])
+@login_required
+def backend_control(instrument):
+    inst_object = find_instrument_by_name(instrument)
+    forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
+    if request.method == 'POST':
+        all_kwargs = request.form.copy()
+        method_name = all_kwargs.pop("hidden_name", None)
+        # if method_name is not None:
+        form = forms.get(method_name, None)
+        kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
+        function_executable = getattr(inst_object, method_name)
+        if form:
+            # print(kwargs)
+            try:
+                kwargs.pop("hidden_name")
+                output = function_executable(**kwargs)
+                json_output = jsonify(output)
+            except Exception as e:
+                json_output = jsonify(e.__str__())
+                return json_output, 400
+        else:
+            return "instrument not exist", 400
+    return json_output, 200
 
 @control.route("/import_api", methods=['GET', 'POST'])
 def import_api():
@@ -192,9 +216,9 @@ def save_order(instrument):
 @control.route('/hide_function/<instrument>/<function>')
 def hide_function(instrument, function):
     back = request.referrer
-    hidden_functions = session.get("hidden_functions")
+    hidden_functions = session.get("hidden_functions", {})
     functions = hidden_functions.get(instrument, [])
-    card_order = session.get("card_order")
+    card_order = session.get("card_order", {})
     order = card_order.get(instrument)
     if function not in functions:
         functions.append(function)
@@ -209,7 +233,7 @@ def hide_function(instrument, function):
 @control.route('/remove_hidden/<instrument>/<function>')
 def remove_hidden(instrument, function):
     back = request.referrer
-    hidden_functions = session.get("hidden_functions")
+    hidden_functions = session.get("hidden_functions", {})
     functions = hidden_functions.get(instrument, [])
     card_order = session.get("card_order")
     order = card_order.get(instrument)

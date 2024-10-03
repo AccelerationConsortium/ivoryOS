@@ -8,9 +8,12 @@
         </div>
     </div>
     <h1>{{instrument}} controller</h1>
+    {% set hidden = session.get('hidden_functions', {}) %}
     <div class="grid-container" id="sortable-grid">
         {% for function, form in forms.items() %}
-            {% if function not in session['hidden_functions'][instrument] %}
+
+            {% set hidden_instrument = hidden.get(instrument, []) %}
+            {% if function not in hidden_instrument %}
                 <div class="card" id="{{function}}">
                     <div class="bg-white rounded shadow-sm flex-fill">
                         <a style="float: right" aria-label="Close" href="{{ url_for('control.hide_function', instrument=instrument, function=function) }}"><i class="bi bi-eye-slash-fill"></i></a>
@@ -53,7 +56,8 @@
         </div>
         <div id="hidden" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
             <div class="accordion-body">
-                {% for function in session['hidden_functions'][instrument] %}
+                {% set hidden_instrument = hidden.get(instrument, []) %}
+                {% for function in hidden_instrument %}
                     <div>
                         {{ function }} <a href="{{ url_for('control.remove_hidden', instrument=instrument, function=function) }}"><i class="bi bi-eye-fill"></i></a>
                     </div>
