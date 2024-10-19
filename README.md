@@ -61,6 +61,11 @@ ivoryos.run()
 ```
 ## Deck snapshot example
 ![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/demo.gif)
+
+## Video
+Intro + Tutorial + Demo with PurPOSE platform
+https://youtu.be/dFfJv9I2-1g 
+
 ## Developing
 This is a wip project. Here are some future actions.
 1. Support @setter decorator.
