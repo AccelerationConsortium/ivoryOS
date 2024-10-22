@@ -25,7 +25,7 @@ I would want to write to
 ]
 
 Now these are my callable functions,
-	def analyze(sample_name: str = 'test'):
+	def analyze():
 	def dose_solid(amount_in_mg: float = 5, bring_in: bool = False):
 		"""
 		dose current chemical
@@ -33,9 +33,8 @@ Now these are my callable functions,
 	def dose_solvent(solvent_name: str, amount_in_ml: float = 5, rate_ml_per_minute: float = 1):
 	def equilibrate(temp: float, duration: float):
 	def filtration():
-	def test():
 
 and I want you to find the most appropriate function if I want to do these tasks
 """dose 10 mg of acetaminophen, and then analyze"""
-,and write a list of dictionary in json accordingly. Please only use these action names ['analyze', 'dose_solid', 'dose_solvent', 'equilibrate', 'filtration', 'test'], 
+,and write a list of dictionary in json accordingly. Please only use these action names ['analyze', 'dose_solid', 'dose_solvent', 'equilibrate', 'filtration'], 
 can you also help find the default value you can't find the info from my request.

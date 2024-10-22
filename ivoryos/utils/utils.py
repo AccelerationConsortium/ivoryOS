@@ -230,7 +230,7 @@ def ax_wrapper(data):
     from ax.service.utils.instantiation import ObjectiveProperties
     parameter = []
     objectives = {}
-    # Iterate through the webui_data dictionary
+    # Iterate through the post request dictionary
     for key, value in data.items():
         # Check if the key corresponds to a parameter type
         if "_type" in key:
@@ -289,9 +289,9 @@ def install_and_import(package, package_name=None):
 
 
 def process_data(data, config_type):
-    rows = {}  # Dictionary to hold webui_data organized by rows
+    rows = {}  # Dictionary to hold webui data organized by rows
 
-    # Organize webui_data by rows
+    # Organize webui data by rows
     for key, value in data.items():
         if value:  # Only process non-empty values
             # Extract the field name and row index
