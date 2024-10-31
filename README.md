@@ -34,8 +34,6 @@ This software is compatible with the latest versions of all dependencies.
 - openai (optional ~=1.53)
 - ax-platform (optional ~=0.3 or ~=0.4 for Python>=3.9)
 
-
-
 ## Installation
 ```bash
 pip install ivoryos
@@ -65,7 +63,7 @@ Create an account and login (local database)
   - **Design**: add function to canvas in _Design_ tab. click `Compile and Run` button to go to the execution page
   - **Execution**: configure iteration methods and parameters in _Compile/Run_ tab. 
   - **Database**: manage workflows in _Library_ tab.
-- **Info page**: additional info in _Help_ tab.
+- **Info page**: additional info in _About_ tab.
 
 
 ### Additional settings
