@@ -69,7 +69,7 @@ def experiment_builder(instrument=None):
 
     functions = []
     if deck:
-        deck_variables = global_config.deck_variables.keys()
+        deck_variables = global_config.deck_snapshot.keys()
     else:
         deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
         deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
@@ -78,7 +78,7 @@ def experiment_builder(instrument=None):
             forms = create_builtin_form(instrument)
         else:
             if deck:
-                function_metadata = global_config.deck_variables.get(instrument, {})
+                function_metadata = global_config.deck_snapshot.get(instrument, {})
             elif pseudo_deck:
                 function_metadata = pseudo_deck.get(instrument, {})
             functions = {key: data.get('signature', {}) for key, data in function_metadata.items()}
@@ -158,7 +158,7 @@ def generate_code():
         prompt = request.form.get("prompt")
         session['prompt'][instrument] = prompt
         # sdl_module = utils.parse_functions(find_instrument_by_name(f'deck.{instrument}'), doc_string=True)
-        sdl_module = global_config.deck_variables.get(instrument, {})
+        sdl_module = global_config.deck_snapshot.get(instrument, {})
         empty_script = Script(author=session.get('user'))
         if enable_llm and agent is None:
             try:
@@ -241,7 +241,7 @@ def experiment_run():
             bo_args = request.form.to_dict()
             # ax_client = utils.ax_initiation(bo_args)
         if "online-config" in request.form:
-            config = utils.process_data(request.form.to_dict(), config_list)
+            config = utils.web_config_entry_wrapper(request.form.to_dict(), config_list)
         repeat = request.form.get('repeat', None)
 
         try:

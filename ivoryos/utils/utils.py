@@ -14,6 +14,7 @@ from ivoryos.utils.db_models import Script
 
 
 def get_script_file():
+    """Get script from Flask session and returns the script"""
     session_script = session.get("scripts")
     if session_script:
         s = Script()
@@ -24,6 +25,11 @@ def get_script_file():
 
 
 def post_script_file(script, is_dict=False):
+    """
+    Post script to Flask. Script will be converted to a dict if it is a Script object
+    :param script: Script to post
+    :param is_dict: if the script is a dictionary,
+    """
     if is_dict:
         session['scripts'] = script
     else:
@@ -31,12 +37,19 @@ def post_script_file(script, is_dict=False):
 
 
 def create_gui_dir(parent_path):
+    """
+    Creates folders for ivoryos data
+    """
     os.makedirs(parent_path, exist_ok=True)
     for path in ["config_csv", "scripts", "results", "pseudo_deck"]:
         os.makedirs(os.path.join(parent_path, path), exist_ok=True)
 
 
 def save_to_history(filepath, history_path):
+    """
+    For manual deck connection only
+    save deck file path that successfully connected to ivoryos to a history file
+    """
     connections = []
     try:
         with open(history_path, 'r') as file:
@@ -50,6 +63,10 @@ def save_to_history(filepath, history_path):
 
 
 def import_history(history_path):
+    """
+    For manual deck connection only
+    load deck connection history from history file
+    """
     connections = []
     try:
         with open(history_path, 'r') as file:
@@ -62,11 +79,20 @@ def import_history(history_path):
 
 
 def available_pseudo_deck(path):
+    """
+    load pseudo deck (snapshot) from connection history
+    """
     import os
     return os.listdir(path)
 
 
-def parse_functions(class_object=None, debug=False):
+def _inspect_class(class_object=None, debug=False):
+    """
+    inspect class object: inspect function signature if not name.startswith("_")
+    :param class_object: class object
+    :param debug: debug mode will inspect function.startswith("_")
+    :return: function: Dict[str, Dict[str, Union[Signature, str, None]]]
+    """
     functions = {}
     under_score = "_"
     if debug:
@@ -79,7 +105,7 @@ def parse_functions(class_object=None, debug=False):
                 docstring = inspect.getdoc(method)
                 functions[function] = dict(signature=annotation, docstring=docstring)
 
-                # handle getter setters
+                # handle getter setters todo
                 # if callable(att):
                 #     functions[function] = inspect.signature(att)
                 # else:
@@ -95,6 +121,7 @@ def parse_functions(class_object=None, debug=False):
 
 
 def _get_type_from_parameters(arg, parameters):
+    """get argument types from inspection"""
     arg_type = ''
     if type(parameters) is inspect.Signature:
         p = parameters.parameters
@@ -135,24 +162,29 @@ def find_variable_in_script(script: Script, args: Dict[str, str]) -> Optional[Tu
 
 
 def _convert_by_str(args, arg_types):
-    # print(arg_types)
+    """
+    Converts a value to type through eval(f'{type}("{args}")')
+    """
     if type(arg_types) is not list:
         arg_types = [arg_types]
-    for i in arg_types:
-        if i == "any":
+    for arg_type in arg_types:
+        if arg_type == "any":
             try:
                 args = eval(args)
             except Exception:
                 pass
             return args
         try:
-            args = eval(f'{i}("{args}")')
+            args = eval(f'{arg_type}("{args}")')
             return args
         except Exception:
-            raise TypeError(f"Input type error: cannot convert '{args}' to {i}.")
+            raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
 
 
 def _convert_by_class(args, arg_types):
+    """
+    Converts a value to type through type(arg)
+    """
     if arg_types.__module__ == 'builtins':
         args = arg_types(args)
         return args
@@ -170,6 +202,9 @@ def _convert_by_class(args, arg_types):
 
 
 def convert_config_type(args, arg_types, is_class: bool = False):
+    """
+    Converts an argument from str to an arg type
+    """
     bool_dict = {"True": True, "False": False}
     # print(args, arg_types)
     # print(globals())
@@ -193,6 +228,11 @@ def convert_config_type(args, arg_types, is_class: bool = False):
 
 
 def import_module_by_filepath(filepath: str, name: str):
+    """
+    Import module by file path
+    :param filepath: full path of module
+    :param name: module's name
+    """
     spec = importlib.util.spec_from_file_location(name, filepath)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -212,6 +252,9 @@ class SocketIOHandler(logging.Handler):
 
 
 def start_logger(socketio: SocketIO, logger_name: str, log_filename: str = None):
+    """
+    stream logger to web through web socketIO
+    """
     # logging.basicConfig( format='%(asctime)s - %(message)s')
     formatter = logging.Formatter(fmt='%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     logger = logging.getLogger(logger_name)
@@ -226,7 +269,26 @@ def start_logger(socketio: SocketIO, logger_name: str, log_filename: str = None)
     return logger
 
 
-def ax_wrapper(data):
+def ax_wrapper(data: dict):
+    """
+    Ax platform wrapper function for creating optimization campaign parameters and objective from the web form input
+    :param data: e.g.,
+    {
+        "param_1_type": "range", "param_1_value": [1,2],
+        "param_2_type": "range", "param_2_value": [1,2],
+        "obj_1_min": True,
+        "obj_2_min": True
+    }
+    :return: the optimization campaign parameters
+    parameter=[
+        {"name": "param_1", "type": "range", "bounds": [1,2]},
+        {"name": "param_1", "type": "range", "bounds": [1,2]}
+    ]
+    objectives=[
+        {"name": "obj_1", "min": True, "threshold": None},
+        {"name": "obj_2", "min": True, "threshold": None},
+    ]
+    """
     from ax.service.utils.instantiation import ObjectiveProperties
     parameter = []
     objectives = {}
@@ -259,6 +321,10 @@ def ax_wrapper(data):
 
 
 def ax_initiation(data):
+    """
+    create Ax campaign from the web form input
+    :param data:
+    """
     install_and_import("ax", "ax-platform")
     parameter, objectives = ax_wrapper(data)
     from ax.service.ax_client import AxClient
@@ -277,6 +343,11 @@ def get_arg_type(args, parameters):
 
 
 def install_and_import(package, package_name=None):
+    """
+    Install the package and import it
+    :param package: package to import and install
+    :param package_name: pip install package name if different from package
+    """
     try:
         # Check if the package is already installed
         importlib.import_module(package)
@@ -288,7 +359,12 @@ def install_and_import(package, package_name=None):
         # print(f"{package} has been installed successfully.")
 
 
-def process_data(data, config_type):
+def web_config_entry_wrapper(data: dict, config_type: list):
+    """
+    Wrap the data dictionary from web config entries during execution configuration
+    :param data: data dictionary
+    :param config_type: data entry types ["str", "int", "float", "bool"]
+    """
     rows = {}  # Dictionary to hold webui_data organized by rows
 
     # Organize webui_data by rows
@@ -311,22 +387,32 @@ def process_data(data, config_type):
     return filtered_rows
 
 
-def parse_deck(deck, save=False, output_path=''):
-    deck_variables = {f"deck.{name}": parse_functions(val) for name, val in vars(deck).items()
-                      if not type(val).__module__ == 'builtins'
-                      and not name[0].isupper()
-                      and not name.startswith("_")}
-    if deck_variables and save:
+def create_deck_snapshot(deck, save: bool = False, output_path: str = ''):
+    """
+    Create a deck snapshot of the given script
+    :param deck: python module name to create the deck snapshot from e.g. __main__
+    :param save: save the deck snapshot into pickle file
+    :param output_path: path to save the pickle file
+    """
+    deck_snapshot = {f"deck.{name}": _inspect_class(val) for name, val in vars(deck).items()
+                     if not type(val).__module__ == 'builtins'
+                     and not name[0].isupper()
+                     and not name.startswith("_")}
+    if deck_snapshot and save:
         # pseudo_deck = parse_dict
-        parse_dict = deck_variables.copy()
+        parse_dict = deck_snapshot.copy()
         parse_dict["deck_name"] = os.path.splitext(os.path.basename(deck.__file__))[
             0] if deck.__name__ == "__main__" else deck.__name__
         with open(os.path.join(output_path, f"{parse_dict['deck_name']}.pkl"), 'wb') as file:
             pickle.dump(parse_dict, file)
-    return deck_variables
+    return deck_snapshot
 
 
-def load_deck(pkl_name):
+def load_deck(pkl_name: str):
+    """
+    Loads a pickled deck snapshot from disk on offline mode
+    :param pkl_name: name of the pickle file
+    """
     if not pkl_name:
         return None
     try:

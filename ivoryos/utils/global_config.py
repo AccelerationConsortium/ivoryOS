@@ -11,7 +11,7 @@ class GlobalConfig:
             cls._instance._agent = None
             cls._instance._defined_variables = {}
             cls._instance._api_variables = set()
-            cls._instance._deck_variables = {}
+            cls._instance._deck_snapshot = {}
             cls._instance._runner = None
         return cls._instance
 
@@ -26,12 +26,12 @@ class GlobalConfig:
 
 
     @property
-    def deck_variables(self):
-        return self._deck_variables
+    def deck_snapshot(self):
+        return self._deck_snapshot
 
-    @deck_variables.setter
-    def deck_variables(self, value):
-        self._deck_variables = value
+    @deck_snapshot.setter
+    def deck_snapshot(self, value):
+        self._deck_snapshot = value
 
 
     @property

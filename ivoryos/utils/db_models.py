@@ -88,16 +88,16 @@ class Script(db.Model):
                 if action['uuid'] == int(uuid):
                     return action
 
-    def _convert(self, args, arg_types):
+    def _convert_type(self, args, arg_types):
         if type(arg_types) is not list:
             arg_types = [arg_types]
-        for i in arg_types:
+        for arg_type in arg_types:
             try:
-                args = eval(i + "('" + args + "')")
+                args = eval(f"{arg_type}('{args}')")
                 return
             except Exception:
                 pass
-        raise TypeError(f"Input type error: cannot convert '{args}' to {i}.")
+        raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
 
     def update_by_uuid(self, uuid, args, output):
         bool_dict = {"True": True, "False": False}
@@ -113,7 +113,7 @@ class Script(db.Model):
                     else:
                         if arg in action['arg_types']:
                             arg_types = action['arg_types'][arg]
-                            self._convert(args[arg], arg_types)
+                            self._convert_type(args[arg], arg_types)
                         else:
                             try:
                                 args[arg] = eval(args[arg])
@@ -128,7 +128,7 @@ class Script(db.Model):
                 else:
                     if 'arg_types' in action:
                         arg_types = action['arg_types']
-                        self._convert(args, arg_types)
+                        self._convert_type(args, arg_types)
 
                     # print(args)
         action['args'] = args
@@ -337,13 +337,12 @@ class Script(db.Model):
 
     @staticmethod
     def validate_function_name(name):
-        # Replace invalid characters with underscores
+        """Replace invalid characters with underscores"""
         name = re.sub(r'\W|^(?=\d)', '_', name)
         # Check if it's a Python keyword and adjust if necessary
         if keyword.iskeyword(name):
             name += '_'
         return name
-
 
     def _generate_function_header(self, run_name, stype):
         """

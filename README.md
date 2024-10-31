@@ -1,30 +1,77 @@
 ![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/ivoryos.png)
 # ivoryOS: interoperable Web UI for self-driving laboratories (SDLs)
-ivoryOS is a "plug and play" web UI extension for flexible SDLs, enabling interoperability between SDLs.
+"plug and play" web UI extension for flexible SDLs.
+
+## Table of Contents
+- [Description](#description)
+- [System requirements](#system-requirements)
+- [Installation](#installation)
+- [Instructions for use](#instructions-for-use)
+- [Demo](#demo)
+- [License](#license)
+
 ## Description
 Granting SDLs flexibility and modularity makes it almost impossible to design a UI, yet it's a necessity for allowing more people to interact with it (democratisation). 
 This web UI aims to ease up the control of any Python-based SDLs by displaying functions and parameters for initialized modules dynamically. 
 The modules can be hardware API, high-level functions, or experiment workflow.
 With the least modification of the current workflow, user can design, manage and execute their experimental designs and monitor the execution process. 
-## AI assistant
-To streamline the experimental design on SDLs, we also integrate Large Language Models (LLMs) to interpret the inspected functions and generate code according to task descriptions.
+
+## System requirements
+This software is developed and tested using Windows. This software and its dependencies are compatible across major platforms: Linux, macOS, and Windows. Some dependencies (Flask-SQLAlchemy) may require additional setup.
+
+### Python Version
+Python >=3.7 for best compatibility.
+### Python dependencies
+This software is compatible with the latest versions of all dependencies. 
+- bcrypt~=4.0
+- Flask-Login~=0.6
+- Flask-Session~=0.8
+- Flask-SocketIO~=5.3
+- Flask-SQLAlchemy~=3.1
+- SQLAlchemy-Utils~=0.41
+- Flask-WTF~=1.2
+- python-dotenv==1.0.1
+- openai (optional ~=1.53)
+- ax-platform (optional ~=0.3 or ~=0.4 for Python>=3.9)
+
+
 
 ## Installation
-```
+```bash
 pip install ivoryos
 ```
+or
+```bash
+git clone https://gitlab.com/heingroup/ivoryos.git
+cd ivoryos
+pip install -e .
+```
 
-## Usage
+The installation may take 10 to 30 seconds to install. The installation time may vary and take up to several minutes, depending on the network speed, computer performance, and virtual environment settings.
+
+## Instructions for use
 ### Quick start
-In your SDL script, use `ivoryos(__name__)`. Example in [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/main/example/dummy_ur/dummy_deck.py)
-
+In your SDL script, use `ivoryos(__name__)`. 
 ```python
 import ivoryos
 
 ivoryos.run(__name__)
 ```
+### Login
+Create an account and login (local database)
+### Features
+- **Direct control**: direct function calling _Device_ tab
+- **Workflow design and iteration**:
+  - **Design**: add function to canvas in _Design_ tab. click `Compile and Run` button to go to the execution page
+  - **Execution**: configure iteration methods and parameters in _Compile/Run_ tab. 
+  - **Database**: manage workflows in _Library_ tab.
+- **Info page**: additional info in _Help_ tab.
+
 
 ### Additional settings
+#### AI assistant
+To streamline the experimental design on SDLs, we also integrate Large Language Models (LLMs) to interpret the inspected functions and generate code according to task descriptions.
+
 #### Enable LLMs with [OpenAI API](https://github.com/openai/openai-python)
 1. Create a `.env` file for `OPENAI_API_KEY`
 ```
@@ -59,18 +106,38 @@ After one successful connection, a blueprint will be automatically saved and mad
 ```python
 ivoryos.run()
 ```
-## Deck snapshot example
+## Demo
+In the [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/main/example/sdl_example/abstract_sdl.py), where instances of `AbstractSDL` is created as `sdl`,
+addresses will be available on terminal.
+```Python
+ivoryos.run(__name__)
+```
+
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8000
+ * Running on http://xxx.xx.xx.xxx:8000
+
+### Deck function and web form 
 ![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/demo.gif)
 
-## Video
+### Directory structure
+
+When you run the application for the first time, it will automatically create the following folders and files in the same directory:
+
+- **`ivoryos_data/`**: Main directory for application-related data.
+  - **`ivoryos_data/config_csv/`**: Contains iteration configuration files in CSV format.
+  - **`ivoryos_data/llm_output/`**: Stores raw prompt generated for the large language model.
+  - **`ivoryos_data/pseudo_deck/`**: Contains pseudo-deck `.pkl` files for offline access.
+  - **`ivoryos_data/results/`**: Used for storing results or outputs during workflow execution.
+  - **`ivoryos_data/scripts/`**: Holds Python scripts compiled from the visual programming script design.
+
+- **`default.log`**: Log file that captures application logs.
+- **`ivoryos.db`**: Database file that stores application data locally.
+
+
+### Demo video
 Intro + Tutorial + Demo with PurPOSE platform
 https://youtu.be/dFfJv9I2-1g 
-
-## Developing
-This is a wip project. Here are some future actions.
-1. Support @setter decorator.
-2. Documentation: white paper wip
-3. Compatibility: compatability report to open-source lab hardware APIs will soon be added. As of now, due to the limitation of web form, the usability of APIs with object inputs (e.g. Opentron Python API) is very limited.
 
 
 ## Authors and Acknowledgement

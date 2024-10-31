@@ -17,7 +17,7 @@ control = Blueprint('control', __name__, template_folder='templates/control')
 @control.route("/my_deck")
 @login_required
 def deck_controllers():
-    deck_variables = global_config.deck_variables.keys()
+    deck_variables = global_config.deck_snapshot.keys()
     deck_list = utils.import_history(os.path.join(current_app.config["OUTPUT_FOLDER"], 'deck_history.txt'))
     return render_template('controllers_home.html', defined_variables=deck_variables, deck=True, history=deck_list)
 
@@ -188,12 +188,12 @@ def import_deck():
     try:
         module = utils.import_module_by_filepath(filepath=filepath, name=name)
         utils.save_to_history(filepath, current_app.config["DECK_HISTORY"])
-        module_sigs = utils.parse_deck(module, save=update, output_path=current_app.config["DUMMY_DECK"])
+        module_sigs = utils.create_deck_snapshot(module, save=update, output_path=current_app.config["DUMMY_DECK"])
         if not len(module_sigs) > 0:
             flash("Invalid hardware deck, connect instruments in deck script", "error")
             return redirect(url_for("control.deck_controllers"))
         global_config.deck = module
-        global_config.deck_variables = module_sigs
+        global_config.deck_snapshot = module_sigs
 
         if script.deck is None:
             script.deck = module.__name__

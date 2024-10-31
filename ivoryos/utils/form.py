@@ -1,5 +1,4 @@
 from wtforms.fields.core import Field
-from wtforms.utils import UnsetValue
 from wtforms.validators import InputRequired
 from wtforms.widgets.core import TextInput
 
@@ -88,7 +87,7 @@ class VariableOrFloatField(Field):
             raise ValueError(self.gettext("Not a valid float value.")) from exc
 
 
-unset_value = UnsetValue()
+# unset_value = UnsetValue()
 
 
 class VariableOrIntField(Field):
