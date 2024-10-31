@@ -1,6 +1,4 @@
 import os
-import pickle
-import sys
 
 from flask import Blueprint, redirect, url_for, flash, request, render_template, session, current_app, jsonify
 from flask_login import login_required
@@ -77,12 +75,15 @@ def controllers_home():
 def controllers(instrument):
     inst_object = find_instrument_by_name(instrument)
     _forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
-    card_order = session.get('card_order', {})
-    order = card_order.get(instrument, _forms.keys())
-    if instrument not in card_order:
-        card_order[instrument] = list(order)
-        session['card_order'] = card_order
-        # print(session['card_order'])
+    functions = list(_forms.keys())
+
+    order = get_session_by_instrument('card_order', instrument)
+    hidden_functions = get_session_by_instrument('hide_function', instrument)
+
+    for function in functions:
+        if function not in hidden_functions and function not in order:
+            order.append(function)
+    post_session_by_instrument('card_order', instrument, order)
     forms = {name: _forms[name] for name in order if name in _forms}
     if request.method == 'POST':
         all_kwargs = request.form.copy()
@@ -101,6 +102,7 @@ def controllers(instrument):
         else:
             flash(form.errors)
     return render_template('controllers.html', instrument=instrument, forms=forms, format_name=format_name)
+
 
 @control.route("/backend_control/<instrument>", methods=['GET', 'POST'])
 @login_required
@@ -126,6 +128,7 @@ def backend_control(instrument):
         else:
             return "instrument not exist", 400
     return json_output, 200
+
 
 @control.route("/import_api", methods=['GET', 'POST'])
 def import_api():
@@ -207,47 +210,59 @@ def import_deck():
 def save_order(instrument):
     # Save the new order for the specified group to session
     data = request.json
-    card_order = session.get("card_order", {})
-    card_order[instrument] = data['order']
-    session['card_order'] = card_order
+    post_session_by_instrument('card_order', instrument, data['order'])
     return '', 204
 
 
 @control.route('/hide_function/<instrument>/<function>')
 def hide_function(instrument, function):
     back = request.referrer
-    hidden_functions = session.get("hidden_functions", {})
-    functions = hidden_functions.get(instrument, [])
-    card_order = session.get("card_order", {})
-    order = card_order.get(instrument)
+    functions = get_session_by_instrument("hidden_functions", instrument)
+    order = get_session_by_instrument("card_order", instrument)
     if function not in functions:
         functions.append(function)
         order.remove(function)
-    hidden_functions[instrument] = functions
-    card_order[instrument] = order
-    session['hidden_functions'] = hidden_functions
-    session['card_order'] = card_order
+    post_session_by_instrument('hidden_functions', instrument, functions)
+    post_session_by_instrument('card_order', instrument, order)
     return redirect(back)
 
 
 @control.route('/remove_hidden/<instrument>/<function>')
 def remove_hidden(instrument, function):
     back = request.referrer
-    hidden_functions = session.get("hidden_functions", {})
-    functions = hidden_functions.get(instrument, [])
-    card_order = session.get("card_order")
-    order = card_order.get(instrument)
+    functions = get_session_by_instrument("hidden_functions", instrument)
+    order = get_session_by_instrument("card_order", instrument)
     if function in functions:
         functions.remove(function)
         order.append(function)
-    hidden_functions[instrument] = functions
-    card_order[instrument] = order
-    session['hidden_functions'] = hidden_functions
-    session['card_order'] = card_order
+    post_session_by_instrument('hidden_functions', instrument, functions)
+    post_session_by_instrument('card_order', instrument, order)
     return redirect(back)
 
 
+def get_session_by_instrument(session_name, instrument):
+    """get data from session by instrument"""
+    session_object = session.get(session_name, {})
+    functions = session_object.get(instrument, [])
+    return functions
+
+
+def post_session_by_instrument(session_name, instrument, data):
+    """
+    save new data to session by instrument
+    :param session_name: "card_order" or "hidden_functions"
+    :param instrument: function name of class object
+    :param data: order list or hidden function list
+    """
+    session_object = session.get(session_name, {})
+    session_object[instrument] = data
+    session[session_name] = session_object
+
+
 def find_instrument_by_name(name: str):
+    """
+    find instrument class object by instance name
+    """
     if name.startswith("deck"):
         name = name.replace("deck.", "")
         return getattr(global_config.deck, name)
