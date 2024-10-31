@@ -1,0 +1,47 @@
+{
+  "author": "admin",
+  "deck": "abstract_sdl",
+  "editing_type": "script",
+  "id_order": {
+    "cleanup": [],
+    "prep": [],
+    "script": [
+      "1",
+      "2"
+    ]
+  },
+  "last_modified": "2024-10-21 19:31:29",
+  "name": null,
+  "script_dict": {
+    "cleanup": [],
+    "prep": [],
+    "script": [
+      {
+        "action": "dose_solid",
+        "arg_types": {
+          "amount_in_mg": "float",
+          "bring_in": "bool"
+        },
+        "args": {
+          "amount_in_mg": 10,
+          "bring_in": false
+        },
+        "id": 1,
+        "instrument": "deck.sdl",
+        "return": "",
+        "uuid": 141095972178132
+      },
+      {
+        "action": "analyze",
+        "arg_types": {},
+        "args": {},
+        "id": 2,
+        "instrument": "deck.sdl",
+        "return": "",
+        "uuid": 261375559533602
+      }
+    ]
+  },
+  "status": "editing",
+  "time_created": "2024-10-21 19:31:21"
+}

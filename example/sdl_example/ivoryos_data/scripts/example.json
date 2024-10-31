@@ -1,0 +1,65 @@
+{
+  "author": "admin",
+  "deck": "abstract_sdl",
+  "editing_type": "script",
+  "id_order": {
+    "cleanup": [],
+    "prep": [],
+    "script": [
+      "1",
+      "2",
+      "3"
+    ]
+  },
+  "last_modified": "2024-10-21 19:38:26",
+  "name": "example",
+  "script_dict": {
+    "cleanup": [],
+    "prep": [],
+    "script": [
+      {
+        "action": "dose_solid",
+        "arg_types": {
+          "amount_in_mg": "float",
+          "bring_in": "bool"
+        },
+        "args": {
+          "amount_in_mg": "#amount",
+          "bring_in": true
+        },
+        "id": 1,
+        "instrument": "deck.sdl",
+        "return": "mass",
+        "uuid": 261030629863609
+      },
+      {
+        "action": "dose_solvent",
+        "arg_types": {
+          "amount_in_ml": "float",
+          "rate_ml_per_minute": "float",
+          "solvent_name": "str"
+        },
+        "args": {
+          "amount_in_ml": "#rate",
+          "rate_ml_per_minute": "1",
+          "solvent_name": "#solvent"
+        },
+        "id": 2,
+        "instrument": "deck.sdl",
+        "return": "",
+        "uuid": 3172645547849
+      },
+      {
+        "action": "analyze",
+        "arg_types": {},
+        "args": {},
+        "id": 3,
+        "instrument": "deck.sdl",
+        "return": "",
+        "uuid": 247646290926505
+      }
+    ]
+  },
+  "status": "editing",
+  "time_created": "2024-08-23 13:08:24"
+}

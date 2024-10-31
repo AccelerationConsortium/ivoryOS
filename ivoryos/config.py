@@ -15,6 +15,7 @@ class Config:
     SCRIPT_FOLDER = os.path.join(OUTPUT_FOLDER, 'scripts/')
     DATA_FOLDER = os.path.join(OUTPUT_FOLDER, 'results/')
     DUMMY_DECK = os.path.join(OUTPUT_FOLDER, 'pseudo_deck/')
+    LLM_OUTPUT = os.path.join(OUTPUT_FOLDER, 'llm_output/')
     DECK_HISTORY = os.path.join(OUTPUT_FOLDER, 'deck_history.txt')
     LOGGERS_PATH = "default.log"
 
