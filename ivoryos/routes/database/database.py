@@ -61,8 +61,9 @@ def publish():
 def finalize():
     script = get_script_file()
     script.finalize()
-    db.session.merge(script)
-    db.session.commit()
+    if script.name:
+        db.session.merge(script)
+        db.session.commit()
     post_script_file(script)
     return redirect(url_for('design.experiment_builder'))
 
