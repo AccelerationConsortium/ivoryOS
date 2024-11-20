@@ -6,7 +6,16 @@ document.addEventListener("DOMContentLoaded", function() {
     socket.on('progress', function(data) {
         var progress = data.progress;
         console.log(progress);
-        $('#progress-bar-inner').css('width', progress + '%')
+        // Update the progress bar's width and appearance
+        var progressBar = document.getElementById('progress-bar-inner');
+        progressBar.style.width = progress + '%';
+        progressBar.setAttribute('aria-valuenow', progress);
+
+        if (progress === 100) {
+            // Remove animation and set green color when 100% is reached
+            progressBar.classList.remove('progress-bar-animated');
+            progressBar.classList.add('bg-success'); // Bootstrap class for green color
+        }
     });
     socket.on('log', function(data) {
         var logMessage = data.message;

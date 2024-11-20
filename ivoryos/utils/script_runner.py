@@ -53,6 +53,7 @@ class ScriptRunner:
     def _run_with_stop_check(self, script: Script, repeat_count, run_name, logger, socketio, config, bo_args,
                              output_path):
         time.sleep(1)
+        self._emit_progress(socketio, 1)
         try:
             # Run "prep" section once
             script_dict = script.script_dict
@@ -75,6 +76,7 @@ class ScriptRunner:
         finally:
             with self.lock:
                 self.is_running = False  # Reset the running flag when done
+            self._emit_progress(socketio, 100)
 
     def _run_actions(self, actions, section_name="", run_name=None, logger=None):
         logger.info(f'Executing {section_name} steps') if actions else logger.info(f'No {section_name} steps')
@@ -104,7 +106,7 @@ class ScriptRunner:
                     break
                 logger.info(f'Executing {i + 1} of {len(config)} with kwargs = {kwargs}')
                 progress = (i + 1) * 100 / len(config)
-                socketio.emit('progress', {'progress': progress})
+                self._emit_progress(socketio, progress)
                 fname = f"{run_name}_script"
                 function = self.globals_dict[fname]
                 output = function(**kwargs)
@@ -121,8 +123,8 @@ class ScriptRunner:
                 logger.info(f'Stopping execution during {run_name}: {i + 1}/{int(repeat_count)}')
                 break
             logger.info(f'Executing {run_name} experiment: {i + 1}/{int(repeat_count)}')
-            progress = (i + 1) * 100 / int(repeat_count)
-            socketio.emit('progress', {'progress': progress})
+            progress = (i + 1) * 100 / int(repeat_count) - 0.1
+            self._emit_progress(socketio, progress)
             if bo_args:
                 try:
                     parameters, trial_index = ax_client.get_next_trial()
@@ -156,3 +158,7 @@ class ScriptRunner:
             writer.writeheader()
             writer.writerows(output_list)
         logger.info(f'Results saved to {file_path}')
+
+    @staticmethod
+    def _emit_progress(socketio, progress):
+        socketio.emit('progress', {'progress': progress})
