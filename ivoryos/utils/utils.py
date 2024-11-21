@@ -1,3 +1,4 @@
+import ast
 import importlib
 import inspect
 import logging
@@ -124,23 +125,22 @@ def _get_type_from_parameters(arg, parameters):
     """get argument types from inspection"""
     arg_type = ''
     if type(parameters) is inspect.Signature:
-        p = parameters.parameters
-        # print(p[arg].annotation)
-        if p[arg].annotation is not inspect._empty:
-            # print(p[arg].annotation)
-            if p[arg].annotation.__module__ == 'typing':
-                # print(p[arg].annotation.__args__)
-                arg_type = [i.__name__ for i in p[arg].annotation.__args__]
-            else:
-                arg_type = p[arg].annotation.__name__
-            # print(arg_type)
+        annotation = parameters.parameters[arg].annotation
     elif type(parameters) is dict:
-        if parameters[arg]:
-
-            if parameters[arg].__module__ == 'typing':
-                arg_type = [i.__name__ for i in parameters[arg].__args__]
+        annotation = parameters[arg]
+    if annotation is not inspect._empty:
+        # print(p[arg].annotation)
+        if annotation.__module__ == 'typing':
+            if hasattr(annotation, '_name') and annotation._name in ["Optional", "Union"]:
+                # print(p[arg].annotation.__args__)
+                arg_type = [i.__name__ for i in annotation.__args__]
+            elif hasattr(annotation, '__origin__'):
+                arg_type = annotation.__origin__.__name__
             else:
-                arg_type = parameters[arg].__name__
+                # TODO
+                pass
+        else:
+            arg_type = annotation.__name__
     return arg_type
 
 
@@ -168,17 +168,12 @@ def _convert_by_str(args, arg_types):
     if type(arg_types) is not list:
         arg_types = [arg_types]
     for arg_type in arg_types:
-        if arg_type == "any":
+        if not arg_type == "any":
             try:
-                args = eval(args)
+                args = eval(f'{arg_type}("{args}")') if type(args) is str else eval(f'{arg_type}({args})')
+                return args
             except Exception:
-                pass
-            return args
-        try:
-            args = eval(f'{arg_type}("{args}")')
-            return args
-        except Exception:
-            raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
+                raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
 
 
 def _convert_by_class(args, arg_types):
@@ -214,16 +209,20 @@ def convert_config_type(args, arg_types, is_class: bool = False):
                 raise ValueError("config file format not supported.")
             if args[arg] == '' or args[arg] == "None":
                 args[arg] = None
-            elif args[arg] == "True" or args[arg] == "False":
-                args[arg] = bool_dict[args[arg]]
+            # elif args[arg] == "True" or args[arg] == "False":
+            #     args[arg] = bool_dict[args[arg]]
             else:
                 arg_type = arg_types[arg]
-
-                if is_class:
-                    # if arg_type.__module__ == 'builtins':
-                    args[arg] = _convert_by_class(args[arg], arg_type)
-                else:
-                    args[arg] = _convert_by_str(args[arg], arg_type)
+                try:
+                    args[arg] = ast.literal_eval(args[arg])
+                except ValueError:
+                    pass
+                if type(args[arg]) is not arg_type and not type(args[arg]).__name__ == arg_type:
+                    if is_class:
+                        # if arg_type.__module__ == 'builtins':
+                        args[arg] = _convert_by_class(args[arg], arg_type)
+                    else:
+                        args[arg] = _convert_by_str(args[arg], arg_type)
     return args
 
 
