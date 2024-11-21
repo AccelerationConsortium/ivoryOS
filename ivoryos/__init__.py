@@ -19,7 +19,8 @@ global_config = GlobalConfig()
 
 
 def create_app(config_class=None):
-    app = Flask(__name__)
+    url_prefix = os.getenv('URL_PREFIX', None)
+    app = Flask(__name__, static_url_path=f'{url_prefix}/static')
     app.config.from_object(config_class or 'config.get_config()')
 
     # Initialize extensions
@@ -45,11 +46,11 @@ def create_app(config_class=None):
         g.logger = logger
         g.socketio = socketio
 
-    app.register_blueprint(main)
-    app.register_blueprint(auth)
-    app.register_blueprint(design)
-    app.register_blueprint(database)
-    app.register_blueprint(control)
+    app.register_blueprint(main, url_prefix=url_prefix)
+    app.register_blueprint(auth, url_prefix=url_prefix)
+    app.register_blueprint(design, url_prefix=url_prefix)
+    app.register_blueprint(database, url_prefix=url_prefix)
+    app.register_blueprint(control, url_prefix=url_prefix)
 
     return app
 
