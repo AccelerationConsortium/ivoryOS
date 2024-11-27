@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='ivoryos',
-    version='0.1.6',
+    version='0.1.7',
     packages=find_packages(exclude=['example', 'example.*', 'docs', 'docs.*']),
     include_package_data=True,
     description='an open-source Python package enabling Self-Driving Labs (SDLs) interoperability',

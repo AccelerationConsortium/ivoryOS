@@ -7,15 +7,6 @@ from ivoryos.utils.utils import get_script_file, post_script_file
 database = Blueprint('database', __name__, template_folder='templates/database')
 
 
-@database.route("/delete/<id>")
-@login_required
-def delete_action(id):
-    back = request.referrer
-    script = get_script_file()
-    script.delete_action(id)
-    post_script_file(script)
-    return redirect(back)
-
 
 @database.route("/edit_workflow/<workflow_name>")
 @login_required

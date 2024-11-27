@@ -394,3 +394,13 @@ def edit_action(uuid):
                 flash(e.__str__())
         session.pop('edit_action')
     return redirect(url_for('design.experiment_builder'))
+
+
+@design.route("/delete/<id>", methods=['GET', 'POST'])
+@login_required
+def delete_action(id):
+    back = request.referrer
+    script = utils.get_script_file()
+    script.delete_action(id)
+    utils.post_script_file(script)
+    return redirect(back)

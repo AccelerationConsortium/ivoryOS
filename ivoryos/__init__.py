@@ -19,7 +19,7 @@ global_config = GlobalConfig()
 
 
 def create_app(config_class=None):
-    url_prefix = os.getenv('URL_PREFIX', None)
+    url_prefix = os.getenv('URL_PREFIX', "/ivoryos")
     app = Flask(__name__, static_url_path=f'{url_prefix}/static', static_folder='static')
     app.config.from_object(config_class or 'config.get_config()')
 
