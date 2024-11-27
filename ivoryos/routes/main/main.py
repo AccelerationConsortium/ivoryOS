@@ -3,7 +3,7 @@ from flask_login import login_required
 
 main = Blueprint('main', __name__, template_folder='templates/main')
 
-@main.route("/home")
+@main.route("/")
 @login_required
 def index():
     off_line = current_app.config["OFF_LINE"]
