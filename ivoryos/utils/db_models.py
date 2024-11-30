@@ -262,7 +262,7 @@ class Script(db.Model):
         action_to_duplicate = next((action for action in self.currently_editing_script if action['id'] == int(id)), None)
         insert_id = action_to_duplicate.get("id")
         self.add_action(action_to_duplicate)
-        print(self.currently_editing_script)
+        # print(self.currently_editing_script)
         if action_to_duplicate is not None:
             # Update IDs for all subsequent actions
             for action in self.currently_editing_script:
