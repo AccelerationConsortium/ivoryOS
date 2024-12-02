@@ -118,6 +118,9 @@ ivoryos.run(__name__)
 ### Deck function and web form 
 ![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/demo.gif)
 
+### Text-to-code demo
+![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/text-to-code.gif)
+
 ### Directory structure
 
 When you run the application for the first time, it will automatically create the following folders and files in the same directory:
