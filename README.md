@@ -1,3 +1,6 @@
+[![Documentation Status](https://readthedocs.org/projects/ivoryos/badge/?version=latest)](https://ivoryos.readthedocs.io/en/latest/?badge=latest)
+[![PyPI version](https://img.shields.io/pypi/v/ivoryos)](https://pypi.org/project/ivoryos/)
+![License](https://img.shields.io/pypi/l/ivoryos)
 ![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/ivoryos.png)
 # ivoryOS: interoperable Web UI for self-driving laboratories (SDLs)
 "plug and play" web UI extension for flexible SDLs.
@@ -145,6 +148,3 @@ https://youtu.be/dFfJv9I2-1g
 Ivory Zhang, Lucy Hao
 
 Authors acknowledge all former and current Hein Lab members for their valuable suggestions. 
-
-## License
-[LICENSE](LICENSE)

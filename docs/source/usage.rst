@@ -16,6 +16,7 @@ To use ivoryOS, first install it using pip:
 For example:
 
 .. code-block:: python
+
     import ivoryos
 
     ivoryos.run(__name__)
