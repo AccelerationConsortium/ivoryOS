@@ -13,7 +13,6 @@ from werkzeug.utils import secure_filename
 from ivoryos.utils import utils
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.form import create_builtin_form, create_action_button, format_name, create_form_from_pseudo
-from ivoryos.utils.llm_agent import LlmAgent
 from ivoryos.utils.db_models import Script
 from ivoryos.utils.script_runner import ScriptRunner
 
@@ -165,6 +164,7 @@ def generate_code():
                 model = current_app.config["LLM_MODEL"]
                 server = current_app.config["LLM_SERVER"]
                 module = current_app.config["MODULE"]
+                from ivoryos.utils.llm_agent import LlmAgent
                 agent = LlmAgent(host=server, model=model, output_path=os.path.dirname(os.path.abspath(module)))
             except Exception as e:
                 flash(e.__str__())
