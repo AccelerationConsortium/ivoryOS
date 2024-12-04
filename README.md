@@ -1,7 +1,8 @@
 [![Documentation Status](https://readthedocs.org/projects/ivoryos/badge/?version=latest)](https://ivoryos.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://img.shields.io/pypi/v/ivoryos)](https://pypi.org/project/ivoryos/)
 ![License](https://img.shields.io/pypi/l/ivoryos)
-![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/ivoryos.png)
+
+![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/ivoryos.png)
 # ivoryOS: interoperable Web UI for self-driving laboratories (SDLs)
 "plug and play" web UI extension for flexible SDLs.
 
@@ -119,10 +120,10 @@ ivoryos.run(__name__)
  * Running on http://xxx.xx.xx.xxx:8000
 
 ### Deck function and web form 
-![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/demo.gif)
+![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/demo.gif)
 
 ### Text-to-code demo
-![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/text-to-code.gif)
+![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/text-to-code.gif)
 
 ### Directory structure
 

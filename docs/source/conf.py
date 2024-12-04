@@ -1,15 +1,17 @@
 # Configuration file for the Sphinx documentation builder.
+import os
+import sys
 
 # -- Project information
 
 project = 'ivoryOS'
 copyright = '2024, Ivory Zhang'
-author = 'Ivory Zhang'
+author = 'Ivory Zhang, Lucy Hao'
 
-release = '0.1.9'
 version = '0.1.9'
 
 # -- General configuration
+sys.path.insert(0, os.path.abspath('../../'))
 
 extensions = [
     'sphinx.ext.duration',
@@ -17,6 +19,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
+    'sphinx.ext.viewcode',
 ]
 
 intersphinx_mapping = {
@@ -27,9 +30,14 @@ intersphinx_disabled_domains = ['std']
 
 templates_path = ['_templates']
 
+html_static_path = ['_static']
+
 # -- Options for HTML output
 
 html_theme = 'sphinx_rtd_theme'
 
 # -- Options for EPUB output
 epub_show_urls = 'footnote'
+
+# The master toctree document.
+master_doc = 'index'
