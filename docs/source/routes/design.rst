@@ -4,7 +4,13 @@ Workflow Design
 
 Contents
 --------
-.. automodule:: ivoryos.routes.design.design
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. qrefflask:: ivoryos:app
+   :blueprints: design
+   :endpoints:
+
+
+
+.. autoflask:: ivoryos:app
+   :blueprints: design
+   :endpoints:
+

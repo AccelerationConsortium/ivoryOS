@@ -43,7 +43,19 @@ def handle_abort_action():
 @design.route("/experiment/build/<instrument>/", methods=['GET', 'POST'])
 @login_required
 def experiment_builder(instrument=None):
-    # global deck
+    """
+    Handle user operations.
+
+        **GET**:
+            - Description: Retrieve information about a user.
+            - Response: JSON containing user details.
+
+        **POST**:
+            - Description: Create a new user.
+            - Request: JSON payload with 'username' and 'email'.
+            - Response: JSON containing new user's details.
+            - Errors: Returns a 400 error if the input data is incomplete.
+    """
     deck = global_config.deck
     script = utils.get_script_file()
     if deck and script.deck is None:
@@ -147,6 +159,9 @@ def experiment_builder(instrument=None):
 @design.route("/generate_code", methods=['POST'])
 @login_required
 def generate_code():
+    """
+    Generate code from text
+    """
     agent = global_config.agent
     enable_llm = current_app.config["ENABLE_LLM"]
     instrument = request.form.get("instrument")
@@ -184,7 +199,11 @@ def generate_code():
 @design.route("/experiment", methods=['GET', 'POST'])
 @login_required
 def experiment_run():
-    # global deck
+    """
+    get the experiment workflow
+    .. :quickref: Experiment; Get Profile Page
+
+    """
     deck = global_config.deck
     script = utils.get_script_file()
     script.sort_actions()

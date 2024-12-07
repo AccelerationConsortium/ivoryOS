@@ -16,9 +16,6 @@ Intro + Tutorial + Demo video
 <iframe width="560" height="315" src="https://www.youtube.com/embed/dFfJv9I2-1g" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 
-.. note::
-
-   This project is under active development.
 
 Contents
 --------
@@ -33,3 +30,9 @@ Contents
 
 
 .. autofunction:: ivoryos.run
+
+
+
+.. note::
+
+   This project is under active development.
