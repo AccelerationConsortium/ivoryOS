@@ -127,6 +127,35 @@ def backend_control(instrument):
                 return json_output, 400
         else:
             return "instrument not exist", 400
+    return '', 200
+
+
+@control.route("/backend_control", methods=['GET'])
+def backend_client():
+    """
+    .. :quickref: Backend Control; backend control
+
+    backend control through http requests
+
+    .. http:get:: /backend_control
+
+    :param instrument: instrument name
+    :type instrument: str
+
+    .. http:post:: /backend_control
+
+    """
+    # Create a snapshot of the current deck configuration
+    snapshot = global_config.deck_snapshot.copy()
+
+    # Iterate through each instrument in the snapshot
+    for instrument_key, instrument_data in snapshot.items():
+        # Iterate through each function associated with the current instrument
+        for function_key, function_data in instrument_data.items():
+            # Convert the function signature to a string representation
+            function_data['signature'] = str(function_data['signature'])
+
+    json_output = jsonify(snapshot)
     return json_output, 200
 
 
