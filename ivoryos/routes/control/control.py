@@ -193,17 +193,11 @@ def backend_control(instrument: str=None):
 @control.route("/backend_control", methods=['GET'])
 def backend_client():
     """
-    .. :quickref: Backend Control; backend control
+    .. :quickref: Backend Control; get snapshot
 
     backend control through http requests
 
     .. http:get:: /backend_control
-
-    :param instrument: instrument name
-    :type instrument: str
-
-    .. http:post:: /backend_control
-
     """
     # Create a snapshot of the current deck configuration
     snapshot = global_config.deck_snapshot.copy()
