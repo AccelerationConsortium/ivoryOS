@@ -1,0 +1,20 @@
+/*!* Add a container for the logo and move the text below *!*/
+/*.wy-side-nav-search {*/
+/*    display: flex;*/
+/*    flex-direction: column;*/
+/*    align-items: center;*/
+/*}*/
+
+/* Add your logo above the "ivoryOS" text */
+.wy-side-nav-search:before {
+    content: '';
+    display: block;
+    background: url('../_static/ivoryos.png') no-repeat center center;
+    background-size: contain; /* Adjust the size to fit the logo */
+    width: 100%; /* Ensure the logo spans the width of the blue bar */
+    height: 50px; /* Adjust height to fit your logo */
+    margin-bottom: 10px; /* Add spacing between the logo and text */
+}
+.wy-side-nav-search {
+    background: cadetblue;
+}

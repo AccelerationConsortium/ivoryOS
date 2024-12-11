@@ -15,6 +15,13 @@ control = Blueprint('control', __name__, template_folder='templates/control')
 @control.route("/my_deck")
 @login_required
 def deck_controllers():
+    """
+    .. :quickref: Direct Control; controls home interface
+
+    deck control home interface for listing all deck instruments
+
+    .. http:get:: /my_deck
+    """
     deck_variables = global_config.deck_snapshot.keys()
     deck_list = utils.import_history(os.path.join(current_app.config["OUTPUT_FOLDER"], 'deck_history.txt'))
     return render_template('controllers_home.html', defined_variables=deck_variables, deck=True, history=deck_list)
@@ -24,6 +31,22 @@ def deck_controllers():
 @control.route("/new_controller/<instrument>", methods=['GET', 'POST'])
 @login_required
 def new_controller(instrument=None):
+    """
+    .. :quickref: Direct Control; connect to a new device
+
+    interface for connecting a new <instrument>
+
+    .. http:get:: /new_controller
+
+    :param instrument: instrument name
+    :type instrument: str
+
+    .. http:post:: /new_controller
+
+    :form device_name: module instance name (e.g. my_instance = MyClass())
+    :form kwargs: dynamic module initialization kwargs fields
+
+    """
     device = None
     args = None
     if instrument:
@@ -66,13 +89,37 @@ def new_controller(instrument=None):
 @control.route("/controllers")
 @login_required
 def controllers_home():
+    """
+    .. :quickref: Direct Control; temp control home interface
+
+    temporarily connected devices home interface for listing all instruments
+
+    .. http:get:: /controllers
+
+    """
     # defined_variables = parse_deck(deck)
     return render_template('controllers_home.html', defined_variables=global_config.defined_variables)
 
 
 @control.route("/controllers/<instrument>", methods=['GET', 'POST'])
 @login_required
-def controllers(instrument):
+def controllers(instrument: str):
+    """
+    .. :quickref: Direct Control; control interface
+
+    control interface for selected <instrument>
+
+    .. http:get:: /controllers
+
+    :param instrument: instrument name
+    :type instrument: str
+
+    .. http:post:: /controllers
+
+    :form hidden_name: function name (hidden field)
+    :form kwargs: dynamic kwargs field
+
+    """
     inst_object = find_instrument_by_name(instrument)
     _forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
     functions = list(_forms.keys())
@@ -105,10 +152,23 @@ def controllers(instrument):
 
 
 @control.route("/backend_control/<instrument>", methods=['GET', 'POST'])
-@login_required
-def backend_control(instrument):
+def backend_control(instrument: str=None):
+    """
+    .. :quickref: Backend Control; backend control
+
+    backend control through http requests
+
+    .. http:get:: /backend_control
+
+    :param instrument: instrument name
+    :type instrument: str
+
+    .. http:post:: /backend_control
+
+    """
     inst_object = find_instrument_by_name(instrument)
     forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
+
     if request.method == 'POST':
         all_kwargs = request.form.copy()
         method_name = all_kwargs.pop("hidden_name", None)
@@ -159,8 +219,20 @@ def backend_client():
     return json_output, 200
 
 
-@control.route("/import_api", methods=['GET', 'POST'])
+@control.route("/import_api", methods=['POST'])
 def import_api():
+    """
+    .. :quickref: Advanced Features; Manually import API module(s)
+
+    importing other Python modules
+
+    .. http:post:: /import_api
+
+    :form filepath: API (Python class) module filepath
+
+    import the module and redirect to :http:get:`/ivoryos/new_controller/`
+
+    """
     filepath = request.form.get('filepath')
     # filepath.replace('\\', '/')
     name = os.path.split(filepath)[-1].split('.')[0]
@@ -208,7 +280,16 @@ def import_api():
 
 @control.route("/import_deck", methods=['POST'])
 def import_deck():
-    # global deck
+    """
+    .. :quickref: Advanced Features; Manually import a deck
+
+    .. http:post:: /import_deck
+
+    :form filepath: deck module filepath
+
+    import the module and redirect to the previous page
+
+    """
     script = utils.get_script_file()
     filepath = request.form.get('filepath')
     session['dismiss'] = request.form.get('dismiss')
@@ -236,7 +317,15 @@ def import_deck():
 
 
 @control.route('/save-order/<instrument>', methods=['POST'])
-def save_order(instrument):
+def save_order(instrument: str):
+    """
+    .. :quickref: Control Customization; Save functions' order
+
+    .. http:post:: /save-order
+
+    save function drag and drop order for the given <instrument>
+
+    """
     # Save the new order for the specified group to session
     data = request.json
     post_session_by_instrument('card_order', instrument, data['order'])
@@ -245,6 +334,14 @@ def save_order(instrument):
 
 @control.route('/hide_function/<instrument>/<function>')
 def hide_function(instrument, function):
+    """
+    .. :quickref: Control Customization; Hide function
+
+    .. http:get:: /hide_function
+
+    Hide the given <instrument> and <function>
+
+    """
     back = request.referrer
     functions = get_session_by_instrument("hidden_functions", instrument)
     order = get_session_by_instrument("card_order", instrument)
@@ -257,7 +354,15 @@ def hide_function(instrument, function):
 
 
 @control.route('/remove_hidden/<instrument>/<function>')
-def remove_hidden(instrument, function):
+def remove_hidden(instrument: str, function: str):
+    """
+    .. :quickref: Control Customization; Remove a hidden function
+
+    .. http:get:: /remove_hidden
+
+    Un-hide the given <instrument> and <function>
+
+    """
     back = request.referrer
     functions = get_session_by_instrument("hidden_functions", instrument)
     order = get_session_by_instrument("card_order", instrument)

@@ -44,17 +44,38 @@ def handle_abort_action():
 @login_required
 def experiment_builder(instrument=None):
     """
-    Handle user operations.
+    .. :quickref: Workflow Design; Build experiment workflow
 
-        **GET**:
-            - Description: Retrieve information about a user.
-            - Response: JSON containing user details.
+    **Experiment Builder**
 
-        **POST**:
-            - Description: Create a new user.
-            - Request: JSON payload with 'username' and 'email'.
-            - Response: JSON containing new user's details.
-            - Errors: Returns a 400 error if the input data is incomplete.
+    This route allows users to build and edit experiment workflows. Users can interact with available instruments,
+    define variables, and manage experiment scripts.
+
+    .. http:get:: /experiment/build
+
+    Load the experiment builder interface.
+
+    :param instrument: The specific instrument for which to load functions and forms.
+    :type instrument: str
+    :status 200: Experiment builder loaded successfully.
+
+    .. http:post:: /experiment/build
+
+    Submit form data to add or modify actions in the experiment script.
+
+    **Adding action to canvas**
+
+    :form return: (optional) The name of the function or method to add to the script.
+    :form dynamic: depend on the selected instrument and its metadata.
+
+    :status 200: Action added or modified successfully.
+    :status 400: Validation errors in submitted form data.
+    :status 302: Toggles autofill or redirects to refresh the page.
+
+    **Toggle auto parameter name fill**:
+
+    :status 200: autofill toggled successfully
+
     """
     deck = global_config.deck
     script = utils.get_script_file()
@@ -160,7 +181,14 @@ def experiment_builder(instrument=None):
 @login_required
 def generate_code():
     """
-    Generate code from text
+    .. :quickref: Text to Code; Generate code from user input and update the design canvas.
+
+    .. http:post:: /generate_code
+
+    :form prompt: user's prompt
+    :status 200: and then redirects to :http:get:`/experiment/build`
+    :status 400: failed to initialize the AI agent redirects to :http:get:`/experiment/build`
+
     """
     agent = global_config.agent
     enable_llm = current_app.config["ENABLE_LLM"]
@@ -183,6 +211,7 @@ def generate_code():
                 agent = LlmAgent(host=server, model=model, output_path=os.path.dirname(os.path.abspath(module)))
             except Exception as e:
                 flash(e.__str__())
+                return redirect(url_for("design.experiment_builder", instrument=instrument, use_llm=True)), 400
         action_list = agent.generate_code(sdl_module, prompt)
         for action in action_list:
             action['instrument'] = instrument
@@ -200,8 +229,15 @@ def generate_code():
 @login_required
 def experiment_run():
     """
-    get the experiment workflow
-    .. :quickref: Experiment; Get Profile Page
+    .. :quickref: Workflow Execution; Execute/iterate the workflow
+
+    .. http:get:: /experiment
+
+    Compile the workflow and load the experiment execution interface.
+
+    .. http:post:: /experiment
+
+    Start workflow execution
 
     """
     deck = global_config.deck
@@ -281,6 +317,14 @@ def experiment_run():
 @design.route("/toggle_script_type/<stype>")
 @login_required
 def toggle_script_type(stype=None):
+    """
+    .. :quickref: Workflow Design; toggle the experimental phase for design canvas.
+
+    .. http:get:: /toggle_script_type
+
+    :status 200: and then redirects to :http:get:`/experiment/build`
+
+    """
     script = utils.get_script_file()
     script.editing_type = stype
     utils.post_script_file(script)
@@ -301,6 +345,14 @@ def update_list():
 @design.route("/clear")
 @login_required
 def clear():
+    """
+    .. :quickref: Workflow Design; clear the design canvas.
+
+    .. http:get:: /clear
+
+    :form prompt: user's prompt
+    :status 200: clear canvas and then redirects to :http:get:`/experiment/build`
+    """
     deck = global_config.deck
     pseudo_name = session.get("pseudo_deck", "")
     if deck:
@@ -315,9 +367,17 @@ def clear():
     return redirect(url_for("design.experiment_builder"))
 
 
-@design.route("/import_pseudo", methods=['GET', 'POST'])
+@design.route("/import_pseudo", methods=['POST'])
 @login_required
 def import_pseudo():
+    """
+    .. :quickref: Workflow Design; Import pseudo deck from deck history
+
+    .. http:post:: /import_pseudo
+
+    :form pkl_name: pseudo deck name
+    :status 302: load pseudo deck and then redirects to :http:get:`/experiment/build`
+    """
     pkl_name = request.form.get('pkl_name')
     script = utils.get_script_file()
     session['pseudo_deck'] = pkl_name
@@ -330,12 +390,16 @@ def import_pseudo():
     return redirect(url_for("design.experiment_builder"))
 
 
-@design.route('/uploads', methods=['GET', 'POST'])
+@design.route('/uploads', methods=['POST'])
 @login_required
 def upload():
     """
-    upload csv configuration file
-    :return:
+    .. :quickref: Workflow Execution; upload a workflow config file (.CSV)
+
+    .. http:post:: /uploads
+
+    :form file: workflow CSV config file
+    :status 302: save csv file and then redirects to :http:get:`/experiment`
     """
     if request.method == "POST":
         f = request.files['file']
@@ -358,9 +422,17 @@ def download_results(filename):
     return send_file(os.path.abspath(filepath), as_attachment=True)
 
 
-@design.route('/load_json', methods=['GET', 'POST'])
+@design.route('/load_json', methods=['POST'])
 @login_required
 def load_json():
+    """
+    .. :quickref: Workflow Design Ext; upload a workflow design file (.JSON)
+
+    .. http:post:: /load_json
+
+    :form file: workflow design JSON file
+    :status 302: load pseudo deck and then redirects to :http:get:`/experiment/build`
+    """
     if request.method == "POST":
         f = request.files['file']
         if 'file' not in request.files:
@@ -399,7 +471,22 @@ def download(filetype):
 
 @design.route("/edit/<uuid>", methods=['GET', 'POST'])
 @login_required
-def edit_action(uuid):
+def edit_action(uuid: str):
+    """
+    .. :quickref: Workflow Design; edit parameters of an action step on canvas
+
+    .. http:get:: /edit
+
+    Load parameter form of an action step
+
+    .. http:post:: /edit
+
+    :param uuid: The step's uuid
+    :type uuid: str
+
+    :form dynamic form: workflow step dynamic inputs
+    :status 302: save changes and then redirects to :http:get:`/experiment/build`
+    """
     script = utils.get_script_file()
     action = script.find_by_uuid(uuid)
     session['edit_action'] = action
@@ -415,9 +502,19 @@ def edit_action(uuid):
     return redirect(url_for('design.experiment_builder'))
 
 
-@design.route("/delete/<id>", methods=['GET', 'POST'])
+@design.route("/delete/<id>")
 @login_required
-def delete_action(id):
+def delete_action(id: int):
+    """
+    .. :quickref: Workflow Design; delete an action step on canvas
+
+    .. http:get:: /delete
+
+    :param id: The step number id
+    :type id: int
+
+    :status 302: save changes and then redirects to :http:get:`/experiment/build`
+    """
     back = request.referrer
     script = utils.get_script_file()
     script.delete_action(id)
@@ -425,9 +522,19 @@ def delete_action(id):
     return redirect(back)
 
 
-@design.route("/duplicate/<id>", methods=['GET', 'POST'])
+@design.route("/duplicate/<id>")
 @login_required
-def duplicate_action(id):
+def duplicate_action(id: int):
+    """
+    .. :quickref: Workflow Design; duplicate an action step on canvas
+
+    .. http:get:: /duplicate
+
+    :param id: The step number id
+    :type id: int
+
+    :status 302: save changes and then redirects to :http:get:`/experiment/build`
+    """
     back = request.referrer
     script = utils.get_script_file()
     script.duplicate_action(id)
