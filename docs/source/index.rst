@@ -1,35 +1,53 @@
-Welcome to ivoryOS's documentation!
+Welcome!
 ===================================
 
-**ivoryOS** is a Python library aiming to ease up the control of any Python-based SDLs by displaying functions and parameters for initialized modules dynamically.
-The modules can be hardware API, high-level functions, or experiment workflow.
-With the least modification of the current workflow, user can design, manage and execute their experimental designs and monitor the execution process.
-
-.. image:: _static/ivoryos.png
-   :width: 200px
-   :alt: logo
+**ivoryOS** is a Python library aiming to ease up the control of any Python-based SDLs by providing a visual programming and execution interface for initialized modules dynamically.
 
 
+Introduction and demo video
+------------------------------
 
-Intro + Tutorial + Demo video
+.. raw:: html
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/dFfJv9I2-1g" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/dFfJv9I2-1g" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+`Preprint <https://doi.org/10.21203/rs.3.rs-5307798/v1>`_   `Code <https://gitlab.com/heingroup/ivoryos>`_
 
 
-.. note::
+Quick start
+---------------
+.. code-block:: console
 
-   This project is under active development.
+   (.venv) $ pip install ivoryos
 
-Contents
---------
+
+In a python script, containing the initialized Python modules:
+
+.. code-block:: python
+
+    my_instance = MyClass()
+
+    import ivoryos
+
+    ivoryos.run(__name__)
+
+
 
 .. toctree::
    :maxdepth: 2
    :caption: Table of Contents:
 
+   self
    introduction
    usage
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: IvoryOS routes docs:
+
    routes
 
+.. note::
 
-.. autofunction:: ivoryos.run
+   This project is under active development.

@@ -1,10 +1,26 @@
-Workflow Design
-====================
+Workflow Design and Execution
+===================================
 
 
-Contents
+Interface Screenshot
+------------------------
+.. image:: ../_static/design.png
+   :alt: design
+
+
+
+Routes
 --------
-.. automodule:: ivoryos.routes.design.design
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. qrefflask:: ivoryos:app
+   :blueprints: design
+   :endpoints:
+
+
+Docs
+--------
+.. autoflask:: ivoryos:app
+   :blueprints: design
+   :endpoints:
+
+
+

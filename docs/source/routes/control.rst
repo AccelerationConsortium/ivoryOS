@@ -1,10 +1,24 @@
-Hardware control
+Direct Control
 ====================
 
 
-Contents
+Interface Screenshot
+--------------------------------
+.. image:: ../_static/control.png
+   :alt: control
+
+
+
+Routes
 --------
-.. automodule:: ivoryos.routes.control.control
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. qrefflask:: ivoryos:app
+   :blueprints: control
+   :endpoints:
+
+
+Docs
+--------
+.. autoflask:: ivoryos:app
+   :blueprints: control
+   :endpoints:
+

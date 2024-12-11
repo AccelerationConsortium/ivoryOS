@@ -16,11 +16,18 @@ sys.path.insert(0, os.path.abspath('../../'))
 extensions = [
     'sphinx.ext.duration',
     'sphinx.ext.doctest',
-    'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
-    'sphinx.ext.viewcode',
+    'sphinxcontrib.httpdomain',
+    'sphinxcontrib.autohttp.flask',
+    'sphinxcontrib.autohttp.flaskqref'
 ]
+
+install_requires = [
+    'sphinx-autodoc-typehints'
+]
+autodoc_mock_imports = ["flask_sqlalchemy", "another_hard_to_import_lib"]
+
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
@@ -31,6 +38,11 @@ intersphinx_disabled_domains = ['std']
 templates_path = ['_templates']
 
 html_static_path = ['_static']
+html_css_files = [
+    'custom.css',
+]
+
+html_allow_raw_html = True
 
 # -- Options for HTML output
 

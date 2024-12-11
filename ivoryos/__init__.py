@@ -14,13 +14,22 @@ from ivoryos.utils import utils
 from ivoryos.utils.db_models import db
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.script_runner import ScriptRunner
+from ivoryos.version import __version__ as ivoryos_version
 
 global_config = GlobalConfig()
 
 
+url_prefix = os.getenv('URL_PREFIX', "/ivoryos")
+app = Flask(__name__, static_url_path=f'{url_prefix}/static', static_folder='static')
+app.register_blueprint(main, url_prefix=url_prefix)
+app.register_blueprint(auth, url_prefix=url_prefix)
+app.register_blueprint(design, url_prefix=url_prefix)
+app.register_blueprint(database, url_prefix=url_prefix)
+app.register_blueprint(control, url_prefix=url_prefix)
+
 def create_app(config_class=None):
-    url_prefix = os.getenv('URL_PREFIX', "/ivoryos")
-    app = Flask(__name__, static_url_path=f'{url_prefix}/static', static_folder='static')
+    # url_prefix = os.getenv('URL_PREFIX', "/ivoryos")
+    # app = Flask(__name__, static_url_path=f'{url_prefix}/static', static_folder='static')
     app.config.from_object(config_class or 'config.get_config()')
 
     # Initialize extensions
@@ -46,15 +55,11 @@ def create_app(config_class=None):
         g.logger = logger
         g.socketio = socketio
 
-    app.register_blueprint(main, url_prefix=url_prefix)
-    app.register_blueprint(auth, url_prefix=url_prefix)
-    app.register_blueprint(design, url_prefix=url_prefix)
-    app.register_blueprint(database, url_prefix=url_prefix)
-    app.register_blueprint(control, url_prefix=url_prefix)
+
 
     @app.route('/')
     def redirect_to_prefix():
-        return redirect(url_for('main.index'))  # Assuming 'index' is a route in your blueprint
+        return redirect(url_for('main.index', version=ivoryos_version))  # Assuming 'index' is a route in your blueprint
 
     return app
 
@@ -64,6 +69,20 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
         logger: Union[str, list] = None,
         logger_output_name: str = None,
         ):
+    """
+    Start ivoryOS app server.
+
+    :param module: module name, __name__ for current module
+    :param host: host address, defaults to 0.0.0.0
+    :param port: port, defaults to None, and will use 8000
+    :param debug: debug mode, defaults to None (True)
+    :param llm_server: llm server, defaults to None.
+    :param model: llm model, defaults to None. If None, app will run without text-to-code feature
+    :param config: config class, defaults to None
+    :param logger: logger name of list of logger names, defaults to None
+    :param logger_output_name: log file save name of logger, defaults to None, and will use "default.log"
+
+    """
     app = create_app(config_class=config or get_config())  # Create app instance using factory function
 
     port = port or int(os.environ.get("PORT", 8000))

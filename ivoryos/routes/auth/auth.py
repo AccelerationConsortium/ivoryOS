@@ -11,6 +11,20 @@ auth = Blueprint('auth', __name__, template_folder='templates/auth')
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
+    """
+    .. :quickref: User; login user
+
+    .. http:get:: /login
+
+    load user login form.
+
+    .. http:post:: /login
+
+    :form username: username
+    :form password: password
+    :status 302: and then redirects to homepage
+    :status 401: incorrect password, redirects to :http:get:`/ivoryos/login`
+    """
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -32,11 +46,26 @@ def login():
             return redirect(url_for('main.index'))
         else:
             flash("Incorrect username or password")
+            return redirect(url_for('auth.login')), 401
     return render_template('login.html')
 
 
 @auth.route('/signup', methods=['GET', 'POST'])
 def signup():
+    """
+    .. :quickref: User; signup for a new account
+
+    .. http:get:: /signup
+
+    load user sighup
+
+    .. http:post:: /signup
+
+    :form username: username
+    :form password: password
+    :status 302: and then redirects to :http:get:`/ivoryos/login`
+    :status 409: when user already exists, redirects to :http:get:`/ivoryos/signup`
+    """
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -48,13 +77,19 @@ def signup():
             db.session.commit()
             return redirect(url_for('auth.login'))
         except Exception:
-            flash("username exists :(")
+            flash("username exists :(", "error")
+            return render_template('signup.html'), 409
     return render_template('signup.html')
 
 
 @auth.route("/logout")
 @login_required
 def logout():
+    """
+    .. :quickref: User; logout the user
+
+    logout the current user, clear session info, and redirect to the login page.
+    """
     logout_user()
     session.clear()
     return redirect(url_for('auth.login'))

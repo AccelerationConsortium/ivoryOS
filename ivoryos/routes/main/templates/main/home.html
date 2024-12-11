@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
-{% block title %}IvoryOS | Welcome{% endblock %}
+{% block title %}IvoryOS | Welcome {% endblock %}
 
 
 {% block body %}
-    <h1 style=" font-size: 3rem;font-weight: bold;color: #343a40;margin-bottom: 40px;">
-        Welcome
-    </h1>
-
     <div class="p-4" >
+        <h1 style=" font-size: 3rem;font-weight: bold;color: #343a40;margin-bottom: 40px;">
+            Welcome
+        </h1>
+        <p>Version: {{ version }}</p>
         <div class="row">
 
             <div class="col-lg-6 mb-4 d-flex align-items-stretch">
