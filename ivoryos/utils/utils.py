@@ -268,7 +268,7 @@ def start_logger(socketio: SocketIO, logger_name: str, log_filename: str = None)
     return logger
 
 
-def ax_wrapper(data: dict):
+def ax_wrapper(data: dict, arg_types:list):
     """
     Ax platform wrapper function for creating optimization campaign parameters and objective from the web form input
     :param data: e.g.,
@@ -303,11 +303,14 @@ def ax_wrapper(data: dict):
             except Exception:
                 values = param_value
             if param_type == "range":
-                parameter.append({"name": param_name, "type": param_type, "bounds": values})
+                param = {"name": param_name, "type": param_type, "bounds": values}
             if param_type == "choice":
-                parameter.append({"name": param_name, "type": param_type, "values": values})
+                param = {"name": param_name, "type": param_type, "values": values}
             if param_type == "fixed":
-                parameter.append({"name": param_name, "type": param_type, "value": values[0]})
+                param = {"name": param_name, "type": param_type, "value": values[0]}
+            _type = arg_types[param_name] if arg_types[param_name] in ["str", "bool", "int"] else "float"
+            param.update({"value_type": _type})
+            parameter.append(param)
         elif key.endswith("_min"):
             if not value == 'none':
                 obj_name = key.split("_min")[0]
@@ -319,13 +322,13 @@ def ax_wrapper(data: dict):
     return parameter, objectives
 
 
-def ax_initiation(data):
+def ax_initiation(data, arg_types):
     """
     create Ax campaign from the web form input
     :param data:
     """
     install_and_import("ax", "ax-platform")
-    parameter, objectives = ax_wrapper(data)
+    parameter, objectives = ax_wrapper(data, arg_types)
     from ax.service.ax_client import AxClient
     ax_client = AxClient()
     ax_client.create_experiment(parameter, objectives)

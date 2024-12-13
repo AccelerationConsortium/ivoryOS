@@ -63,7 +63,7 @@ class ScriptRunner:
             _, return_list = script.config_return()
             # Run "script" section multiple times
             if repeat_count:
-                self._run_repeat_section(repeat_count, bo_args, output_list, return_list, run_name, logger, socketio)
+                self._run_repeat_section(repeat_count, arg_type, bo_args, output_list, return_list, run_name, logger, socketio)
             elif config:
                 self._run_config_section(config, arg_type, output_list, return_list, run_name, logger, socketio)
             # Run "cleanup" section once
@@ -114,10 +114,10 @@ class ScriptRunner:
                     kwargs.update(output)
                     output_list.append(kwargs)
 
-    def _run_repeat_section(self, repeat_count, bo_args, output_list, return_list, run_name, logger, socketio):
+    def _run_repeat_section(self, repeat_count, arg_types, bo_args, output_list, return_list, run_name, logger, socketio):
         if bo_args:
             logger.info('Initializing optimizer...')
-            ax_client = utils.ax_initiation(bo_args)
+            ax_client = utils.ax_initiation(bo_args, arg_types)
         for i in range(int(repeat_count)):
             if self.stop_event.is_set():
                 logger.info(f'Stopping execution during {run_name}: {i + 1}/{int(repeat_count)}')
