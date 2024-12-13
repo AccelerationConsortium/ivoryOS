@@ -134,6 +134,7 @@ class ScriptRunner:
                     output = function(**parameters)
                     # output = eval(f"{run_name}_script(**{parameters})")
                     ax_client.complete_trial(trial_index=trial_index, raw_data=output)
+                    output.update(parameters)
                 except Exception as e:
                     logger.info(f'Optimization error: {e}')
                     break
