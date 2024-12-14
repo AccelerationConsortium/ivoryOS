@@ -51,6 +51,10 @@ def create_app(config_class=None):
 
     @app.before_request
     def before_request():
+        """
+        Called before
+
+        """
         from flask import g
         g.logger = logger
         g.socketio = socketio
