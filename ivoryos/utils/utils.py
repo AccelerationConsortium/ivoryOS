@@ -317,8 +317,9 @@ def ax_wrapper(data: dict, arg_types:list):
                 is_min = True if value == "minimize" else False
 
                 threshold = None if f"{obj_name}_threshold" not in data else data[f"{obj_name}_threshold"]
-                properties = ObjectiveProperties(minimize=is_min, threshold=threshold)
+                properties = ObjectiveProperties(minimize=is_min)
                 objectives[obj_name] = properties
+
     return parameter, objectives
 
 
@@ -331,7 +332,7 @@ def ax_initiation(data, arg_types):
     parameter, objectives = ax_wrapper(data, arg_types)
     from ax.service.ax_client import AxClient
     ax_client = AxClient()
-    ax_client.create_experiment(parameter, objectives)
+    ax_client.create_experiment(parameter, objectives=objectives)
     return ax_client
 
 
