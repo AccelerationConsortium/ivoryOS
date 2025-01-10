@@ -187,7 +187,7 @@ def backend_control(instrument: str=None):
                 return json_output, 400
         else:
             return "instrument not exist", 400
-    return '', 200
+    return json_output, 200
 
 
 @control.route("/backend_control", methods=['GET'])
