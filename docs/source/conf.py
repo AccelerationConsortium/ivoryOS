@@ -1,6 +1,7 @@
 # Configuration file for the Sphinx documentation builder.
 import os
 import sys
+from ivoryos.version import __version__
 
 # -- Project information
 
@@ -8,7 +9,7 @@ project = 'ivoryOS'
 copyright = '2024, Ivory Zhang'
 author = 'Ivory Zhang, Lucy Hao'
 
-version = '0.1.9'
+version = __version__
 
 # -- General configuration
 sys.path.insert(0, os.path.abspath('../../'))

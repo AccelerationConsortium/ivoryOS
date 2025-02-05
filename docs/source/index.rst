@@ -40,6 +40,7 @@ In a python script, containing the initialized Python modules:
    self
    introduction
    usage
+   integration
 
 
 .. toctree::
