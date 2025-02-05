@@ -7,26 +7,39 @@ import logging
 
 import ivoryos
 
-from color_matching import ColorAnalyzer
-from src.controllers.colour_matching_controller import ColourMatchingController
+from src.controllers.solubility_controller import SolubilityController
 from src import services
 
-
 logging.getLogger('URRTMonitor').setLevel(logging.INFO)
-_reference_image_path = r"C:\git_repositories\solubility\data\ivory_colour_matching\blue 1000ul red 500ul.png"
-_roi_coords = (1150, 650, 400, 400)  # Adjust these coordinates to match your ROI
 
-class ColourMatchingSDL:
+
+class SolubilitySDL:
     def __init__(self):
-        self.controller = services.services.get_controller(ColourMatchingController)
+        self.controller = services.services.get_controller(SolubilityController)
         self.controller.wait_for_init()
 
-        self.analyzer = ColorAnalyzer(_reference_image_path, _roi_coords)
         self.workflow = self.controller.workflow
 
     # -------------------------------------------------------------------- #
     # ----------------------------- CONTROLLER --------------------------- #
     # -------------------------------------------------------------------- #
+
+    def run_campaign(self,
+                     solid_name: str,
+                     solid_mass_mg: float,
+                     solvent_names: list,
+                     campaign_name: str = None,
+                     ):
+        solvent_names = ''.join(solvent_names).split(',')
+        solvent_names = [s.strip() for s in solvent_names]
+        self.controller.run_campaign(solid_name, solid_mass_mg, solvent_names, campaign_name)
+
+    def run_workflow(self,
+                     solid_name: str,
+                     solid_mass_mg: float,
+                     solvent_name: str,
+                     ):
+        self.controller.run_workflow(solid_name, solid_mass_mg, solvent_name)
 
     def set_all_vials_clean(self):
         self.controller.set_all_vials_clean()
@@ -50,7 +63,7 @@ class ColourMatchingSDL:
     def home_liquid_handler(self):
         self.workflow.home_cartesian_gantry()
 
-    def prime_solvent_line(self, line_number, volume_ml: float):
+    def prime_solvent_line(self, line_number: int, volume_ml: float):
         self.controller.prime_solvent_line(line_number=line_number, volume_ml=volume_ml)
 
     def start_heating(self, temperature: Optional[float] = None):
@@ -68,24 +81,9 @@ class ColourMatchingSDL:
     def auto_recover_arm_position_to_home(self):
         self.controller.auto_recover_arm_position_to_home()
 
-    def create_vial_mixture(self, solvent_1_ul: int):
-        solvent_2_ul = 1500 - solvent_1_ul
-        frame = self.controller.create_vial_mixture(solvent_1_ul=solvent_1_ul, solvent_2_ul=solvent_2_ul)
-        return self.analyzer.analyze_image(frame)
 
 
-colour_matching_sdl = ColourMatchingSDL()
-
+solubility_sdl = SolubilitySDL()
 
 if __name__ == '__main__':
-    print('')
-    ivoryos.run(__name__, logger=[colour_matching_sdl.controller.logger.name])
-
-
-
-
-
-
-
-
-
+    ivoryos.run(__name__, logger=[solubility_sdl.controller.logger.name])

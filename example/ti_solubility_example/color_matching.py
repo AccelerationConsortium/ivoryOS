@@ -1,3 +1,6 @@
+"""
+This is an example script of comparing the average color of two images
+"""
 import cv2
 import numpy as np
 
