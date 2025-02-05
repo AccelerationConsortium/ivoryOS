@@ -6,6 +6,7 @@ import os
 import pickle
 import subprocess
 import sys
+from collections import Counter
 from typing import Optional, Dict, Tuple
 
 from flask import session
@@ -424,3 +425,13 @@ def load_deck(pkl_name: str):
         return pseudo_deck
     except FileNotFoundError:
         return None
+
+
+def check_config_duplicate(config):
+    """
+    Checks if the config entry has any duplicate
+    :param config: [{"arg": 1}, {"arg": 1}, {"arg": 1}]
+    :return: [True, False]
+    """
+    hashable_data = [tuple(sorted(d.items())) for d in config]
+    return any(count > 1 for count in Counter(hashable_data).values())

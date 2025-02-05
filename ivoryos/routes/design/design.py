@@ -306,6 +306,8 @@ def experiment_run():
                               logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                               output_path=datapath
                               )
+            if utils.check_config_duplicate(config):
+                flash(f"WARNING: Duplicate in config entries.")
         except Exception as e:
             flash(e)
     return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=exec_string,
