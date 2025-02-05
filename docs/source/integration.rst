@@ -35,7 +35,7 @@ This example is the solubility platform at Telescope Innovations Corp.
 
 
 Telescope Derivatization Sampling
--------------------------
+----------------------------------------
 This derivatization sampling setup at Telescope Innovations Corp. is using the DirectInject system and a `Sielc autosampler <https://gitlab.com/heingroup/sielc_dompser>`_.
 
 
