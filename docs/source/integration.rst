@@ -2,7 +2,7 @@ Integration examples
 ========================================
 
 
-Platforms details
+Platforms Summary
 ------------------------
 .. image:: _static/platforms.png
    :alt: platforms
