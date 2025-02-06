@@ -1,0 +1,4 @@
+v0.1.12
+
+- add checking for duplicate entry in config file
+- add return value output in backend control
