@@ -1,4 +1,8 @@
+v0.1.13 (in progress)
+- [todo] add video feed
+
 v0.1.12
 
 - add checking for duplicate entry in config file
 - add return value output in backend control
+- add repeat in workflow design

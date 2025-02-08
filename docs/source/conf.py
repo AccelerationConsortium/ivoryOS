@@ -8,7 +8,7 @@ project = 'ivoryOS'
 copyright = '2024, Ivory Zhang'
 author = 'Ivory Zhang, Lucy Hao'
 
-version = "0.1.11"
+version = "0.1.12"
 
 # -- General configuration
 sys.path.insert(0, os.path.abspath('../../'))
