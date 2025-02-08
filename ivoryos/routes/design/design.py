@@ -106,8 +106,8 @@ def experiment_builder(instrument=None):
         deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
         deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
     if instrument:
-        if instrument in ['if', 'while', 'variable', 'wait']:
-            forms = create_builtin_form(instrument)
+        if instrument in ['if', 'while', 'variable', 'wait', 'repeat']:
+            forms = create_builtin_form(instrument, autofill=autofill, script=script)
         else:
             if deck:
                 function_metadata = global_config.deck_snapshot.get(instrument, {})

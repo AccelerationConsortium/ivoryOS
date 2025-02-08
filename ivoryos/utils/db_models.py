@@ -241,6 +241,13 @@ class Script(db.Model):
                      "args": '0' if statement == '' else statement,
                      "return": '', "uuid": uid, "arg_types": "float"},
                 ],
+            "repeat":
+                [
+                    {"id": current_len + 1, "instrument": 'repeat', "action": "repeat",
+                     "args": '1' if statement == '' else statement, "return": '', "uuid": uid, "arg_types": "int"},
+                    {"id": current_len + 2, "instrument": 'repeat', "action": 'endrepeat',
+                     "args": '', "return": '', "uuid": uid},
+                ],
         }
         action_list = logic_dict[logic_type]
         self.currently_editing_script.extend(action_list)
@@ -366,11 +373,14 @@ class Script(db.Model):
         """
         Generate the function header.
         """
-        configure, _ = self.config(stype)
+        configure, config_type = self.config(stype)
+
+        configure = [param + f":{param_type}" if not param_type == "any" else "" for param, param_type in config_type.items()]
+
         function_header = f"\n\ndef {run_name}_{stype}("
 
         if stype == "script":
-            function_header += ",".join(configure)
+            function_header += ", ".join(configure)
 
         function_header += "):"
         function_header += self.indent(1) + f"global {run_name}_{stype}"
@@ -389,7 +399,6 @@ class Script(db.Model):
         return_str, return_list = self.config_return()
         if return_list and stype == "script":
             body += self.indent(indent_unit) + return_str
-
         return body
 
     def _process_action(self, indent_unit, action, index, stype):
@@ -409,6 +418,9 @@ class Script(db.Model):
             return self.indent(indent_unit) + f"{action_name} = {args}", indent_unit
         elif instrument == 'wait':
             return f"{self.indent(indent_unit)}time.sleep({args})", indent_unit
+        elif instrument == 'repeat':
+            return self._process_repeat(indent_unit, action_name, args, next_action)
+
         else:
             return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data)
 
@@ -453,6 +465,20 @@ class Script(db.Model):
             if next_action and next_action['instrument'] == 'while':
                 exec_string += self.indent(indent_unit) + "pass"
         elif action == 'endwhile':
+            indent_unit -= 1
+        return exec_string, indent_unit
+
+    def _process_repeat(self, indent_unit, action, args, next_action):
+        """
+        Process 'while' and 'endwhile' actions.
+        """
+        exec_string = ""
+        if action == 'repeat':
+            exec_string += self.indent(indent_unit) + f"for _ in range({args}):"
+            indent_unit += 1
+            if next_action and next_action['instrument'] == 'repeat':
+                exec_string += self.indent(indent_unit) + "pass"
+        elif action == 'endrepeat':
             indent_unit -= 1
         return exec_string, indent_unit
 

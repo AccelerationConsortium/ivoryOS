@@ -72,7 +72,7 @@
 <!--                    <div class="rounded flex-fill" style="height: 30px;background-color: aliceblue">-->
 <!--                        <h6  style=" text-align: center; ">{{ format_name(instrument) }}</h6>-->
 <!--                    </div>-->
-                    {% if instrument in ['if' , 'while' , 'variable' ,'wait'] %}
+                    {% if instrument in ['if' , 'while' , 'variable' ,'wait', 'repeat'] %}
                         {# form for builtin functions #}
                         <form role="form" method='POST' name="{{instrument}}" action="{{url_for('design.experiment_builder',instrument=instrument)}}" >
                             <div class="form-group">
@@ -185,7 +185,7 @@
                         </h5>
                         <div class="accordion-collapse collapse show" id="advanced">
                             <ul class="list-group">
-                                {% for instrument in ['if', 'while', 'variable', 'wait'] %}
+                                {% for instrument in ['if', 'while', 'variable', 'wait', 'repeat'] %}
                                     <form role="form" method='GET' name="device" action="{{url_for('design.experiment_builder',instrument=instrument)}}">
                                         <div class="form-group">
                                             <button class="list-group-item list-group-item-action" aria-current="true" type="submit">{{instrument}}</button>
@@ -302,7 +302,7 @@
                     {% for button in buttons %}
                         <li id="{{ button['id'] }}" style="list-style-type: none;">
                             <a href="{{ url_for('design.edit_action', uuid=button['uuid']) }}" type="button" class="btn btn-light" style="{{ button['style'] }}">{{ button['label'] }}</a>
-                            {% if not button["instrument"] in ["if","while"] %}
+                            {% if not button["instrument"] in ["if","while","repeat"] %}
                                 <a href="{{ url_for('design.duplicate_action', id=button['id']) }}" type="button" class="btn btn-light"><span class="bi bi-copy"></span></a>
                             {% endif %}
                             <a href="{{ url_for('design.delete_action', id=button['id']) }}" type="button" class="btn btn-light"><span class="bi bi-trash"></span></a>
@@ -403,7 +403,7 @@
     </div>
 </div>
 
-    {% if instrument and not instrument in ['if' , 'while' , 'variable' ,'wait'] and use_llm %}
+    {% if instrument and not instrument in ['if' , 'while' , 'variable' ,'wait', 'repeat'] and use_llm %}
         <script>
             const buttonIds = {{ ['generate'] | tojson }};
         </script>

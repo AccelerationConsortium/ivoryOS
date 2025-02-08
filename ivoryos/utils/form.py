@@ -269,17 +269,25 @@ def create_form_from_pseudo(pseudo: dict, autofill: bool, script=None, design=Tr
     return method_forms
 
 
-def create_builtin_form(logic_type):
+def create_builtin_form(logic_type, autofill, script):
     class BuiltinFunctionForm(FlaskForm):
         pass
-
-    placeholder_text = f'Enter numbers' if logic_type == 'wait' else f'Enter statement'
-    description_text = f'Your variable can be numbers, boolean (True or False) or text ("text")' if logic_type == 'variable' else ''
-    field_class = FloatField if logic_type == 'wait' else StringField  # Default to StringField as a fallback
+    placeholder_text = {
+        'wait': 'Enter second',
+        'repeat': 'Enter an integer'
+    }.get(logic_type, 'Enter statement')
+    description_text = {
+        'variable': 'Your variable can be numbers, boolean (True or False) or text ("text")',
+    }.get(logic_type, '')
+    field_class = {
+        'wait': VariableOrFloatField,
+        'repeat': VariableOrIntField
+    }.get(logic_type, VariableOrStringField)  # Default to StringField as a fallback
     field_kwargs = {
         "label": f'statement',
         "validators": [InputRequired()] if logic_type in ['wait', "variable"] else [],
         "description": description_text,
+        "script": script
     }
     render_kwargs = {"placeholder": placeholder_text}
     field = field_class(**field_kwargs, render_kw=render_kwargs)
@@ -295,10 +303,8 @@ def create_builtin_form(logic_type):
 
 
 def create_action_button(s: dict):
-    style = ""
-    if s['instrument'] in ['if', 'while']:
+    if s['instrument'] in ['if', 'while', 'repeat']:
         text = f"{s['action']} {s['args']}"
-        style = "background-color: tomato"
     elif s['instrument'] == 'variable':
         text = f"{s['action']} = {s['args']}"
     else:
@@ -313,4 +319,10 @@ def create_action_button(s: dict):
                 arg_string = f"= {s['args']}"
 
         text = f"{prefix}{action_text}  {arg_string}"
+    style = {
+        "repeat": "background-color: lightsteelblue",
+        "if": "background-color: salmon",
+        "while": "background-color: salmon",
+
+    }.get(s['instrument'], "")
     return dict(label=text, style=style, uuid=s["uuid"], id=s["id"], instrument=s['instrument'])
