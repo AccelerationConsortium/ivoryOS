@@ -1,3 +1,5 @@
+import ast
+import builtins
 import json
 import keyword
 import re
@@ -89,51 +91,70 @@ class Script(db.Model):
                     return action
 
     def _convert_type(self, args, arg_types):
+        if arg_types in ["list", "tuple", "set"]:
+            try:
+                args = ast.literal_eval(args)
+                return args
+            except Exception:
+                pass
         if type(arg_types) is not list:
             arg_types = [arg_types]
         for arg_type in arg_types:
             try:
+                # print(arg_type)
                 args = eval(f"{arg_type}('{args}')")
                 return
             except Exception:
+
                 pass
         raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
 
     def update_by_uuid(self, uuid, args, output):
-        bool_dict = {"True": True, "False": False}
         action = self.find_by_uuid(uuid)
+        if not action:
+            return
+        arg_types = action['arg_types']
         if type(action['args']) is dict:
-            for arg in action['args']:
-                if not args[arg].startswith("#"):
+            # pass
+            self.eval_list(args, arg_types)
 
-                    if args[arg] in bool_dict.keys():
-                        args[arg] = bool_dict[args[arg]]
-                    elif args[arg] == "None" or args[arg] == "":
-                        args[arg] = None
-                    else:
-                        if arg in action['arg_types']:
-                            arg_types = action['arg_types'][arg]
-                            self._convert_type(args[arg], arg_types)
-                        else:
-                            try:
-                                args[arg] = eval(args[arg])
-                            except Exception:
-                                pass
         else:
-            args = list(args.values())[0]
-            if not args.startswith("#"):
-                if args in bool_dict.keys():
-                    args = bool_dict[args]
+            pass
+            # """handle"""
+            # args = list(args.values())[0]
+            # if not args.startswith("#"):
+            #     if args in bool_dict.keys():
+            #         args = bool_dict[args]
+            #
+            #     else:
+            #         if 'arg_types' in action:
+            #             arg_types = action['arg_types']
+            #             self._convert_type(args, arg_types)
 
-                else:
-                    if 'arg_types' in action:
-                        arg_types = action['arg_types']
-                        self._convert_type(args, arg_types)
-
-                    # print(args)
         action['args'] = args
-        # print(action)
         action['return'] = output
+
+    @staticmethod
+    def eval_list(args, arg_types):
+        for arg in args:
+            arg_type = arg_types[arg]
+            if arg_type in ["list", "tuple", "set"]:
+
+                if type(arg) is str and not args[arg].startswith("#"):
+                # arg_types = arg_types[arg]
+                # if arg_types in ["list", "tuple", "set"]:
+                    convert_type = getattr(builtins, arg_type)  # Handle unknown types s
+                    try:
+                        output = ast.literal_eval(args[arg])
+                        if type(output) not in [list, tuple, set]:
+                            output = [output]
+                        args[arg] = convert_type(output)
+                        # return args
+                    except ValueError:
+                        _list = ''.join(args[arg]).split(',')
+                        # convert_type = getattr(builtins, arg_types)  # Handle unknown types s
+                        args[arg] = convert_type([s.strip() for s in _list])
+
 
     @property
     def stypes(self):

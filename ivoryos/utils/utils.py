@@ -84,7 +84,6 @@ def available_pseudo_deck(path):
     """
     load pseudo deck (snapshot) from connection history
     """
-    import os
     return os.listdir(path)
 
 
@@ -132,14 +131,18 @@ def _get_type_from_parameters(arg, parameters):
     if annotation is not inspect._empty:
         # print(p[arg].annotation)
         if annotation.__module__ == 'typing':
-            if hasattr(annotation, '_name') and annotation._name in ["Optional", "Union"]:
-                # print(p[arg].annotation.__args__)
-                arg_type = [i.__name__ for i in annotation.__args__]
-            elif hasattr(annotation, '__origin__'):
-                arg_type = annotation.__origin__.__name__
-            else:
-                # TODO
-                pass
+            # todo
+            print(annotation.__args__)
+
+            if hasattr(annotation, '__origin__'):
+                origin = annotation.__origin__
+                if hasattr(origin, '_name') and annotation.__origin__._name in ["Optional", "Union"]:
+                    arg_type = [i.__name__ for i in annotation.__args__]
+                # elif hasattr(annotation, '__origin__'):
+                #     arg_type = annotation.__origin__.__name__
+                else:
+                    arg_type = annotation.__origin__.__name__
+                    # pass
         else:
             arg_type = annotation.__name__
     return arg_type

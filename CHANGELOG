@@ -1,5 +1,9 @@
-v0.1.13 (in progress)
+v0.1.14 (in progress)
 - [todo] add video feed
+- [todo] display docstring
+
+v0.1.13
+- fix edit action input type bugs
 
 v0.1.12
 

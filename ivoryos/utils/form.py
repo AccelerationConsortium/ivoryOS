@@ -155,6 +155,7 @@ class VariableOrIntField(Field):
 
 class VariableOrBoolField(BooleanField):
     widget = TextInput()
+    false_values = (False, "false", "", "False", "f", "F")
 
     def __init__(self, label='', validators=None, script=None, **kwargs):
         super(VariableOrBoolField, self).__init__(label, validators, **kwargs)
@@ -174,14 +175,20 @@ class VariableOrBoolField(BooleanField):
         self.data = bool(value)
 
     def process_formdata(self, valuelist):
-        if not valuelist or type(valuelist) is list and valuelist[0] == '':
+        # todo
+        # print(valuelist)
+        if not valuelist or not type(valuelist) is list:
             self.data = False
-        elif valuelist and valuelist[0].startswith("#"):
-            if not self.script.editing_type == "script":
-                raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
-            self.data = valuelist[0]
         else:
-            self.data = True
+            value = valuelist[0] if type(valuelist) is list else valuelist
+            if value.startswith("#"):
+                if not self.script.editing_type == "script":
+                    raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
+                self.data = valuelist[0]
+            elif value in self.false_values:
+                self.data = False
+            else:
+                self.data = True
 
     def _value(self):
 
@@ -269,9 +276,55 @@ def create_form_from_pseudo(pseudo: dict, autofill: bool, script=None, design=Tr
     return method_forms
 
 
+def create_form_from_action(action: dict, script=None, design=True):
+    '''
+    {'action': 'dose_solid', 'arg_types': {'amount_in_mg': 'float', 'bring_in': 'bool'}, 'args': {'amount_in_mg':
+    5.0, 'bring_in': False}, 'id': 9, 'instrument': 'deck.sdl', 'return': '', 'uuid': 266929188668995}
+    '''
+    arg_types = action.get("arg_types", {})
+    args = action.get("args", {})
+    save_as = action.get("return")
+    action = action.get("action")
+
+    class DynamicForm(FlaskForm):
+        pass
+
+    annotation_mapping = {
+        "int": (VariableOrIntField if design else IntegerField, 'Enter integer value'),
+        "float": (VariableOrFloatField if design else FloatField, 'Enter numeric value'),
+        "str": (VariableOrStringField if design else StringField, 'Enter text'),
+        "bool": (VariableOrBoolField if design else BooleanField, 'Empty for false')
+    }
+
+    for name, param_type in arg_types.items():
+        formatted_param_name = format_name(name)
+        field_kwargs = {
+            "label": formatted_param_name,
+            "default": f'{args.get(name, "")}',
+            "validators": [InputRequired()],
+            **({"script": script})
+        }
+        param_type = param_type if type(param_type) is str else f"{param_type}"
+        field_class, placeholder_text = annotation_mapping.get(
+            param_type,
+            (VariableOrStringField if design else StringField, f'Enter {param_type} value')
+        )
+        render_kwargs = {"placeholder": placeholder_text}
+
+        # Create the field with additional rendering kwargs for placeholder text
+        field = field_class(**field_kwargs, render_kw=render_kwargs)
+        setattr(DynamicForm, name, field)
+
+    if design:
+        return_value = StringField(label='Save value as', default=f"{save_as}", render_kw={"placeholder": "Optional"})
+        setattr(DynamicForm, 'return', return_value)
+    return DynamicForm()
+
+
 def create_builtin_form(logic_type, autofill, script):
     class BuiltinFunctionForm(FlaskForm):
         pass
+
     placeholder_text = {
         'wait': 'Enter second',
         'repeat': 'Enter an integer'
