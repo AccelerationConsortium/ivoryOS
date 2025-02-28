@@ -100,22 +100,25 @@ def experiment_builder(instrument=None):
 
     deck_list = utils.available_pseudo_deck(current_app.config["DUMMY_DECK"])
 
-    functions = []
+    functions = {}
     if deck:
         deck_variables = global_config.deck_snapshot.keys()
     else:
         deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
         deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
-    edit_action = session.get("edit_action")
-    if instrument:
+    edit_action_info = session.get("edit_action")
+    if edit_action_info:
+        forms = create_form_from_action(edit_action_info, script=script)
+    elif instrument:
         if instrument in ['if', 'while', 'variable', 'wait', 'repeat']:
-            forms = create_builtin_form(instrument, autofill=autofill, script=script)
+            forms = create_builtin_form(instrument, script=script)
         else:
             if deck:
-                function_metadata = global_config.deck_snapshot.get(instrument, {})
+                functions = global_config.deck_snapshot.get(instrument, {})
             elif pseudo_deck:
-                function_metadata = pseudo_deck.get(instrument, {})
-            functions = {key: data.get('signature', {}) for key, data in function_metadata.items()}
+                functions = pseudo_deck.get(instrument, {})
+            # print(function_metadata)
+            # functions = {key: data.get('signature', {}) for key, data in function_metadata.items()}
             forms = create_form_from_pseudo(pseudo=functions, autofill=autofill, script=script)
         if request.method == 'POST' and "hidden_name" in request.form:
             # all_kwargs = request.form.copy()
@@ -128,21 +131,14 @@ def experiment_builder(instrument=None):
                 function_name = kwargs.pop("hidden_name")
                 save_data = kwargs.pop('return', '')
 
-
-
                 primitive_arg_types = utils.get_arg_type(kwargs, functions[function_name])
 
-                # print(script.get_added_variables(), script.get_output_variables())
-                arg_types = {}
-                # arg_types.update(variable_kwargs_types)
-                arg_types.update(primitive_arg_types)
-                # all_kwargs.update(variable_kwargs)
-                script.eval_list(kwargs, arg_types)
-                kwargs = script.eval_variables(kwargs)
+                script.eval_list(kwargs, primitive_arg_types)
+                kwargs = script.validate_variables(kwargs)
                 action = {"instrument": instrument, "action": function_name,
-                          "args": {name: arg for (name, arg) in kwargs.items()},
+                          "args": kwargs,
                           "return": save_data,
-                          'arg_types': arg_types}
+                          'arg_types': primitive_arg_types}
                 script.add_action(action=action)
             else:
                 flash(form.errors)
@@ -167,14 +163,13 @@ def experiment_builder(instrument=None):
             autofill = not autofill
             forms = create_form_from_pseudo(functions, autofill=autofill, script=script)
             session['autofill'] = autofill
-    elif edit_action:
-        forms = create_form_from_action(edit_action, script=script)
+
     utils.post_script_file(script)
     design_buttons = create_action_button(script)
     return render_template('experiment_builder.html', off_line=off_line, instrument=instrument, history=deck_list,
                            script=script, defined_variables=deck_variables,
                            local_variables=global_config.defined_variables,
-                           functions=functions, forms=forms, buttons=design_buttons, format_name=format_name,
+                           forms=forms, buttons=design_buttons, format_name=format_name,
                            use_llm=enable_llm)
 
 
@@ -505,7 +500,7 @@ def edit_action(uuid: str):
             # print(kwargs)
             if forms and forms.validate_on_submit():
                 save_as = kwargs.pop('return', '')
-                kwargs = script.eval_variables(kwargs)
+                kwargs = script.validate_variables(kwargs)
             # try:
                 script.update_by_uuid(uuid=uuid, args=kwargs, output=save_as)
             # except Exception as e:

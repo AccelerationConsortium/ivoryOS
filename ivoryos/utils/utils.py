@@ -7,7 +7,6 @@ import pickle
 import subprocess
 import sys
 from collections import Counter
-from typing import Optional, Dict, Tuple
 
 from flask import session
 from flask_socketio import SocketIO
@@ -102,20 +101,9 @@ def _inspect_class(class_object=None, debug=False):
         if not function.startswith(under_score) and not function.isupper():
             try:
                 annotation = inspect.signature(method)
-                # if doc_string:
                 docstring = inspect.getdoc(method)
                 functions[function] = dict(signature=annotation, docstring=docstring)
 
-                # handle getter setters todo
-                # if callable(att):
-                #     functions[function] = inspect.signature(att)
-                # else:
-                #     att = getattr(class_object.__class__, function)
-                #     if isinstance(att, property) and att.fset is not None:
-                #         setter = att.fset.__annotations__
-                #         setter.pop('return', None)
-                #         if setter:
-                #             functions[function] = setter
             except Exception:
                 pass
     return functions
@@ -145,23 +133,6 @@ def _get_type_from_parameters(arg, parameters):
         else:
             arg_type = annotation.__name__
     return arg_type
-
-# # moved to script
-# def find_variable_in_script(script: Script, args: Dict[str, str]) -> Optional[Tuple[Dict[str, str], Dict[str, str]]]:
-#     # TODO: need to search for if the variable exists
-#     added_variables: list[Dict[str, str]] = [action for action in script.currently_editing_script if
-#                                              action["instrument"] == "variable"]
-#
-#     possible_variable_arguments = {}
-#     possible_variable_types = {}
-#
-#     for arg_name, arg_val in args.items():
-#         for added_variable in added_variables:
-#             if added_variable["action"] == arg_val:
-#                 possible_variable_arguments[arg_name] = added_variable["action"]
-#                 possible_variable_types[arg_name] = "variable"
-#
-#     return possible_variable_arguments, possible_variable_types
 
 
 def _convert_by_str(args, arg_types):
@@ -203,9 +174,6 @@ def convert_config_type(args, arg_types, is_class: bool = False):
     """
     Converts an argument from str to an arg type
     """
-    bool_dict = {"True": True, "False": False}
-    # print(args, arg_types)
-    # print(globals())
     if args:
         for arg in args:
             if arg not in arg_types.keys():
@@ -340,8 +308,10 @@ def ax_initiation(data, arg_types):
 
 
 def get_arg_type(args, parameters):
+    """get argument type from signature"""
     arg_types = {}
     # print(args, parameters)
+    parameters = parameters.get("signature")
     if args:
         for arg in args:
             arg_types[arg] = _get_type_from_parameters(arg, parameters)

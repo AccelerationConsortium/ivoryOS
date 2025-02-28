@@ -7,24 +7,17 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, FloatField, HiddenField, BooleanField, IntegerField
 import inspect
 
-from ivoryos.utils.db_models import Variable, Script
-
 
 def find_variable(data, script):
-    # TODO: needs to check for valid order of variables, important when editting
-    # variable name: variable type
-    added_variables: dict[str, str] = script.get_added_variables()
-    output_variables: dict[str, str] = script.get_output_variables()
-    # [action for action in script.currently_editing_script if
-    #                                          action["instrument"] == "variable"
-    #                                          # or action["return"] # TODO find returns
-    #                                          ]
-    added_variables.update(output_variables)
-    for variable_name, variable_type in added_variables.items():
+    """
+    find user defined variables and return values in the script:Script
+    :param data: string of input variable name
+    :param script:Script object
+    """
+    variables: dict[str, str] = script.get_variables()
+    for variable_name, variable_type in variables.items():
         if variable_name == data:
             return data, variable_type  # variable_type int float str or "function_output"
-        # if added_variable["return"] == data:
-        #     return data, None
     return None, None
 
 
@@ -45,7 +38,7 @@ class VariableOrStringField(Field):
         if self.script:
             variable, variable_type = find_variable(self.data, self.script)
             if variable:
-                return Variable(variable, variable_type)
+                return variable
 
         return str(self.data) if self.data is not None else ""
 
@@ -61,7 +54,7 @@ class VariableOrFloatField(Field):
         if self.script:
             variable, variable_type = find_variable(self.data, self.script)
             if variable:
-                return Variable(variable, variable_type)
+                return variable
 
         if self.raw_data:
             return self.raw_data[0]
@@ -109,7 +102,7 @@ class VariableOrIntField(Field):
         if self.script:
             variable, variable_type = find_variable(self.data, self.script)
             if variable:
-                return Variable(variable, variable_type)
+                return variable
 
         if self.raw_data:
             return self.raw_data[0]
@@ -158,7 +151,7 @@ class VariableOrBoolField(BooleanField):
             if variable:
                 if not variable_type == "function_output":
                     raise ValueError("Not accepting boolean variables")
-                return Variable(variable, variable_type)
+                return variable
 
         self.data = bool(value)
 
@@ -183,7 +176,7 @@ class VariableOrBoolField(BooleanField):
         if self.script:
             variable, variable_type = find_variable(self.raw_data, self.script)
             if variable:
-                return Variable(variable, variable_type)
+                return variable
 
         if self.raw_data:
             return str(self.raw_data[0])
@@ -197,7 +190,15 @@ def format_name(name):
     return text.capitalize()
 
 
-def create_form_for_method(method, method_name, autofill, script=None, design=True):
+def create_form_for_method(method, autofill, script=None, design=True):
+    """
+    Create forms for each method or signature
+    :param method: dict(docstring, signature)
+    :param autofill:bool if autofill is enabled
+    :param script:Script object
+    :param design: if design is enabled
+    """
+
     class DynamicForm(FlaskForm):
         pass
 
@@ -233,32 +234,60 @@ def create_form_for_method(method, method_name, autofill, script=None, design=Tr
     return DynamicForm
 
 
-# Create forms for each method in DummySDLDeck
-def create_add_form(attr, attr_name, autofill, script=None, design=True):
-    dynamic_form = create_form_for_method(attr, attr_name, autofill, script, design)
+def create_add_form(attr, attr_name, autofill: bool, script=None, design: bool = True):
+    """
+    Create forms for each method or signature
+    :param attr: dict(docstring, signature)
+    :param attr_name: method name
+    :param autofill:bool if autofill is enabled
+    :param script:Script object
+    :param design: if design is enabled. Design allows string input for parameter names ("#param") for all fields
+    """
+    signature = attr.get('signature', {})
+    docstring = attr.get('docstring', "")
+    dynamic_form = create_form_for_method(signature, autofill, script, design)
     if design:
         return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
         setattr(dynamic_form, 'return', return_value)
-    hidden_method_name = HiddenField(name=f'hidden_name', render_kw={"value": f'{attr_name}'})
+    hidden_method_name = HiddenField(name=f'hidden_name', description=docstring, render_kw={"value": f'{attr_name}'})
     setattr(dynamic_form, 'hidden_name', hidden_method_name)
     return dynamic_form
 
 
-def create_form_from_module(sdl_module, autofill: bool, script=None, design=True):
-    # sdl_deck = DummySDLDeck(DummyPump("COM1"), DummyBalance("COM2"))
+def create_form_from_module(sdl_module, autofill: bool = False, script=None, design: bool = False):
+    """
+    Create forms for each method, used for control routes
+    :param sdl_module: method module
+    :param autofill:bool if autofill is enabled
+    :param script:Script object
+    :param design: if design is enabled
+    """
     method_forms = {}
     for attr_name in dir(sdl_module):
-        attr = getattr(sdl_module, attr_name)
-        if inspect.ismethod(attr) and not attr_name.startswith('_'):
+        method = getattr(sdl_module, attr_name)
+        if inspect.ismethod(method) and not attr_name.startswith('_'):
+            signature = inspect.signature(method)
+            docstring = inspect.getdoc(method)
+            attr = dict(signature=signature, docstring=docstring)
             form_class = create_add_form(attr, attr_name, autofill, script, design)
             method_forms[attr_name] = form_class()
     return method_forms
 
 
 def create_form_from_pseudo(pseudo: dict, autofill: bool, script=None, design=True):
-    '''{'dose_liquid': < Signature(amount_in_ml: float, rate_ml_per_minute: float) >}'''
+    """
+    Create forms for pseudo method, used for design routes
+    :param pseudo:{'dose_liquid': {
+                        "docstring": "some docstring",
+                        "signature": Signature(amount_in_ml: float, rate_ml_per_minute: float) }
+                    }
+    :param autofill:bool if autofill is enabled
+    :param script:Script object
+    :param design: if design is enabled
+    """
     method_forms = {}
     for attr_name, signature in pseudo.items():
+        # signature = info.get('signature', {})
         form_class = create_add_form(signature, attr_name, autofill, script, design)
         method_forms[attr_name] = form_class()
     return method_forms
@@ -266,15 +295,18 @@ def create_form_from_pseudo(pseudo: dict, autofill: bool, script=None, design=Tr
 
 def create_form_from_action(action: dict, script=None, design=True):
     '''
-    {'action': 'dose_solid', 'arg_types': {'amount_in_mg': 'float', 'bring_in': 'bool'}, 'args': {'amount_in_mg':
-    5.0, 'bring_in': False}, 'id': 9, 'instrument': 'deck.sdl', 'return': '', 'uuid': 266929188668995}
+    Create forms for single action, used for design routes
+    :param action: {'action': 'dose_solid', 'arg_types': {'amount_in_mg': 'float', 'bring_in': 'bool'},
+                    'args': {'amount_in_mg': 5.0, 'bring_in': False}, 'id': 9,
+                    'instrument': 'deck.sdl', 'return': '', 'uuid': 266929188668995}
+    :param script:Script object
+    :param design: if design is enabled
+
     '''
-    # print(action)
 
     arg_types = action.get("arg_types", {})
     args = action.get("args", {})
     save_as = action.get("return")
-    action = action.get("action")
 
     class DynamicForm(FlaskForm):
         pass
@@ -314,7 +346,10 @@ def create_form_from_action(action: dict, script=None, design=True):
     return DynamicForm()
 
 
-def create_builtin_form(logic_type, autofill, script):
+def create_builtin_form(logic_type, script):
+    """
+    Create a builtin form {if, while, variable, repeat, wait}
+    """
     class BuiltinFunctionForm(FlaskForm):
         pass
 
@@ -355,12 +390,22 @@ def create_builtin_form(logic_type, autofill, script):
 
 
 def create_action_button(script, stype=None):
+    """
+    Creates action buttons for design route (design canvas)
+    :param script: Script object
+    :param stype: script type (script, prep, cleanup)
+    """
     stype = stype or script.editing_type
     variables = script.get_variables()
     return [_action_button(i, variables) for i in script.get_script(stype)]
 
 
 def _action_button(action: dict, variables: dict):
+    """
+    Creates action button for one action
+    :param action: Action dict
+    :param variables: created variable dict
+    """
     style = {
         "repeat": "background-color: lightsteelblue",
         "if": "background-color: salmon",
@@ -368,7 +413,7 @@ def _action_button(action: dict, variables: dict):
     }.get(action['instrument'], "")
 
     if action['instrument'] in ['if', 'while', 'repeat']:
-        text = f"{action['action']} {action['args']}"
+        text = f"{action['action']} {action['args'].get('statement', '')}"
     elif action['instrument'] == 'variable':
         text = f"{action['action']} = {action['args'].get('statement')}"
     else:
@@ -382,18 +427,13 @@ def _action_button(action: dict, variables: dict):
                 for k, v in action['args'].items():
                     if isinstance(v, dict):
                         value = next(iter(v))  # Extract the first key if it's a dict
-
+                        # show warning color for variable calling when there is no definition
                         style = "background-color: khaki" if value not in variables.keys() else ""
-
                     else:
                         value = v  # Keep the original value if not a dict
-
                     arg_list.append(f"{k} = {value}")  # Format the key-value pair
-
                 arg_string = "(" + ", ".join(arg_list) + ")"
             else:
                 arg_string = f"= {action['args']}"
-
         text = f"{prefix}{action_text}  {arg_string}"
-
     return dict(label=text, style=style, uuid=action["uuid"], id=action["id"], instrument=action['instrument'])

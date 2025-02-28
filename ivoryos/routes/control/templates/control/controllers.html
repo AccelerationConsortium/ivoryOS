@@ -16,6 +16,7 @@
             {% if function not in hidden_instrument %}
                 <div class="card" id="{{function}}">
                     <div class="bg-white rounded shadow-sm flex-fill">
+                        <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top" title='{{ form.hidden_name.description or "Docstring is not available" }}' ></i>
                         <a style="float: right" aria-label="Close" href="{{ url_for('control.hide_function', instrument=instrument, function=function) }}"><i class="bi bi-eye-slash-fill"></i></a>
                         <div class="form-control" style="border: none">
                             <form role="form" method='POST' name="{{function}}" id="{{function}}">
@@ -38,7 +39,9 @@
                                 </div>
                                 <div class="input-group mb-3">
                                     <button type="submit" name="{{ function }}" id="{{ function }}" class="form-control" style="background-color: #a5cece;">{{format_name(function)}} </button>
+
                                 </div>
+
                             </form>
                         </div>
                     </div>

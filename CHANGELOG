@@ -1,6 +1,10 @@
-v0.1.14 (in progress)
+v0.1.15 (in progress)
 - [todo] add video feed
-- [todo] display docstring
+- [todo] add undo redo
+
+v0.1.14 (in progress)
+- fix statement display for logic functions
+- display docstrings in functions
 
 v0.1.13
 - fix edit action input type bugs
