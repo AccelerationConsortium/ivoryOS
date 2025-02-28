@@ -1,8 +1,9 @@
 v0.1.15 (in progress)
+- [todo] add modular tabs
 - [todo] add video feed
 - [todo] add undo redo
 
-v0.1.14 (in progress)
+v0.1.14
 - fix statement display for logic functions
 - display docstrings in functions
 
