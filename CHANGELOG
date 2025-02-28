@@ -4,6 +4,8 @@ v0.1.14 (in progress)
 
 v0.1.13
 - fix edit action input type bugs
+- fix variable calling in function
+- add warning for not defined variable
 
 v0.1.12
 
