@@ -32,16 +32,6 @@ class User(db.Model, UserMixin):
         return self.username
 
 
-class Variable:
-    def __init__(self, name: str = None, data_type=str, value=None):
-        self.name = name
-        self.data_type = data_type
-        self.value = value
-
-    def __str__(self):
-        return self.name
-
-
 class Script(db.Model):
     __tablename__ = 'script'
     # id = db.Column(db.Integer, primary_key=True)
@@ -128,20 +118,8 @@ class Script(db.Model):
         if type(action['args']) is dict:
             # pass
             self.eval_list(args, arg_types)
-
         else:
             pass
-            # """handle"""
-            # args = list(args.values())[0]
-            # if not args.startswith("#"):
-            #     if args in bool_dict.keys():
-            #         args = bool_dict[args]
-            #
-            #     else:
-            #         if 'arg_types' in action:
-            #             arg_types = action['arg_types']
-            #             self._convert_type(args, arg_types)
-
         action['args'] = args
         action['return'] = output
 
@@ -186,14 +164,6 @@ class Script(db.Model):
     def currently_editing_order(self, script):
         self.id_order[self.editing_type] = script
 
-    # @property
-    # def editing_type(self):
-    #     return self.editing_type
-
-    # @editing_type.setter
-    # def editing_type(self, change_type):
-    #     self.editing_type = change_type
-
     def update_time_stamp(self):
         self.last_modified = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -236,6 +206,7 @@ class Script(db.Model):
         self.update_time_stamp()
 
     def add_variable(self, statement, variable, type):
+        variable = self.validate_function_name(variable)
         convert_type = getattr(builtins, type)
         statement = convert_type(statement)
         current_len = len(self.currently_editing_script)
@@ -266,16 +237,19 @@ class Script(db.Model):
 
         return output_variables
 
-    def eval_variables(self, kwargs):
+    def validate_variables(self, kwargs):
+        """
+        Validates the kwargs passed to the Script
+        """
         output_variables: Dict[str, str] = self.get_variables()
         # print(output_variables)
         for key, value in kwargs.items():
             if type(value) is str and value in output_variables:
                 var_type = output_variables[value]
-                kwargs[key] = {value:var_type}
-
+                kwargs[key] = {value: var_type}
+            if isinstance(value, str) and value.startswith("#"):
+                kwargs[key] = f"#{self.validate_function_name(value[1:])}"
         return kwargs
-
 
     def add_logic_action(self, logic_type: str, statement):
         current_len = len(self.currently_editing_script)
@@ -294,7 +268,8 @@ class Script(db.Model):
             "while":
                 [
                     {"id": current_len + 1, "instrument": 'while', "action": 'while',
-                     "args": {"statement": 'False' if statement == '' else statement}, "return": '', "uuid": uid, "arg_types": {"statement": ''}},
+                     "args": {"statement": 'False' if statement == '' else statement}, "return": '', "uuid": uid,
+                     "arg_types": {"statement": ''}},
                     {"id": current_len + 2, "instrument": 'while', "action": 'endwhile', "args": {}, "return": '',
                      "uuid": uid},
                 ],
@@ -308,7 +283,8 @@ class Script(db.Model):
             "repeat":
                 [
                     {"id": current_len + 1, "instrument": 'repeat', "action": "repeat",
-                     "args": {"statement": 1 if statement == '' else statement}, "return": '', "uuid": uid, "arg_types": {"statement": "int"}},
+                     "args": {"statement": 1 if statement == '' else statement}, "return": '', "uuid": uid,
+                     "arg_types": {"statement": "int"}},
                     {"id": current_len + 2, "instrument": 'repeat', "action": 'endrepeat',
                      "args": {}, "return": '', "uuid": uid},
                 ],
@@ -319,7 +295,9 @@ class Script(db.Model):
         self.update_time_stamp()
 
     def delete_action(self, id: int):
-
+        """
+        Delete the action by id (step number)
+        """
         uid = next((action['uuid'] for action in self.currently_editing_script if action['id'] == int(id)), None)
         id_to_be_removed = [action['id'] for action in self.currently_editing_script if action['uuid'] == uid]
         order = self.currently_editing_order
@@ -330,6 +308,9 @@ class Script(db.Model):
         self.update_time_stamp()
 
     def duplicate_action(self, id: int):
+        """
+        duplicate action by id (step number), available only for non logic actions
+        """
         action_to_duplicate = next((action for action in self.currently_editing_script if action['id'] == int(id)),
                                    None)
         insert_id = action_to_duplicate.get("id")
@@ -392,15 +373,18 @@ class Script(db.Model):
         return output_str, return_list
 
     def finalize(self):
+        """finalize script, disable editing"""
         self.status = "finalized"
         self.update_time_stamp()
 
     def save_as(self, name):
+        """resave script, enable editing"""
         self.name = name
         self.status = "editing"
         self.update_time_stamp()
 
     def indent(self, unit=0):
+        """helper: create _ unit of indent in code string"""
         string = "\n"
         for _ in range(unit):
             string += "\t"
@@ -489,7 +473,6 @@ class Script(db.Model):
             return f"{self.indent(indent_unit)}time.sleep({statement})", indent_unit
         elif instrument == 'repeat':
             return self._process_repeat(indent_unit, action_name, statement, next_action)
-
         else:
             return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data)
 
@@ -578,7 +561,7 @@ class Script(db.Model):
             if isinstance(args[arg], str) and args[arg].startswith("#"):
                 args_str = args_str.replace(f"'#{args[arg][1:]}'", args[arg][1:])
             elif isinstance(args[arg], dict):
-                print(args[arg])
+                # print(args[arg])
                 variables = self.get_variables()
                 value = next(iter(args[arg]))
                 if value not in variables:
