@@ -30,6 +30,7 @@
 
             {# edit action #}
             {% if session["edit_action"] %}
+{#                {{ session["edit_action"] }}#}
                 {% with action = session["edit_action"] %}
                     <h5> {{ format_name(action['action']) }} </h5>
                     <form role="form" method='POST' name="{{instrument}}" action="{{ url_for('design.edit_action', uuid=session["edit_action"]['uuid']) }}">
@@ -41,16 +42,26 @@
                                     <input class="form-control" type="text" id="arg" name="arg" placeholder="{{ action['arg_types']}}" value="{{ action['args'] }}" aria-labelledby="variableHelpBlock">
                                 </div>
                             {% else %}
-                                {% for arg in action['args'] %}
-                                <div class="input-group mb-3">
-                                    <label class="input-group-text">{{ format_name(arg) }}</label>
-                                    <input class="form-control" type="text" id="{{ arg }}" name="{{ arg }}" placeholder="{{ action['arg_types'][arg] }}" value="{{ action['args'][arg] }}" aria-labelledby="variableHelpBlock">
-                                </div>
+{#                                {% for arg in action['args'] %}#}
+{#                                <div class="input-group mb-3">#}
+{#                                    <label class="input-group-text">{{ format_name(arg) }}</label>#}
+{#                                    <input class="form-control" type="text" id="{{ arg }}" name="{{ arg }}" placeholder="{{ action['arg_types'][arg] }}" value="{{ action['args'][arg] }}" aria-labelledby="variableHelpBlock">#}
+{#                                </div>#}
+{#                                {% endfor %}#}
+{#                                <div class="input-group mb-3">#}
+{#                                    <label class="input-group-text">Save Output?</label>#}
+{#                                    <input class="form-control" type="text" id="return" name="return"  value="{{ action['return'] }}" aria-labelledby="variableHelpBlock">#}
+{#                                </div>#}
+                                {{ forms.hidden_tag() }}
+                                {% for field in forms %}
+                                    {% if field.type not in ['CSRFTokenField'] %}
+                                        <div class="input-group mb-3">
+                                            <label class="input-group-text">{{ field.label.text }}</label>
+                                            {{ field(class="form-control") }}
+                                            <div class="form-text">{{ field.description }} </div>
+                                        </div>
+                                    {% endif %}
                                 {% endfor %}
-                                <div class="input-group mb-3">
-                                    <label class="input-group-text">Save Output?</label>
-                                    <input class="form-control" type="text" id="return" name="return"  value="{{ action['return'] }}" aria-labelledby="variableHelpBlock">
-                                </div>
                             {% endif %}
                         </div>
                         {% endif %}

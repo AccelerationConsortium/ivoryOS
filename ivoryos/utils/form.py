@@ -1,3 +1,4 @@
+from wtforms.fields.choices import SelectField
 from wtforms.fields.core import Field
 from wtforms.validators import InputRequired
 from wtforms.widgets.core import TextInput
@@ -6,16 +7,22 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, FloatField, HiddenField, BooleanField, IntegerField
 import inspect
 
+from ivoryos.utils.db_models import Variable, Script
+
 
 def find_variable(data, script):
     # TODO: needs to check for valid order of variables, important when editting
-    added_variables: list[dict[str, str]] = [action for action in script.currently_editing_script if
-                                             action["instrument"] == "variable"
-                                             # or action["return"] # TODO find returns
-                                             ]
-    for added_variable in added_variables:
-        if added_variable["action"] == data:
-            return data, added_variable["args"]
+    # variable name: variable type
+    added_variables: dict[str, str] = script.get_added_variables()
+    output_variables: dict[str, str] = script.get_output_variables()
+    # [action for action in script.currently_editing_script if
+    #                                          action["instrument"] == "variable"
+    #                                          # or action["return"] # TODO find returns
+    #                                          ]
+    added_variables.update(output_variables)
+    for variable_name, variable_type in added_variables.items():
+        if variable_name == data:
+            return data, variable_type  # variable_type int float str or "function_output"
         # if added_variable["return"] == data:
         #     return data, None
     return None, None
@@ -36,9 +43,9 @@ class VariableOrStringField(Field):
 
     def _value(self):
         if self.script:
-            variable, value = find_variable(self.data, self.script)
+            variable, variable_type = find_variable(self.data, self.script)
             if variable:
-                return variable
+                return Variable(variable, variable_type)
 
         return str(self.data) if self.data is not None else ""
 
@@ -52,9 +59,9 @@ class VariableOrFloatField(Field):
 
     def _value(self):
         if self.script:
-            variable, value = find_variable(self.data, self.script)
+            variable, variable_type = find_variable(self.data, self.script)
             if variable:
-                return variable
+                return Variable(variable, variable_type)
 
         if self.raw_data:
             return self.raw_data[0]
@@ -73,14 +80,15 @@ class VariableOrFloatField(Field):
         try:
             if self.script:
                 try:
-                    variable, value = find_variable(valuelist[0], self.script)
+                    variable, variable_type = find_variable(valuelist[0], self.script)
                     if variable:
-                        float(value)
-                        self.data = str(variable)
+                        if not variable_type == "function_output":
+                            if variable_type not in ["float", "int"]:
+                                raise ValueError("Variable is not a valid float")
+                        self.data = variable
                         return
                 except ValueError:
                     pass
-
             self.data = float(valuelist[0])
         except ValueError as exc:
             self.data = None
@@ -99,9 +107,9 @@ class VariableOrIntField(Field):
 
     def _value(self):
         if self.script:
-            variable, value = find_variable(self.data, self.script)
+            variable, variable_type = find_variable(self.data, self.script)
             if variable:
-                return variable
+                return Variable(variable, variable_type)
 
         if self.raw_data:
             return self.raw_data[0]
@@ -109,34 +117,16 @@ class VariableOrIntField(Field):
             return str(self.data)
         return ""
 
-    # def process_data(self, value):
-    #
-    #     if self.script:
-    #         variable, var_value = find_variable(value, self.script)
-    #         if variable:
-    #             try:
-    #                 int(var_value)
-    #                 self.data = str(variable)
-    #                 return
-    #             except ValueError:
-    #                 pass
-    #     if value is None or value is unset_value:
-    #         self.data = None
-    #         return
-    #     try:
-    #         self.data = int(value)
-    #     except (ValueError, TypeError) as exc:
-    #         self.data = None
-    #         raise ValueError(self.gettext("Not a valid integer value.")) from exc
-
     def process_formdata(self, valuelist):
         if not valuelist:
             return
         if self.script:
-            variable, var_value = find_variable(valuelist[0], self.script)
+            variable, variable_type = find_variable(valuelist[0], self.script)
             if variable:
                 try:
-                    int(var_value)
+                    if not variable_type == "function_output":
+                        if not variable_type == "int":
+                            raise ValueError("Not a valid integer value")
                     self.data = str(variable)
                     return
                 except ValueError:
@@ -155,6 +145,7 @@ class VariableOrIntField(Field):
 
 class VariableOrBoolField(BooleanField):
     widget = TextInput()
+    false_values = (False, "false", "", "False", "f", "F")
 
     def __init__(self, label='', validators=None, script=None, **kwargs):
         super(VariableOrBoolField, self).__init__(label, validators, **kwargs)
@@ -163,32 +154,36 @@ class VariableOrBoolField(BooleanField):
     def process_data(self, value):
 
         if self.script:
-            variable, var_value = find_variable(value, self.script)
+            variable, variable_type = find_variable(value, self.script)
             if variable:
-                try:
-                    bool(var_value)
-                    return variable
-                except ValueError:
-                    return
+                if not variable_type == "function_output":
+                    raise ValueError("Not accepting boolean variables")
+                return Variable(variable, variable_type)
 
         self.data = bool(value)
 
     def process_formdata(self, valuelist):
-        if not valuelist or type(valuelist) is list and valuelist[0] == '':
+        # todo
+        # print(valuelist)
+        if not valuelist or not type(valuelist) is list:
             self.data = False
-        elif valuelist and valuelist[0].startswith("#"):
-            if not self.script.editing_type == "script":
-                raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
-            self.data = valuelist[0]
         else:
-            self.data = True
+            value = valuelist[0] if type(valuelist) is list else valuelist
+            if value.startswith("#"):
+                if not self.script.editing_type == "script":
+                    raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
+                self.data = valuelist[0]
+            elif value in self.false_values:
+                self.data = False
+            else:
+                self.data = True
 
     def _value(self):
 
         if self.script:
-            variable, value = find_variable(self.raw_data, self.script)
+            variable, variable_type = find_variable(self.raw_data, self.script)
             if variable:
-                return variable
+                return Variable(variable, variable_type)
 
         if self.raw_data:
             return str(self.raw_data[0])
@@ -269,9 +264,60 @@ def create_form_from_pseudo(pseudo: dict, autofill: bool, script=None, design=Tr
     return method_forms
 
 
+def create_form_from_action(action: dict, script=None, design=True):
+    '''
+    {'action': 'dose_solid', 'arg_types': {'amount_in_mg': 'float', 'bring_in': 'bool'}, 'args': {'amount_in_mg':
+    5.0, 'bring_in': False}, 'id': 9, 'instrument': 'deck.sdl', 'return': '', 'uuid': 266929188668995}
+    '''
+    # print(action)
+
+    arg_types = action.get("arg_types", {})
+    args = action.get("args", {})
+    save_as = action.get("return")
+    action = action.get("action")
+
+    class DynamicForm(FlaskForm):
+        pass
+
+    annotation_mapping = {
+        "int": (VariableOrIntField if design else IntegerField, 'Enter integer value'),
+        "float": (VariableOrFloatField if design else FloatField, 'Enter numeric value'),
+        "str": (VariableOrStringField if design else StringField, 'Enter text'),
+        "bool": (VariableOrBoolField if design else BooleanField, 'Empty for false')
+    }
+
+    for name, param_type in arg_types.items():
+        formatted_param_name = format_name(name)
+        value = args.get(name, "")
+        if type(value) is dict:
+            value = next(iter(value))
+        field_kwargs = {
+            "label": formatted_param_name,
+            "default": f'{value}',
+            "validators": [InputRequired()],
+            **({"script": script})
+        }
+        param_type = param_type if type(param_type) is str else f"{param_type}"
+        field_class, placeholder_text = annotation_mapping.get(
+            param_type,
+            (VariableOrStringField if design else StringField, f'Enter {param_type} value')
+        )
+        render_kwargs = {"placeholder": placeholder_text}
+
+        # Create the field with additional rendering kwargs for placeholder text
+        field = field_class(**field_kwargs, render_kw=render_kwargs)
+        setattr(DynamicForm, name, field)
+
+    if design:
+        return_value = StringField(label='Save value as', default=f"{save_as}", render_kw={"placeholder": "Optional"})
+        setattr(DynamicForm, 'return', return_value)
+    return DynamicForm()
+
+
 def create_builtin_form(logic_type, autofill, script):
     class BuiltinFunctionForm(FlaskForm):
         pass
+
     placeholder_text = {
         'wait': 'Enter second',
         'repeat': 'Enter an integer'
@@ -296,33 +342,58 @@ def create_builtin_form(logic_type, autofill, script):
         variable_field = StringField(label=f'variable', validators=[InputRequired()],
                                      description="Your variable name cannot include space",
                                      render_kw=render_kwargs)
+        type_field = SelectField(
+            'Select Input Type',
+            choices=[('int', 'Integer'), ('float', 'Float'), ('str', 'String')],
+            default='str'  # Optional default value
+        )
         setattr(BuiltinFunctionForm, "variable", variable_field)
+        setattr(BuiltinFunctionForm, "type", type_field)
     hidden_field = HiddenField(name=f'builtin_name', render_kw={"value": f'{logic_type}'})
     setattr(BuiltinFunctionForm, "builtin_name", hidden_field)
     return BuiltinFunctionForm()
 
 
-def create_action_button(s: dict):
-    if s['instrument'] in ['if', 'while', 'repeat']:
-        text = f"{s['action']} {s['args']}"
-    elif s['instrument'] == 'variable':
-        text = f"{s['action']} = {s['args']}"
-    else:
-        # regular action button
-        prefix = f"{s['return']} = " if s['return'] else ""
-        action_text = f"{s['instrument'].split('.')[-1] if s['instrument'].startswith('deck') else s['instrument']}.{s['action']}"
-        arg_string = ""
-        if s['args']:
-            if type(s['args']) is dict:
-                arg_string = "(" + ", ".join([f"{k} = {v}" for k, v in s['args'].items()]) + ")"
-            else:
-                arg_string = f"= {s['args']}"
+def create_action_button(script, stype=None):
+    stype = stype or script.editing_type
+    variables = script.get_variables()
+    return [_action_button(i, variables) for i in script.get_script(stype)]
 
-        text = f"{prefix}{action_text}  {arg_string}"
+
+def _action_button(action: dict, variables: dict):
     style = {
         "repeat": "background-color: lightsteelblue",
         "if": "background-color: salmon",
         "while": "background-color: salmon",
+    }.get(action['instrument'], "")
 
-    }.get(s['instrument'], "")
-    return dict(label=text, style=style, uuid=s["uuid"], id=s["id"], instrument=s['instrument'])
+    if action['instrument'] in ['if', 'while', 'repeat']:
+        text = f"{action['action']} {action['args']}"
+    elif action['instrument'] == 'variable':
+        text = f"{action['action']} = {action['args'].get('statement')}"
+    else:
+        # regular action button
+        prefix = f"{action['return']} = " if action['return'] else ""
+        action_text = f"{action['instrument'].split('.')[-1] if action['instrument'].startswith('deck') else action['instrument']}.{action['action']}"
+        arg_string = ""
+        if action['args']:
+            if type(action['args']) is dict:
+                arg_list = []
+                for k, v in action['args'].items():
+                    if isinstance(v, dict):
+                        value = next(iter(v))  # Extract the first key if it's a dict
+
+                        style = "background-color: khaki" if value not in variables.keys() else ""
+
+                    else:
+                        value = v  # Keep the original value if not a dict
+
+                    arg_list.append(f"{k} = {value}")  # Format the key-value pair
+
+                arg_string = "(" + ", ".join(arg_list) + ")"
+            else:
+                arg_string = f"= {action['args']}"
+
+        text = f"{prefix}{action_text}  {arg_string}"
+
+    return dict(label=text, style=style, uuid=action["uuid"], id=action["id"], instrument=action['instrument'])

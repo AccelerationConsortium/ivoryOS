@@ -1,8 +1,11 @@
+import ast
+import builtins
 import json
 import keyword
 import re
 import uuid
 from datetime import datetime
+from typing import Dict
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
@@ -27,6 +30,16 @@ class User(db.Model, UserMixin):
 
     def get_id(self):
         return self.username
+
+
+class Variable:
+    def __init__(self, name: str = None, data_type=str, value=None):
+        self.name = name
+        self.data_type = data_type
+        self.value = value
+
+    def __str__(self):
+        return self.name
 
 
 class Script(db.Model):
@@ -89,51 +102,69 @@ class Script(db.Model):
                     return action
 
     def _convert_type(self, args, arg_types):
+        if arg_types in ["list", "tuple", "set"]:
+            try:
+                args = ast.literal_eval(args)
+                return args
+            except Exception:
+                pass
         if type(arg_types) is not list:
             arg_types = [arg_types]
         for arg_type in arg_types:
             try:
+                # print(arg_type)
                 args = eval(f"{arg_type}('{args}')")
                 return
             except Exception:
+
                 pass
         raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
 
     def update_by_uuid(self, uuid, args, output):
-        bool_dict = {"True": True, "False": False}
         action = self.find_by_uuid(uuid)
+        if not action:
+            return
+        arg_types = action['arg_types']
         if type(action['args']) is dict:
-            for arg in action['args']:
-                if not args[arg].startswith("#"):
+            # pass
+            self.eval_list(args, arg_types)
 
-                    if args[arg] in bool_dict.keys():
-                        args[arg] = bool_dict[args[arg]]
-                    elif args[arg] == "None" or args[arg] == "":
-                        args[arg] = None
-                    else:
-                        if arg in action['arg_types']:
-                            arg_types = action['arg_types'][arg]
-                            self._convert_type(args[arg], arg_types)
-                        else:
-                            try:
-                                args[arg] = eval(args[arg])
-                            except Exception:
-                                pass
         else:
-            args = list(args.values())[0]
-            if not args.startswith("#"):
-                if args in bool_dict.keys():
-                    args = bool_dict[args]
+            pass
+            # """handle"""
+            # args = list(args.values())[0]
+            # if not args.startswith("#"):
+            #     if args in bool_dict.keys():
+            #         args = bool_dict[args]
+            #
+            #     else:
+            #         if 'arg_types' in action:
+            #             arg_types = action['arg_types']
+            #             self._convert_type(args, arg_types)
 
-                else:
-                    if 'arg_types' in action:
-                        arg_types = action['arg_types']
-                        self._convert_type(args, arg_types)
-
-                    # print(args)
         action['args'] = args
-        # print(action)
         action['return'] = output
+
+    @staticmethod
+    def eval_list(args, arg_types):
+        for arg in args:
+            arg_type = arg_types[arg]
+            if arg_type in ["list", "tuple", "set"]:
+
+                if type(arg) is str and not args[arg].startswith("#"):
+                    # arg_types = arg_types[arg]
+                    # if arg_types in ["list", "tuple", "set"]:
+                    convert_type = getattr(builtins, arg_type)  # Handle unknown types s
+                    try:
+                        output = ast.literal_eval(args[arg])
+                        if type(output) not in [list, tuple, set]:
+                            output = [output]
+                        args[arg] = convert_type(output)
+                        # return args
+                    except ValueError:
+                        _list = ''.join(args[arg]).split(',')
+                        # convert_type = getattr(builtins, arg_types)  # Handle unknown types s
+                        args[arg] = convert_type([s.strip() for s in _list])
 
     @property
     def stypes(self):
@@ -204,14 +235,47 @@ class Script(db.Model):
         self.currently_editing_order.append(str(current_len + 1))
         self.update_time_stamp()
 
-    def add_variable(self, statement, variable):
+    def add_variable(self, statement, variable, type):
+        convert_type = getattr(builtins, type)
+        statement = convert_type(statement)
         current_len = len(self.currently_editing_script)
         uid = uuid.uuid4().fields[-1]
         action_list = [{"id": current_len + 1, "instrument": 'variable', "action": variable,
-                        "args": 'None' if statement == '' else statement, "return": '', "uuid": uid, "arg_types": ''}]
+                        "args": {"statement": 'None' if statement == '' else statement}, "return": '', "uuid": uid,
+                        "arg_types": {"statement": type}}]
         self.currently_editing_script.extend(action_list)
         self.currently_editing_order.extend([str(current_len + i + 1) for i in range(len(action_list))])
         self.update_time_stamp()
+
+    def get_added_variables(self):
+        added_variables: Dict[str, str] = {action["action"]: action["arg_types"]["statement"] for action in
+                                           self.currently_editing_script if action["instrument"] == "variable"}
+
+        return added_variables
+
+    def get_output_variables(self):
+        output_variables: Dict[str, str] = {action["return"]: "function_output" for action in
+                                            self.currently_editing_script if action["return"]}
+
+        return output_variables
+
+    def get_variables(self):
+        output_variables: Dict[str, str] = self.get_output_variables()
+        added_variables = self.get_added_variables()
+        output_variables.update(added_variables)
+
+        return output_variables
+
+    def eval_variables(self, kwargs):
+        output_variables: Dict[str, str] = self.get_variables()
+        # print(output_variables)
+        for key, value in kwargs.items():
+            if type(value) is str and value in output_variables:
+                var_type = output_variables[value]
+                kwargs[key] = {value:var_type}
+
+        return kwargs
+
 
     def add_logic_action(self, logic_type: str, statement):
         current_len = len(self.currently_editing_script)
@@ -220,33 +284,33 @@ class Script(db.Model):
             "if":
                 [
                     {"id": current_len + 1, "instrument": 'if', "action": 'if',
-                     "args": 'True' if statement == '' else statement,
-                     "return": '', "uuid": uid, "arg_types": ''},
-                    {"id": current_len + 2, "instrument": 'if', "action": 'else', "args": '', "return": '',
+                     "args": {"statement": 'True' if statement == '' else statement},
+                     "return": '', "uuid": uid, "arg_types": {"statement": ''}},
+                    {"id": current_len + 2, "instrument": 'if', "action": 'else', "args": {}, "return": '',
                      "uuid": uid},
-                    {"id": current_len + 3, "instrument": 'if', "action": 'endif', "args": '', "return": '',
+                    {"id": current_len + 3, "instrument": 'if', "action": 'endif', "args": {}, "return": '',
                      "uuid": uid},
                 ],
             "while":
                 [
                     {"id": current_len + 1, "instrument": 'while', "action": 'while',
-                     "args": 'False' if statement == '' else statement, "return": '', "uuid": uid, "arg_types": ''},
-                    {"id": current_len + 2, "instrument": 'while', "action": 'endwhile', "args": '', "return": '',
+                     "args": {"statement": 'False' if statement == '' else statement}, "return": '', "uuid": uid, "arg_types": {"statement": ''}},
+                    {"id": current_len + 2, "instrument": 'while', "action": 'endwhile', "args": {}, "return": '',
                      "uuid": uid},
                 ],
 
             "wait":
                 [
                     {"id": current_len + 1, "instrument": 'wait', "action": "wait",
-                     "args": '0' if statement == '' else statement,
-                     "return": '', "uuid": uid, "arg_types": "float"},
+                     "args": {"statement": 1 if statement == '' else statement},
+                     "return": '', "uuid": uid, "arg_types": {"statement": "float"}},
                 ],
             "repeat":
                 [
                     {"id": current_len + 1, "instrument": 'repeat', "action": "repeat",
-                     "args": '1' if statement == '' else statement, "return": '', "uuid": uid, "arg_types": "int"},
+                     "args": {"statement": 1 if statement == '' else statement}, "return": '', "uuid": uid, "arg_types": {"statement": "int"}},
                     {"id": current_len + 2, "instrument": 'repeat', "action": 'endrepeat',
-                     "args": '', "return": '', "uuid": uid},
+                     "args": {}, "return": '', "uuid": uid},
                 ],
         }
         action_list = logic_dict[logic_type]
@@ -266,7 +330,8 @@ class Script(db.Model):
         self.update_time_stamp()
 
     def duplicate_action(self, id: int):
-        action_to_duplicate = next((action for action in self.currently_editing_script if action['id'] == int(id)), None)
+        action_to_duplicate = next((action for action in self.currently_editing_script if action['id'] == int(id)),
+                                   None)
         insert_id = action_to_duplicate.get("id")
         self.add_action(action_to_duplicate)
         # print(self.currently_editing_script)
@@ -375,7 +440,8 @@ class Script(db.Model):
         """
         configure, config_type = self.config(stype)
 
-        configure = [param + f":{param_type}" if not param_type == "any" else "" for param, param_type in config_type.items()]
+        configure = [param + f":{param_type}" if not param_type == "any" else "" for param, param_type in
+                     config_type.items()]
 
         function_header = f"\n\ndef {run_name}_{stype}("
 
@@ -406,20 +472,23 @@ class Script(db.Model):
         Process each action within the script dictionary.
         """
         instrument = action['instrument']
+        statement = action['args'].get('statement')
         args = self._process_args(action['args'])
+
         save_data = action['return']
         action_name = action['action']
         next_action = self._get_next_action(stype, index)
+        # print(args)
         if instrument == 'if':
-            return self._process_if(indent_unit, action_name, args, next_action)
+            return self._process_if(indent_unit, action_name, statement, next_action)
         elif instrument == 'while':
-            return self._process_while(indent_unit, action_name, args, next_action)
+            return self._process_while(indent_unit, action_name, statement, next_action)
         elif instrument == 'variable':
-            return self.indent(indent_unit) + f"{action_name} = {args}", indent_unit
+            return self.indent(indent_unit) + f"{action_name} = {statement}", indent_unit
         elif instrument == 'wait':
-            return f"{self.indent(indent_unit)}time.sleep({args})", indent_unit
+            return f"{self.indent(indent_unit)}time.sleep({statement})", indent_unit
         elif instrument == 'repeat':
-            return self._process_repeat(indent_unit, action_name, args, next_action)
+            return self._process_repeat(indent_unit, action_name, statement, next_action)
 
         else:
             return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data)
@@ -486,6 +555,7 @@ class Script(db.Model):
         """
         Process actions related to instruments.
         """
+
         if isinstance(args, dict):
             args_str = self._process_dict_args(args)
             single_line = f"{instrument}.{action}(**{args_str})"
@@ -507,8 +577,16 @@ class Script(db.Model):
         for arg in args:
             if isinstance(args[arg], str) and args[arg].startswith("#"):
                 args_str = args_str.replace(f"'#{args[arg][1:]}'", args[arg][1:])
-            elif self._is_variable(arg):
-                args_str = args_str.replace(f"'{args[arg]}'", args[arg])
+            elif isinstance(args[arg], dict):
+                print(args[arg])
+                variables = self.get_variables()
+                value = next(iter(args[arg]))
+                if value not in variables:
+                    raise ValueError(f"Variable ({value}) is not defined.")
+                args_str = args_str.replace(f"{args[arg]}", next(iter(args[arg])))
+            # elif self._is_variable(arg):
+            #     print("is variable")
+            #     args_str = args_str.replace(f"'{args[arg]}'", args[arg])
         return args_str
 
     def _get_next_action(self, stype, index):
