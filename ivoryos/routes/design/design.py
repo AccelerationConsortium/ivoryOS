@@ -118,8 +118,8 @@ def experiment_builder(instrument=None):
             functions = {key: data.get('signature', {}) for key, data in function_metadata.items()}
             forms = create_form_from_pseudo(pseudo=functions, autofill=autofill, script=script)
         if request.method == 'POST' and "hidden_name" in request.form:
-            all_kwargs = request.form.copy()
-            method_name = all_kwargs.pop("hidden_name", None)
+            # all_kwargs = request.form.copy()
+            method_name = request.form.get("hidden_name", None)
             # if method_name is not None:
             form = forms.get(method_name)
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
@@ -127,25 +127,18 @@ def experiment_builder(instrument=None):
             if form and form.validate_on_submit():
                 function_name = kwargs.pop("hidden_name")
                 save_data = kwargs.pop('return', '')
-                variable_kwargs = {}
-                variable_kwargs_types = {}
 
-                try:
-                    variable_kwargs, variable_kwargs_types = utils.find_variable_in_script(script, kwargs)
 
-                    for name in variable_kwargs.keys():
-                        del kwargs[name]
-                    primitive_arg_types = utils.get_arg_type(kwargs, functions[function_name])
 
-                except:
-                    primitive_arg_types = utils.get_arg_type(kwargs, functions[function_name])
+                primitive_arg_types = utils.get_arg_type(kwargs, functions[function_name])
 
-                kwargs.update(variable_kwargs)
+                # print(script.get_added_variables(), script.get_output_variables())
                 arg_types = {}
-                arg_types.update(variable_kwargs_types)
+                # arg_types.update(variable_kwargs_types)
                 arg_types.update(primitive_arg_types)
-                all_kwargs.update(variable_kwargs)
+                # all_kwargs.update(variable_kwargs)
                 script.eval_list(kwargs, arg_types)
+                kwargs = script.eval_variables(kwargs)
                 action = {"instrument": instrument, "action": function_name,
                           "args": {name: arg for (name, arg) in kwargs.items()},
                           "return": save_data,
@@ -157,9 +150,13 @@ def experiment_builder(instrument=None):
         elif request.method == 'POST' and "builtin_name" in request.form:
             kwargs = {field.name: field.data for field in forms if field.name != 'csrf_token'}
             if forms.validate_on_submit():
+                # print(kwargs)
                 logic_type = kwargs.pop('builtin_name')
                 if 'variable' in kwargs:
-                    script.add_variable(**kwargs)
+                    try:
+                        script.add_variable(**kwargs)
+                    except ValueError:
+                        flash("Invalid variable type")
                 else:
                     script.add_logic_action(logic_type=logic_type, **kwargs)
             else:
@@ -173,7 +170,7 @@ def experiment_builder(instrument=None):
     elif edit_action:
         forms = create_form_from_action(edit_action, script=script)
     utils.post_script_file(script)
-    design_buttons = [create_action_button(i) for i in script.currently_editing_script]
+    design_buttons = create_action_button(script)
     return render_template('experiment_builder.html', off_line=off_line, instrument=instrument, history=deck_list,
                            script=script, defined_variables=deck_variables,
                            local_variables=global_config.defined_variables,
@@ -254,10 +251,14 @@ def experiment_run():
     #     module = current_app.config.get('MODULE', '')
     #     deck = sys.modules[module] if module else None
     #     script.deck = os.path.splitext(os.path.basename(deck.__file__))[0]
-    design_buttons = {stype: [create_action_button(i) for i in script.get_script(stype)] for stype in script.stypes}
+    design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
     config_preview = []
     config_file_list = [i for i in os.listdir(current_app.config["CSV_FOLDER"]) if not i == ".gitkeep"]
-    exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+    try:
+        exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+    except ValueError as e:
+        flash(e.__str__())
+        return redirect(url_for("design.experiment_builder"))
     # print(exec_string)
     config_file = request.args.get("filename")
     config = []
@@ -497,13 +498,14 @@ def edit_action(uuid: str):
     action = script.find_by_uuid(uuid)
     session['edit_action'] = action
 
-    if request.method == "POST":
+    if request.method == "POST" and action is not None:
         forms = create_form_from_action(action, script=script)
         if "back" not in request.form:
             kwargs = {field.name: field.data for field in forms if field.name != 'csrf_token'}
             # print(kwargs)
             if forms and forms.validate_on_submit():
                 save_as = kwargs.pop('return', '')
+                kwargs = script.eval_variables(kwargs)
             # try:
                 script.update_by_uuid(uuid=uuid, args=kwargs, output=save_as)
             # except Exception as e:

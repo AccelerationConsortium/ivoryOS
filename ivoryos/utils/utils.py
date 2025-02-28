@@ -131,38 +131,37 @@ def _get_type_from_parameters(arg, parameters):
     if annotation is not inspect._empty:
         # print(p[arg].annotation)
         if annotation.__module__ == 'typing':
-            # todo
-            print(annotation.__args__)
 
             if hasattr(annotation, '__origin__'):
                 origin = annotation.__origin__
-                if hasattr(origin, '_name') and annotation.__origin__._name in ["Optional", "Union"]:
+                if hasattr(origin, '_name') and origin._name in ["Optional", "Union"]:
                     arg_type = [i.__name__ for i in annotation.__args__]
-                # elif hasattr(annotation, '__origin__'):
-                #     arg_type = annotation.__origin__.__name__
-                else:
-                    arg_type = annotation.__origin__.__name__
-                    # pass
+                elif hasattr(origin, '__name__'):
+                    arg_type = origin.__name__
+                # todo other types
+        elif annotation.__module__ == 'types':
+            arg_type = [i.__name__ for i in annotation.__args__]
+
         else:
             arg_type = annotation.__name__
     return arg_type
 
-
-def find_variable_in_script(script: Script, args: Dict[str, str]) -> Optional[Tuple[Dict[str, str], Dict[str, str]]]:
-    # TODO: need to search for if the variable exists
-    added_variables: list[Dict[str, str]] = [action for action in script.currently_editing_script if
-                                             action["instrument"] == "variable"]
-
-    possible_variable_arguments = {}
-    possible_variable_types = {}
-
-    for arg_name, arg_val in args.items():
-        for added_variable in added_variables:
-            if added_variable["action"] == arg_val:
-                possible_variable_arguments[arg_name] = added_variable["action"]
-                possible_variable_types[arg_name] = "variable"
-
-    return possible_variable_arguments, possible_variable_types
+# # moved to script
+# def find_variable_in_script(script: Script, args: Dict[str, str]) -> Optional[Tuple[Dict[str, str], Dict[str, str]]]:
+#     # TODO: need to search for if the variable exists
+#     added_variables: list[Dict[str, str]] = [action for action in script.currently_editing_script if
+#                                              action["instrument"] == "variable"]
+#
+#     possible_variable_arguments = {}
+#     possible_variable_types = {}
+#
+#     for arg_name, arg_val in args.items():
+#         for added_variable in added_variables:
+#             if added_variable["action"] == arg_val:
+#                 possible_variable_arguments[arg_name] = added_variable["action"]
+#                 possible_variable_types[arg_name] = "variable"
+#
+#     return possible_variable_arguments, possible_variable_types
 
 
 def _convert_by_str(args, arg_types):

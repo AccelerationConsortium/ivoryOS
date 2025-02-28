@@ -54,7 +54,7 @@
 {#                                </div>#}
                                 {{ forms.hidden_tag() }}
                                 {% for field in forms %}
-                                    {% if field.type not in ['CSRFTokenField', 'HiddenField'] %}
+                                    {% if field.type not in ['CSRFTokenField'] %}
                                         <div class="input-group mb-3">
                                             <label class="input-group-text">{{ field.label.text }}</label>
                                             {{ field(class="form-control") }}
