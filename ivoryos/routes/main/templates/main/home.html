@@ -10,6 +10,9 @@
         <p>Version: {{ version }}</p>
         <div class="row">
 
+
+{% if module_config.get("design") %}
+
             <div class="col-lg-6 mb-4 d-flex align-items-stretch">
                 <div class="card rounded shadow-sm flex-fill">
                     <div class="card-body">
@@ -30,11 +33,16 @@
             </div>
         </div>
 
+{% endif %}
+
+
         <br><br><br>
         {% if not off_line %}
-{#            <h5>Only available in online mode</h5>#}
-{#            <hr>#}
+
+
+
             <div class="row">
+                {% if module_config.get("design") %}
                 <div class="col-lg-6 mb-4 d-flex align-items-stretch">
                     <div class="card rounded shadow-sm flex-fill">
                         <div class="card-body">
@@ -44,6 +52,8 @@
                         </div>
                     </div>
                 </div>
+                {% endif %}
+
                 <div class="col-lg-6 mb-4 d-flex align-items-stretch">
                     <div class="card rounded shadow-sm flex-fill">
                         <div class="card-body">
