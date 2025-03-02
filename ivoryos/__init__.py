@@ -10,6 +10,7 @@ from ivoryos.routes.control.control import control
 from ivoryos.routes.database.database import database
 from ivoryos.routes.design.design import design, socketio
 from ivoryos.routes.main.main import main
+from ivoryos.routes.monitor.monitor import monitor
 from ivoryos.utils import utils
 from ivoryos.utils.db_models import db
 from ivoryos.utils.global_config import GlobalConfig
@@ -20,7 +21,6 @@ global_config = GlobalConfig()
 
 url_prefix = os.getenv('URL_PREFIX', "/ivoryos")
 app = Flask(__name__, static_url_path=f'{url_prefix}/static', static_folder='static')
-
 
 
 def create_app(config_class=None):
@@ -66,7 +66,7 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
         config: Config = None,
         logger: Union[str, list] = None,
         logger_output_name: str = None,
-        module_setting:dict={}
+        enable_design=True, stream_address=None
         ):
     """
     Start ivoryOS app server.
@@ -80,31 +80,29 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     :param config: config class, defaults to None
     :param logger: logger name of list of logger names, defaults to None
     :param logger_output_name: log file save name of logger, defaults to None, and will use "default.log"
-
+    :param enable_design:
+    :param stream_address:
     """
     app = create_app(config_class=config or get_config())  # Create app instance using factory function
+    enable_monitor = stream_address is not None
 
     def inject_nav_config():
         """Make NAV_CONFIG available globally to all templates."""
-        return dict(module_config=module_setting or {
-            "design": False,
-            "devices": True,
-            "temp_devices": True,
-            "about": True,
-            "monitor": True
-        })
+        return dict(
+            enable_design=enable_design,
+            enable_monitor=enable_monitor,
+        )
 
     # todo modular page
     app.context_processor(inject_nav_config)
     app.register_blueprint(main, url_prefix=url_prefix)
     app.register_blueprint(auth, url_prefix=url_prefix)
-    enable_design = inject_nav_config().get("module_config").get("design")
-    print(enable_design)
     if enable_design:
         app.register_blueprint(design, url_prefix=url_prefix)
         app.register_blueprint(database, url_prefix=url_prefix)
+    if enable_monitor:
+        app.register_blueprint(monitor, url_prefix=url_prefix)
     app.register_blueprint(control, url_prefix=url_prefix)
-
 
     port = port or int(os.environ.get("PORT", 8000))
     debug = debug if debug is not None else app.config.get('DEBUG', True)
