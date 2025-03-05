@@ -1,7 +1,16 @@
-v0.1.15 (in progress)
-- [todo] add modular tabs
-- [todo] add video feed
-- [todo] add undo redo
+TODO
+- abort pending steps/workflow
+- snapshot version control
+
+v0.1.17 (in progress)
+- move video feed as plugins
+
+v0.1.16
+- fix pip setup
+
+v0.1.15
+- add modular tabs
+- add video feed
 
 v0.1.14
 - fix statement display for logic functions

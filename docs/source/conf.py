@@ -2,16 +2,15 @@
 import os
 import sys
 
+# -- General configuration
+sys.path.insert(0, os.path.abspath('../../'))
+from ivoryos.version import __version__
 
 # -- Project information
 project = 'ivoryOS'
 copyright = '2024, Ivory Zhang'
 author = 'Ivory Zhang, Lucy Hao'
-
-version = "0.1.12"
-
-# -- General configuration
-sys.path.insert(0, os.path.abspath('../../'))
+version = __version__
 
 extensions = [
     'sphinx.ext.duration',
