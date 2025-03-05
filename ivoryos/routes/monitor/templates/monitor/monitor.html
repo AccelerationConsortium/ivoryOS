@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}IvoryOS | Monitor {% endblock %}
+
+{% block body %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+
+    <h1>Live Stream</h1>
+    <img src="{{ stream_address }}" width="800" height="600">
+
+    {% if no_deck_warning and not dismiss %}
+{#      auto pop import when there is no deck#}
+        <script type="text/javascript">
+            function OpenBootstrapPopup() {
+                $("#importModal").modal('show');
+            }
+            window.onload = function () {
+                OpenBootstrapPopup();
+            };
+        </script>
+    {% endif %}
+
+    <script src="{{ url_for('static', filename='js/socket_handler.js') }}"></script>
+
+{% endblock %}

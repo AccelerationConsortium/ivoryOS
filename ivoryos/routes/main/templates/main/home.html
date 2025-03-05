@@ -9,32 +9,32 @@
         </h1>
         <p>Version: {{ version }}</p>
         <div class="row">
-
-            <div class="col-lg-6 mb-4 d-flex align-items-stretch">
-                <div class="card rounded shadow-sm flex-fill">
-                    <div class="card-body">
-                        <h5 class="card-title">Browse designs</h5>
-                        <p class="card-text">Browse all workflows saved in the database.</p>
-                        <a href="{{ url_for('database.load_from_database') }}" class="stretched-link"></a>
+            {% if enable_design %}
+                <div class="col-lg-6 mb-4 d-flex align-items-stretch">
+                    <div class="card rounded shadow-sm flex-fill">
+                        <div class="card-body">
+                            <h5 class="card-title">Browse designs</h5>
+                            <p class="card-text">Browse all workflows saved in the database.</p>
+                            <a href="{{ url_for('database.load_from_database') }}" class="stretched-link"></a>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-lg-6 mb-4 d-flex align-items-stretch">
-                <div class="card rounded shadow-sm flex-fill">
-                    <div class="card-body">
-                        <h5 class="card-title">Edit designs</h5>
-                        <p class="card-text">Build your workflow from current deck functions.</p>
-                        <a href="{{ url_for('design.experiment_builder') }}" class="stretched-link"></a>
+                <div class="col-lg-6 mb-4 d-flex align-items-stretch">
+                    <div class="card rounded shadow-sm flex-fill">
+                        <div class="card-body">
+                            <h5 class="card-title">Edit designs</h5>
+                            <p class="card-text">Build your workflow from current deck functions.</p>
+                            <a href="{{ url_for('design.experiment_builder') }}" class="stretched-link"></a>
+                        </div>
                     </div>
                 </div>
-            </div>
+            {% endif %}
         </div>
 
         <br><br><br>
         {% if not off_line %}
-{#            <h5>Only available in online mode</h5>#}
-{#            <hr>#}
             <div class="row">
+                {% if enable_design %}
                 <div class="col-lg-6 mb-4 d-flex align-items-stretch">
                     <div class="card rounded shadow-sm flex-fill">
                         <div class="card-body">
@@ -44,6 +44,8 @@
                         </div>
                     </div>
                 </div>
+                {% endif %}
+
                 <div class="col-lg-6 mb-4 d-flex align-items-stretch">
                     <div class="card rounded shadow-sm flex-fill">
                         <div class="card-body">

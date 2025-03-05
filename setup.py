@@ -1,9 +1,16 @@
 from setuptools import setup, find_packages
-from ivoryos.version import __version__ as ivoryos_version
+
+
+def get_version():
+    version = {}
+    with open("ivoryos/version.py") as f:
+        exec(f.read(), version)
+    return version["__version__"]
+
 
 setup(
     name='ivoryos',
-    version=ivoryos_version,
+    version=get_version(),
     packages=find_packages(exclude=['example', 'example.*', 'docs', 'docs.*']),
     include_package_data=True,
     description='an open-source Python package enabling Self-Driving Labs (SDLs) interoperability',

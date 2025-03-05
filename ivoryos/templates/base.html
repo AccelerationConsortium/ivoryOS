@@ -23,7 +23,7 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
         <div class= "container">
-
+{#            {{ module_config }}#}
             <a class="navbar-brand" href="{{ url_for('main.index') }}">
                 <img src="{{url_for('static', filename='logo.webp')}}" alt="Logo" height="60" class="d-inline-block align-text-bottom">
             </a>
@@ -36,15 +36,18 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('main.index') }}" aria-current="page">Home</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('database.load_from_database') }}" aria-current="page">Library</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('design.experiment_builder') }}">Design</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('design.experiment_run') }}">Compile/Run</a>
-                    </li>
+                    {% if enable_design %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('database.load_from_database') }}" aria-current="page">Library</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('design.experiment_builder') }}">Design</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('design.experiment_run') }}">Compile/Run</a>
+                        </li>
+                    {% endif %}
+
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('control.deck_controllers') }}">Devices</a></li>
                     </li>
@@ -54,6 +57,13 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('main.help_info') }}">About</a>
                     </li>
+                    {% if plugins %}
+                        {% for plugin in plugins %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for(plugin+'.main') }}">{{ plugin.capitalize() }}</a></li>
+                            </li>
+                        {% endfor %}
+                    {% endif %}
                 </ul>
                 <ul class="navbar-nav ms-auto">
 
