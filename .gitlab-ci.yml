@@ -22,7 +22,7 @@ install_dependencies:
 # Job to build the package
 build_package:
   stage: build
-  image: python:3.x  # Use your preferred Python version
+  image: python:3.9
   script:
     - pip install --upgrade pip
     - pip install setuptools wheel twine
