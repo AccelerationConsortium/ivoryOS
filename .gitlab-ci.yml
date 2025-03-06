@@ -3,6 +3,7 @@ image: python:3.9  # Specify the Docker image with Python
 # Define stages
 stages:
   - install
+  - build
   - deploy
 
 # Install dependencies stage
@@ -18,12 +19,28 @@ install_dependencies:
     paths:
       - venv/  # Store the virtual environment as an artifact (optional)
 
-# Deploy stage
-deploy:
-  stage: deploy
+# Job to build the package
+build_package:
+  stage: build
+  image: python:3.x  # Use your preferred Python version
   script:
-    - echo "deploying"
-#    - . venv/bin/activate  # Activate the virtual environment
-#    - python -m example.sdl_example.abstract_sdl  # Run the script
+    - pip install --upgrade pip
+    - pip install setuptools wheel twine
+    - python setup.py sdist bdist_wheel
   only:
-    - main
+    - tags
+  artifacts:
+    paths:
+      - dist/*
+
+# Job to deploy to PyPI
+deploy_pypi:
+  stage: deploy
+  image: python:3.x  # Same Python version
+  script:
+    - pip install twine
+    - twine upload dist/* -u $PYPI_USERNAME_IVORY -p $PYPI_PASSWORD_IVORY
+  only:
+    - tags
+  dependencies:
+    - build_package
