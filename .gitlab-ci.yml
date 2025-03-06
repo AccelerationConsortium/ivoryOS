@@ -36,7 +36,7 @@ build_package:
 # Job to deploy to PyPI
 deploy_pypi:
   stage: deploy
-  image: python:3.x  # Same Python version
+  image: python:3.9
   script:
     - pip install twine
     - twine upload dist/* -u $PYPI_USERNAME_IVORY -p $PYPI_PASSWORD_IVORY
