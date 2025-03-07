@@ -37,9 +37,13 @@ build_package:
 deploy_pypi:
   stage: deploy
   image: python:3.9
+  variables:
+    TWINE_USERNAME: $PYPI_USERNAME_IVORY
+    TWINE_PASSWORD: $PYPI_PASSWORD_IVORY
+
   script:
     - pip install twine
-    - twine upload dist/* -u $PYPI_USERNAME_IVORY -p $PYPI_PASSWORD_IVORY
+    - twine upload dist/*
   only:
     - tags
   dependencies:
