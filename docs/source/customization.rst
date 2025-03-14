@@ -11,7 +11,7 @@ Features
 - Can function as a standalone page or as part of the IvoryOS ecosystem.
 - Requires an entry point in ``setup.py`` for automatic discovery.
 
-.. image:: docs/img.png
+.. image:: https://gitlab.com/heingroup/ivoryos-plugin-template/-/raw/main/docs/img.png
    :alt: Plugin Structure Image
 
 Plugin Structure
