@@ -22,7 +22,7 @@ install_dependencies:
 # Job to build the package
 build_package:
   stage: build
-  image: python:3.x  # Use your preferred Python version
+  image: python:3.9
   script:
     - pip install --upgrade pip
     - pip install setuptools wheel twine
@@ -36,10 +36,18 @@ build_package:
 # Job to deploy to PyPI
 deploy_pypi:
   stage: deploy
-  image: python:3.x  # Same Python version
+  image: python:3.9
+#  variables:
+#    TWINE_USERNAME: $PYPI_USERNAME_IVORY
+#    TWINE_PASSWORD: $PYPI_PASSWORD_IVORY
+
   script:
     - pip install twine
-    - twine upload dist/* -u $PYPI_USERNAME_IVORY -p $PYPI_PASSWORD_IVORY
+    - echo "[pypi]" > ~/.pypirc
+    - echo "  username = __token__" >> ~/.pypirc
+    - echo "  password = $PYPI_PASSWORD_IVORY" >> ~/.pypirc
+    - python -m twine upload dist/*
+#    - twine upload  dist/*
   only:
     - tags
   dependencies:
