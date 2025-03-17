@@ -80,14 +80,17 @@ class ScriptRunner:
 
     def _run_actions(self, actions, section_name="", run_name=None, logger=None):
         logger.info(f'Executing {section_name} steps') if actions else logger.info(f'No {section_name} steps')
-        for action in actions:
-            if self.stop_event.is_set():
-                logger.info(f"Stopping execution during {section_name} section.")
-                break
-            logger.info(f'Executing {action.get("action", "")} action')
-            fname = f"{run_name}_{section_name}"
-            function = self.globals_dict[fname]
-            function()
+        if self.stop_event.is_set():
+            logger.info(f"Stopping execution during {section_name} section.")
+            return
+            # for action in actions:
+            #     if self.stop_event.is_set():
+            #         logger.info(f"Stopping execution during {section_name} section.")
+            #         break
+            #     logger.info(f'Executing {action.get("action", "")} action')
+        fname = f"{run_name}_{section_name}"
+        function = self.globals_dict[fname]
+        function()
 
     def _run_config_section(self, config, arg_type, output_list, return_list, run_name, logger, socketio):
         compiled = True
