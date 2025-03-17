@@ -1,6 +1,13 @@
 TODO
 - abort pending steps/workflow
 - snapshot version control
+- dropdown input
+- show line number toggle
+
+v0.1.18
+- fix prep/cleanup repeat issue
+- remove duplicate return values
+- add plugin docs
 
 v0.1.17
 - move video feed as plugins
