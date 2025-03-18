@@ -398,35 +398,16 @@ class Script(db.Model):
         self.sort_actions()
         run_name = self.name if self.name else "untitled"
         run_name = self.validate_function_name(run_name)
-        exec_string = ''
+        exec_str_collection = {}
 
         for i in self.stypes:
-            exec_string += self._generate_function_header(run_name, i)
-            exec_string += self._generate_function_body(i)
-
+            func_str = self._generate_function_header(run_name, i) + self._generate_function_body(i)
+            exec_str_collection[i] = func_str
         if script_path:
-            self._write_to_file(script_path, run_name, exec_string)
+            self._write_to_file(script_path, run_name, exec_str_collection)
 
-        return exec_string
+        return exec_str_collection
 
-    def compile_steps(self, script_path=None):
-        """
-        Compile the current script to steps.
-        :return: {"prep":[], "script":[], "cleanup":[],}.
-        """
-        self.sort_actions()
-        run_name = self.name if self.name else "untitled"
-        run_name = self.validate_function_name(run_name)
-        exec_string = ''
-        steps = {}
-        for i in self.stypes:
-            # exec_string += self._generate_function_header(run_name, i)
-            exec_string += self._generate_function_body(i)
-
-        if script_path:
-            self._write_to_file(script_path, run_name, exec_string)
-
-        return exec_string
 
 
     @staticmethod
@@ -631,7 +612,8 @@ class Script(db.Model):
             else:
                 s.write("deck = None")
             s.write("\nimport time")
-            s.write(exec_string)
+            for i in exec_string.values():
+                s.write(i)
 
 
 if __name__ == "__main__":

@@ -266,9 +266,10 @@ def experiment_run():
         config_preview = config[1:6]
         arg_type = config.pop(0)  # first entry is types
     try:
-        exec(exec_string)
+        for key, func_str in exec_string.items():
+            exec(func_str)
     except Exception:
-        flash("Please check syntax!!")
+        flash(f"Please check {key} syntax!!")
         return redirect(url_for("design.experiment_builder"))
     # runner.globals_dict.update(globals())
     run_name = script.name if script.name else "untitled"
