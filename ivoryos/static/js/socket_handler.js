@@ -24,11 +24,39 @@ document.addEventListener("DOMContentLoaded", function() {
         $('#logging-panel').scrollTop($('#logging-panel')[0].scrollHeight);
     });
 
-    document.getElementById('abort').addEventListener('click', function() {
-        var confirmation = confirm("Are you sure you want to abort pending actions?");
+    document.getElementById('abort-pending').addEventListener('click', function() {
+        var confirmation = confirm("Are you sure you want to stop after this iteration?");
         if (confirmation) {
-            socket.emit('abort_action');
+            socket.emit('abort_pending');
             console.log('Abort action sent to server.');
+        }
+    });
+    document.getElementById('abort-current').addEventListener('click', function() {
+        var confirmation = confirm("Are you sure you want to stop after this step?");
+        if (confirmation) {
+            socket.emit('abort_current');
+            console.log('Stop action sent to server.');
+    }
+    });
+
+    document.getElementById('pause-resume').addEventListener('click', function() {
+
+        socket.emit('pause');
+        console.log('Pause/Resume is toggled.');
+        var button = this;
+        var icon = button.querySelector("i");
+
+        // Toggle between Pause and Resume
+        if (icon.classList.contains("bi-pause-circle")) {
+            icon.classList.remove("bi-pause-circle");
+            icon.classList.add("bi-play-circle");
+            button.innerHTML = '<i class="bi bi-play-circle"></i>';
+            button.setAttribute("title", "Resume execution");
+        } else {
+            icon.classList.remove("bi-play-circle");
+            icon.classList.add("bi-pause-circle");
+            button.innerHTML = '<i class="bi bi-pause-circle"></i>';
+            button.setAttribute("title", "Pause execution");
         }
     });
 });

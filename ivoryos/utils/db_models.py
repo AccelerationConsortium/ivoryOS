@@ -398,35 +398,16 @@ class Script(db.Model):
         self.sort_actions()
         run_name = self.name if self.name else "untitled"
         run_name = self.validate_function_name(run_name)
-        exec_string = ''
+        exec_str_collection = {}
 
         for i in self.stypes:
-            exec_string += self._generate_function_header(run_name, i)
-            exec_string += self._generate_function_body(i)
-
+            func_str = self._generate_function_header(run_name, i) + self._generate_function_body(i)
+            exec_str_collection[i] = func_str
         if script_path:
-            self._write_to_file(script_path, run_name, exec_string)
+            self._write_to_file(script_path, run_name, exec_str_collection)
 
-        return exec_string
+        return exec_str_collection
 
-    def compile_steps(self, script_path=None):
-        """
-        Compile the current script to steps.
-        :return: {"prep":[], "script":[], "cleanup":[],}.
-        """
-        self.sort_actions()
-        run_name = self.name if self.name else "untitled"
-        run_name = self.validate_function_name(run_name)
-        exec_string = ''
-        steps = {}
-        for i in self.stypes:
-            # exec_string += self._generate_function_header(run_name, i)
-            exec_string += self._generate_function_body(i)
-
-        if script_path:
-            self._write_to_file(script_path, run_name, exec_string)
-
-        return exec_string
 
 
     @staticmethod
@@ -447,7 +428,7 @@ class Script(db.Model):
         configure = [param + f":{param_type}" if not param_type == "any" else "" for param, param_type in
                      config_type.items()]
 
-        function_header = f"\n\ndef {run_name}_{stype}("
+        function_header = f"def {run_name}_{stype}("
 
         if stype == "script":
             function_header += ", ".join(configure)
@@ -470,21 +451,6 @@ class Script(db.Model):
         if return_list and stype == "script":
             body += self.indent(indent_unit) + return_str
         return body
-
-    # def _generate_function_body(self, stype):
-    #     """
-    #     Generate the function body for each type in stypes.
-    #     """
-    #     steps = []
-    #     indent_unit = 1
-    #
-    #     for index, action in enumerate(self.script_dict[stype]):
-    #         text, indent_unit = self._process_action(indent_unit, action, index, stype)
-    #         body += text
-    #     return_str, return_list = self.config_return()
-    #     if return_list and stype == "script":
-    #         body += self.indent(indent_unit) + return_str
-    #     return body
 
     def _process_action(self, indent_unit, action, index, stype):
         """
@@ -631,7 +597,8 @@ class Script(db.Model):
             else:
                 s.write("deck = None")
             s.write("\nimport time")
-            s.write(exec_string)
+            for i in exec_string.values():
+                s.write(f"\n\n\n{i}")
 
 
 if __name__ == "__main__":

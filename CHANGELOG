@@ -1,9 +1,3 @@
-TODO
-- abort pending steps/workflow
-- snapshot version control
-- dropdown input
-- show line number toggle
-
 v0.1.18
 - fix prep/cleanup repeat issue
 - remove duplicate return values
@@ -29,7 +23,6 @@ v0.1.13
 - add warning for not defined variable
 
 v0.1.12
-
 - add checking for duplicate entry in config file
 - add return value output in backend control
 - add repeat in workflow design

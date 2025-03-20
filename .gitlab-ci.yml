@@ -43,8 +43,7 @@ deploy_pypi:
 
   script:
     - pip install twine
-    # - python -m twine upload dist/*
-    - twine upload --verbose dist/*
+    - twine upload  dist/*
   only:
     - tags
   dependencies:

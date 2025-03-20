@@ -145,6 +145,15 @@ Intro + Tutorial + Demo with PurPOSE platform
 https://youtu.be/dFfJv9I2-1g 
 
 
+## Roadmap
+
+- [x] Allow plugin pages ✅  
+- [ ] pause, resume, abort current and pending workflows
+- [ ] snapshot version control
+- [ ] dropdown input
+- [ ] show line number option
+
+
 ## Authors and Acknowledgement
 Ivory Zhang, Lucy Hao
 
