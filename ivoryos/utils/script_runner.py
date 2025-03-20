@@ -18,17 +18,34 @@ class ScriptRunner:
         if globals_dict is None:
             globals_dict = globals()
         self.globals_dict = globals_dict
-
-        self.stop_event = threading.Event()
+        self.pause_event = threading.Event()  # A threading event to manage pause/resume
+        self.pause_event.set()
+        self.stop_pending_event = threading.Event()
+        self.stop_current_event = threading.Event()
         self.is_running = False
         self.lock = threading.Lock()
 
+    def toggle_pause(self):
+        """Toggles between pausing and resuming the script"""
+        if self.pause_event.is_set():
+            self.pause_event.clear()  # Pause the script
+            return "Paused"
+        else:
+            self.pause_event.set()  # Resume the script
+            return "Resumed"
+
     def reset_stop_event(self):
-        self.stop_event.clear()
+        self.stop_pending_event.clear()
+        self.stop_current_event.clear()
+
+    def abort_pending(self):
+        self.stop_pending_event.set()
+        # print("Stop pending tasks")
 
     def stop_execution(self):
-        self.stop_event.set()
-        # print("Stop pending tasks")
+        """Force stop everything, including ongoing tasks."""
+        self.stop_current_event.set()
+        self.abort_pending()
 
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None, bo_args=None,
                    output_path=""):
@@ -76,11 +93,12 @@ class ScriptRunner:
 
         # Execute each line dynamically
         for line in lines:
-            if self.stop_event.is_set():
+            if self.stop_current_event.is_set():
                 logger.info(f'Stopping execution during {section_name}')
                 break
             logger.info(f"Executing: {line}")  # Debugging output
             exec(line, exec_globals, exec_locals)
+            self.pause_event.wait()
 
         return exec_locals  # Return the 'results' variable
 
@@ -98,7 +116,7 @@ class ScriptRunner:
             _, return_list = script.config_return()
             # Run "script" section multiple times
             if repeat_count:
-                self._run_repeat_section(repeat_count, arg_type, bo_args, output_list,  func_str.get("script", ''), run_name, logger, socketio)
+                self._run_repeat_section(repeat_count, arg_type, bo_args, output_list,  func_str.get("script", ''), run_name, return_list, logger, socketio)
             elif config:
                 self._run_config_section(config, arg_type, output_list, func_str.get("script", ''), run_name, logger, socketio)
             # Run "cleanup" section once
@@ -115,7 +133,7 @@ class ScriptRunner:
 
     def _run_actions(self, actions, func_str, section_name="", logger=None):
         logger.info(f'Executing {section_name} steps') if actions else logger.info(f'No {section_name} steps')
-        if self.stop_event.is_set():
+        if self.stop_pending_event.is_set():
             logger.info(f"Stopping execution during {section_name} section.")
             return
         self.execute_function_line_by_line(func_str, section_name, logger)
@@ -132,7 +150,7 @@ class ScriptRunner:
         if compiled:
             for i, kwargs in enumerate(config):
                 kwargs = dict(kwargs)
-                if self.stop_event.is_set():
+                if self.stop_pending_event.is_set():
                     logger.info(f'Stopping execution during {run_name}: {i + 1}/{len(config)}')
                     break
                 logger.info(f'Executing {i + 1} of {len(config)} with kwargs = {kwargs}')
@@ -145,12 +163,12 @@ class ScriptRunner:
                     # kwargs.update(output)
                     output_list.append(output)
 
-    def _run_repeat_section(self, repeat_count, arg_types, bo_args, output_list,  func_str, run_name, logger, socketio):
+    def _run_repeat_section(self, repeat_count, arg_types, bo_args, output_list,  func_str, run_name, return_list, logger, socketio):
         if bo_args:
             logger.info('Initializing optimizer...')
             ax_client = utils.ax_initiation(bo_args, arg_types)
         for i in range(int(repeat_count)):
-            if self.stop_event.is_set():
+            if self.stop_pending_event.is_set():
                 logger.info(f'Stopping execution during {run_name}: {i + 1}/{int(repeat_count)}')
                 break
             logger.info(f'Executing {run_name} experiment: {i + 1}/{int(repeat_count)}')
@@ -163,9 +181,8 @@ class ScriptRunner:
                     # fname = f"{run_name}_script"
                     # function = self.globals_dict[fname]
                     output = self.execute_function_line_by_line(func_str, "script", logger, **parameters)
-                    # output = function(**parameters)
-                    # output = eval(f"{run_name}_script(**{parameters})")
-                    _output = output.copy()
+
+                    _output = {key: value for key, value in output.items() if key in return_list}
                     ax_client.complete_trial(trial_index=trial_index, raw_data=_output)
                     output.update(parameters)
                 except Exception as e:

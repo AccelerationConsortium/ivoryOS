@@ -24,10 +24,22 @@ global_config = GlobalConfig()
 runner = ScriptRunner()
 
 
-@socketio.on('abort_action')
-def handle_abort_action():
+@socketio.on('abort_pending')
+def handle_abort_pending():
+    runner.abort_pending()
+    socketio.emit('log', {'message': "aborted pending iterations"})
+
+
+@socketio.on('abort_current')
+def handle_abort_current():
     runner.stop_execution()
-    socketio.emit('log', {'message': "aborted pending tasks"})
+    socketio.emit('log', {'message': "stopped next task"})
+
+
+@socketio.on('pause')
+def handle_pause():
+    msg = runner.toggle_pause()
+    socketio.emit('log', {'message': msg})
 
 
 @socketio.on('connect')
@@ -314,7 +326,8 @@ def experiment_run():
     return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=exec_string,
                            return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                            config_preview=config_preview, data_list=data_list, config_type_list=config_type_list,
-                           no_deck_warning=no_deck_warning, dismiss=dismiss, design_buttons=design_buttons, history=deck_list)
+                           no_deck_warning=no_deck_warning, dismiss=dismiss, design_buttons=design_buttons,
+                           history=deck_list)
 
 
 @design.route("/toggle_script_type/<stype>")

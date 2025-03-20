@@ -428,7 +428,7 @@ class Script(db.Model):
         configure = [param + f":{param_type}" if not param_type == "any" else "" for param, param_type in
                      config_type.items()]
 
-        function_header = f"\n\ndef {run_name}_{stype}("
+        function_header = f"def {run_name}_{stype}("
 
         if stype == "script":
             function_header += ", ".join(configure)
@@ -451,21 +451,6 @@ class Script(db.Model):
         if return_list and stype == "script":
             body += self.indent(indent_unit) + return_str
         return body
-
-    # def _generate_function_body(self, stype):
-    #     """
-    #     Generate the function body for each type in stypes.
-    #     """
-    #     steps = []
-    #     indent_unit = 1
-    #
-    #     for index, action in enumerate(self.script_dict[stype]):
-    #         text, indent_unit = self._process_action(indent_unit, action, index, stype)
-    #         body += text
-    #     return_str, return_list = self.config_return()
-    #     if return_list and stype == "script":
-    #         body += self.indent(indent_unit) + return_str
-    #     return body
 
     def _process_action(self, indent_unit, action, index, stype):
         """
@@ -613,7 +598,7 @@ class Script(db.Model):
                 s.write("deck = None")
             s.write("\nimport time")
             for i in exec_string.values():
-                s.write(i)
+                s.write(f"\n\n\n{i}")
 
 
 if __name__ == "__main__":
