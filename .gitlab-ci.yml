@@ -38,7 +38,7 @@ deploy_pypi:
   stage: deploy
   image: python:3.9
   variables:
-    TWINE_USERNAME: $PYPI_USERNAME_IVORY
+    TWINE_USERNAME: __token__
     TWINE_PASSWORD: $PYPI_PASSWORD_IVORY
 
   script:
