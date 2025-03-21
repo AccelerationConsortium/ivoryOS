@@ -222,7 +222,7 @@
                                     <h5>Progress：</h5>
                                     {% for stype, script in line_collection.items() %}
                                         {% for code in script %}
-                                            <pre><code class="python" id="{{ stype }}-{{ loop.index0 }}" >{{code}}</code></pre>
+                                            <pre style="margin: 0; padding: 0; line-height: 1;"><code class="python" id="{{ stype }}-{{ loop.index0 }}" >{{code}}</code></pre>
                                         {% endfor %}
                                     {% endfor %}
                                 </p>
@@ -358,7 +358,9 @@
         // Get the currently executing line and highlight it
         let executingLine = document.getElementById(data.section);
         if (executingLine) {
-            executingLine.style.backgroundColor = 'yellow'; // Highlight
+            executingLine.style.backgroundColor = '#cce5ff'; // Highlight
+            executingLine.style.transition = 'background-color 0.3s ease-in-out';
+
         }
     });
 </script>
