@@ -1,6 +1,9 @@
 [![Documentation Status](https://readthedocs.org/projects/ivoryos/badge/?version=latest)](https://ivoryos.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://img.shields.io/pypi/v/ivoryos)](https://pypi.org/project/ivoryos/)
 ![License](https://img.shields.io/pypi/l/ivoryos)
+[![YouTube](https://img.shields.io/badge/YouTube-video-red?logo=youtube)](https://youtu.be/dFfJv9I2-1g)
+[![Research Square](https://img.shields.io/badge/Preprint-blue)](https://www.researchsquare.com/article/rs-5307798/v1)
+
 
 ![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/ivoryos.png)
 # ivoryOS: interoperable Web UI for self-driving laboratories (SDLs)
@@ -12,6 +15,7 @@
 - [Installation](#installation)
 - [Instructions for use](#instructions-for-use)
 - [Demo](#demo)
+- [Roadmap](#roadmap)
 - [License](#license)
 
 ## Description
@@ -140,15 +144,10 @@ When you run the application for the first time, it will automatically create th
 - **`ivoryos.db`**: Database file that stores application data locally.
 
 
-### Demo video
-Intro + Tutorial + Demo with PurPOSE platform
-https://youtu.be/dFfJv9I2-1g 
-
-
 ## Roadmap
 
 - [x] Allow plugin pages ✅  
-- [ ] pause, resume, abort current and pending workflows
+- [x] pause, resume, abort current and pending workflows ✅ 
 - [ ] snapshot version control
 - [ ] dropdown input
 - [ ] show line number option
