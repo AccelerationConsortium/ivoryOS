@@ -280,6 +280,7 @@ def experiment_run():
     try:
         for key, func_str in exec_string.items():
             exec(func_str)
+        line_collection = script.convert_to_lines(exec_string)
     except Exception:
         flash(f"Please check {key} syntax!!")
         return redirect(url_for("design.experiment_builder"))
@@ -323,7 +324,8 @@ def experiment_run():
                 flash(f"WARNING: Duplicate in config entries.")
         except Exception as e:
             flash(e)
-    return render_template('experiment_run.html', script=script.script_dict, filename=filename, dot_py=exec_string,
+    return render_template('experiment_run.html', script=script.script_dict, filename=filename,
+                           dot_py=exec_string, line_collection=line_collection,
                            return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                            config_preview=config_preview, data_list=data_list, config_type_list=config_type_list,
                            no_deck_warning=no_deck_warning, dismiss=dismiss, design_buttons=design_buttons,
