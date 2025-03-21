@@ -391,6 +391,12 @@ class Script(db.Model):
         return string
 
     def convert_to_lines(self, exec_str_collection: dict):
+        """
+        Parse a dictionary of script functions and extract function body lines.
+
+        :param exec_str_collection: Dictionary containing script types and corresponding function strings.
+        :return: A dict containing script types as keys and lists of function body lines as values.
+        """
         line_collection = {}
         for stype, func_str in exec_str_collection.items():
             module = ast.parse(func_str)
@@ -398,7 +404,7 @@ class Script(db.Model):
 
             # Extract function body as source lines
             line_collection[stype] = [ast.unparse(node) for node in func_def.body if not isinstance(node, ast.Return)]
-            print(line_collection[stype])
+            # print(line_collection[stype])
         return line_collection
 
     def compile(self, script_path=None):
