@@ -390,6 +390,17 @@ class Script(db.Model):
             string += "\t"
         return string
 
+    def convert_to_lines(self, exec_str_collection: dict):
+        line_collection = {}
+        for stype, func_str in exec_str_collection.items():
+            module = ast.parse(func_str)
+            func_def = next(node for node in module.body if isinstance(node, ast.FunctionDef))
+
+            # Extract function body as source lines
+            line_collection[stype] = [ast.unparse(node) for node in func_def.body if not isinstance(node, ast.Return)]
+            print(line_collection[stype])
+        return line_collection
+
     def compile(self, script_path=None):
         """
         Compile the current script to a Python file.
@@ -401,8 +412,9 @@ class Script(db.Model):
         exec_str_collection = {}
 
         for i in self.stypes:
-            func_str = self._generate_function_header(run_name, i) + self._generate_function_body(i)
-            exec_str_collection[i] = func_str
+            if self.script_dict[i]:
+                func_str = self._generate_function_header(run_name, i) + self._generate_function_body(i)
+                exec_str_collection[i] = func_str
         if script_path:
             self._write_to_file(script_path, run_name, exec_str_collection)
 
@@ -434,7 +446,7 @@ class Script(db.Model):
             function_header += ", ".join(configure)
 
         function_header += "):"
-        function_header += self.indent(1) + f"global {run_name}_{stype}"
+        # function_header += self.indent(1) + f"global {run_name}_{stype}"
         return function_header
 
     def _generate_function_body(self, stype):

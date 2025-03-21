@@ -10,11 +10,21 @@ document.addEventListener("DOMContentLoaded", function() {
         var progressBar = document.getElementById('progress-bar-inner');
         progressBar.style.width = progress + '%';
         progressBar.setAttribute('aria-valuenow', progress);
+        if (progress === 1) {
+                    document.getElementById("run-panel").style.display = "none";
+        document.getElementById("code-panel").style.display = "block";
 
+        // Optional: Scroll to the code panel
+        document.getElementById("code-panel").scrollIntoView({ behavior: "smooth" });
+        }
         if (progress === 100) {
             // Remove animation and set green color when 100% is reached
             progressBar.classList.remove('progress-bar-animated');
             progressBar.classList.add('bg-success'); // Bootstrap class for green color
+            setTimeout(() => {
+            document.getElementById("code-panel").style.display = "none";
+            document.getElementById("run-panel").style.display = "block";
+        }, 1000);  // Small delay to let users see the completion
         }
     });
     socket.on('log', function(data) {
