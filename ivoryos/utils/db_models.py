@@ -196,13 +196,18 @@ class Script(db.Model):
             for i in self.stypes:
                 self._sort(i)
 
-    def add_action(self, action: dict):
+    def add_action(self, action: dict, insert_position=None):
         current_len = len(self.currently_editing_script)
         action_to_add = action.copy()
         action_to_add['id'] = current_len + 1
         action_to_add['uuid'] = uuid.uuid4().fields[-1]
         self.currently_editing_script.append(action_to_add)
-        self.currently_editing_order.append(str(current_len + 1))
+        try:
+            insert_position = int(insert_position) - 1
+            self.currently_editing_order.insert(insert_position, str(current_len + 1))
+            self.sort_actions()
+        except Exception:
+            self.currently_editing_order.append(str(current_len + 1))
         self.update_time_stamp()
 
     def add_variable(self, statement, variable, type):
