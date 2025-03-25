@@ -124,21 +124,23 @@ def experiment_builder(instrument=None):
     elif instrument:
         if instrument in ['if', 'while', 'variable', 'wait', 'repeat']:
             forms = create_builtin_form(instrument, script=script)
+        elif instrument in global_config.defined_variables.keys():
+            _object = global_config.defined_variables.get(instrument)
+            functions = utils._inspect_class(_object)
+            forms = create_form_from_pseudo(pseudo=functions, autofill=autofill, script=script)
         else:
             if deck:
                 functions = global_config.deck_snapshot.get(instrument, {})
             elif pseudo_deck:
                 functions = pseudo_deck.get(instrument, {})
-            # print(function_metadata)
-            # functions = {key: data.get('signature', {}) for key, data in function_metadata.items()}
             forms = create_form_from_pseudo(pseudo=functions, autofill=autofill, script=script)
         if request.method == 'POST' and "hidden_name" in request.form:
             # all_kwargs = request.form.copy()
             method_name = request.form.get("hidden_name", None)
             # if method_name is not None:
             form = forms.get(method_name)
+            insert_position = request.form.get("drop_target_id", None)
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
-
             if form and form.validate_on_submit():
                 function_name = kwargs.pop("hidden_name")
                 save_data = kwargs.pop('return', '')
@@ -151,7 +153,7 @@ def experiment_builder(instrument=None):
                           "args": kwargs,
                           "return": save_data,
                           'arg_types': primitive_arg_types}
-                script.add_action(action=action)
+                script.add_action(action=action, insert_position=insert_position)
             else:
                 flash(form.errors)
 
@@ -329,7 +331,7 @@ def experiment_run():
                            return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                            config_preview=config_preview, data_list=data_list, config_type_list=config_type_list,
                            no_deck_warning=no_deck_warning, dismiss=dismiss, design_buttons=design_buttons,
-                           history=deck_list)
+                           history=deck_list, pause_status=runner.pause_status())
 
 
 @design.route("/toggle_script_type/<stype>")
