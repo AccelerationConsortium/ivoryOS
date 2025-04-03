@@ -13,9 +13,10 @@ from werkzeug.utils import secure_filename
 from ivoryos.utils import utils
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.form import create_builtin_form, create_action_button, format_name, create_form_from_pseudo, \
-    create_form_from_action
+    create_form_from_action, create_all_builtin_forms
 from ivoryos.utils.db_models import Script
 from ivoryos.utils.script_runner import ScriptRunner
+# from ivoryos.utils.utils import load_workflows
 
 socketio = SocketIO()
 design = Blueprint('design', __name__, template_folder='templates/design')
@@ -114,7 +115,10 @@ def experiment_builder(instrument=None):
 
     functions = {}
     if deck:
-        deck_variables = global_config.deck_snapshot.keys()
+        deck_variables = list(global_config.deck_snapshot.keys())
+        # deck_variables.insert(0, "registered_workflows")
+        deck_variables.insert(0, "control_flow")
+
     else:
         deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
         deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
@@ -122,8 +126,14 @@ def experiment_builder(instrument=None):
     if edit_action_info:
         forms = create_form_from_action(edit_action_info, script=script)
     elif instrument:
-        if instrument in ['if', 'while', 'variable', 'wait', 'repeat']:
-            forms = create_builtin_form(instrument, script=script)
+        # if instrument in ['if', 'while', 'variable', 'wait', 'repeat']:
+        #     forms = create_builtin_form(instrument, script=script)
+        if instrument == 'control_flow':
+            forms = create_all_builtin_forms(script=script)
+        elif instrument == 'registered_workflows':
+            functions = utils._inspect_class(registered_workflows)
+            # forms = create_workflow_forms(script=script)
+            forms = create_form_from_pseudo(pseudo=functions, autofill=autofill, script=script)
         elif instrument in global_config.defined_variables.keys():
             _object = global_config.defined_variables.get(instrument)
             functions = utils._inspect_class(_object)
@@ -158,21 +168,47 @@ def experiment_builder(instrument=None):
                 flash(form.errors)
 
         elif request.method == 'POST' and "builtin_name" in request.form:
-            kwargs = {field.name: field.data for field in forms if field.name != 'csrf_token'}
-            if forms.validate_on_submit():
+            function_name = request.form.get("builtin_name")
+            form = forms.get(function_name)
+            kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
+            insert_position = request.form.get("drop_target_id", None)
+
+            if form.validate_on_submit():
                 # print(kwargs)
                 logic_type = kwargs.pop('builtin_name')
                 if 'variable' in kwargs:
                     try:
-                        script.add_variable(**kwargs)
+                        script.add_variable(**kwargs, insert_position=insert_position)
                     except ValueError:
                         flash("Invalid variable type")
                 else:
-                    script.add_logic_action(logic_type=logic_type, **kwargs)
+                    script.add_logic_action(logic_type=logic_type, **kwargs, insert_position=insert_position)
             else:
-                flash(forms.errors)
+                flash(form.errors)
+        elif request.method == 'POST' and "workflow_name" in request.form:
+            workflow_name = request.form.get("workflow_name")
+            form = forms.get(workflow_name)
+            kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
+            insert_position = request.form.get("drop_target_id", None)
 
-        # toggle autofill
+            if form.validate_on_submit():
+                # workflow_name = kwargs.pop('workflow_name')
+                save_data = kwargs.pop('return', '')
+
+                primitive_arg_types = utils.get_arg_type(kwargs, functions[workflow_name])
+
+                script.eval_list(kwargs, primitive_arg_types)
+                kwargs = script.validate_variables(kwargs)
+                action = {"instrument": instrument, "action": workflow_name,
+                          "args": kwargs,
+                          "return": save_data,
+                          'arg_types': primitive_arg_types}
+                script.add_action(action=action, insert_position=insert_position)
+                script.add_workflow(**kwargs, insert_position=insert_position)
+            else:
+                flash(form.errors)
+
+        # toggle autofill, autofill doesn't apply to control flow ops
         elif request.method == 'POST' and "autofill" in request.form:
             autofill = not autofill
             forms = create_form_from_pseudo(functions, autofill=autofill, script=script)

@@ -147,13 +147,12 @@ class ScriptRunner:
 
         # Run "cleanup" section once
         self._run_actions(script, section_name="cleanup", logger=logger, socketio=socketio)
-
+        # Reset the running flag when done
+        with self.lock:
+            self.is_running = False
         # Save results if necessary
         if output_list:
             self._save_results(run_name, arg_type, return_list, output_list, logger, output_path)
-
-        with self.lock:
-            self.is_running = False  # Reset the running flag when done
         self._emit_progress(socketio, 100)
 
     def _run_actions(self, script, section_name="", logger=None, socketio=None):

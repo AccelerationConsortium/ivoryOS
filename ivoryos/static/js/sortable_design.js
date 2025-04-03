@@ -50,7 +50,7 @@ $(document).ready(function () {
             $("<li class='drop-placeholder'></li>").insertBefore($target); // Insert before the target element
         } else if (!$("#list ul").children().length && $(this).hasClass("canvas")) {
             $(".drop-placeholder").remove();  // Remove any placeholder
-            $("#list ul").append("<li class='drop-placeholder'></li>"); // Append placeholder to canvas
+            // $("#list ul").append("<li class='drop-placeholder'></li>"); // Append placeholder to canvas
         } else {
             dropTargetId = "";  // Append placeholder to canvas
         }
@@ -66,10 +66,8 @@ $(document).ready(function () {
         var actionName = event.originalEvent.dataTransfer.getData("action");
         var actionId = event.originalEvent.dataTransfer.getData("id");
         var formHtml = event.originalEvent.dataTransfer.getData("form"); // Retrieve form HTML
-
-        // If dropped in the canvas (not the sortable list)
-        console.log(dropTargetId)
-        dropTargetId = dropTargetId || "last";  // Assign a "last" ID or unique identifier
+        let listLength = $("ul.reorder li").length;
+        dropTargetId = dropTargetId || listLength + 1;  // Assign a "last" ID or unique identifier
         $(".drop-placeholder").remove();
             // Trigger the modal with the appropriate action
         triggerModal(formHtml, actionName, actionId, dropTargetId);

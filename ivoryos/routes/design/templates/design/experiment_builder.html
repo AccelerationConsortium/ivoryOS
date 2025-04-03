@@ -84,22 +84,24 @@
 <!--                        <h6  style=" text-align: center; ">{{ format_name(instrument) }}</h6>-->
 <!--                    </div>-->
                     {% if instrument in ['if' , 'while' , 'variable' ,'wait', 'repeat'] %}
-                        {# form for builtin functions #}
-                        <form role="form" method='POST' name="{{instrument}}" action="{{url_for('design.experiment_builder',instrument=instrument)}}" >
-                            <div class="form-group">
-                                {{ forms.hidden_tag() }}
-                                {% for field in forms %}
-                                    {% if field.type not in ['CSRFTokenField', 'HiddenField'] %}
-                                        <div class="input-group mb-3">
-                                            <label class="input-group-text">{{ field.label.text }}</label>
-                                            {{ field(class="form-control") }}
-                                            <div class="form-text">{{ field.description }} </div>
-                                        </div>
-                                    {% endif %}
-                                {% endfor %}
-                            </div>
-                            <button type="submit" class="btn btn-dark">Add </button>
-                        </form>
+
+                            <form role="form" method='POST' name="{{instrument}}" action="{{url_for('design.experiment_builder',instrument=instrument)}}" >
+                                <div class="form-group">
+                                    {{ forms.hidden_tag() }}
+                                    {% for field in forms %}
+                                        {% if field.type not in ['CSRFTokenField', 'HiddenField'] %}
+                                            <div class="input-group mb-3">
+                                                <label class="input-group-text">{{ field.label.text }}</label>
+                                                {{ field(class="form-control") }}
+                                                <div class="form-text">{{ field.description }} </div>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                <button type="submit" class="btn btn-dark">Add </button>
+
+                            </form>
+
                     {% else %}
                         {% if script.editing_type == "script" %}
                             {# Auto Fill Toggle #}
@@ -144,13 +146,13 @@
                             </div>
                             {% endif %}
                             {% for name, form in forms.items() %}
-                                <div class="accordion-item design-control">
+                                <div class="accordion-item design-control" draggable="true">
                                     <h2 class="accordion-header">
                                         <button class="accordion-button collapsed draggable-action"
                                                 type="button" data-bs-toggle="collapse"
                                                 data-bs-target="#{{name}}" aria-expanded="false"
                                                 aria-controls="collapseExample"
-                                                draggable="true" data-action="{{ name }}">
+                                                 data-action="{{ name }}">
                                             {{ format_name(name) }}
                                         </button>
                                     </h2>
@@ -176,6 +178,14 @@
                                                     {% endfor %}
                                                 </div>
                                                 <button type="submit" class="btn btn-dark">Add</button>
+                                                {% if 'hidden_name' in form %}
+                                                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top"
+                                                       title='{{ form.hidden_name.description or "Docstring is not available" }}'>
+                                                    </i>
+                                                {% else %}
+                                                    <!-- handle info tooltip for flow control / workflows -->
+                                                {% endif %}
+
                                             </form>
                                         </div>
                                     </div>
@@ -190,24 +200,24 @@
             {% else %}
                 <div style="margin-bottom: 4vh;"></div>
                 <div class="accordion accordion-flush">
-                    <div class="accordion-item  design-control">
-                        <h5 class="accordion-header">
-                            <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#advanced" role="button" aria-expanded="false" aria-controls="collapseExample">
-                                Builtin Operations:
-                            </button>
-                        </h5>
-                        <div class="accordion-collapse collapse show" id="advanced">
-                            <ul class="list-group">
-                                {% for instrument in ['if', 'while', 'variable', 'wait', 'repeat'] %}
-                                    <form role="form" method='GET' name="device" action="{{url_for('design.experiment_builder',instrument=instrument)}}">
-                                        <div class="form-group">
-                                            <button class="list-group-item list-group-item-action" aria-current="true" type="submit">{{instrument}}</button>
-                                        </div>
-                                    </form>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                    </div>
+{#                    <div class="accordion-item  design-control">#}
+{#                        <h5 class="accordion-header">#}
+{#                            <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#advanced" role="button" aria-expanded="false" aria-controls="collapseExample">#}
+{#                                Builtin Operations:#}
+{#                            </button>#}
+{#                        </h5>#}
+{#                        <div class="accordion-collapse collapse show" id="advanced">#}
+{#                            <ul class="list-group" >#}
+{#                                {% for instrument in ['if', 'while', 'variable', 'wait', 'repeat'] %}#}
+{#                                    <form role="form" method='GET' name="device" action="{{url_for('design.experiment_builder',instrument=instrument)}}">#}
+{#                                        <div class="form-group logic-form" draggable="true">#}
+{#                                            <button class="list-group-item list-group-item-action" aria-current="true" type="submit">{{instrument}}</button>#}
+{#                                        </div>#}
+{#                                    </form>#}
+{#                                {% endfor %}#}
+{#                            </ul>#}
+{#                        </div>#}
+{#                    </div>#}
 
                     <div class="accordion-item design-control">
                         <h5 class="accordion-header">
@@ -362,6 +372,10 @@
                     <div class="input-group mb-3">
                         <label class="input-group-text" for="run_name">Run Name</label>
                         <input class="form-control" type="text" name="run_name" id="run_name" placeholder="{{script['name']}}" required="required">
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="register_workflow" id="register_workflow">
+                        <label class="input-group-label" for="register_workflow">Register this workflow</label>
                     </div>
                 </div>
                 <div class="modal-footer">

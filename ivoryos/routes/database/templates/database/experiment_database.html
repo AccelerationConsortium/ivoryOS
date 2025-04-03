@@ -26,10 +26,11 @@
             <tr>
                 <th scope="col">Workflow name</th>
                 <th scope="col">Deck </th>
-                <th scope="col">Current status</th>
+                <th scope="col">Editing</th>
                 <th scope="col">Time created</th>
                 <th scope="col">Last modified</th>
                 <th scope="col">Author</th>
+                <th scope="col">Registered</th>
                 <th scope="col"></th>
             </tr>
         </thead>
@@ -42,6 +43,7 @@
                     <td>{{ workflow.time_created }}</td>
                     <td>{{ workflow.last_modified }}</td>
                     <td>{{ workflow.author }}</td>
+                    <td>{{ workflow.registered }}</td>
                     <td>
                         {#not workflow.status == "finalized" or#}
                         {% if session['user'] == 'admin' or session['user'] == workflow.author %}
