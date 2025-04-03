@@ -11,14 +11,14 @@ Interface Screenshot
 
 Routes
 --------
-.. qrefflask:: ivoryos:app
+.. qrefflask:: ivoryos
    :blueprints: design
    :endpoints:
 
 
 Docs
 --------
-.. autoflask:: ivoryos:app
+.. autoflask:: ivoryos
    :blueprints: design
    :endpoints:
 
