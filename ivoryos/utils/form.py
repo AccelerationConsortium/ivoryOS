@@ -7,6 +7,10 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, FloatField, HiddenField, BooleanField, IntegerField
 import inspect
 
+from ivoryos.utils.db_models import Script
+from ivoryos.utils.global_config import GlobalConfig
+
+global_config = GlobalConfig()
 
 def find_variable(data, script):
     """
@@ -345,6 +349,13 @@ def create_form_from_action(action: dict, script=None, design=True):
         setattr(DynamicForm, 'return', return_value)
     return DynamicForm()
 
+def create_all_builtin_forms(script):
+    all_builtin_forms = {}
+    for logic_name in ['if', 'while', 'variable', 'wait', 'repeat']:
+        # signature = info.get('signature', {})
+        form_class = create_builtin_form(logic_name, script)
+        all_builtin_forms[logic_name] = form_class()
+    return all_builtin_forms
 
 def create_builtin_form(logic_type, script):
     """
@@ -386,7 +397,44 @@ def create_builtin_form(logic_type, script):
         setattr(BuiltinFunctionForm, "type", type_field)
     hidden_field = HiddenField(name=f'builtin_name', render_kw={"value": f'{logic_type}'})
     setattr(BuiltinFunctionForm, "builtin_name", hidden_field)
-    return BuiltinFunctionForm()
+    return BuiltinFunctionForm
+
+
+def get_method_from_workflow(function_string):
+    """Creates a function from a string and assigns it a new name."""
+
+    namespace = {}
+    exec(function_string, globals(), namespace)  # Execute the string in a safe namespace
+    func_name = next(iter(namespace))
+    # Get the function name dynamically
+    return namespace[func_name]
+
+
+def create_workflow_forms(script, autofill: bool = False, design: bool = False):
+    workflow_forms = {}
+    functions = {}
+    class RegisteredWorkflows:
+        pass
+
+    deck_name = script.deck
+    workflows = Script.query.filter(Script.deck==deck_name, Script.name != script.name).all()
+    for workflow in workflows:
+        compiled_strs = workflow.compile().get('script', "")
+        method = get_method_from_workflow(compiled_strs)
+        functions[workflow.name] = dict(signature=inspect.signature(method), docstring=inspect.getdoc(method))
+        setattr(RegisteredWorkflows, workflow.name, method)
+
+        form_class = create_form_for_method(method, autofill, script, design)
+
+        hidden_method_name = HiddenField(name=f'hidden_name', description="",
+                                         render_kw={"value": f'{workflow.name}'})
+        if design:
+            return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
+            setattr(form_class, 'return', return_value)
+        setattr(form_class, 'workflow_name', hidden_method_name)
+        workflow_forms[workflow.name] = form_class()
+    global_config.registered_workflows = RegisteredWorkflows
+    return workflow_forms, functions
 
 
 def create_action_button(script, stype=None):

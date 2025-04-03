@@ -196,27 +196,36 @@ class Script(db.Model):
             for i in self.stypes:
                 self._sort(i)
 
-    def add_action(self, action: dict):
+    def add_action(self, action: dict, insert_position=None):
         current_len = len(self.currently_editing_script)
         action_to_add = action.copy()
         action_to_add['id'] = current_len + 1
         action_to_add['uuid'] = uuid.uuid4().fields[-1]
         self.currently_editing_script.append(action_to_add)
-        self.currently_editing_order.append(str(current_len + 1))
+        self._insert_action(insert_position, current_len)
         self.update_time_stamp()
 
-    def add_variable(self, statement, variable, type):
+    def add_variable(self, statement, variable, type, insert_position=None):
         variable = self.validate_function_name(variable)
         convert_type = getattr(builtins, type)
         statement = convert_type(statement)
         current_len = len(self.currently_editing_script)
         uid = uuid.uuid4().fields[-1]
-        action_list = [{"id": current_len + 1, "instrument": 'variable', "action": variable,
+        action = {"id": current_len + 1, "instrument": 'variable', "action": variable,
                         "args": {"statement": 'None' if statement == '' else statement}, "return": '', "uuid": uid,
-                        "arg_types": {"statement": type}}]
-        self.currently_editing_script.extend(action_list)
-        self.currently_editing_order.extend([str(current_len + i + 1) for i in range(len(action_list))])
+                        "arg_types": {"statement": type}}
+        self.currently_editing_script.append(action)
+        self._insert_action(insert_position, current_len)
         self.update_time_stamp()
+
+    def _insert_action(self, insert_position, current_len, action_len:int=1):
+
+        if insert_position is None:
+            self.currently_editing_order.extend([str(current_len + i + 1) for i in range(action_len)])
+        else:
+            index = int(insert_position) - 1
+            self.currently_editing_order[index:index] = [str(current_len + i + 1) for i in range(action_len)]
+            self.sort_actions()
 
     def get_added_variables(self):
         added_variables: Dict[str, str] = {action["action"]: action["arg_types"]["statement"] for action in
@@ -251,7 +260,7 @@ class Script(db.Model):
                 kwargs[key] = f"#{self.validate_function_name(value[1:])}"
         return kwargs
 
-    def add_logic_action(self, logic_type: str, statement):
+    def add_logic_action(self, logic_type: str, statement, insert_position=None):
         current_len = len(self.currently_editing_script)
         uid = uuid.uuid4().fields[-1]
         logic_dict = {
@@ -291,7 +300,7 @@ class Script(db.Model):
         }
         action_list = logic_dict[logic_type]
         self.currently_editing_script.extend(action_list)
-        self.currently_editing_order.extend([str(current_len + i + 1) for i in range(len(action_list))])
+        self._insert_action(insert_position, current_len, len(action_list))
         self.update_time_stamp()
 
     def delete_action(self, id: int):
@@ -446,7 +455,8 @@ class Script(db.Model):
         configure = [param + f":{param_type}" if not param_type == "any" else "" for param, param_type in
                      config_type.items()]
 
-        function_header = f"def {run_name}_{stype}("
+        script_type = f"_{stype}" if stype != "script" else ""
+        function_header = f"def {run_name}{script_type}("
 
         if stype == "script":
             function_header += ", ".join(configure)
@@ -492,6 +502,9 @@ class Script(db.Model):
             return f"{self.indent(indent_unit)}time.sleep({statement})", indent_unit
         elif instrument == 'repeat':
             return self._process_repeat(indent_unit, action_name, statement, next_action)
+        #todo
+        # elif instrument == 'registered_workflows':
+        #     return inspect.getsource(my_function)
         else:
             return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data)
 

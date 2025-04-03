@@ -1,3 +1,16 @@
+v0.1.21
+- add drag and drop to design
+
+
+v0.1.20
+- add task progress tracking
+
+
+v0.1.19
+- add pause/resume and stop to execution page
+- fix python script display
+
+
 v0.1.18
 - fix prep/cleanup repeat issue
 - remove duplicate return values

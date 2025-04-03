@@ -6,14 +6,14 @@ Homepage
 
 Contents
 --------
-.. qrefflask:: ivoryos:app
+.. qrefflask:: ivoryos
    :blueprints: main
    :endpoints:
 
 
 Docs
 --------
-.. autoflask:: ivoryos:app
+.. autoflask:: ivoryos
    :blueprints: main
    :endpoints:
 

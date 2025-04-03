@@ -28,7 +28,7 @@
                 <div class="accordion-body">
                     {% if script['script'] or script['prep'] or script['cleanup'] %}
                         <div class="row">
-                            <div class="col-lg-6 col-sm-12" id="run-panel">
+                            <div class="col-lg-6 col-sm-12" id="run-panel"  style="{{ 'display: none;'  if pause_status else '' }}">
                                 <ul class="nav nav-tabs" id="myTabs" role="tablist">
                                     <li class="nav-item" role="presentation">
                                         <a class="nav-link {{ 'disabled' if config_list else '' }} {{ 'active' if not config_list else '' }}" id="tab1-tab" data-bs-toggle="tab" href="#tab1" role="tab" aria-controls="tab1" aria-selected="false">Repeat</a>
@@ -217,10 +217,11 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-lg-6 col-sm-12" id="code-panel" style="display: none;">
+                            <div class="col-lg-6 col-sm-12" id="code-panel" style="{{ '' if pause_status else 'display: none;'}}">
                                 <p>
                                     <h5>Progress：</h5>
                                     {% for stype, script in line_collection.items() %}
+                                        <h6>{{ stype }}：</h6>
                                         {% for code in script %}
                                             <pre style="margin: 0; padding: 0; line-height: 1;"><code class="python" id="{{ stype }}-{{ loop.index0 }}" >{{code}}</code></pre>
                                         {% endfor %}
@@ -233,7 +234,11 @@
                                         <h5>Progress：</h5>
                                         <div class="d-flex gap-2 ms-auto">
                                             <button id="pause-resume" class="btn btn-info text-white" data-bs-toggle="tooltip" title="Pause execution">
-                                                <i class="bi bi-pause-circle"></i> <!-- Icon for Pause -->
+                                                {% if pause_status %}
+                                                    <i class="bi bi-play-circle"></i> <!-- Icon for Pause -->
+                                                {% else %}
+                                                    <i class="bi bi-pause-circle"></i> <!
+                                                {% endif %}
                                             </button>
                                             <button id="abort-current" class="btn btn-danger text-white" data-bs-toggle="tooltip" title="Stop execution after current step">
                                                 <i class="bi bi-stop-circle"></i> <!-- Icon for Stop After This Step -->
@@ -326,6 +331,28 @@
             </div>
         </div>
     </div>
+
+    <!-- Error Modal -->
+    <div class="modal fade" id="error-modal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="errorModalLabel">Error Detected</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p id="error-message">An error has occurred.</p>
+            <p>Do you want to continue execution or stop?</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger" id="stop-btn" data-bs-dismiss="modal">Stop Execution</button>
+            <button type="button" class="btn btn-success" id="continue-btn" data-bs-dismiss="modal">Continue</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
     <script src="{{ url_for('static', filename='js/socket_handler.js') }}"></script>
     <script>
         var rowCount = 0; // Initialize row count
@@ -347,22 +374,4 @@
             }
         });
     </script>
-
-    <script>
-    var socket = io.connect(window.location.origin);
-
-    socket.on('execution', function(data) {
-        // Remove highlighting from all lines
-        document.querySelectorAll('pre code').forEach(el => el.style.backgroundColor = '');
-
-        // Get the currently executing line and highlight it
-        let executingLine = document.getElementById(data.section);
-        if (executingLine) {
-            executingLine.style.backgroundColor = '#cce5ff'; // Highlight
-            executingLine.style.transition = 'background-color 0.3s ease-in-out';
-
-        }
-    });
-</script>
-
 {% endblock %}

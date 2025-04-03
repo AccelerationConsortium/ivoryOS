@@ -8,6 +8,7 @@ class GlobalConfig:
         if cls._instance is None:
             cls._instance = super(GlobalConfig, cls).__new__(cls, *args, **kwargs)
             cls._instance._deck = None
+            cls._instance._registered_workflows = None
             cls._instance._agent = None
             cls._instance._defined_variables = {}
             cls._instance._api_variables = set()
@@ -23,6 +24,15 @@ class GlobalConfig:
     def deck(self, value):
         if self._deck is None:
             self._deck = value
+
+    @property
+    def registered_workflows(self):
+        return self._registered_workflows
+
+    @registered_workflows.setter
+    def registered_workflows(self, value):
+        if self._registered_workflows is None:
+            self._registered_workflows = value
 
 
     @property

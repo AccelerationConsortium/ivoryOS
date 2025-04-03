@@ -97,7 +97,7 @@ def _inspect_class(class_object=None, debug=False):
     under_score = "_"
     if debug:
         under_score = "__"
-    for function, method in inspect.getmembers(type(class_object), predicate=inspect.isfunction):
+    for function, method in inspect.getmembers(type(class_object), predicate=callable):
         if not function.startswith(under_score) and not function.isupper():
             try:
                 annotation = inspect.signature(method)
