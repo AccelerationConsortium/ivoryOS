@@ -1,10 +1,8 @@
-import importlib
-import inspect
 import os
 import sys
 from typing import Union
 
-from flask import Flask, redirect, url_for, Blueprint, g
+from flask import Flask, redirect, url_for, g
 
 from ivoryos.config import Config, get_config
 from ivoryos.routes.auth.auth import auth, login_manager
@@ -23,6 +21,11 @@ global_config = GlobalConfig()
 
 url_prefix = os.getenv('URL_PREFIX', "/ivoryos")
 app = Flask(__name__, static_url_path=f'{url_prefix}/static', static_folder='static')
+app.register_blueprint(main, url_prefix=url_prefix)
+app.register_blueprint(auth, url_prefix=url_prefix)
+app.register_blueprint(control, url_prefix=url_prefix)
+app.register_blueprint(design, url_prefix=url_prefix)
+app.register_blueprint(database, url_prefix=url_prefix)
 
 
 def create_app(config_class=None):
@@ -86,14 +89,6 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     """
     app = create_app(config_class=config or get_config())  # Create app instance using factory function
 
-    app.register_blueprint(main, url_prefix=url_prefix)
-    app.register_blueprint(auth, url_prefix=url_prefix)
-    app.register_blueprint(control, url_prefix=url_prefix)
-
-    if enable_design:
-        app.register_blueprint(design, url_prefix=url_prefix)
-        app.register_blueprint(database, url_prefix=url_prefix)
-
     plugins = load_plugins(app, socketio)
 
     def inject_nav_config():
@@ -156,3 +151,5 @@ def load_plugins(app, socketio):
         app.register_blueprint(getattr(plugin, entry_point.name), url_prefix=f"{url_prefix}/{entry_point.name}")
 
     return plugin_names
+
+
