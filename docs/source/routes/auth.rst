@@ -4,14 +4,14 @@ User Authentication
 
 Routes
 --------
-.. qrefflask:: ivoryos
+.. qrefflask:: ivoryos:app
    :blueprints: auth
    :endpoints:
 
 
 Docs
 --------
-.. autoflask:: ivoryos
+.. autoflask:: ivoryos:app
    :blueprints: auth
    :endpoints:
 
