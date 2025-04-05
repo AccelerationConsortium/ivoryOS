@@ -1,5 +1,8 @@
 v0.1.21
 - add drag and drop to design
+- add bool option for variables
+- remove about from top tab
+- move logic (if, while, etc) to "flow control"
 
 
 v0.1.20
