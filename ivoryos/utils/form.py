@@ -390,7 +390,7 @@ def create_builtin_form(logic_type, script):
                                      render_kw=render_kwargs)
         type_field = SelectField(
             'Select Input Type',
-            choices=[('int', 'Integer'), ('float', 'Float'), ('str', 'String')],
+            choices=[('int', 'Integer'), ('float', 'Float'), ('str', 'String'), ('bool', 'Boolean')],
             default='str'  # Optional default value
         )
         setattr(BuiltinFunctionForm, "variable", variable_field)

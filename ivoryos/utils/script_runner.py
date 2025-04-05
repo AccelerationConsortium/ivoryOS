@@ -92,7 +92,8 @@ class ScriptRunner:
         # Parse function body from string
         temp_connections = global_config.defined_variables
         # Prepare execution environment
-        exec_globals = {"deck": deck}  # Add required global objects
+        exec_globals = {"deck": deck, "time":time}  # Add required global objects
+        # exec_globals = {"deck": deck, "time": time, "registered_workflows":registered_workflows}  # Add required global objects
         exec_globals.update(temp_connections)
         exec_locals = {}  # Local execution scope
 

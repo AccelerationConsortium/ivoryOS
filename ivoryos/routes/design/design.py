@@ -93,6 +93,9 @@ def experiment_builder(instrument=None):
     """
     deck = global_config.deck
     script = utils.get_script_file()
+    # load_workflows(script)
+    # registered_workflows = global_config.registered_workflows
+
     if deck and script.deck is None:
         script.deck = os.path.splitext(os.path.basename(deck.__file__))[
             0] if deck.__name__ == "__main__" else deck.__name__
@@ -117,7 +120,7 @@ def experiment_builder(instrument=None):
     if deck:
         deck_variables = list(global_config.deck_snapshot.keys())
         # deck_variables.insert(0, "registered_workflows")
-        deck_variables.insert(0, "control_flow")
+        deck_variables.insert(0, "flow_control")
 
     else:
         deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
@@ -128,12 +131,12 @@ def experiment_builder(instrument=None):
     elif instrument:
         # if instrument in ['if', 'while', 'variable', 'wait', 'repeat']:
         #     forms = create_builtin_form(instrument, script=script)
-        if instrument == 'control_flow':
+        if instrument == 'flow_control':
             forms = create_all_builtin_forms(script=script)
-        elif instrument == 'registered_workflows':
-            functions = utils._inspect_class(registered_workflows)
-            # forms = create_workflow_forms(script=script)
-            forms = create_form_from_pseudo(pseudo=functions, autofill=autofill, script=script)
+        # elif instrument == 'registered_workflows':
+        #     functions = utils._inspect_class(registered_workflows)
+        #     # forms = create_workflow_forms(script=script)
+        #     forms = create_form_from_pseudo(pseudo=functions, autofill=autofill, script=script)
         elif instrument in global_config.defined_variables.keys():
             _object = global_config.defined_variables.get(instrument)
             functions = utils._inspect_class(_object)
@@ -211,8 +214,9 @@ def experiment_builder(instrument=None):
         # toggle autofill, autofill doesn't apply to control flow ops
         elif request.method == 'POST' and "autofill" in request.form:
             autofill = not autofill
-            forms = create_form_from_pseudo(functions, autofill=autofill, script=script)
             session['autofill'] = autofill
+            if not instrument == 'flow_control':
+                forms = create_form_from_pseudo(functions, autofill=autofill, script=script)
 
     utils.post_script_file(script)
     design_buttons = create_action_button(script)
