@@ -2,13 +2,14 @@
 {% block title %}IvoryOS | Design{% endblock %}
 
 {% block body %}
-{#    <div id="overlay" class="overlay">Generating design, please wait...</div>#}
+    {# overlay block for text-to-code gen #}
     <div id="overlay" class="overlay">
         <div>
             <h3 id="overlay-text">Generating design, please wait...</h3>
             <div class="spinner-border" role="status"></div>
         </div>
     </div>
+
     <div class="row">
         <div class="col-md-3 scroll-column" >
 
@@ -30,7 +31,6 @@
 
             {# edit action #}
             {% if session["edit_action"] %}
-{#                {{ session["edit_action"] }}#}
                 {% with action = session["edit_action"] %}
                     <h5> {{ format_name(action['action']) }} </h5>
                     <form role="form" method='POST' name="{{instrument}}" action="{{ url_for('design.edit_action', uuid=session["edit_action"]['uuid']) }}">
@@ -69,82 +69,57 @@
                         <button class="btn btn-primary" type="submit" name="back" id="back" value="back">Back</button>
                     </form>
                 {% endwith %}
+
+
             {% elif instrument %}
                 <div>
                     <div class="d-flex justify-content-between align-items-center " style="margin-bottom: 1vh;margin-top: 1vh;">
-
                         <a class="btn btn-primary" role="button" type="button" href="{{url_for('design.experiment_builder')}}"><i class="bi bi-arrow-return-left"></i></a>
-
                         {{ format_name(instrument) }}
-
-
                     </div>
 
-<!--                    <div class="rounded flex-fill" style="height: 30px;background-color: aliceblue">-->
-<!--                        <h6  style=" text-align: center; ">{{ format_name(instrument) }}</h6>-->
-<!--                    </div>-->
-                    {% if instrument in ['if' , 'while' , 'variable' ,'wait', 'repeat'] %}
-
-                            <form role="form" method='POST' name="{{instrument}}" action="{{url_for('design.experiment_builder',instrument=instrument)}}" >
-                                <div class="form-group">
-                                    {{ forms.hidden_tag() }}
-                                    {% for field in forms %}
-                                        {% if field.type not in ['CSRFTokenField', 'HiddenField'] %}
-                                            <div class="input-group mb-3">
-                                                <label class="input-group-text">{{ field.label.text }}</label>
-                                                {{ field(class="form-control") }}
-                                                <div class="form-text">{{ field.description }} </div>
-                                            </div>
-                                        {% endif %}
-                                    {% endfor %}
+                    {% if script.editing_type == "script" %}
+                        {# Auto Fill Toggle #}
+                        <div class="d-flex justify-content-between align-items-center " style="margin-bottom: 1vh;margin-top: 1vh;">
+                            <div></div>
+                            <form role="form" method='POST' name="autoFill" id="autoFill">
+                                <div class="form-check form-switch">
+                                    <input type="hidden" id="autofill" name="autofill" value="temp_value">
+                                    <input class="form-check-input" type="checkbox" id="autoFillCheck" name="autoFillCheck" onchange="document.getElementById('autoFill').submit();"
+                                           value="temp_value"
+                                            {{ "checked" if session["autofill"] else "" }}>
+                                    <label class="form-check-label" for="autoFillCheck">Auto fill</label>
                                 </div>
-                                <button type="submit" class="btn btn-dark">Add </button>
-
+                                <button type="submit" class="btn btn-default" style="display: none;">Auto fill </button>
                             </form>
-
-                    {% else %}
-                        {% if script.editing_type == "script" %}
-                            {# Auto Fill Toggle #}
-                            <div class="d-flex justify-content-between align-items-center " style="margin-bottom: 1vh;margin-top: 1vh;">
-
-                                <div></div>
-                                <form role="form" method='POST' name="autoFill" id="autoFill">
-                                    <div class="form-check form-switch">
-                                        <input type="hidden" id="autofill" name="autofill" value="temp_value">
-                                        <input class="form-check-input" type="checkbox" id="autoFillCheck" name="autoFillCheck" onchange="document.getElementById('autoFill').submit();"
-                                               value="temp_value"
-                                                {{ "checked" if session["autofill"] else "" }}>
-                                        <label class="form-check-label" for="autoFillCheck">Auto fill</label>
-                                    </div>
-                                    <button type="submit" class="btn btn-default" style="display: none;">Auto fill </button>
-                                </form>
-                            </div>
-                        {% endif %}
+                        </div>
+                    {% endif %}
 
                         {# according for instrument #}
                         <div class="accordion accordion-flush" id="accordionActions" >
-                            {% if use_llm %}
-                            <div class="accordion-item text-to-code">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button text-to-code" type="button" data-bs-toggle="collapse" data-bs-target="#text-to-code" aria-expanded="false" aria-controls="collapseExample">
-                                            Text-to-Code
-                                        </button>
-                                    </h2>
-                                    <div id="text-to-code" class="accordion-collapse collapse show" data-bs-parent="#accordionActions">
-                                        <div class="accordion-body">
-                                            <form role="form" method='POST' name="generate" id="generate" action="{{url_for('design.generate_code')}}">
-                                                <input type="hidden" id="instrument" name="instrument" value="{{instrument}}">
-                                                <textarea class="form-control" id="prompt" name="prompt" rows="6" aria-describedby="promptHelpBlock">{{ session['prompt'][instrument] if instrument in session['prompt'] else '' }}</textarea>
-                                                <div id="promptHelpBlock" class="form-text">
-                                                    This will overwrite current design.
-                                                </div>
-<!--                                                <button type="submit" class="btn btn-dark" id="clear" name="clear" onclick="submitForm('generate')">Clear</button>-->
-                                                <button type="submit" class="btn btn-dark" id="gen" name="gen">Generate</button>
-                                            </form>
-                                        </div>
+                            {% if use_llm and not instrument == "flow_control" %}
+                                <div class="accordion-item text-to-code">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button text-to-code" type="button" data-bs-toggle="collapse" data-bs-target="#text-to-code" aria-expanded="false" aria-controls="collapseExample">
+                                        Text-to-Code
+                                    </button>
+                                </h2>
+                                <div id="text-to-code" class="accordion-collapse collapse show" data-bs-parent="#accordionActions">
+                                    <div class="accordion-body">
+                                        <form role="form" method='POST' name="generate" id="generate" action="{{url_for('design.generate_code')}}">
+                                            <input type="hidden" id="instrument" name="instrument" value="{{instrument}}">
+                                            <textarea class="form-control" id="prompt" name="prompt" rows="6" aria-describedby="promptHelpBlock">{{ session['prompt'][instrument] if instrument in session['prompt'] else '' }}</textarea>
+                                            <div id="promptHelpBlock" class="form-text">
+                                                This will overwrite current design.
+                                            </div>
+<!--                                               <button type="submit" class="btn btn-dark" id="clear" name="clear" onclick="submitForm('generate')">Clear</button>-->
+                                            <button type="submit" class="btn btn-dark" id="gen" name="gen">Generate</button>
+                                        </form>
                                     </div>
+                                </div>
                             </div>
                             {% endif %}
+
                             {% for name, form in forms.items() %}
                                 <div class="accordion-item design-control" draggable="true">
                                     <h2 class="accordion-header">
@@ -156,7 +131,6 @@
                                             {{ format_name(name) }}
                                         </button>
                                     </h2>
-
                                     <div id="{{name}}" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
                                         <div class="accordion-body">
                                             <form role="form" method='POST' name="add" id="add-{{name}}">
@@ -192,7 +166,6 @@
                                 </div>
                             {% endfor %}
                         </div>
-                    {% endif %}
                 </div>
 
 
@@ -200,29 +173,11 @@
             {% else %}
                 <div style="margin-bottom: 4vh;"></div>
                 <div class="accordion accordion-flush">
-{#                    <div class="accordion-item  design-control">#}
-{#                        <h5 class="accordion-header">#}
-{#                            <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#advanced" role="button" aria-expanded="false" aria-controls="collapseExample">#}
-{#                                Builtin Operations:#}
-{#                            </button>#}
-{#                        </h5>#}
-{#                        <div class="accordion-collapse collapse show" id="advanced">#}
-{#                            <ul class="list-group" >#}
-{#                                {% for instrument in ['if', 'while', 'variable', 'wait', 'repeat'] %}#}
-{#                                    <form role="form" method='GET' name="device" action="{{url_for('design.experiment_builder',instrument=instrument)}}">#}
-{#                                        <div class="form-group logic-form" draggable="true">#}
-{#                                            <button class="list-group-item list-group-item-action" aria-current="true" type="submit">{{instrument}}</button>#}
-{#                                        </div>#}
-{#                                    </form>#}
-{#                                {% endfor %}#}
-{#                            </ul>#}
-{#                        </div>#}
-{#                    </div>#}
 
                     <div class="accordion-item design-control">
                         <h5 class="accordion-header">
                             <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#deck" role="button" aria-expanded="false" aria-controls="collapseExample">
-                                Deck Actions:
+                                Operations
                             </button>
                         </h5>
                         <div class="accordion-collapse collapse show" id="deck">
@@ -242,7 +197,7 @@
                         <div class="accordion-item  design-control">
                             <h5 class="accordion-header">
                                 <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#local" role="button" aria-expanded="false" aria-controls="collapseExample">
-                                    Local Actions:
+                                    Local Operations
                                 </button>
                             </h5>
                             <div class="accordion-collapse collapse show" id="local">
@@ -451,7 +406,7 @@
 </div>
 
 
-    {% if instrument and not instrument in ['if' , 'while' , 'variable' ,'wait', 'repeat'] and use_llm %}
+    {% if instrument and use_llm %}
         <script>
             const buttonIds = {{ ['generate'] | tojson }};
         </script>

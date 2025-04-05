@@ -176,10 +176,12 @@ def save_as():
     """
     if request.method == "POST":
         run_name = request.form.get("run_name")
+        register_workflow = request.form.get("register_workflow")
         exist_script = Script.query.get(run_name)
         if not exist_script:
             script = get_script_file()
             script.save_as(run_name)
+            script.registered = register_workflow == "on"
             script.author = session.get('user')
             post_script_file(script)
             publish()
