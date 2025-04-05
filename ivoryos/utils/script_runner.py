@@ -12,6 +12,8 @@ from ivoryos.utils.global_config import GlobalConfig
 global_config = GlobalConfig()
 global deck
 deck = None
+# global deck, registered_workflows
+# deck, registered_workflows = None, None
 
 class ScriptRunner:
     def __init__(self, globals_dict=None):
@@ -86,8 +88,15 @@ class ScriptRunner:
         _func_str = script.compile()
         step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
         global deck
+        # global deck, registered_workflows
         if deck is None:
             deck = global_config.deck
+        # if registered_workflows is None:
+        #     registered_workflows = global_config.registered_workflows
+
+        # for i, line in enumerate(step_list):
+        #     if line.startswith("registered_workflows"):
+        #
         # func_str = script.compile()
         # Parse function body from string
         temp_connections = global_config.defined_variables
@@ -110,6 +119,8 @@ class ScriptRunner:
             logger.info(f"Executing: {line}")  # Debugging output
             socketio.emit('execution', {'section': f"{section_name}-{index}"})
             # self._emit_progress(socketio, 100)
+            # if line.startswith("registered_workflows"):
+            #     line = line.replace("registered_workflows.", "")
             try:
                 exec(line, exec_globals, exec_locals)
             except Exception as e:
