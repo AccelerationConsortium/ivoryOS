@@ -16,7 +16,6 @@
 - [Instructions for use](#instructions-for-use)
 - [Demo](#demo)
 - [Roadmap](#roadmap)
-- [License](#license)
 
 ## Description
 Granting SDLs flexibility and modularity makes it almost impossible to design a UI, yet it's a necessity for allowing more people to interact with it (democratisation). 
