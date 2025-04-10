@@ -15,7 +15,8 @@ class AbstractPump:
         self.dictionary = {}
         self.logger = logging.getLogger("pump")
 
-    def dose_liquid(self, amount_in_ml: float, rate_ml_per_minute: float):
+    def dose_liquid(self, amount_in_ml: float, rate_ml_per_minute: float = 1):
+        """dose liquid"""
         self.logger.info("dosing liquid")
         self.logger.info(f"pretending dosing {amount_in_ml} at {rate_ml_per_minute} ml/min")
         return 1
