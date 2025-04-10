@@ -73,6 +73,10 @@ Create an account and login (local database)
   - **Database**: manage workflows in _Library_ tab.
 - **Info page**: additional info in _About_ tab.
 
+[//]: # (![Discord]&#40;https://img.shields.io/discord/1313641159356059770&#41;)
+
+[//]: # (![PyPI - Downloads]&#40;https://img.shields.io/pypi/dm/ivoryos&#41;)
+
 
 ### Additional settings
 #### AI assistant
@@ -113,7 +117,7 @@ After one successful connection, a blueprint will be automatically saved and mad
 ivoryos.run()
 ```
 ## Demo
-In the [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/main/example/sdl_example/abstract_sdl.py), where instances of `AbstractSDL` is created as `sdl`,
+In the [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/main/example/abstract_sdl_example/abstract_sdl.py), where instances of `AbstractSDL` is created as `sdl`,
 addresses will be available on terminal.
 ```Python
 ivoryos.run(__name__)

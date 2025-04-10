@@ -48,7 +48,7 @@ This demonstration is runnable without hardware connection.
 - [adc_example](#adc_example)
 - [purpose_example](#purpose_example)
 - [flow_chem_example](#flow_chem_example)
-- [lilie_example](#lilie_example)
+- [lle_example](#lle_example)
 - [ti_solubility_example](#ti_solubility_example)
 - [ti_derivatization_example](#ti_derivatization_example)
 
@@ -65,8 +65,8 @@ Purification Platform Optimizing Solubility based Experimentation ([PurPOSE](htt
 ### flow_chem_example
 The [Flow Chem](https://github.com/jiayu423/Autonomous-flow-optimizer) code was optimized for ivoryOS ([flow_so_ivoryos](https://github.com/ivoryzh/Autonomous-flow-optimizer/blob/main/single%20objective%20edbo/flow_so_ivoryos.py))
 
-### lilie_example
-Liquid-Liquid Extraction ([LiLiE](https://gitlab.com/heingroup/automated-lle)) platform is a work-in-progress platform, aiming to sampling biphasic reaction. The code repository may be unavailable at this moment.
+### lle_example
+Liquid-Liquid Extraction ([LLE](https://gitlab.com/heingroup/automated-lle)) platform is a work-in-progress platform, aiming to sampling biphasic reaction. The code repository may be unavailable at this moment.
 
 ### ti_solubility_example
 This example is the solubility platform at Telescope Innovations Corp.
