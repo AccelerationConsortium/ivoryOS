@@ -407,26 +407,3 @@ def check_config_duplicate(config):
     """
     hashable_data = [tuple(sorted(d.items())) for d in config]
     return any(count > 1 for count in Counter(hashable_data).values())
-
-
-def get_method_from_workflow(function_string, func_name="workflow"):
-    """Creates a function from a string and assigns it a new name."""
-
-    namespace = {}
-    exec(function_string, globals(), namespace)  # Execute the string in a safe namespace
-    # func_name = next(iter(namespace))
-    # Get the function name dynamically
-    return namespace[func_name]
-
-
-# def load_workflows(script):
-#
-#     class RegisteredWorkflows:
-#         pass
-#     deck_name = script.deck
-#     workflows = Script.query.filter(Script.deck == deck_name, Script.name != script.name, Script.registered==True).all()
-#     for workflow in workflows:
-#         compiled_strs = workflow.compile().get('script', "")
-#         method = get_method_from_workflow(compiled_strs, func_name=workflow.name)
-#         setattr(RegisteredWorkflows, workflow.name, staticmethod(method))
-#     global_config.registered_workflows = RegisteredWorkflows()
