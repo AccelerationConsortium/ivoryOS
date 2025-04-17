@@ -44,9 +44,12 @@ class Script(db.Model):
     id_order = db.Column(JSONType, nullable=True)
     editing_type = db.Column(db.String(50), nullable=True)
     author = db.Column(db.String(50), nullable=False)
+    # registered = db.Column(db.Boolean, nullable=True, default=False)
 
     def __init__(self, name=None, deck=None, status=None, script_dict: dict = None, id_order: dict = None,
-                 time_created=None, last_modified=None, editing_type=None, author: str = None):
+                 time_created=None, last_modified=None, editing_type=None, author: str = None,
+                 registered:bool=False,
+                 ):
         if script_dict is None:
             script_dict = {"prep": [], "script": [], "cleanup": []}
         elif type(script_dict) is not dict:
@@ -73,6 +76,7 @@ class Script(db.Model):
         self.id_order = id_order
         self.editing_type = editing_type
         self.author = author
+        # self.r = registered
 
     def as_dict(self):
         dict = self.__dict__

@@ -17,6 +17,7 @@
 - [Demo](#demo)
 - [Roadmap](#roadmap)
 
+
 ## Description
 Granting SDLs flexibility and modularity makes it almost impossible to design a UI, yet it's a necessity for allowing more people to interact with it (democratisation). 
 This web UI aims to ease up the control of any Python-based SDLs by displaying functions and parameters for initialized modules dynamically. 
