@@ -253,7 +253,7 @@
 
 
                                     <div class="tab-pane fade {{ 'show active' if config_list and config_list|count<=5 else '' }}" id="tab4" role="tabpanel" aria-labelledby="tab4-tab">
-                                        <p><h5>Control panel:</h5></p>
+{#                                        <p><h5>Control panel:</h5></p>#}
                                         <div>
                                             <form method="POST" name="online-config" id="online-config" action="{{url_for('design.experiment_run')}}">
                                                 <table id="dataInputTable" class="table table-striped">
@@ -267,8 +267,12 @@
                                                     <tbody>
                                                     </tbody>
                                                 </table>
-                                                <div class="btn btn-light" onclick="addRow()"><i class="bi bi-plus-circle" ></i></div>
-                                                <button type="submit" name="online-config" class="btn btn-success">Run</button>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="btn btn-light" onclick="addRow()">
+                                                        <i class="bi bi-plus-circle"></i>
+                                                    </div>
+                                                    <button type="submit" name="online-config" class="form-control">Run</button>
+                                                </div>
                                             </form>
                                         </div>
                                     </div>
