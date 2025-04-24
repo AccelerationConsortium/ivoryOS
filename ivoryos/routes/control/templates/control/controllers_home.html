@@ -9,7 +9,7 @@
 {#                    {% if not deck %}#}
 {#                        <a href="{{ url_for('control.disconnect', instrument=instrument) }}" class="stretched-link controller-card" style="float: right;color: red; position: relative;">Disconnect <i class="bi bi-x-square"></i></a>#}
                         <div class="p-4 controller-card">
-                            <h5 class=""><a href="{{ url_for('control.controllers', instrument=instrument) }}" class="text-dark stretched-link">{{instrument}}</a></h5>
+                            <h5 class=""><a href="{{ url_for('control.controllers', instrument=instrument) }}" class="text-dark stretched-link">{{instrument.split(".")[1]}}</a></h5>
                         </div>
 {#                    {% else %}#}
 {#                        <div class="p-4 controller-card">#}
