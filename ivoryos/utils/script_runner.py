@@ -6,7 +6,7 @@ import time
 from datetime import datetime
 
 from ivoryos.utils import utils
-from ivoryos.utils.db_models import Script
+from ivoryos.utils.db_models import Script, WorkflowRun, WorkflowStep, db
 from ivoryos.utils.global_config import GlobalConfig
 
 global_config = GlobalConfig()
@@ -59,7 +59,8 @@ class ScriptRunner:
         self.abort_pending()
 
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None, bo_args=None,
-                   output_path=""):
+                   output_path="", current_app=None):
+ # Get run.id
         global deck
         if deck is None:
             deck = global_config.deck
@@ -73,14 +74,13 @@ class ScriptRunner:
         self.reset_stop_event()
 
         thread = threading.Thread(target=self._run_with_stop_check,
-                                  args=(script, repeat_count, run_name, logger, socketio, config, bo_args, output_path))
+                                  args=(script, repeat_count, run_name, logger, socketio, config, bo_args, output_path, current_app))
         thread.start()
         return thread
 
-    def exex_steps(self, script, section_name, logger, socketio, **kwargs):
+    def exec_steps(self, script, section_name, logger, socketio, run_id, i_progress, **kwargs):
         """
-        Executes a function defined in a string line by line.
-
+        Executes a function defined in a string line by line
         :param func_str: The function as a string
         :param kwargs: Arguments to pass to the function
         :return: The final result of the function execution
@@ -114,29 +114,56 @@ class ScriptRunner:
         while index < len(step_list):
             if self.stop_current_event.is_set():
                 logger.info(f'Stopping execution during {section_name}')
+                step = WorkflowStep(
+                    workflow_id=run_id,
+                    phase=section_name,
+                    repeat_index=i_progress,
+                    step_index=index,
+                    method_name="stop",
+                    start_time=datetime.now(),
+                    end_time=datetime.now(),
+                    run_error=False,
+                )
+                db.session.add(step)
                 break
             line = step_list[index]
-            logger.info(f"Executing: {line}")  # Debugging output
+            method_name = line.strip().split("(")[0] if "(" in line else line.strip()
+            start_time = datetime.now()
+            step = WorkflowStep(
+                workflow_id=run_id,
+                phase=section_name,
+                repeat_index=i_progress,
+                step_index=index,
+                method_name=method_name,
+                start_time=start_time,
+            )
+            logger.info(f"Executing: {line}")
             socketio.emit('execution', {'section': f"{section_name}-{index}"})
             # self._emit_progress(socketio, 100)
             # if line.startswith("registered_workflows"):
             #     line = line.replace("registered_workflows.", "")
             try:
                 exec(line, exec_globals, exec_locals)
+                step.run_error = False
             except Exception as e:
                 logger.error(f"Error during script execution: {e}")
-                socketio.emit('error', {'message': e.__str__()})
+                socketio.emit('error', {'message': str(e)})
+
+                step.run_error = True
                 self.toggle_pause()
+            step.end_time = datetime.now()
             self.pause_event.wait()
 
             # todo update script during the run
             # _func_str = script.compile()
             # step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
+            db.session.add(step)
+            db.session.commit()
             index += 1
         return exec_locals  # Return the 'results' variable
 
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, logger, socketio, config, bo_args,
-                             output_path):
+                             output_path, current_app):
         time.sleep(1)
         # _func_str = script.compile()
         # step_list_dict: dict = script.convert_to_lines(_func_str)
@@ -144,39 +171,48 @@ class ScriptRunner:
 
         # Run "prep" section once
         script_dict = script.script_dict
-        self._run_actions(script, section_name="prep", logger=logger, socketio=socketio)
-        output_list = []
-        _, arg_type = script.config("script")
-        _, return_list = script.config_return()
+        with current_app.app_context():
 
-        # Run "script" section multiple times
-        if repeat_count:
-            self._run_repeat_section(repeat_count, arg_type, bo_args, output_list, script,
-                                     run_name, return_list, logger, socketio)
-        elif config:
-            self._run_config_section(config, arg_type, output_list, script, run_name, logger,
-                                     socketio)
+            run = WorkflowRun(name=script.name or "untitled", start_time=datetime.now())
+            db.session.add(run)
+            db.session.flush()
 
-        # Run "cleanup" section once
-        self._run_actions(script, section_name="cleanup", logger=logger, socketio=socketio)
-        # Reset the running flag when done
-        with self.lock:
-            self.is_running = False
-        # Save results if necessary
-        if output_list:
-            self._save_results(run_name, arg_type, return_list, output_list, logger, output_path)
-        self._emit_progress(socketio, 100)
+            self._run_actions(script, section_name="prep", logger=logger, socketio=socketio, run_id=run.id)
+            output_list = []
+            _, arg_type = script.config("script")
+            _, return_list = script.config_return()
 
-    def _run_actions(self, script, section_name="", logger=None, socketio=None):
+            # Run "script" section multiple times
+            if repeat_count:
+                self._run_repeat_section(repeat_count, arg_type, bo_args, output_list, script,
+                                         run_name, return_list, logger, socketio, run_id=run.id)
+            elif config:
+                self._run_config_section(config, arg_type, output_list, script, run_name, logger,
+                                         socketio, run_id=run.id)
+
+            # Run "cleanup" section once
+            self._run_actions(script, section_name="cleanup", logger=logger, socketio=socketio,run_id=run.id)
+            # Reset the running flag when done
+            with self.lock:
+                self.is_running = False
+            # Save results if necessary
+            if output_list:
+                filename = self._save_results(run_name, arg_type, return_list, output_list, logger, output_path)
+            self._emit_progress(socketio, 100)
+            run.end_time = datetime.now()
+            run.data_path = filename
+            db.session.commit()
+
+    def _run_actions(self, script, section_name="", logger=None, socketio=None, run_id=None):
         _func_str = script.compile()
         step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
         logger.info(f'Executing {section_name} steps') if step_list else logger.info(f'No {section_name} steps')
         if self.stop_pending_event.is_set():
             logger.info(f"Stopping execution during {section_name} section.")
             return
-        self.exex_steps(script, section_name, logger, socketio)
+        self.exec_steps(script, section_name, logger, socketio, run_id=run_id, i_progress=0)
 
-    def _run_config_section(self, config, arg_type, output_list, script, run_name, logger, socketio):
+    def _run_config_section(self, config, arg_type, output_list, script, run_name, logger, socketio, run_id):
         compiled = True
         for i in config:
             try:
@@ -196,22 +232,22 @@ class ScriptRunner:
                 self._emit_progress(socketio, progress)
                 # fname = f"{run_name}_script"
                 # function = self.globals_dict[fname]
-                output = self.exex_steps(script, "script", logger, socketio, **kwargs)
+                output = self.exec_steps(script, "script", logger, socketio, run_id, i, **kwargs)
                 if output:
                     # kwargs.update(output)
                     output_list.append(output)
 
     def _run_repeat_section(self, repeat_count, arg_types, bo_args, output_list, script, run_name, return_list,
-                            logger, socketio):
+                            logger, socketio, run_id):
         if bo_args:
             logger.info('Initializing optimizer...')
             ax_client = utils.ax_initiation(bo_args, arg_types)
-        for i in range(int(repeat_count)):
+        for i_progress in range(int(repeat_count)):
             if self.stop_pending_event.is_set():
-                logger.info(f'Stopping execution during {run_name}: {i + 1}/{int(repeat_count)}')
+                logger.info(f'Stopping execution during {run_name}: {i_progress + 1}/{int(repeat_count)}')
                 break
-            logger.info(f'Executing {run_name} experiment: {i + 1}/{int(repeat_count)}')
-            progress = (i + 1) * 100 / int(repeat_count) - 0.1
+            logger.info(f'Executing {run_name} experiment: {i_progress + 1}/{int(repeat_count)}')
+            progress = (i_progress + 1) * 100 / int(repeat_count) - 0.1
             self._emit_progress(socketio, progress)
             if bo_args:
                 try:
@@ -219,7 +255,7 @@ class ScriptRunner:
                     logger.info(f'Output value: {parameters}')
                     # fname = f"{run_name}_script"
                     # function = self.globals_dict[fname]
-                    output = self.exex_steps(script, "script", logger, socketio, **parameters)
+                    output = self.exec_steps(script, "script", logger, socketio, run_id, i_progress, **parameters)
 
                     _output = {key: value for key, value in output.items() if key in return_list}
                     ax_client.complete_trial(trial_index=trial_index, raw_data=_output)
@@ -230,7 +266,7 @@ class ScriptRunner:
             else:
                 # fname = f"{run_name}_script"
                 # function = self.globals_dict[fname]
-                output = self.exex_steps(script, "script", logger, socketio)
+                output = self.exec_steps(script, "script", logger, socketio, run_id, i_progress)
 
             if output:
                 output_list.append(output)
@@ -248,6 +284,7 @@ class ScriptRunner:
             writer.writeheader()
             writer.writerows(output_list)
         logger.info(f'Results saved to {file_path}')
+        return filename
 
     @staticmethod
     def _emit_progress(socketio, progress):

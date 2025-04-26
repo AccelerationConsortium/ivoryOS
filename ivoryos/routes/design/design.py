@@ -360,7 +360,7 @@ def experiment_run():
             run_name = script.validate_function_name(run_name)
             runner.run_script(script=script, run_name=run_name, config=config, bo_args=bo_args,
                               logger=g.logger, socketio=g.socketio, repeat_count=repeat,
-                              output_path=datapath
+                              output_path=datapath, current_app=current_app._get_current_object()
                               )
             if utils.check_config_duplicate(config):
                 flash(f"WARNING: Duplicate in config entries.")

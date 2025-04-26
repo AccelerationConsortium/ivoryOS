@@ -635,6 +635,30 @@ class Script(db.Model):
             for i in exec_string.values():
                 s.write(f"\n\n\n{i}")
 
+class WorkflowRun(db.Model):
+    __tablename__ = 'workflow_runs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), nullable=False)
+    start_time = db.Column(db.DateTime, default=datetime.utcnow)
+    end_time = db.Column(db.DateTime)
+    data_path = db.Column(db.String(256))
+    steps = db.relationship('WorkflowStep', backref='workflow', cascade='all, delete-orphan', lazy=True)
+
+class WorkflowStep(db.Model):
+    __tablename__ = 'workflow_steps'
+
+    id = db.Column(db.Integer, primary_key=True)
+    workflow_id = db.Column(db.Integer, db.ForeignKey('workflow_runs.id'), nullable=False)
+
+    phase = db.Column(db.String(64), nullable=False)  # 'prep', 'main', 'cleanup'
+    repeat_index = db.Column(db.Integer, default=0)   # Only applies to 'main' phase
+    step_index = db.Column(db.Integer, default=0)
+    method_name = db.Column(db.String(128), nullable=False)
+    start_time = db.Column(db.DateTime)
+    end_time = db.Column(db.DateTime)
+    run_error = db.Column(db.Boolean, default=False)
+
 
 if __name__ == "__main__":
     a = Script()

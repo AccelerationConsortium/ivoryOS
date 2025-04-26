@@ -324,28 +324,28 @@
                 </div>
             </div>
         </div>
-        <div class="accordion-item design-control">
-            <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#data" aria-expanded="false" aria-controls="script">
-                    Download experiment data csv
-                </button>
-            </h2>
-            <div id="data" class="accordion-collapse collapse">
-                <div class="accordion-body">
-                    {% if session["most_recent_result"] %}
-                        <p><a href="{{ url_for('design.download_results', filename=session["most_recent_result"]) }}">Download the latest data <i class="bi bi-download"></i></a></p>
-                    {% endif %}
-                    <p>
-                    <h5>All data files</h5>
-                    {% for datafile in data_list %}
-                        <div>
-                            {{ datafile }} <a href="{{ url_for('design.download_results', filename=datafile) }} "><i class="bi bi-download"></i></a>
-                        </div>
-                    {% endfor %}
-                    </p>
-                </div>
-            </div>
-        </div>
+{#        <div class="accordion-item design-control">#}
+{#            <h2 class="accordion-header">#}
+{#                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#data" aria-expanded="false" aria-controls="script">#}
+{#                    Download experiment data csv#}
+{#                </button>#}
+{#            </h2>#}
+{#            <div id="data" class="accordion-collapse collapse">#}
+{#                <div class="accordion-body">#}
+{#                    {% if session["most_recent_result"] %}#}
+{#                        <p><a href="{{ url_for('design.download_results', filename=session["most_recent_result"]) }}">Download the latest data <i class="bi bi-download"></i></a></p>#}
+{#                    {% endif %}#}
+{#                    <p>#}
+{#                    <h5>All data files</h5>#}
+{#                    {% for datafile in data_list %}#}
+{#                        <div>#}
+{#                            {{ datafile }} <a href="{{ url_for('design.download_results', filename=datafile) }} "><i class="bi bi-download"></i></a>#}
+{#                        </div>#}
+{#                    {% endfor %}#}
+{#                    </p>#}
+{#                </div>#}
+{#            </div>#}
+{#        </div>#}
         <div class="accordion-item design-control">
             <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#script" aria-expanded="false" aria-controls="script">
