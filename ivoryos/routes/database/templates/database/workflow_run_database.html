@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}IvoryOS | Design Database{% endblock %}
+{% block body %}
+
+        <table class="table table-hover" id="workflowResultLibrary">
+        <thead>
+            <tr>
+                <th scope="col">Workflow name</th>
+                <th scope="col">Start time</th>
+                <th scope="col">End time</th>
+                <th scope="col">Data</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for workflow in workflows %}
+                <tr>
+                    <td><a href="{{ url_for('database.get_workflow_steps', workflow_id=workflow.id) }}">{{ workflow.name }}</a></td>
+                    <td>{{ workflow.start_time.strftime("%Y-%m-%d %H:%M:%S") if workflow.start_time else '' }}</td>
+                    <td>{{ workflow.end_time.strftime("%Y-%m-%d %H:%M:%S") if workflow.end_time else '' }}</td>
+
+                    <td>
+                        {% if workflow.data_path %}
+                          <a href="{{ url_for('design.download_results', filename=workflow.data_path) }}">{{ workflow.data_path }}</a>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if session['user'] == 'admin' or session['user'] == workflow.author %}
+                            <a href="{{ url_for('database.delete_workflow_data', workflow_id=workflow.id) }}">delete</a>
+                        {% else %}
+                            <a class="disabled-link">delete</a>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+{#    paging#}
+    <div class="pagination justify-content-center">
+        <div class="page-item {{ 'disabled' if not workflows.has_prev else '' }}">
+            <a class="page-link" href="{{ url_for('database.list_workflows', page=workflows.prev_num) }}">Previous</a>
+        </div>
+        {% for num in workflows.iter_pages() %}
+            <div class="page-item">
+                <a class="page-link {{ 'active' if num == workflows.page else '' }}" href="{{ url_for('database.list_workflows', page=num) }}">{{ num }}</a>
+            </div>
+        {% endfor %}
+        <div class="page-item {{ 'disabled' if not workflows.has_next else '' }}">
+            <a class="page-link" href="{{ url_for('database.list_workflows', page=workflows.next_num) }}">Next</a>
+        </div>
+    </div>
+
+    <div id="steps-container"></div>
+
+    <script>
+        function showSteps(workflowId) {
+            fetch(`/workflow_steps/${workflowId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('steps-container');
+                    container.innerHTML = '';  // Clear previous content
+                    const stepsList = document.createElement('ul');
+
+                    data.steps.forEach(step => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `
+                            <strong>Step: </strong> ${step.method_name} <br>
+                            <strong>Start Time:</strong> ${step.start_time} <br>
+                            <strong>End Time:</strong> ${step.end_time} <br>
+                            <strong>Human Intervention:</strong> ${step.run_error ? 'Yes' : 'No'}
+                        `;
+                        stepsList.appendChild(li);
+                    });
+
+                    container.appendChild(stepsList);
+                });
+        }
+    </script>
+
+{% endblock %}

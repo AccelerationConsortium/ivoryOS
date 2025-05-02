@@ -19,6 +19,11 @@
                 </div>
             </div>
         {% endfor %}
+        <div class="d-flex mb-3">
+            <a href="{{ url_for('design.download', filetype='proxy') }}" class="btn btn-outline-primary">
+                <i class="bi bi-download"></i> Download remote control script
+            </a>
+        </div>
         {% if not deck %}
             <div class="col-xl-3 col-lg-4 col-md-6 mb-4 ">
                 <div class="bg-white rounded shadow-sm position-relative">

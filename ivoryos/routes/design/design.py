@@ -11,6 +11,7 @@ from flask_socketio import SocketIO
 from werkzeug.utils import secure_filename
 
 from ivoryos.utils import utils
+from ivoryos.utils.client_proxy import create_function, export_to_python
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.form import create_builtin_form, create_action_button, format_name, create_form_from_pseudo, \
     create_form_from_action, create_all_builtin_forms
@@ -360,7 +361,7 @@ def experiment_run():
             run_name = script.validate_function_name(run_name)
             runner.run_script(script=script, run_name=run_name, config=config, bo_args=bo_args,
                               logger=g.logger, socketio=g.socketio, repeat_count=repeat,
-                              output_path=datapath
+                              output_path=datapath, current_app=current_app._get_current_object()
                               )
             if utils.check_config_duplicate(config):
                 flash(f"WARNING: Duplicate in config entries.")
@@ -525,7 +526,20 @@ def download(filetype):
             outfile.write(json_object)
     elif filetype == "python":
         filepath = os.path.join(current_app.config["SCRIPT_FOLDER"], f"{run_name}.py")
-
+    elif filetype == "proxy":
+        snapshot = global_config.deck_snapshot.copy()
+        class_definitions = {}
+        # Iterate through each instrument in the snapshot
+        for instrument_key, instrument_data in snapshot.items():
+            # Iterate through each function associated with the current instrument
+            for function_key, function_data in instrument_data.items():
+                # Convert the function signature to a string representation
+                function_data['signature'] = str(function_data['signature'])
+            class_name = instrument_key.split('.')[-1]  # Extracting the class name from the path
+            class_definitions[class_name.capitalize()] = create_function(request.url_root, class_name, instrument_data)
+        # Export the generated class definitions to a .py script
+        export_to_python(class_definitions, current_app.config["OUTPUT_FOLDER"])
+        filepath = os.path.join(current_app.config["OUTPUT_FOLDER"], "generated_proxy.py")
     return send_file(os.path.abspath(filepath), as_attachment=True)
 
 

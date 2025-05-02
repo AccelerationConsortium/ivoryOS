@@ -18,6 +18,16 @@ from ivoryos.utils.script_runner import ScriptRunner
 from ivoryos.version import __version__ as ivoryos_version
 from importlib.metadata import entry_points
 global_config = GlobalConfig()
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+import sqlite3
+
+@event.listens_for(Engine, "connect")
+def enforce_sqlite_foreign_keys(dbapi_connection, connection_record):
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 url_prefix = os.getenv('URL_PREFIX', "/ivoryos")
 app = Flask(__name__, static_url_path=f'{url_prefix}/static', static_folder='static')

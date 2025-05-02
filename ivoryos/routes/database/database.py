@@ -1,7 +1,7 @@
-from flask import Blueprint, redirect, url_for, flash, request, render_template, session, current_app
+from flask import Blueprint, redirect, url_for, flash, request, render_template, session, current_app, jsonify
 from flask_login import login_required
 
-from ivoryos.utils.db_models import Script, db
+from ivoryos.utils.db_models import Script, db, WorkflowRun, WorkflowStep
 from ivoryos.utils.utils import get_script_file, post_script_file
 
 database = Blueprint('database', __name__, template_folder='templates/database')
@@ -188,3 +188,44 @@ def save_as():
         else:
             flash("Script name is already exist in database")
         return redirect(url_for("design.experiment_builder"))
+
+
+@database.route('/workflow_runs')
+def list_workflows():
+    query = WorkflowRun.query
+    search_term = request.args.get("keyword", None)
+    if search_term:
+        query = query.filter(WorkflowRun.name.like(f'%{search_term}%'))
+    page = request.args.get('page', default=1, type=int)
+    per_page = 10
+
+    workflows = query.paginate(page=page, per_page=per_page, error_out=False)
+    return render_template('workflow_run_database.html', workflows=workflows)
+
+
+@database.route('/workflow_steps/<int:workflow_id>')
+def get_workflow_steps(workflow_id):
+    steps = WorkflowStep.query.filter_by(workflow_id=workflow_id).all()
+    steps_data = [step.as_dict() for step in steps]
+    return jsonify({'steps': steps_data})
+
+
+@database.route("/delete_workflow_data/<workflow_id>")
+@login_required
+def delete_workflow_data(workflow_id: str):
+    """
+    .. :quickref: Database; delete experiment data from database
+
+    delete workflow data from database
+
+    .. http:get:: /delete_workflow_data/<workflow_id>
+
+    :param workflow_id: workflow id
+    :type workflow_id: str
+    :status 302: redirect to :http:get:`/ivoryos/workflow_runs/`
+
+    """
+    run = WorkflowRun.query.get(workflow_id)
+    db.session.delete(run)
+    db.session.commit()
+    return redirect(url_for('database.list_workflows'))

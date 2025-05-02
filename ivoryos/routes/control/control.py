@@ -151,7 +151,7 @@ def controllers(instrument: str):
     return render_template('controllers.html', instrument=instrument, forms=forms, format_name=format_name)
 
 
-@control.route("/backend_control/<instrument>", methods=['GET', 'POST'])
+@control.route("/backend_control/<instrument>", methods=['POST'])
 def backend_control(instrument: str=None):
     """
     .. :quickref: Backend Control; backend control
@@ -187,7 +187,7 @@ def backend_control(instrument: str=None):
                 return json_output, 400
         else:
             return "instrument not exist", 400
-    return json_output, 200
+        return json_output, 200
 
 
 @control.route("/backend_control", methods=['GET'])
