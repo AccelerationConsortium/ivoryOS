@@ -7,7 +7,6 @@
         <thead>
             <tr>
                 <th scope="col">Workflow name</th>
-                <th scope="col">Workflow ID</th>
                 <th scope="col">Start time</th>
                 <th scope="col">End time</th>
                 <th scope="col">Data</th>
@@ -17,10 +16,21 @@
             {% for workflow in workflows %}
                 <tr>
                     <td><a href="{{ url_for('database.get_workflow_steps', workflow_id=workflow.id) }}">{{ workflow.name }}</a></td>
-                    <td>{{ workflow.id }}</td>
-                    <td>{{ workflow.start_time }}</td>
-                    <td>{{ workflow.end_time }}</td>
-                    <td><a href="{{ url_for('design.download_results', filename=workflow.data_path) }} ">{{ workflow.data_path }}</a></td>
+                    <td>{{ workflow.start_time.strftime("%Y-%m-%d %H:%M:%S") if workflow.start_time else '' }}</td>
+                    <td>{{ workflow.end_time.strftime("%Y-%m-%d %H:%M:%S") if workflow.end_time else '' }}</td>
+
+                    <td>
+                        {% if workflow.data_path %}
+                          <a href="{{ url_for('design.download_results', filename=workflow.data_path) }}">{{ workflow.data_path }}</a>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if session['user'] == 'admin' or session['user'] == workflow.author %}
+                            <a href="{{ url_for('database.delete_workflow_data', workflow_id=workflow.id) }}">delete</a>
+                        {% else %}
+                            <a class="disabled-link">delete</a>
+                        {% endif %}
+                    </td>
                 </tr>
             {% endfor %}
         </tbody>

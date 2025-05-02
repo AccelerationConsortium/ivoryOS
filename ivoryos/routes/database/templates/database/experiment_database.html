@@ -30,7 +30,7 @@
                 <th scope="col">Time created</th>
                 <th scope="col">Last modified</th>
                 <th scope="col">Author</th>
-                <th scope="col">Registered</th>
+{#                <th scope="col">Registered</th>#}
                 <th scope="col"></th>
             </tr>
         </thead>
@@ -43,13 +43,13 @@
                     <td>{{ workflow.time_created }}</td>
                     <td>{{ workflow.last_modified }}</td>
                     <td>{{ workflow.author }}</td>
-                    <td>{{ workflow.registered }}</td>
+{#                    <td>{{ workflow.registered }}</td>#}
                     <td>
                         {#not workflow.status == "finalized" or#}
                         {% if session['user'] == 'admin' or session['user'] == workflow.author %}
                             <a href="{{ url_for('database.delete_workflow', workflow_name=workflow.name) }}">delete</a>
                         {% else %}
-                            <a class="disabled-link" href="{{ url_for('database.delete_workflow', workflow_name=workflow.name) }}">delete</a>
+                            <a class="disabled-link">delete</a>
                         {% endif %}
                     <td>
                 </tr>

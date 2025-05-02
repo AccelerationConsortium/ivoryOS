@@ -206,10 +206,26 @@ def list_workflows():
 @database.route('/workflow_steps/<int:workflow_id>')
 def get_workflow_steps(workflow_id):
     steps = WorkflowStep.query.filter_by(workflow_id=workflow_id).all()
-    steps_data = [{
-        'step_name': step.method_name,
-        'start_time': step.start_time.strftime('%Y-%m-%d %H:%M:%S'),
-        'end_time': step.end_time.strftime('%Y-%m-%d %H:%M:%S'),
-        'human_intervention': step.run_error,
-    } for step in steps]
+    steps_data = [step.as_dict() for step in steps]
     return jsonify({'steps': steps_data})
+
+
+@database.route("/delete_workflow_data/<workflow_id>")
+@login_required
+def delete_workflow_data(workflow_id: str):
+    """
+    .. :quickref: Database; delete experiment data from database
+
+    delete workflow data from database
+
+    .. http:get:: /delete_workflow_data/<workflow_id>
+
+    :param workflow_id: workflow id
+    :type workflow_id: str
+    :status 302: redirect to :http:get:`/ivoryos/workflow_runs/`
+
+    """
+    run = WorkflowRun.query.get(workflow_id)
+    db.session.delete(run)
+    db.session.commit()
+    return redirect(url_for('database.list_workflows'))

@@ -640,16 +640,26 @@ class WorkflowRun(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), nullable=False)
-    start_time = db.Column(db.DateTime, default=datetime.utcnow)
+    platform = db.Column(db.String(128), nullable=False)
+    start_time = db.Column(db.DateTime, default=datetime.now())
     end_time = db.Column(db.DateTime)
     data_path = db.Column(db.String(256))
-    steps = db.relationship('WorkflowStep', backref='workflow', cascade='all, delete-orphan', lazy=True)
+    steps = db.relationship(
+        'WorkflowStep',
+        backref='workflow_runs',
+        cascade='all, delete-orphan',
+        passive_deletes=True
+    )
+    def as_dict(self):
+        dict = self.__dict__
+        dict.pop('_sa_instance_state', None)
+        return dict
 
 class WorkflowStep(db.Model):
     __tablename__ = 'workflow_steps'
 
     id = db.Column(db.Integer, primary_key=True)
-    workflow_id = db.Column(db.Integer, db.ForeignKey('workflow_runs.id'), nullable=False)
+    workflow_id = db.Column(db.Integer, db.ForeignKey('workflow_runs.id', ondelete='CASCADE'), nullable=False)
 
     phase = db.Column(db.String(64), nullable=False)  # 'prep', 'main', 'cleanup'
     repeat_index = db.Column(db.Integer, default=0)   # Only applies to 'main' phase
@@ -659,6 +669,10 @@ class WorkflowStep(db.Model):
     end_time = db.Column(db.DateTime)
     run_error = db.Column(db.Boolean, default=False)
 
+    def as_dict(self):
+        dict = self.__dict__
+        dict.pop('_sa_instance_state', None)
+        return dict
 
 if __name__ == "__main__":
     a = Script()

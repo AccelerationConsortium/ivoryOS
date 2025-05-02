@@ -173,7 +173,7 @@ class ScriptRunner:
         script_dict = script.script_dict
         with current_app.app_context():
 
-            run = WorkflowRun(name=script.name or "untitled", start_time=datetime.now())
+            run = WorkflowRun(name=script.name or "untitled", platform=script.deck,start_time=datetime.now())
             db.session.add(run)
             db.session.flush()
 
@@ -196,6 +196,7 @@ class ScriptRunner:
             with self.lock:
                 self.is_running = False
             # Save results if necessary
+            filename = None
             if output_list:
                 filename = self._save_results(run_name, arg_type, return_list, output_list, logger, output_path)
             self._emit_progress(socketio, 100)
