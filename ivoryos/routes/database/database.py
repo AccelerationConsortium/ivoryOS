@@ -203,11 +203,27 @@ def list_workflows():
     return render_template('workflow_run_database.html', workflows=workflows)
 
 
-@database.route('/workflow_steps/<int:workflow_id>')
+@database.route("/workflow_steps/<int:workflow_id>")
 def get_workflow_steps(workflow_id):
-    steps = WorkflowStep.query.filter_by(workflow_id=workflow_id).all()
-    steps_data = [step.as_dict() for step in steps]
-    return jsonify({'steps': steps_data})
+    workflow = WorkflowRun.query.get_or_404(workflow_id)
+    steps = WorkflowStep.query.filter_by(workflow_id=workflow_id).order_by(WorkflowStep.start_time).all()
+
+    # Organize steps by phase + repeat_index
+    grouped = {
+        "prep": [],
+        "script": {},
+        "cleanup": [],
+    }
+
+    for step in steps:
+        if step.phase == "prep":
+            grouped["prep"].append(step)
+        elif step.phase == "script":
+            grouped["script"].setdefault(step.repeat_index, []).append(step)
+        elif step.phase == "cleanup" or step.method_name == "stop":
+            grouped["cleanup"].append(step)
+
+    return render_template("experiment_step_view.html", workflow=workflow, grouped=grouped)
 
 
 @database.route("/delete_workflow_data/<workflow_id>")
