@@ -1,3 +1,7 @@
+v0.1.23
+- Add show line number
+- Add dropdown menu option for Enum type
+
 v0.1.22
 - add data page
 - fix phase order in run page
