@@ -242,6 +242,12 @@
                     <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='script' else 'nav-link'}}" aria-current="page" href="{{url_for('design.toggle_script_type', stype='script') }}">Experiment</a></li>
                     <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='cleanup' else 'nav-link'}}" aria-current="page" href="{{url_for('design.toggle_script_type', stype='cleanup') }}">Clean up</a></li>
                 </ul>
+
+                <div class="form-check form-switch ms-auto">
+                    <input class="form-check-input" type="checkbox" id="toggleLineNumbers" onchange="toggleLineNumbers()">
+                    <label class="form-check-label" for="toggleLineNumbers">Show Line Numbers</label>
+                </div>
+
             </div>
 
             <div class="canvas" droppable="true">
