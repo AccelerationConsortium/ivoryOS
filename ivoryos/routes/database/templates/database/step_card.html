@@ -1,0 +1,7 @@
+<div class="card mb-2 {{ 'border-danger text-danger bg-light' if step.run_error else 'border-secondary' }}">
+  <div class="card-body p-2">
+    <strong>{{ step.method_name }}</strong>
+    <small>Start: {{ step.start_time }}</small>
+    <small>End: {{ step.end_time }}</small>
+  </div>
+</div>
