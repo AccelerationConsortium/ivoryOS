@@ -40,6 +40,13 @@ def handle_abort_current():
 
 @socketio.on('pause')
 def handle_pause():
+    runner.retry = False
+    msg = runner.toggle_pause()
+    socketio.emit('log', {'message': msg})
+
+@socketio.on('retry')
+def handle_pause():
+    runner.retry = True
     msg = runner.toggle_pause()
     socketio.emit('log', {'message': msg})
 

@@ -17,6 +17,7 @@ deck = None
 
 class ScriptRunner:
     def __init__(self, globals_dict=None):
+        self.retry = False
         if globals_dict is None:
             globals_dict = globals()
         self.globals_dict = globals_dict
@@ -152,14 +153,18 @@ class ScriptRunner:
                 step.run_error = True
                 self.toggle_pause()
             step.end_time = datetime.now()
+            db.session.add(step)
+            db.session.commit()
+
             self.pause_event.wait()
 
             # todo update script during the run
             # _func_str = script.compile()
             # step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
-            db.session.add(step)
-            db.session.commit()
-            index += 1
+            if not step.run_error:
+                index += 1
+            elif not self.retry:
+                index += 1
         return exec_locals  # Return the 'results' variable
 
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, logger, socketio, config, bo_args,
