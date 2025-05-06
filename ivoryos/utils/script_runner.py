@@ -144,7 +144,12 @@ class ScriptRunner:
             # if line.startswith("registered_workflows"):
             #     line = line.replace("registered_workflows.", "")
             try:
-                exec(line, exec_globals, exec_locals)
+                if line.startswith("time.sleep("): # add safe sleep for time.sleep lines
+                    duration_str = line[len("time.sleep("):-1]
+                    duration = float(duration_str)
+                    self.safe_sleep(duration)
+                else:
+                    exec(line, exec_globals, exec_locals)
                 step.run_error = False
             except Exception as e:
                 logger.error(f"Error during script execution: {e}")
@@ -295,3 +300,11 @@ class ScriptRunner:
     @staticmethod
     def _emit_progress(socketio, progress):
         socketio.emit('progress', {'progress': progress})
+
+    def safe_sleep(self, duration: float):
+        interval = 1  # check every 1 second
+        end_time = time.time() + duration
+        while time.time() < end_time:
+            if self.stop_current_event.is_set():
+                return  # Exit early if stop is requested
+            time.sleep(min(interval, end_time - time.time()))
