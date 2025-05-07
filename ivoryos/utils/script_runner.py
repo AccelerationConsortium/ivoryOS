@@ -17,6 +17,7 @@ deck = None
 
 class ScriptRunner:
     def __init__(self, globals_dict=None):
+        self.retry = False
         if globals_dict is None:
             globals_dict = globals()
         self.globals_dict = globals_dict
@@ -143,7 +144,12 @@ class ScriptRunner:
             # if line.startswith("registered_workflows"):
             #     line = line.replace("registered_workflows.", "")
             try:
-                exec(line, exec_globals, exec_locals)
+                if line.startswith("time.sleep("): # add safe sleep for time.sleep lines
+                    duration_str = line[len("time.sleep("):-1]
+                    duration = float(duration_str)
+                    self.safe_sleep(duration)
+                else:
+                    exec(line, exec_globals, exec_locals)
                 step.run_error = False
             except Exception as e:
                 logger.error(f"Error during script execution: {e}")
@@ -152,14 +158,18 @@ class ScriptRunner:
                 step.run_error = True
                 self.toggle_pause()
             step.end_time = datetime.now()
+            db.session.add(step)
+            db.session.commit()
+
             self.pause_event.wait()
 
             # todo update script during the run
             # _func_str = script.compile()
             # step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
-            db.session.add(step)
-            db.session.commit()
-            index += 1
+            if not step.run_error:
+                index += 1
+            elif not self.retry:
+                index += 1
         return exec_locals  # Return the 'results' variable
 
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, logger, socketio, config, bo_args,
@@ -290,3 +300,11 @@ class ScriptRunner:
     @staticmethod
     def _emit_progress(socketio, progress):
         socketio.emit('progress', {'progress': progress})
+
+    def safe_sleep(self, duration: float):
+        interval = 1  # check every 1 second
+        end_time = time.time() + duration
+        while time.time() < end_time:
+            if self.stop_current_event.is_set():
+                return  # Exit early if stop is requested
+            time.sleep(min(interval, end_time - time.time()))

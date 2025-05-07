@@ -1,6 +1,8 @@
+from enum import Enum
+
 from wtforms.fields.choices import SelectField
 from wtforms.fields.core import Field
-from wtforms.validators import InputRequired
+from wtforms.validators import InputRequired, ValidationError
 from wtforms.widgets.core import TextInput
 
 from flask_wtf import FlaskForm
@@ -187,6 +189,30 @@ class VariableOrBoolField(BooleanField):
         return "y"
 
 
+class FlexibleEnumField(StringField):
+    def __init__(self, label=None, validators=None, choices=None, script=None, **kwargs):
+        super().__init__(label, validators, **kwargs)
+        self.script = script
+        self.enum_class = choices
+        self.choices = [e.name for e in self.enum_class]
+        # self.value_list = [e.name for e in self.enum_class]
+
+
+    def process_formdata(self, valuelist):
+        if valuelist:
+            key = valuelist[0]
+            if key in self.choices:
+                # Convert the string key to Enum instance
+                self.data = self.enum_class[key].value
+            elif self.data.startswith("#"):
+                if not self.script.editing_type == "script":
+                    raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
+                self.data = self.data
+            else:
+                raise ValidationError(
+                    f"Invalid choice: '{key}'. Must match one of {list(self.enum_class.__members__.keys())}")
+
+
 def format_name(name):
     """Converts 'example_name' to 'Example Name'."""
     name = name.split(".")[-1]
@@ -218,20 +244,39 @@ def create_form_for_method(method, autofill, script=None, design=True):
         if param.name == 'self':
             continue
         formatted_param_name = format_name(param.name)
+
+        default_value = None
+        if autofill:
+            default_value = f'#{param.name}'
+        else:
+            if param.default is not param.empty:
+                if isinstance(param.default, Enum):
+                    default_value = param.default.name
+                else:
+                    default_value = param.default
+
         field_kwargs = {
             "label": formatted_param_name,
-            "default": f'#{param.name}' if autofill else (param.default if param.default is not param.empty else None),
+            "default": default_value,
             "validators": [InputRequired()] if param.default is param.empty else None,
             **({"script": script} if (autofill or design) else {})
         }
-        field_class, placeholder_text = annotation_mapping.get(
-            param.annotation,
-            (VariableOrStringField if design else StringField, f'Enter {param.annotation} value')
-        )
+        if isinstance(param.annotation, type) and issubclass(param.annotation, Enum):
+            # enum_class = [(e.name, e.value) for e in param.annotation]
+            field_class = FlexibleEnumField
+            placeholder_text = f"Choose or type a value for {param.annotation.__name__} (start with # for custom)"
+            extra_kwargs = {"choices": param.annotation}
+        else:
+            field_class, placeholder_text = annotation_mapping.get(
+                param.annotation,
+                (VariableOrStringField if design else StringField, f'Enter {param.annotation} value')
+            )
+            extra_kwargs = {}
+
         render_kwargs = {"placeholder": placeholder_text}
 
         # Create the field with additional rendering kwargs for placeholder text
-        field = field_class(**field_kwargs, render_kw=render_kwargs)
+        field = field_class(**field_kwargs, render_kw=render_kwargs, **extra_kwargs)
         setattr(DynamicForm, param.name, field)
 
     # setattr(DynamicForm, f'add', fname)

@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block title %}IvoryOS | Experiment Results{% endblock %}
+
+{% block body %}
+<style>
+  .vis-time-axis .vis-text.vis-minor,
+  .vis-time-axis .vis-text.vis-major {
+    color: #666;
+  }
+  .vis-item.stop {
+    background-color: red;
+    color: white;
+    border: none;
+    font-weight: bold;
+  }
+</style>
+
+<div id="timeline"></div>
+
+<script src="https://unpkg.com/vis-timeline@latest/standalone/umd/vis-timeline-graph2d.min.js"></script>
+<link href="https://unpkg.com/vis-timeline@latest/styles/vis-timeline-graph2d.min.css" rel="stylesheet"/>
+
+<h1>Experiment Step View</h1>
+
+<div id="visualization"></div>
+
+<script type="text/javascript">
+  var container = document.getElementById('visualization');
+
+  const items = [
+    {% if grouped.prep %}
+      {
+        id: 'prep',
+        content: 'Prep Phase',
+        start: '{{ grouped.prep[0].start_time }}',
+        end: '{{ grouped.prep[-1].end_time }}',
+        className: 'prep',
+        group: 'prep'
+      },
+    {% endif %}
+
+    {% for repeat_index, step_list in grouped.script.items()|sort %}
+      {
+        id: 'iter{{ repeat_index }}',
+        content: 'Iteration {{ repeat_index }}',
+        start: '{{ step_list[0].start_time }}',
+        end: '{{ step_list[-1].end_time }}',
+        className: 'script',
+        group: 'iter{{ repeat_index }}'
+      },
+      {% for step in step_list %}
+        {% if step.method_name == "stop" %}
+          {
+            id: 'stop-{{ step.id }}',
+            content: '🛑 Stop',
+            start: '{{ step.start_time }}',
+            type: 'point',
+            className: 'stop',
+            group: 'iter{{ repeat_index }}'
+          },
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+
+    {% if grouped.cleanup %}
+      {
+        id: 'cleanup',
+        content: 'Cleanup Phase',
+        start: '{{ grouped.cleanup[0].start_time }}',
+        end: '{{ grouped.cleanup[-1].end_time }}',
+        className: 'cleanup',
+        group: 'cleanup'
+
+      },
+    {% endif %}
+  ];
+
+  const groups = [
+      {% if grouped.prep %}{ id: 'prep', content: 'Prep' },{% endif %}
+      {% for repeat_index in grouped.script.keys()|sort %}{ id: 'iter{{ repeat_index }}', content: 'Iteration {{ repeat_index }}' },{% endfor %}
+      {% if grouped.cleanup %}{ id: 'cleanup', content: 'Cleanup' },{% endif %}
+  ];
+
+  var options = {
+      clickToUse: true,
+      stack: false,  // important to keep point within group row
+      horizontalScroll: true,
+      zoomKey: 'ctrlKey'
+  };
+
+  // Initialize your timeline with the sorted groups
+  const timeline = new vis.Timeline(container, items, groups, options);
+
+  timeline.on('select', function (props) {
+    const id = props.items[0];
+    if (id && id.startsWith('iter')) {
+      const card = document.getElementById('card-' + id);
+      if (card) {
+        const yOffset = -80;
+        const y = card.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+    }
+  });
+</script>
+
+<h2>Workflow: {{ workflow.name }}</h2>
+
+{% if grouped.prep %}
+  <h4 class="mt-4">Prep Phase</h4>
+  {% for step in grouped.prep %}
+    {% include "step_card.html" %}
+  {% endfor %}
+{% endif %}
+
+{% for repeat_index, step_list in grouped.script.items()|sort %}
+  <h4 class="mt-4" id="card-iter{{ repeat_index }}">Iteration {{ repeat_index }}</h4>
+  {% for step in step_list %}
+    {% include "step_card.html" %}
+  {% endfor %}
+{% endfor %}
+
+{% if grouped.cleanup %}
+  <h4 class="mt-4">Cleanup Phase</h4>
+  {% for step in grouped.cleanup %}
+    {% include "step_card.html" %}
+  {% endfor %}
+{% endif %}
+{% endblock %}

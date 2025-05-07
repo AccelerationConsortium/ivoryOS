@@ -1,3 +1,11 @@
+v0.1.23
+- Add show line number
+- Add dropdown menu option for Enum type
+- Add retry option when error out
+- New wait implementation, can stop during waiting
+- Add direct blueprint plugin config
+
+
 v0.1.22
 - add data page
 - fix phase order in run page

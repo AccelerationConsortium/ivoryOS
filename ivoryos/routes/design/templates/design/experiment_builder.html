@@ -144,6 +144,16 @@
                                                                     {{ field(class="btn btn-dark") }}
                                                                 {% elif field.type == "BooleanField" %}
                                                                     {{ field(class="form-check-input") }}
+                                                                {% elif field.type == "FlexibleEnumField" %}
+                                                                   <input type="text" id="{{ field.id }}" name="{{ field.name }}" value="{{ field.data }}"
+                                                                      list="{{ field.id }}_options" placeholder="{{ field.render_kw.placeholder if field.render_kw and field.render_kw.placeholder }}"
+                                                                      class="form-control">
+                                                                   <datalist id="{{ field.id }}_options">
+                                                                      {% for key in field.choices %}
+                                                                         <option value="{{ key }}">{{ key }}</option>
+                                                                      {% endfor %}
+                                                                   </datalist>
+
                                                                 {% else %}
                                                                     {{ field(class="form-control") }}
                                                                 {% endif %}
@@ -219,7 +229,7 @@
 
         {# canvas #}
         <div class="col-md-9 scroll-column">
-            <div>
+            <div class="d-flex align-items-center ">
 {#                file dropdown menu    #}
                 <ul class="nav nav-tabs">
                     <li class="nav-item dropdown">
@@ -242,6 +252,12 @@
                     <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='script' else 'nav-link'}}" aria-current="page" href="{{url_for('design.toggle_script_type', stype='script') }}">Experiment</a></li>
                     <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='cleanup' else 'nav-link'}}" aria-current="page" href="{{url_for('design.toggle_script_type', stype='cleanup') }}">Clean up</a></li>
                 </ul>
+
+                <div class="form-check form-switch ms-auto">
+                    <input class="form-check-input" type="checkbox" id="toggleLineNumbers" onchange="toggleLineNumbers()">
+                    <label class="form-check-label" for="toggleLineNumbers">Show Line Numbers</label>
+                </div>
+
             </div>
 
             <div class="canvas" droppable="true">
@@ -279,6 +295,7 @@
                     <ul class="reorder">
                     {% for button in buttons %}
                         <li id="{{ button['id'] }}" style="list-style-type: none;">
+                            <span class="line-number d-none">{{ button['id'] }}.</span>
                             <a href="{{ url_for('design.edit_action', uuid=button['uuid']) }}" type="button" class="btn btn-light" style="{{ button['style'] }}">{{ button['label'] }}</a>
                             {% if not button["instrument"] in ["if","while","repeat"] %}
                                 <a href="{{ url_for('design.duplicate_action', id=button['id']) }}" type="button" class="btn btn-light"><span class="bi bi-copy"></span></a>
@@ -406,14 +423,44 @@
 </div>
 
 
-    {% if instrument and use_llm %}
-        <script>
-            const buttonIds = {{ ['generate'] | tojson }};
-        </script>
-        <script src="{{ url_for('static', filename='js/overlay.js') }}"></script>
-    {% endif %}
-     <script>
-        const updateListUrl = "{{ url_for('design.update_list') }}";
+{% if instrument and use_llm %}
+    <script>
+        const buttonIds = {{ ['generate'] | tojson }};
     </script>
-    <script src="{{ url_for('static', filename='js/sortable_design.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/overlay.js') }}"></script>
+{% endif %}
+
+<script>
+    const updateListUrl = "{{ url_for('design.update_list') }}";
+
+    // Toggle visibility of line numbers
+    function toggleLineNumbers(save = true) {
+        const show = document.getElementById('toggleLineNumbers').checked;
+        document.querySelectorAll('.line-number').forEach(el => {
+            el.classList.toggle('d-none', !show);
+        });
+
+        if (save) {
+            localStorage.setItem('showLineNumbers', show ? 'true' : 'false');
+        }
+    }
+
+    // Restore state on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        const savedState = localStorage.getItem('showLineNumbers');
+        const checkbox = document.getElementById('toggleLineNumbers');
+
+        if (savedState === 'true') {
+            checkbox.checked = true;
+        }
+
+        toggleLineNumbers(false);  // don't overwrite localStorage on load
+
+        checkbox.addEventListener('change', () => toggleLineNumbers());
+    });
+</script>
+
+
+<script src="{{ url_for('static', filename='js/sortable_design.js') }}"></script>
+
 {% endblock %}

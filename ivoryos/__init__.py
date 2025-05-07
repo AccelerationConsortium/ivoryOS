@@ -2,7 +2,7 @@ import os
 import sys
 from typing import Union
 
-from flask import Flask, redirect, url_for, g
+from flask import Flask, redirect, url_for, g, Blueprint
 
 from ivoryos.config import Config, get_config
 from ivoryos.routes.auth.auth import auth, login_manager
@@ -81,7 +81,8 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
         config: Config = None,
         logger: Union[str, list] = None,
         logger_output_name: str = None,
-        enable_design=True
+        enable_design=True,
+        blueprint_plugins=None,
         ):
     """
     Start ivoryOS app server.
@@ -99,7 +100,11 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     """
     app = create_app(config_class=config or get_config())  # Create app instance using factory function
 
-    plugins = load_plugins(app, socketio)
+    plugins = load_installed_plugins(app, socketio)
+
+    if blueprint_plugins:
+        config_plugins = load_plugins(blueprint_plugins, app, socketio)
+        plugins.extend(config_plugins)
 
     def inject_nav_config():
         """Make NAV_CONFIG available globally to all templates."""
@@ -143,7 +148,7 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     # return app
 
 
-def load_plugins(app, socketio):
+def load_installed_plugins(app, socketio):
     """
     Dynamically load installed plugins and attach Flask-SocketIO.
     """
@@ -160,4 +165,17 @@ def load_plugins(app, socketio):
 
     return plugin_names
 
-
+def load_plugins(blueprints:list[Blueprint], app, socketio):
+    """
+    Dynamically load installed plugins and attach Flask-SocketIO.
+    """
+    plugin_names = []
+    if not isinstance(blueprints, list):
+        blueprints = [blueprints]
+    for blueprint in blueprints:
+        # If the plugin has an `init_socketio()` function, pass socketio
+        if hasattr(blueprint, 'init_socketio'):
+            blueprint.init_socketio(socketio)
+        plugin_names.append(blueprint.name)
+        app.register_blueprint(blueprint, url_prefix=f"{url_prefix}/{blueprint.name}")
+    return plugin_names

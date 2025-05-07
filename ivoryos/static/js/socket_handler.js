@@ -68,6 +68,11 @@ document.addEventListener("DOMContentLoaded", function() {
         console.log("Execution resumed.");
     });
 
+    document.getElementById('retry-btn').addEventListener('click', function() {
+        socket.emit('retry');  // Resume execution
+        console.log("Execution resumed, retrying.");
+    });
+
     document.getElementById('stop-btn').addEventListener('click', function() {
         socket.emit('pause');  // Resume execution
         socket.emit('abort_current');  // Stop execution

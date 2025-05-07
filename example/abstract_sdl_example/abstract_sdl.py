@@ -13,10 +13,17 @@ import sys
 import time
 from abc import ABC
 import random
+from enum import Enum
 from typing import List, Union
 
 from example.abstract_sdl_example.abstract_balance import AbstractBalance
 from example.abstract_sdl_example.abstract_pump import AbstractPump
+
+
+class Solvent(Enum):
+    Methanol = "Methanol"
+    Ethanol = "Ethanol"
+    Acetone = "Acetone"
 
 
 class AbstractSDL(ABC):
@@ -45,7 +52,7 @@ class AbstractSDL(ABC):
         return 1
 
     def dose_solvent(self,
-                     solvent_name: str,
+                     solvent_name: Solvent=Solvent.Methanol,
                      amount_in_ml: float = 5,
                      rate_ml_per_minute: float = 1
                      ):
