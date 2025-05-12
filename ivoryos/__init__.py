@@ -100,8 +100,8 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     """
     app = create_app(config_class=config or get_config())  # Create app instance using factory function
 
-    plugins = load_installed_plugins(app, socketio)
-
+    # plugins = load_installed_plugins(app, socketio)
+    plugins = {}
     if blueprint_plugins:
         config_plugins = load_plugins(blueprint_plugins, app, socketio)
         plugins.extend(config_plugins)
