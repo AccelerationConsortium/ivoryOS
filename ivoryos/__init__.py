@@ -17,10 +17,12 @@ from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.script_runner import ScriptRunner
 from ivoryos.version import __version__ as ivoryos_version
 from importlib.metadata import entry_points
+
 global_config = GlobalConfig()
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 import sqlite3
+
 
 @event.listens_for(Engine, "connect")
 def enforce_sqlite_foreign_keys(dbapi_connection, connection_record):
@@ -28,6 +30,7 @@ def enforce_sqlite_foreign_keys(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
+
 
 url_prefix = os.getenv('URL_PREFIX', "/ivoryos")
 app = Flask(__name__, static_url_path=f'{url_prefix}/static', static_folder='static')
@@ -81,8 +84,9 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
         config: Config = None,
         logger: Union[str, list] = None,
         logger_output_name: str = None,
-        enable_design=True,
-        blueprint_plugins=None,
+        enable_design: bool = True,
+        blueprint_plugins: Union[list[Blueprint], Blueprint] = [],
+        exclude_names: list[str] = [],
         ):
     """
     Start ivoryOS app server.
@@ -97,6 +101,8 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     :param logger: logger name of list of logger names, defaults to None
     :param logger_output_name: log file save name of logger, defaults to None, and will use "default.log"
     :param enable_design: enable design canvas, database and workflow execution
+    :param blueprint_plugins: custom Blueprint pages
+    :param exclude_names: module names to exclude from parsing
     """
     app = create_app(config_class=config or get_config())  # Create app instance using factory function
 
@@ -126,7 +132,10 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
         app.config["OFF_LINE"] = False
         global_config.deck = sys.modules[module]
         global_config.deck_snapshot = utils.create_deck_snapshot(global_config.deck,
-                                                                 output_path=app.config["DUMMY_DECK"], save=True)
+                                                                 output_path=app.config["DUMMY_DECK"],
+                                                                 save=True,
+                                                                 exclude_names=exclude_names
+                                                                 )
     else:
         app.config["OFF_LINE"] = True
     if model:
@@ -165,7 +174,8 @@ def load_installed_plugins(app, socketio):
 
     return plugin_names
 
-def load_plugins(blueprints:list[Blueprint], app, socketio):
+
+def load_plugins(blueprints: Union[list[Blueprint], Blueprint], app, socketio):
     """
     Dynamically load installed plugins and attach Flask-SocketIO.
     """

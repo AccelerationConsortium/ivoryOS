@@ -8,6 +8,7 @@ import subprocess
 import sys
 from collections import Counter
 
+import flask
 from flask import session
 from flask_socketio import SocketIO
 
@@ -239,7 +240,7 @@ def start_logger(socketio: SocketIO, logger_name: str, log_filename: str = None)
     return logger
 
 
-def ax_wrapper(data: dict, arg_types:list):
+def ax_wrapper(data: dict, arg_types: list):
     """
     Ax platform wrapper function for creating optimization campaign parameters and objective from the web form input
     :param data: e.g.,
@@ -363,17 +364,62 @@ def web_config_entry_wrapper(data: dict, config_type: list):
     return filtered_rows
 
 
-def create_deck_snapshot(deck, save: bool = False, output_path: str = ''):
+def create_deck_snapshot(deck, save: bool = False, output_path: str = '', exclude_names: list[str] = []):
     """
     Create a deck snapshot of the given script
     :param deck: python module name to create the deck snapshot from e.g. __main__
     :param save: save the deck snapshot into pickle file
     :param output_path: path to save the pickle file
+    :param exclude_names: module names to exclude from deck snapshot
     """
-    deck_snapshot = {f"deck.{name}": _inspect_class(val) for name, val in vars(deck).items()
-                     if not type(val).__module__ == 'builtins'
-                     and not name[0].isupper()
-                     and not name.startswith("_")}
+    exclude_classes = (flask.Blueprint, logging.Logger)
+
+    deck_snapshot = {}
+    included = {}
+    excluded = {}
+    failed = {}
+
+    for name, val in vars(deck).items():
+        qualified_name = f"deck.{name}"
+
+        # Exclusion checks
+        if (
+                type(val).__module__ == 'builtins'
+                or name[0].isupper()
+                or name.startswith("_")
+                or isinstance(val, exclude_classes)
+                or name in exclude_names
+        ):
+            excluded[qualified_name] = type(val).__name__
+            continue
+
+        try:
+            deck_snapshot[qualified_name] = _inspect_class(val)
+            included[qualified_name] = type(val).__name__
+        except Exception as e:
+            failed[qualified_name] = str(e)
+
+    # Final result
+    deck_summary = {
+        "included": included,
+        # "excluded": excluded,
+        "failed": failed
+    }
+
+    def print_deck_snapshot(deck_summary):
+        def print_section(title, items):
+            print(f"\n=== {title} ({len(items)}) ===")
+            if not items:
+                return
+            for name, class_type in items.items():
+                print(f"  {name}: {class_type}")
+
+        print_section("✅ INCLUDED", deck_summary["included"])
+        print_section("❌ FAILED", deck_summary["failed"])
+        print("\n")
+
+    print_deck_snapshot(deck_summary)
+
     if deck_snapshot and save:
         # pseudo_deck = parse_dict
         parse_dict = deck_snapshot.copy()
@@ -417,7 +463,6 @@ def get_method_from_workflow(function_string, func_name="workflow"):
     # func_name = next(iter(namespace))
     # Get the function name dynamically
     return namespace[func_name]
-
 
 # def load_workflows(script):
 #
