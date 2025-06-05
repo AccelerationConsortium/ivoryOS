@@ -627,3 +627,8 @@ def duplicate_action(id: int):
     script.duplicate_action(id)
     utils.post_script_file(script)
     return redirect(back)
+
+
+@design.route("/backend/status", methods=["GET"])
+def runner_status():
+    return jsonify(runner.get_status())
