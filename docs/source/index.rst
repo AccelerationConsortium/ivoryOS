@@ -41,7 +41,7 @@ In a python script, containing the initialized Python modules:
    introduction
    usage
    integration
-   customization
+   plugin
 
 
 .. toctree::
