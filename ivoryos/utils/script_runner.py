@@ -308,3 +308,13 @@ class ScriptRunner:
             if self.stop_current_event.is_set():
                 return  # Exit early if stop is requested
             time.sleep(min(interval, end_time - time.time()))
+
+    def get_status(self):
+        """Returns current status of the script runner."""
+        with self.lock:
+            return {
+                "is_running": self.is_running,
+                "paused": self.paused,
+                "stop_pending": self.stop_pending_event.is_set(),
+                "stop_current": self.stop_current_event.is_set(),
+            }

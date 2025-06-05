@@ -2,7 +2,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/ivoryos)](https://pypi.org/project/ivoryos/)
 ![License](https://img.shields.io/pypi/l/ivoryos)
 [![YouTube](https://img.shields.io/badge/YouTube-video-red?logo=youtube)](https://youtu.be/dFfJv9I2-1g)
-[![Research Square](https://img.shields.io/badge/Preprint-blue)](https://www.researchsquare.com/article/rs-5307798/v1)
+[![Published](https://img.shields.io/badge/Nature_Communications-paper-blue)](https://www.nature.com/articles/s41467-025-60514-w)
 
 
 ![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/ivoryos.png)
@@ -151,11 +151,10 @@ When you run the application for the first time, it will automatically create th
 ## Roadmap
 
 - [x] Allow plugin pages ✅  
-- [x] pause, resume, abort current and pending workflows ✅ 
+- [x] pause, resume, abort current and pending workflows ✅
+- [x] dropdown input ✅  
+- [x] show line number option ✅  
 - [ ] snapshot version control
-- [ ] dropdown input
-- [ ] show line number option
-
 
 ## Authors and Acknowledgement
 Ivory Zhang, Lucy Hao
