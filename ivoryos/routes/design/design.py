@@ -25,30 +25,42 @@ design = Blueprint('design', __name__, template_folder='templates/design')
 global_config = GlobalConfig()
 runner = ScriptRunner()
 
-
-@socketio.on('abort_pending')
-def handle_abort_pending():
+def abort_pending():
     runner.abort_pending()
     socketio.emit('log', {'message': "aborted pending iterations"})
 
-
-@socketio.on('abort_current')
-def handle_abort_current():
+def abort_current():
     runner.stop_execution()
     socketio.emit('log', {'message': "stopped next task"})
 
-
-@socketio.on('pause')
-def handle_pause():
+def pause():
     runner.retry = False
     msg = runner.toggle_pause()
     socketio.emit('log', {'message': msg})
 
-@socketio.on('retry')
-def handle_pause():
+def retry():
     runner.retry = True
     msg = runner.toggle_pause()
     socketio.emit('log', {'message': msg})
+
+
+# ---- Socket.IO Event Handlers ----
+
+@socketio.on('abort_pending')
+def handle_abort_pending():
+    abort_pending()
+
+@socketio.on('abort_current')
+def handle_abort_current():
+    abort_current()
+
+@socketio.on('pause')
+def handle_pause():
+    pause()
+
+@socketio.on('retry')
+def handle_retry():
+    retry()
 
 
 @socketio.on('connect')
@@ -632,3 +644,50 @@ def duplicate_action(id: int):
 @design.route("/backend/status", methods=["GET"])
 def runner_status():
     return jsonify(runner.get_status())
+
+
+# ---- HTTP API Endpoints ----
+
+@design.route("/api/abort_pending", methods=["POST"])
+def api_abort_pending():
+    abort_pending()
+    return jsonify({"status": "ok"}), 200
+
+@design.route("/api/abort_current", methods=["POST"])
+def api_abort_current():
+    abort_current()
+    return jsonify({"status": "ok"}), 200
+
+@design.route("/api/pause", methods=["POST"])
+def api_pause():
+    pause()
+    return jsonify({"status": "ok"}), 200
+
+@design.route("/api/retry", methods=["POST"])
+def api_retry():
+    retry()
+    return jsonify({"status": "ok"}), 200
+
+
+# @design.route("/api/save_script", methods=["POST"])
+# def save_script():
+#     script = Script(author=session.get('user'))
+#     data = request.get_json()
+#     script_str = data.get("script", "")
+#
+#     if not script_str.strip():
+#         return jsonify({"error": "No script provided"}), 400
+#
+#     script.load_script(script_str)
+#     utils.post_script_file(script)
+#
+#     return jsonify({"status": "saved", "length": len(script)}), 200
+
+
+@design.route("/api/get_script", methods=["GET"])
+def get_script():
+    script = utils.get_script_file()
+    script.sort_actions()
+    script_collection = script.compile()
+
+    return jsonify(script_collection), 200

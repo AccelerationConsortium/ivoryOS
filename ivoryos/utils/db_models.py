@@ -670,7 +670,7 @@ class WorkflowStep(db.Model):
     run_error = db.Column(db.Boolean, default=False)
 
     def as_dict(self):
-        dict = self.__dict__
+        dict = self.__dict__.copy()
         dict.pop('_sa_instance_state', None)
         return dict
 

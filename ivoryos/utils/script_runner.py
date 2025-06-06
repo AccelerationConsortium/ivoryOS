@@ -28,6 +28,7 @@ class ScriptRunner:
         self.is_running = False
         self.lock = threading.Lock()
         self.paused = False
+        self.current_step:WorkflowStep = None
 
     def toggle_pause(self):
         """Toggles between pausing and resuming the script"""
@@ -138,6 +139,7 @@ class ScriptRunner:
                 method_name=method_name,
                 start_time=start_time,
             )
+            self.current_step = step
             logger.info(f"Executing: {line}")
             socketio.emit('execution', {'section': f"{section_name}-{index}"})
             # self._emit_progress(socketio, 100)
@@ -315,6 +317,7 @@ class ScriptRunner:
             return {
                 "is_running": self.is_running,
                 "paused": self.paused,
+                "step_info": self.current_step.as_dict() if self.is_running else {},
                 "stop_pending": self.stop_pending_event.is_set(),
                 "stop_current": self.stop_current_event.is_set(),
             }
