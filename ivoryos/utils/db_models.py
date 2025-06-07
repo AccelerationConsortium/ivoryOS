@@ -48,7 +48,8 @@ class Script(db.Model):
 
     def __init__(self, name=None, deck=None, status=None, script_dict: dict = None, id_order: dict = None,
                  time_created=None, last_modified=None, editing_type=None, author: str = None,
-                 registered:bool=False,
+                 # registered:bool=False,
+                 python_script: str = None
                  ):
         if script_dict is None:
             script_dict = {"prep": [], "script": [], "cleanup": []}
@@ -76,6 +77,7 @@ class Script(db.Model):
         self.id_order = id_order
         self.editing_type = editing_type
         self.author = author
+        self.python_script = python_script or self.compile()
         # self.r = registered
 
     def as_dict(self):

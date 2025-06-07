@@ -87,7 +87,7 @@ class ScriptRunner:
         :param kwargs: Arguments to pass to the function
         :return: The final result of the function execution
         """
-        _func_str = script.compile()
+        _func_str = script.python_script or script.compile()
         step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
         global deck
         # global deck, registered_workflows
@@ -185,7 +185,7 @@ class ScriptRunner:
         script_dict = script.script_dict
         with current_app.app_context():
 
-            run = WorkflowRun(name=script.name or "untitled", platform=script.deck,start_time=datetime.now())
+            run = WorkflowRun(name=script.name or "untitled", platform=script.deck or "deck",start_time=datetime.now())
             db.session.add(run)
             db.session.flush()
 
@@ -217,7 +217,7 @@ class ScriptRunner:
             db.session.commit()
 
     def _run_actions(self, script, section_name="", logger=None, socketio=None, run_id=None):
-        _func_str = script.compile()
+        _func_str = script.python_script or script.compile()
         step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
         logger.info(f'Executing {section_name} steps') if step_list else logger.info(f'No {section_name} steps')
         if self.stop_pending_event.is_set():
@@ -317,7 +317,7 @@ class ScriptRunner:
             return {
                 "is_running": self.is_running,
                 "paused": self.paused,
-                "step_info": self.current_step.as_dict() if self.is_running else {},
+                "step_info": {} if not self.is_running else self.current_step.as_dict(),
                 "stop_pending": self.stop_pending_event.is_set(),
                 "stop_current": self.stop_current_event.is_set(),
             }

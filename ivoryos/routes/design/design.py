@@ -37,6 +37,7 @@ def pause():
     runner.retry = False
     msg = runner.toggle_pause()
     socketio.emit('log', {'message': msg})
+    return msg
 
 def retry():
     runner.retry = True
@@ -641,9 +642,9 @@ def duplicate_action(id: int):
     return redirect(back)
 
 
-@design.route("/backend/status", methods=["GET"])
+@design.route("/api/status", methods=["GET"])
 def runner_status():
-    return jsonify(runner.get_status())
+    return jsonify(runner.get_status()), 200
 
 
 # ---- HTTP API Endpoints ----
@@ -660,13 +661,13 @@ def api_abort_current():
 
 @design.route("/api/pause", methods=["POST"])
 def api_pause():
-    pause()
-    return jsonify({"status": "ok"}), 200
+    msg = pause()
+    return jsonify({"status": "ok", "pause_status": msg}), 200
 
 @design.route("/api/retry", methods=["POST"])
 def api_retry():
     retry()
-    return jsonify({"status": "ok"}), 200
+    return jsonify({"status": "ok, retrying failed step"}), 200
 
 
 # @design.route("/api/save_script", methods=["POST"])
@@ -684,10 +685,14 @@ def api_retry():
 #     return jsonify({"status": "saved", "length": len(script)}), 200
 
 
-@design.route("/api/get_script", methods=["GET"])
+@design.route("/api/get_script", methods=["GET", "POST"])
 def get_script():
     script = utils.get_script_file()
+
+    if request.method == "POST":
+        script_collection = request.get_json()
+        script.python_script = script_collection
+        utils.post_script_file(script)
     script.sort_actions()
     script_collection = script.compile()
-
     return jsonify(script_collection), 200
