@@ -15,7 +15,7 @@ from ivoryos.utils.client_proxy import create_function, export_to_python
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.form import create_builtin_form, create_action_button, format_name, create_form_from_pseudo, \
     create_form_from_action, create_all_builtin_forms
-from ivoryos.utils.db_models import Script
+from ivoryos.utils.db_models import Script, WorkflowRun
 from ivoryos.utils.script_runner import ScriptRunner
 # from ivoryos.utils.utils import load_workflows
 
@@ -642,12 +642,28 @@ def duplicate_action(id: int):
     return redirect(back)
 
 
+# ---- HTTP API Endpoints ----
+
 @design.route("/api/status", methods=["GET"])
 def runner_status():
-    return jsonify(runner.get_status()), 200
+    runner_busy = global_config.runner_lock.locked()
+    current_task = global_config.runner_status
+    if current_task is None:
+        current_step = {}
+    else:
+        current_step = current_task.as_dict()
+    if not runner_busy:
+        status = {"busy": runner_busy, "last_task":current_step}
+    else:
+        status = {
+            "busy": runner_busy,
+            "current_task": current_task.as_dict(),
+        }
+        if isinstance(current_task, WorkflowRun):
+            status["workflow_status"] = runner.get_status()
+    return jsonify(status), 200
 
 
-# ---- HTTP API Endpoints ----
 
 @design.route("/api/abort_pending", methods=["POST"])
 def api_abort_pending():
