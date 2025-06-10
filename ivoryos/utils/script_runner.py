@@ -6,7 +6,7 @@ import time
 from datetime import datetime
 
 from ivoryos.utils import utils
-from ivoryos.utils.db_models import Script, WorkflowRun, WorkflowStep, db
+from ivoryos.utils.db_models import Script, WorkflowRun, WorkflowStep, db, SingleStep
 from ivoryos.utils.global_config import GlobalConfig
 
 global_config = GlobalConfig()
@@ -26,7 +26,7 @@ class ScriptRunner:
         self.stop_pending_event = threading.Event()
         self.stop_current_event = threading.Event()
         self.is_running = False
-        self.lock = threading.Lock()
+        self.lock = global_config.runner_lock
         self.paused = False
         self.current_step:WorkflowStep = None
 
@@ -60,23 +60,27 @@ class ScriptRunner:
         self.stop_current_event.set()
         self.abort_pending()
 
+
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None, bo_args=None,
                    output_path="", current_app=None):
- # Get run.id
         global deck
         if deck is None:
             deck = global_config.deck
-        time.sleep(1)
-        with self.lock:
-            if self.is_running:
+
+        time.sleep(1)  # Optional: may help ensure deck readiness
+
+        # Try to acquire lock without blocking
+        if not self.lock.acquire(blocking=False):
+            if logger:
                 logger.info("System is busy. Please wait for it to finish or stop it before starting a new one.")
-                return None
-            self.is_running = True
+            return None
 
         self.reset_stop_event()
 
-        thread = threading.Thread(target=self._run_with_stop_check,
-                                  args=(script, repeat_count, run_name, logger, socketio, config, bo_args, output_path, current_app))
+        thread = threading.Thread(
+            target=self._run_with_stop_check,
+            args=(script, repeat_count, run_name, logger, socketio, config, bo_args, output_path, current_app)
+        )
         thread.start()
         return thread
 
@@ -188,7 +192,7 @@ class ScriptRunner:
             run = WorkflowRun(name=script.name or "untitled", platform=script.deck or "deck",start_time=datetime.now())
             db.session.add(run)
             db.session.flush()
-
+            global_config.runner_status = run
             self._run_actions(script, section_name="prep", logger=logger, socketio=socketio, run_id=run.id)
             output_list = []
             _, arg_type = script.config("script")
@@ -205,8 +209,7 @@ class ScriptRunner:
             # Run "cleanup" section once
             self._run_actions(script, section_name="cleanup", logger=logger, socketio=socketio,run_id=run.id)
             # Reset the running flag when done
-            with self.lock:
-                self.is_running = False
+            self.lock.release()
             # Save results if necessary
             filename = None
             if output_list:

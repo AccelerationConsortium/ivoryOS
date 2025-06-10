@@ -101,7 +101,7 @@ def finalize():
     return redirect(url_for('design.experiment_builder'))
 
 
-@database.route("/database/")
+@database.route("/database/", strict_slashes=False)
 @database.route("/database/<deck_name>")
 @login_required
 def load_from_database(deck_name=None):
@@ -131,7 +131,15 @@ def load_from_database(deck_name=None):
     per_page = 10
 
     workflows = query.paginate(page=page, per_page=per_page, error_out=False)
-    return render_template("experiment_database.html", workflows=workflows, deck_list=deck_list, deck_name=deck_name)
+    if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+        workflows = query.all()
+        workflow_names = [w.name for w in workflows]
+        return jsonify({
+            "workflows": workflow_names,
+        })
+    else:
+        # return HTML
+        return render_template("experiment_database.html", workflows=workflows, deck_list=deck_list, deck_name=deck_name)
 
 
 @database.route("/edit_run_name", methods=['POST'])
