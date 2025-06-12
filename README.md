@@ -2,8 +2,8 @@
 [![PyPI version](https://img.shields.io/pypi/v/ivoryos)](https://pypi.org/project/ivoryos/)
 ![License](https://img.shields.io/pypi/l/ivoryos)
 [![YouTube](https://img.shields.io/badge/YouTube-video-red?logo=youtube)](https://youtu.be/dFfJv9I2-1g)
-[![Published](https://img.shields.io/badge/Nature_Communications-paper-blue)](https://www.nature.com/articles/s41467-025-60514-w)
-
+[![Published](https://img.shields.io/badge/Nature_Comm.-paper-blue)](https://www.nature.com/articles/s41467-025-60514-w)
+[![Discord](https://img.shields.io/discord/1313641159356059770?label=Discord&logo=discord&color=5865F2)](https://discord.gg/AX5P9EdGVX)
 
 ![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/ivoryos.png)
 # ivoryOS: interoperable Web UI for self-driving laboratories (SDLs)
