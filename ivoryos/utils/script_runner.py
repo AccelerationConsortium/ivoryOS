@@ -28,7 +28,7 @@ class ScriptRunner:
         self.is_running = False
         self.lock = global_config.runner_lock
         self.paused = False
-        self.current_step:WorkflowStep = None
+        self.current_app = None
 
     def toggle_pause(self):
         """Toggles between pausing and resuming the script"""
@@ -67,6 +67,8 @@ class ScriptRunner:
         if deck is None:
             deck = global_config.deck
 
+        if self.current_app is None:
+            self.current_app = current_app
         time.sleep(1)  # Optional: may help ensure deck readiness
 
         # Try to acquire lock without blocking
@@ -143,7 +145,8 @@ class ScriptRunner:
                 method_name=method_name,
                 start_time=start_time,
             )
-            self.current_step = step
+            db.session.add(step)
+            db.session.commit()
             logger.info(f"Executing: {line}")
             socketio.emit('execution', {'section': f"{section_name}-{index}"})
             # self._emit_progress(socketio, 100)
@@ -164,7 +167,7 @@ class ScriptRunner:
                 step.run_error = True
                 self.toggle_pause()
             step.end_time = datetime.now()
-            db.session.add(step)
+            # db.session.add(step)
             db.session.commit()
 
             self.pause_event.wait()
@@ -191,9 +194,10 @@ class ScriptRunner:
 
             run = WorkflowRun(name=script.name or "untitled", platform=script.deck or "deck",start_time=datetime.now())
             db.session.add(run)
-            db.session.flush()
-            global_config.runner_status = run
-            self._run_actions(script, section_name="prep", logger=logger, socketio=socketio, run_id=run.id)
+            db.session.commit()
+            run_id = run.id  # Save the ID
+            global_config.runner_status = {"id":run_id, "type": "workflow"}
+            self._run_actions(script, section_name="prep", logger=logger, socketio=socketio, run_id=run_id)
             output_list = []
             _, arg_type = script.config("script")
             _, return_list = script.config_return()
@@ -201,13 +205,13 @@ class ScriptRunner:
             # Run "script" section multiple times
             if repeat_count:
                 self._run_repeat_section(repeat_count, arg_type, bo_args, output_list, script,
-                                         run_name, return_list, logger, socketio, run_id=run.id)
+                                         run_name, return_list, logger, socketio, run_id=run_id)
             elif config:
                 self._run_config_section(config, arg_type, output_list, script, run_name, logger,
-                                         socketio, run_id=run.id)
+                                         socketio, run_id=run_id)
 
             # Run "cleanup" section once
-            self._run_actions(script, section_name="cleanup", logger=logger, socketio=socketio,run_id=run.id)
+            self._run_actions(script, section_name="cleanup", logger=logger, socketio=socketio,run_id=run_id)
             # Reset the running flag when done
             self.lock.release()
             # Save results if necessary
@@ -215,6 +219,8 @@ class ScriptRunner:
             if output_list:
                 filename = self._save_results(run_name, arg_type, return_list, output_list, logger, output_path)
             self._emit_progress(socketio, 100)
+        with current_app.app_context():
+            run = db.session.get(WorkflowRun, run_id)  # SQLAlchemy 1.4+ recommended method
             run.end_time = datetime.now()
             run.data_path = filename
             db.session.commit()
@@ -226,7 +232,8 @@ class ScriptRunner:
         if self.stop_pending_event.is_set():
             logger.info(f"Stopping execution during {section_name} section.")
             return
-        self.exec_steps(script, section_name, logger, socketio, run_id=run_id, i_progress=0)
+        if step_list:
+            self.exec_steps(script, section_name, logger, socketio, run_id=run_id, i_progress=0)
 
     def _run_config_section(self, config, arg_type, output_list, script, run_name, logger, socketio, run_id):
         compiled = True
@@ -316,11 +323,10 @@ class ScriptRunner:
 
     def get_status(self):
         """Returns current status of the script runner."""
-        with self.lock:
+        with self.current_app.app_context():
             return {
-                "is_running": self.is_running,
+                "is_running": self.lock.locked(),
                 "paused": self.paused,
-                "step_info": {} if not self.is_running else self.current_step.as_dict(),
                 "stop_pending": self.stop_pending_event.is_set(),
                 "stop_current": self.stop_current_event.is_set(),
             }

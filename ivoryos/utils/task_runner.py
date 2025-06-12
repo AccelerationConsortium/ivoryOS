@@ -26,10 +26,9 @@ class TaskRunner:
 
         # Try to acquire lock without blocking
         if not self.lock.acquire(blocking=False):
-            current_task = global_config.runner_status
-            task_type = "task control" if isinstance(current_task, SingleStep) else "workflow"
-            return {"status": "busy", "current_task": current_task.as_dict(), "task_type": task_type}
-
+            current_status = global_config.runner_status
+            current_status["status"] = "busy"
+            return current_status
         component = component.split(".")[1] if component.startswith("deck.") else component
         instrument = getattr(deck, component)
         function_executable = getattr(instrument, method)
@@ -48,7 +47,7 @@ class TaskRunner:
             )
             thread.start()
             time.sleep(0.1)
-            output = {"status": "task started", "task_id": global_config.runner_status.id}
+            output = {"status": "task started", "task_id": global_config.runner_status.get("id")}
 
         return output
 
@@ -60,7 +59,7 @@ class TaskRunner:
             step = SingleStep(method_name=method_name, kwargs=kwargs, run_error=False, start_time=datetime.now())
             db.session.add(step)
             db.session.commit()
-            global_config.runner_status = step
+            global_config.runner_status = {"id":step.id, "type": "task"}
             try:
                 output = function(**kwargs)
                 step.output = output
