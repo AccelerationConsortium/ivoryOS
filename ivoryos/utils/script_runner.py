@@ -216,7 +216,7 @@ class ScriptRunner:
             self.lock.release()
             # Save results if necessary
             filename = None
-            if output_list:
+            if not script.python_script and output_list:
                 filename = self._save_results(run_name, arg_type, return_list, output_list, logger, output_path)
             self._emit_progress(socketio, 100)
         with current_app.app_context():
