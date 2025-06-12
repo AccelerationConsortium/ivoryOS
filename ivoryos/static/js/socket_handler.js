@@ -10,21 +10,26 @@ document.addEventListener("DOMContentLoaded", function() {
         var progressBar = document.getElementById('progress-bar-inner');
         progressBar.style.width = progress + '%';
         progressBar.setAttribute('aria-valuenow', progress);
+        const runPanel = document.getElementById("run-panel");
+        const codePanel = document.getElementById("code-panel");
         if (progress === 1) {
-                    document.getElementById("run-panel").style.display = "none";
-        document.getElementById("code-panel").style.display = "block";
-
-        // Optional: Scroll to the code panel
-        document.getElementById("code-panel").scrollIntoView({ behavior: "smooth" });
+            if (runPanel) runPanel.style.display = "none";
+            if (codePanel) {
+                codePanel.style.display = "block";
+                codePanel.scrollIntoView({ behavior: "smooth" });
+            }
+            progressBar.classList.remove('bg-success');
+            progressBar.classList.remove('bg-danger');
+            progressBar.classList.add('progress-bar-animated');
         }
         if (progress === 100) {
             // Remove animation and set green color when 100% is reached
             progressBar.classList.remove('progress-bar-animated');
             progressBar.classList.add('bg-success'); // Bootstrap class for green color
             setTimeout(() => {
-            document.getElementById("code-panel").style.display = "none";
-            document.getElementById("run-panel").style.display = "block";
-        }, 1000);  // Small delay to let users see the completion
+                if (runPanel) runPanel.style.display = "none";
+                if (codePanel) codePanel.style.display = "block";
+            }, 1000);  // Small delay to let users see the completion
         }
     });
 
