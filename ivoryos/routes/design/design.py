@@ -15,7 +15,7 @@ from ivoryos.utils.client_proxy import create_function, export_to_python
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.form import create_builtin_form, create_action_button, format_name, create_form_from_pseudo, \
     create_form_from_action, create_all_builtin_forms
-from ivoryos.utils.db_models import Script, WorkflowRun
+from ivoryos.utils.db_models import Script, WorkflowRun, SingleStep, WorkflowStep
 from ivoryos.utils.script_runner import ScriptRunner
 # from ivoryos.utils.utils import load_workflows
 
@@ -647,20 +647,24 @@ def duplicate_action(id: int):
 @design.route("/api/status", methods=["GET"])
 def runner_status():
     runner_busy = global_config.runner_lock.locked()
-    current_task = global_config.runner_status
-    if current_task is None:
-        current_step = {}
-    else:
-        current_step = current_task.as_dict()
-    if not runner_busy:
-        status = {"busy": runner_busy, "last_task":current_step}
-    else:
-        status = {
-            "busy": runner_busy,
-            "current_task": current_task.as_dict(),
-        }
-        if isinstance(current_task, WorkflowRun):
-            status["workflow_status"] = runner.get_status()
+    status = {"busy": runner_busy}
+    task_status = global_config.runner_status
+    current_step = {}
+    # print(task_status)
+    if task_status is not None:
+        task_type = task_status["type"]
+        task_id = task_status["id"]
+        if task_type == "task":
+            step = SingleStep.query.get(task_id)
+            current_step = step.as_dict()
+        if task_type == "workflow":
+            workflow = WorkflowRun.query.get(task_id)
+            if workflow is not None:
+                latest_step = WorkflowStep.query.filter_by(workflow_id=workflow.id).order_by(WorkflowStep.start_time.desc()).first()
+                if latest_step is not None:
+                    current_step = latest_step.as_dict()
+                status["workflow_status"] = {"workflow_info": workflow.as_dict(), "runner_status": runner.get_status()}
+    status["current_task"] = current_step
     return jsonify(status), 200
 
 
@@ -686,29 +690,14 @@ def api_retry():
     return jsonify({"status": "ok, retrying failed step"}), 200
 
 
-# @design.route("/api/save_script", methods=["POST"])
-# def save_script():
-#     script = Script(author=session.get('user'))
-#     data = request.get_json()
-#     script_str = data.get("script", "")
-#
-#     if not script_str.strip():
-#         return jsonify({"error": "No script provided"}), 400
-#
-#     script.load_script(script_str)
-#     utils.post_script_file(script)
-#
-#     return jsonify({"status": "saved", "length": len(script)}), 200
-
-
 @design.route("/api/get_script", methods=["GET", "POST"])
 def get_script():
     script = utils.get_script_file()
-
+    script.sort_actions()
+    script_collection = script.compile()
     if request.method == "POST":
         script_collection = request.get_json()
         script.python_script = script_collection
         utils.post_script_file(script)
-    script.sort_actions()
-    script_collection = script.compile()
+        return jsonify({"status": "ok"}), 200
     return jsonify(script_collection), 200
