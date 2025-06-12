@@ -173,12 +173,14 @@ def backend_control(instrument: str=None):
     forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
 
     if request.method == 'POST':
-        all_kwargs = request.form.copy()
-        method_name = all_kwargs.pop("hidden_name", None)
-        wait = all_kwargs.pop("hidden_wait", True)
-        output = runner.run_single_step(component=instrument, method=method_name, kwargs=all_kwargs, wait=wait,
-                                        current_app=current_app._get_current_object())
-        return jsonify(output), 200
+        method_name = request.form.get("hidden_name", None)
+        form = forms.get(method_name, None)
+        if form:
+            kwargs = {field.name: field.data for field in form if field.name not in ['csrf_token', 'hidden_name']}
+            wait = request.form.get("hidden_wait", "true") == "true"
+            output = runner.run_single_step(component=instrument, method=method_name, kwargs=kwargs, wait=wait,
+                                            current_app=current_app._get_current_object())
+            return jsonify(output), 200
 
 
 @control.route("/backend_control", methods=['GET'])
