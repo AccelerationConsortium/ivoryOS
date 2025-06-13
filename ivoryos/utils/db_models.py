@@ -77,7 +77,7 @@ class Script(db.Model):
         self.id_order = id_order
         self.editing_type = editing_type
         self.author = author
-        self.python_script = python_script or self.compile()
+        self.python_script = python_script
         # self.r = registered
 
     def as_dict(self):
@@ -414,12 +414,13 @@ class Script(db.Model):
         """
         line_collection = {}
         for stype, func_str in exec_str_collection.items():
-            module = ast.parse(func_str)
-            func_def = next(node for node in module.body if isinstance(node, ast.FunctionDef))
+            if func_str:
+                module = ast.parse(func_str)
+                func_def = next(node for node in module.body if isinstance(node, ast.FunctionDef))
 
-            # Extract function body as source lines
-            line_collection[stype] = [ast.unparse(node) for node in func_def.body if not isinstance(node, ast.Return)]
-            # print(line_collection[stype])
+                # Extract function body as source lines
+                line_collection[stype] = [ast.unparse(node) for node in func_def.body if not isinstance(node, ast.Return)]
+                # print(line_collection[stype])
         return line_collection
 
     def compile(self, script_path=None):
