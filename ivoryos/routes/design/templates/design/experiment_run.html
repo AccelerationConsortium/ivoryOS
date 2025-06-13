@@ -238,7 +238,7 @@
                                     {% endif %}
                                     {% if "cleanup" in line_collection.keys() %}
                                         {% set stype = "cleanup" %}
-                                        <h6>Experiment：</h6>
+                                        <h6>Cleanup：</h6>
                                         {% for code in line_collection["cleanup"] %}
                                             <pre style="margin: 0; padding: 0; line-height: 1;"><code class="python" id="{{ stype }}-{{ loop.index0 }}" >{{code}}</code></pre>
                                         {% endfor %}

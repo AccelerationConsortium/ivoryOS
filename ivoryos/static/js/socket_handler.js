@@ -27,8 +27,8 @@ document.addEventListener("DOMContentLoaded", function() {
             progressBar.classList.remove('progress-bar-animated');
             progressBar.classList.add('bg-success'); // Bootstrap class for green color
             setTimeout(() => {
-                if (runPanel) runPanel.style.display = "none";
-                if (codePanel) codePanel.style.display = "block";
+                if (runPanel) runPanel.style.display = "block";
+                if (codePanel) codePanel.style.display = "none";
             }, 1000);  // Small delay to let users see the completion
         }
     });
