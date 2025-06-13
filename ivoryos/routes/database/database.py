@@ -29,6 +29,11 @@ def edit_workflow(workflow_name):
     off_line = current_app.config["OFF_LINE"]
     if off_line and pseudo_name and not script.deck == pseudo_name:
         flash(f"Choose the deck with name {script.deck}")
+    if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+        return jsonify({
+            "script": script.as_dict(),
+            "python_script": script.compile(),
+        })
     return redirect(url_for('design.experiment_builder'))
 
 
@@ -101,7 +106,7 @@ def finalize():
     return redirect(url_for('design.experiment_builder'))
 
 
-@database.route("/database/")
+@database.route("/database/", strict_slashes=False)
 @database.route("/database/<deck_name>")
 @login_required
 def load_from_database(deck_name=None):
@@ -131,7 +136,15 @@ def load_from_database(deck_name=None):
     per_page = 10
 
     workflows = query.paginate(page=page, per_page=per_page, error_out=False)
-    return render_template("experiment_database.html", workflows=workflows, deck_list=deck_list, deck_name=deck_name)
+    if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+        workflows = query.all()
+        workflow_names = [w.name for w in workflows]
+        return jsonify({
+            "workflows": workflow_names,
+        })
+    else:
+        # return HTML
+        return render_template("experiment_database.html", workflows=workflows, deck_list=deck_list, deck_name=deck_name)
 
 
 @database.route("/edit_run_name", methods=['POST'])
@@ -200,6 +213,12 @@ def list_workflows():
     per_page = 10
 
     workflows = query.paginate(page=page, per_page=per_page, error_out=False)
+    if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+        workflows = query.all()
+        workflow_data = {w.id:{"workflow_name":w.name, "start_time":w.start_time} for w in workflows}
+        return jsonify({
+            "workflow_data": workflow_data,
+        })
     return render_template('workflow_run_database.html', workflows=workflows)
 
 
@@ -208,20 +227,40 @@ def get_workflow_steps(workflow_id):
     workflow = WorkflowRun.query.get_or_404(workflow_id)
     steps = WorkflowStep.query.filter_by(workflow_id=workflow_id).order_by(WorkflowStep.start_time).all()
 
-    # Organize steps by phase + repeat_index
+    # Use full objects for template rendering
     grouped = {
         "prep": [],
         "script": {},
         "cleanup": [],
     }
 
+    # Use dicts for JSON response
+    grouped_json = {
+        "prep": [],
+        "script": {},
+        "cleanup": [],
+    }
+
     for step in steps:
+        step_dict = step.as_dict()
+
         if step.phase == "prep":
             grouped["prep"].append(step)
+            grouped_json["prep"].append(step_dict)
+
         elif step.phase == "script":
             grouped["script"].setdefault(step.repeat_index, []).append(step)
+            grouped_json["script"].setdefault(step.repeat_index, []).append(step_dict)
+
         elif step.phase == "cleanup" or step.method_name == "stop":
             grouped["cleanup"].append(step)
+            grouped_json["cleanup"].append(step_dict)
+
+    if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+        return jsonify({
+            "workflow_info": workflow.as_dict(),
+            "steps": grouped_json,
+        })
 
     return render_template("experiment_step_view.html", workflow=workflow, grouped=grouped)
 

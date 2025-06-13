@@ -48,7 +48,8 @@ class Script(db.Model):
 
     def __init__(self, name=None, deck=None, status=None, script_dict: dict = None, id_order: dict = None,
                  time_created=None, last_modified=None, editing_type=None, author: str = None,
-                 registered:bool=False,
+                 # registered:bool=False,
+                 python_script: str = None
                  ):
         if script_dict is None:
             script_dict = {"prep": [], "script": [], "cleanup": []}
@@ -76,6 +77,7 @@ class Script(db.Model):
         self.id_order = id_order
         self.editing_type = editing_type
         self.author = author
+        self.python_script = python_script
         # self.r = registered
 
     def as_dict(self):
@@ -412,12 +414,13 @@ class Script(db.Model):
         """
         line_collection = {}
         for stype, func_str in exec_str_collection.items():
-            module = ast.parse(func_str)
-            func_def = next(node for node in module.body if isinstance(node, ast.FunctionDef))
+            if func_str:
+                module = ast.parse(func_str)
+                func_def = next(node for node in module.body if isinstance(node, ast.FunctionDef))
 
-            # Extract function body as source lines
-            line_collection[stype] = [ast.unparse(node) for node in func_def.body if not isinstance(node, ast.Return)]
-            # print(line_collection[stype])
+                # Extract function body as source lines
+                line_collection[stype] = [ast.unparse(node) for node in func_def.body if not isinstance(node, ast.Return)]
+                # print(line_collection[stype])
         return line_collection
 
     def compile(self, script_path=None):
@@ -670,7 +673,24 @@ class WorkflowStep(db.Model):
     run_error = db.Column(db.Boolean, default=False)
 
     def as_dict(self):
-        dict = self.__dict__
+        dict = self.__dict__.copy()
+        dict.pop('_sa_instance_state', None)
+        return dict
+
+
+class SingleStep(db.Model):
+    __tablename__ = 'single_steps'
+
+    id = db.Column(db.Integer, primary_key=True)
+    method_name = db.Column(db.String(128), nullable=False)
+    kwargs = db.Column(JSONType, nullable=False)
+    start_time = db.Column(db.DateTime)
+    end_time = db.Column(db.DateTime)
+    run_error = db.Column(db.String(128))
+    output = db.Column(JSONType)
+
+    def as_dict(self):
+        dict = self.__dict__.copy()
         dict.pop('_sa_instance_state', None)
         return dict
 

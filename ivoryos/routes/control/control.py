@@ -6,8 +6,10 @@ from flask_login import login_required
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils import utils
 from ivoryos.utils.form import create_form_from_module, format_name
+from ivoryos.utils.task_runner import TaskRunner
 
 global_config = GlobalConfig()
+runner = TaskRunner()
 
 control = Blueprint('control', __name__, template_folder='templates/control')
 
@@ -142,7 +144,8 @@ def controllers(instrument: str):
         if form and form.validate_on_submit():
             try:
                 kwargs.pop("hidden_name")
-                output = function_executable(**kwargs)
+                output = runner.run_single_step(instrument, method_name, kwargs, wait=True)
+                # output = function_executable(**kwargs)
                 flash(f"\nRun Success! Output value: {output}.")
             except Exception as e:
                 flash(e.__str__())
@@ -170,24 +173,14 @@ def backend_control(instrument: str=None):
     forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
 
     if request.method == 'POST':
-        all_kwargs = request.form.copy()
-        method_name = all_kwargs.pop("hidden_name", None)
-        # if method_name is not None:
+        method_name = request.form.get("hidden_name", None)
         form = forms.get(method_name, None)
-        kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
-        function_executable = getattr(inst_object, method_name)
         if form:
-            # print(kwargs)
-            try:
-                kwargs.pop("hidden_name")
-                output = function_executable(**kwargs)
-                json_output = jsonify(output)
-            except Exception as e:
-                json_output = jsonify(e.__str__())
-                return json_output, 400
-        else:
-            return "instrument not exist", 400
-        return json_output, 200
+            kwargs = {field.name: field.data for field in form if field.name not in ['csrf_token', 'hidden_name']}
+            wait = request.form.get("hidden_wait", "true") == "true"
+            output = runner.run_single_step(component=instrument, method=method_name, kwargs=kwargs, wait=wait,
+                                            current_app=current_app._get_current_object())
+            return jsonify(output), 200
 
 
 @control.route("/backend_control", methods=['GET'])

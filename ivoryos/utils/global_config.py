@@ -1,4 +1,4 @@
-# from ivoryos.utils.script_runner import ScriptRunner
+import threading
 
 
 class GlobalConfig:
@@ -13,7 +13,8 @@ class GlobalConfig:
             cls._instance._defined_variables = {}
             cls._instance._api_variables = set()
             cls._instance._deck_snapshot = {}
-            cls._instance._runner = None
+            cls._instance._runner_lock = threading.Lock()
+            cls._instance._runner_status = None
         return cls._instance
 
     @property
@@ -70,9 +71,17 @@ class GlobalConfig:
         self._api_variables = value
 
     @property
-    def runner(self):
-        return self._runner
+    def runner_lock(self):
+        return self._runner_lock
 
-    @runner.setter
-    def runner(self, value):
-        self._runner = value
+    @runner_lock.setter
+    def runner_lock(self, value):
+        self._runner_lock = value
+
+    @property
+    def runner_status(self):
+        return self._runner_status
+
+    @runner_status.setter
+    def runner_status(self, value):
+        self._runner_status = value

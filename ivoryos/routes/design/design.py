@@ -15,7 +15,7 @@ from ivoryos.utils.client_proxy import create_function, export_to_python
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.form import create_builtin_form, create_action_button, format_name, create_form_from_pseudo, \
     create_form_from_action, create_all_builtin_forms
-from ivoryos.utils.db_models import Script
+from ivoryos.utils.db_models import Script, WorkflowRun, SingleStep, WorkflowStep
 from ivoryos.utils.script_runner import ScriptRunner
 # from ivoryos.utils.utils import load_workflows
 
@@ -25,30 +25,43 @@ design = Blueprint('design', __name__, template_folder='templates/design')
 global_config = GlobalConfig()
 runner = ScriptRunner()
 
-
-@socketio.on('abort_pending')
-def handle_abort_pending():
+def abort_pending():
     runner.abort_pending()
     socketio.emit('log', {'message': "aborted pending iterations"})
 
-
-@socketio.on('abort_current')
-def handle_abort_current():
+def abort_current():
     runner.stop_execution()
     socketio.emit('log', {'message': "stopped next task"})
 
-
-@socketio.on('pause')
-def handle_pause():
+def pause():
     runner.retry = False
     msg = runner.toggle_pause()
     socketio.emit('log', {'message': msg})
+    return msg
 
-@socketio.on('retry')
-def handle_pause():
+def retry():
     runner.retry = True
     msg = runner.toggle_pause()
     socketio.emit('log', {'message': msg})
+
+
+# ---- Socket.IO Event Handlers ----
+
+@socketio.on('abort_pending')
+def handle_abort_pending():
+    abort_pending()
+
+@socketio.on('abort_current')
+def handle_abort_current():
+    abort_current()
+
+@socketio.on('pause')
+def handle_pause():
+    pause()
+
+@socketio.on('retry')
+def handle_retry():
+    retry()
 
 
 @socketio.on('connect')
@@ -312,11 +325,18 @@ def experiment_run():
     config_preview = []
     config_file_list = [i for i in os.listdir(current_app.config["CSV_FOLDER"]) if not i == ".gitkeep"]
     try:
-        exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
-    except ValueError as e:
+        # todo
+        exec_string = script.python_script if script.python_script else script.compile(current_app.config['SCRIPT_FOLDER'])
+        # exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+
+    except Exception as e:
         flash(e.__str__())
-        return redirect(url_for("design.experiment_builder"))
-    # print(exec_string)
+        # handle api request
+        if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+            return jsonify({"error": e.__str__()})
+        else:
+            return redirect(url_for("design.experiment_builder"))
+
     config_file = request.args.get("filename")
     config = []
     if config_file:
@@ -629,6 +649,66 @@ def duplicate_action(id: int):
     return redirect(back)
 
 
-@design.route("/backend/status", methods=["GET"])
+# ---- HTTP API Endpoints ----
+
+@design.route("/api/status", methods=["GET"])
 def runner_status():
-    return jsonify(runner.get_status())
+    runner_busy = global_config.runner_lock.locked()
+    status = {"busy": runner_busy}
+    task_status = global_config.runner_status
+    current_step = {}
+    # print(task_status)
+    if task_status is not None:
+        task_type = task_status["type"]
+        task_id = task_status["id"]
+        if task_type == "task":
+            step = SingleStep.query.get(task_id)
+            current_step = step.as_dict()
+        if task_type == "workflow":
+            workflow = WorkflowRun.query.get(task_id)
+            if workflow is not None:
+                latest_step = WorkflowStep.query.filter_by(workflow_id=workflow.id).order_by(WorkflowStep.start_time.desc()).first()
+                if latest_step is not None:
+                    current_step = latest_step.as_dict()
+                status["workflow_status"] = {"workflow_info": workflow.as_dict(), "runner_status": runner.get_status()}
+    status["current_task"] = current_step
+    return jsonify(status), 200
+
+
+
+@design.route("/api/abort_pending", methods=["POST"])
+def api_abort_pending():
+    abort_pending()
+    return jsonify({"status": "ok"}), 200
+
+@design.route("/api/abort_current", methods=["POST"])
+def api_abort_current():
+    abort_current()
+    return jsonify({"status": "ok"}), 200
+
+@design.route("/api/pause", methods=["POST"])
+def api_pause():
+    msg = pause()
+    return jsonify({"status": "ok", "pause_status": msg}), 200
+
+@design.route("/api/retry", methods=["POST"])
+def api_retry():
+    retry()
+    return jsonify({"status": "ok, retrying failed step"}), 200
+
+
+@design.route("/api/get_script", methods=["GET", "POST"])
+def get_script():
+    script = utils.get_script_file()
+    script.sort_actions()
+    script_collection = script.compile()
+    if request.method == "POST":
+        # create a brand-new script
+        deck = global_config.deck
+        deck_name = os.path.splitext(os.path.basename(deck.__file__))[0] if deck.__name__ == "__main__" else deck.__name__
+        script = Script(author=session.get('user'), deck=deck_name)
+        script_collection = request.get_json()
+        script.python_script = script_collection
+        utils.post_script_file(script)
+        return jsonify({"status": "ok"}), 200
+    return jsonify(script_collection), 200
