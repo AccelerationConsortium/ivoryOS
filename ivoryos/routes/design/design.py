@@ -325,11 +325,18 @@ def experiment_run():
     config_preview = []
     config_file_list = [i for i in os.listdir(current_app.config["CSV_FOLDER"]) if not i == ".gitkeep"]
     try:
-        exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
-    except ValueError as e:
+        # todo
+        exec_string = script.python_script if script.python_script else script.compile(current_app.config['SCRIPT_FOLDER'])
+        # exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+
+    except Exception as e:
         flash(e.__str__())
-        return redirect(url_for("design.experiment_builder"))
-    # print(exec_string)
+        # handle api request
+        if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+            return jsonify({"error": e.__str__()})
+        else:
+            return redirect(url_for("design.experiment_builder"))
+
     config_file = request.args.get("filename")
     config = []
     if config_file:
@@ -696,6 +703,10 @@ def get_script():
     script.sort_actions()
     script_collection = script.compile()
     if request.method == "POST":
+        # create a brand-new script
+        deck = global_config.deck
+        deck_name = os.path.splitext(os.path.basename(deck.__file__))[0] if deck.__name__ == "__main__" else deck.__name__
+        script = Script(author=session.get('user'), deck=deck_name)
         script_collection = request.get_json()
         script.python_script = script_collection
         utils.post_script_file(script)
