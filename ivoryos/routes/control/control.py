@@ -144,7 +144,8 @@ def controllers(instrument: str):
         if form and form.validate_on_submit():
             try:
                 kwargs.pop("hidden_name")
-                output = runner.run_single_step(instrument, method_name, kwargs, wait=True)
+                output = runner.run_single_step(instrument, method_name, kwargs, wait=True,
+                                                current_app=current_app._get_current_object())
                 # output = function_executable(**kwargs)
                 flash(f"\nRun Success! Output value: {output}.")
             except Exception as e:

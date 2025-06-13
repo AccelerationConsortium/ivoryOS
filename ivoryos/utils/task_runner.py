@@ -29,21 +29,14 @@ class TaskRunner:
             current_status = global_config.runner_status
             current_status["status"] = "busy"
             return current_status
-        component = component.split(".")[1] if component.startswith("deck.") else component
-        instrument = getattr(deck, component)
-        function_executable = getattr(instrument, method)
+
 
         if wait:
-            try:
-                output = function_executable(**kwargs)
-            except Exception as e:
-                output = str(e)
-            finally:
-                self.lock.release()
+            output = self._run_single_step(component, method, kwargs, current_app)
         else:
             print("running with thread")
             thread = threading.Thread(
-                target=self._run_single_step, args=(function_executable, kwargs, current_app)
+                target=self._run_single_step, args=(component, method, kwargs, current_app)
             )
             thread.start()
             time.sleep(0.1)
@@ -51,8 +44,23 @@ class TaskRunner:
 
         return output
 
-    def _run_single_step(self, function, kwargs, current_app=None):
-        method_name = f"{function.__self__.__class__.__name__}.{function.__name__}"
+    def _get_executable(self, component, deck, method):
+        if component.startswith("deck."):
+            component = component.split(".")[1]
+            instrument = getattr(deck, component)
+        else:
+            temp_connections = global_config.defined_variables
+            instrument = temp_connections.get(component)
+        function_executable = getattr(instrument, method)
+        return function_executable
+
+    def _run_single_step(self, component, method, kwargs, current_app=None):
+        try:
+            function_executable = self._get_executable(component, deck, method)
+            method_name = f"{function_executable.__self__.__class__.__name__}.{function_executable.__name__}"
+        except Exception as e:
+            self.lock.release()
+            return {"status": "error", "msg": e.__str__()}
 
         # with self.lock:
         with current_app.app_context():
@@ -61,11 +69,13 @@ class TaskRunner:
             db.session.commit()
             global_config.runner_status = {"id":step.id, "type": "task"}
             try:
-                output = function(**kwargs)
+                output = function_executable(**kwargs)
                 step.output = output
                 step.end_time = datetime.now()
             except Exception as e:
                 step.run_error = e.__str__()
                 step.end_time = datetime.now()
-            db.session.commit()
-        self.lock.release()
+            finally:
+                db.session.commit()
+                self.lock.release()
+            return output
