@@ -376,25 +376,41 @@ def experiment_run():
             flash(f"This script is not compatible with current deck, import {script.deck}")
     if request.method == "POST":
         bo_args = None
-        if "bo" in request.form:
-            bo_args = request.form.to_dict()
-            # ax_client = utils.ax_initiation(bo_args)
-        if "online-config" in request.form:
-            config = utils.web_config_entry_wrapper(request.form.to_dict(), config_list)
-        repeat = request.form.get('repeat', None)
+        compiled = False
+        if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+            payload_json = request.get_json()
+            compiled = True
+            if "kwargs" in payload_json:
+                config = payload_json["kwargs"]
+            elif "parameters" in payload_json:
+                bo_args = payload_json
+            repeat = payload_json.pop("repeat", None)
+        else:
+            if "bo" in request.form:
+                bo_args = request.form.to_dict()
+            if "online-config" in request.form:
+                config = utils.web_config_entry_wrapper(request.form.to_dict(), config_list)
+            repeat = request.form.get('repeat', None)
 
         try:
             datapath = current_app.config["DATA_FOLDER"]
             run_name = script.validate_function_name(run_name)
             runner.run_script(script=script, run_name=run_name, config=config, bo_args=bo_args,
                               logger=g.logger, socketio=g.socketio, repeat_count=repeat,
-                              output_path=datapath, current_app=current_app._get_current_object()
+                              output_path=datapath, compiled=compiled,
+                              current_app=current_app._get_current_object()
                               )
             if utils.check_config_duplicate(config):
                 flash(f"WARNING: Duplicate in config entries.")
         except Exception as e:
-            flash(e)
-    return render_template('experiment_run.html', script=script.script_dict, filename=filename,
+            if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+                return jsonify({"error": e.__str__()})
+            else:
+                flash(e)
+    if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+        return jsonify({"status": "task started", "task_id": global_config.runner_status.get("id")})
+    else:
+        return render_template('experiment_run.html', script=script.script_dict, filename=filename,
                            dot_py=exec_string, line_collection=line_collection,
                            return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                            config_preview=config_preview, data_list=data_list, config_type_list=config_type_list,
