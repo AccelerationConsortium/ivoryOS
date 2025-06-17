@@ -5,7 +5,7 @@ import threading
 import time
 from datetime import datetime
 
-from ivoryos.utils import utils
+from ivoryos.utils import utils, bo_campaign
 from ivoryos.utils.db_models import Script, WorkflowRun, WorkflowStep, db, SingleStep
 from ivoryos.utils.global_config import GlobalConfig
 
@@ -62,7 +62,7 @@ class ScriptRunner:
 
 
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None, bo_args=None,
-                   output_path="", current_app=None):
+                   output_path="", compiled=False, current_app=None):
         global deck
         if deck is None:
             deck = global_config.deck
@@ -81,7 +81,7 @@ class ScriptRunner:
 
         thread = threading.Thread(
             target=self._run_with_stop_check,
-            args=(script, repeat_count, run_name, logger, socketio, config, bo_args, output_path, current_app)
+            args=(script, repeat_count, run_name, logger, socketio, config, bo_args, output_path, current_app, compiled)
         )
         thread.start()
         return thread
@@ -182,7 +182,7 @@ class ScriptRunner:
         return exec_locals  # Return the 'results' variable
 
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, logger, socketio, config, bo_args,
-                             output_path, current_app):
+                             output_path, current_app, compiled):
         time.sleep(1)
         # _func_str = script.compile()
         # step_list_dict: dict = script.convert_to_lines(_func_str)
@@ -205,10 +205,10 @@ class ScriptRunner:
             # Run "script" section multiple times
             if repeat_count:
                 self._run_repeat_section(repeat_count, arg_type, bo_args, output_list, script,
-                                         run_name, return_list, logger, socketio, run_id=run_id)
+                                         run_name, return_list, compiled, logger, socketio, run_id=run_id)
             elif config:
                 self._run_config_section(config, arg_type, output_list, script, run_name, logger,
-                                         socketio, run_id=run_id)
+                                         socketio, run_id=run_id, compiled=compiled)
 
             # Run "cleanup" section once
             self._run_actions(script, section_name="cleanup", logger=logger, socketio=socketio,run_id=run_id)
@@ -235,15 +235,15 @@ class ScriptRunner:
         if step_list:
             self.exec_steps(script, section_name, logger, socketio, run_id=run_id, i_progress=0)
 
-    def _run_config_section(self, config, arg_type, output_list, script, run_name, logger, socketio, run_id):
-        compiled = True
-        for i in config:
-            try:
-                i = utils.convert_config_type(i, arg_type)
-            except Exception as e:
-                logger.info(e)
-                compiled = False
-                break
+    def _run_config_section(self, config, arg_type, output_list, script, run_name, logger, socketio, run_id, compiled=True):
+        if not compiled:
+            for i in config:
+                try:
+                    i = utils.convert_config_type(i, arg_type)
+                except Exception as e:
+                    logger.info(e)
+                    compiled = False
+                    break
         if compiled:
             for i, kwargs in enumerate(config):
                 kwargs = dict(kwargs)
@@ -260,11 +260,14 @@ class ScriptRunner:
                     # kwargs.update(output)
                     output_list.append(output)
 
-    def _run_repeat_section(self, repeat_count, arg_types, bo_args, output_list, script, run_name, return_list,
+    def _run_repeat_section(self, repeat_count, arg_types, bo_args, output_list, script, run_name, return_list, compiled,
                             logger, socketio, run_id):
         if bo_args:
             logger.info('Initializing optimizer...')
-            ax_client = utils.ax_initiation(bo_args, arg_types)
+            if compiled:
+                ax_client = bo_campaign.ax_init_opc(bo_args)
+            else:
+                ax_client = bo_campaign.ax_init_form(bo_args, arg_types)
         for i_progress in range(int(repeat_count)):
             if self.stop_pending_event.is_set():
                 logger.info(f'Stopping execution during {run_name}: {i_progress + 1}/{int(repeat_count)}')
