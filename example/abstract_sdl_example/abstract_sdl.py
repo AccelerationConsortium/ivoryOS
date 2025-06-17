@@ -16,8 +16,8 @@ import random
 from enum import Enum
 from typing import List, Union
 
-from example.abstract_sdl_example.abstract_balance import AbstractBalance
-from example.abstract_sdl_example.abstract_pump import AbstractPump
+from abstract_balance import AbstractBalance
+from abstract_pump import AbstractPump
 
 
 class Solvent(Enum):
@@ -44,18 +44,20 @@ class AbstractSDL(ABC):
                    bring_in: bool = False
                    ):
         """dose current chemical"""
+        print("dosing solid")
         self.balance.dose_solid(amount_in_mg=amount_in_mg)
         self.balance.weigh_sample()
         self.logger.info("Dosing solid")
-        time.sleep(10)
+        time.sleep(3)
         self.logger.info(f"dosing solid {amount_in_mg}, bring in {bring_in}")
         return 1
 
     def dose_solvent(self,
-                     solvent_name: Solvent=Solvent.Methanol,
+                     solvent_name: Solvent = Solvent.Methanol,
                      amount_in_ml: float = 5,
                      rate_ml_per_minute: float = 1
                      ):
+        print("dosing liquid")
         self.pump.dose_liquid(amount_in_ml=amount_in_ml, rate_ml_per_minute=rate_ml_per_minute)
         self.balance.weigh_sample()
         self.logger.info(f"dosing {solvent_name} solvent")
@@ -68,6 +70,9 @@ class AbstractSDL(ABC):
                     duration: float
                     ):
         self.logger.info(f"equilibrate at {temp} for {duration}")
+
+    def simulate_error(self):
+        raise ValueError("some error")
 
     def _send_command(self):
         """helper function"""
@@ -86,9 +91,9 @@ sdl = AbstractSDL(pump, balance)
 
 if __name__ == "__main__":
     import ivoryos
-
+    from ivoryos_plugin.hello_world import plugin
     # USE CASE 1 - start OS using current module
-    ivoryos.run(__name__)
+    ivoryos.run(__name__, blueprint_plugins=plugin)
 
     # # USE CASE 2 - start OS using current module and enable LLM with Ollama
     # ivoryos.run(__name__, model="llama3.1", llm_server='localhost')
