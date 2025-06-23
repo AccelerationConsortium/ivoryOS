@@ -9,7 +9,7 @@ login_manager = LoginManager()
 auth = Blueprint('auth', __name__, template_folder='templates/auth')
 
 
-@auth.route('/login', methods=['GET', 'POST'])
+@auth.route('/auth/login', methods=['GET', 'POST'])
 def login():
     """
     .. :quickref: User; login user
@@ -50,7 +50,7 @@ def login():
     return render_template('login.html')
 
 
-@auth.route('/signup', methods=['GET', 'POST'])
+@auth.route('/auth/signup', methods=['GET', 'POST'])
 def signup():
     """
     .. :quickref: User; signup for a new account
@@ -82,7 +82,7 @@ def signup():
     return render_template('signup.html')
 
 
-@auth.route("/logout")
+@auth.route("/auth/logout")
 @login_required
 def logout():
     """
