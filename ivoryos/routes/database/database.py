@@ -8,21 +8,21 @@ database = Blueprint('database', __name__, template_folder='templates/database')
 
 
 
-@database.route("/edit_workflow/<workflow_name>")
+@database.route("/database/scripts/edit/<script_name>")
 @login_required
-def edit_workflow(workflow_name):
+def edit_workflow(script_name:str):
     """
-    .. :quickref: Database; load workflow to canvas
+    .. :quickref: Database; load workflow script to canvas
 
     load the selected workflow to the design canvas
 
-    .. http:get:: /edit_workflow/<workflow_name>
+    .. http:get:: /database/scripts/edit/<script_name>
 
-    :param workflow_name: workflow name
-    :type workflow_name: str
+    :param script_name: script name
+    :type script_name: str
     :status 302: redirect to :http:get:`/ivoryos/experiment/build/`
     """
-    row = Script.query.get(workflow_name)
+    row = Script.query.get(script_name)
     script = Script(**row.as_dict())
     post_script_file(script)
     pseudo_name = session.get("pseudo_deck", "")
@@ -37,27 +37,27 @@ def edit_workflow(workflow_name):
     return redirect(url_for('design.experiment_builder'))
 
 
-@database.route("/delete_workflow/<workflow_name>")
+@database.route("/database/scripts/delete/<script_name>")
 @login_required
-def delete_workflow(workflow_name: str):
+def delete_workflow(script_name: str):
     """
     .. :quickref: Database; delete workflow
 
     delete workflow from database
 
-    .. http:get:: /delete_workflow/<workflow_name>
+    .. http:get:: /database/scripts/delete/<script_name>
 
-    :param workflow_name: workflow name
-    :type workflow_name: str
-    :status 302: redirect to :http:get:`/ivoryos/database/`
+    :param script_name: workflow name
+    :type script_name: str
+    :status 302: redirect to :http:get:`/ivoryos/database/scripts/`
 
     """
-    Script.query.filter(Script.name == workflow_name).delete()
+    Script.query.filter(Script.name == script_name).delete()
     db.session.commit()
     return redirect(url_for('database.load_from_database'))
 
 
-@database.route("/publish")
+@database.route("/database/scripts/save")
 @login_required
 def publish():
     """
@@ -65,7 +65,7 @@ def publish():
 
     save workflow to database
 
-    .. http:get:: /publish
+    .. http:get:: /database/scripts/save
 
     :status 302: redirect to :http:get:`/ivoryos/experiment/build/`
     """
@@ -84,7 +84,7 @@ def publish():
     return redirect(url_for('design.experiment_builder'))
 
 
-@database.route("/finalize")
+@database.route("/database/scripts/finalize")
 @login_required
 def finalize():
     """
@@ -106,8 +106,8 @@ def finalize():
     return redirect(url_for('design.experiment_builder'))
 
 
-@database.route("/database/", strict_slashes=False)
-@database.route("/database/<deck_name>")
+@database.route("/database/scripts/", strict_slashes=False)
+@database.route("/database/scripts/<deck_name>")
 @login_required
 def load_from_database(deck_name=None):
     """
@@ -115,7 +115,7 @@ def load_from_database(deck_name=None):
 
     backend control through http requests
 
-    .. http:get:: /database/<deck_name>
+    .. http:get:: /database/scripts/<deck_name>
 
     :param deck_name: filter for deck name
     :type deck_name: str
@@ -135,19 +135,19 @@ def load_from_database(deck_name=None):
     page = request.args.get('page', default=1, type=int)
     per_page = 10
 
-    workflows = query.paginate(page=page, per_page=per_page, error_out=False)
+    scripts = query.paginate(page=page, per_page=per_page, error_out=False)
     if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
-        workflows = query.all()
-        workflow_names = [w.name for w in workflows]
+        scripts = query.all()
+        script_names = [script.name for script in scripts]
         return jsonify({
-            "workflows": workflow_names,
+            "workflows": script_names,
         })
     else:
         # return HTML
-        return render_template("experiment_database.html", workflows=workflows, deck_list=deck_list, deck_name=deck_name)
+        return render_template("scripts_database.html", scripts=scripts, deck_list=deck_list, deck_name=deck_name)
 
 
-@database.route("/edit_run_name", methods=['POST'])
+@database.route("/database/scripts/rename", methods=['POST'])
 @login_required
 def edit_run_name():
     """
@@ -155,7 +155,7 @@ def edit_run_name():
 
     edit the name of the current workflow, won't save to the database
 
-    .. http:post:: /edit_run_name
+    .. http:post:: database/scripts/rename
 
     : form run_name: new workflow name
     :status 302: redirect to :http:get:`/ivoryos/experiment/build/`
@@ -173,15 +173,15 @@ def edit_run_name():
         return redirect(url_for("design.experiment_builder"))
 
 
-@database.route("/save_as", methods=['POST'])
+@database.route("/database/scripts/save_as", methods=['POST'])
 @login_required
 def save_as():
     """
     .. :quickref: Database; save the run name as
 
-    save the workflow name as
+    save the current workflow script as
 
-    .. http:post:: /save_as
+    .. http:post:: /database/scripts/save_as
 
     : form run_name: new workflow name
     :status 302: redirect to :http:get:`/ivoryos/experiment/build/`
@@ -203,9 +203,20 @@ def save_as():
         return redirect(url_for("design.experiment_builder"))
 
 
-@database.route('/workflow_runs')
+# -----------------------------------------------------------
+# ------------------  Workflow logs   -----------------------
+# -----------------------------------------------------------
+@database.route('/database/workflows/')
 def list_workflows():
-    query = WorkflowRun.query
+    """
+    .. :quickref: Database; list all workflow logs
+
+    list all workflow logs
+
+    .. http:get:: /database/workflows/
+
+    """
+    query = WorkflowRun.query.order_by(WorkflowRun.id.desc())
     search_term = request.args.get("keyword", None)
     if search_term:
         query = query.filter(WorkflowRun.name.like(f'%{search_term}%'))
@@ -219,11 +230,20 @@ def list_workflows():
         return jsonify({
             "workflow_data": workflow_data,
         })
-    return render_template('workflow_run_database.html', workflows=workflows)
+    else:
+        return render_template('workflow_database.html', workflows=workflows)
 
 
-@database.route("/workflow_steps/<int:workflow_id>")
-def get_workflow_steps(workflow_id):
+@database.route("/database/workflows/<int:workflow_id>")
+def get_workflow_steps(workflow_id:int):
+    """
+    .. :quickref: Database; list all workflow logs
+
+    list all workflow logs
+
+    .. http:get:: /database/workflows/<int:workflow_id>
+
+    """
     workflow = WorkflowRun.query.get_or_404(workflow_id)
     steps = WorkflowStep.query.filter_by(workflow_id=workflow_id).order_by(WorkflowStep.start_time).all()
 
@@ -261,23 +281,23 @@ def get_workflow_steps(workflow_id):
             "workflow_info": workflow.as_dict(),
             "steps": grouped_json,
         })
+    else:
+        return render_template("workflow_view.html", workflow=workflow, grouped=grouped)
 
-    return render_template("experiment_step_view.html", workflow=workflow, grouped=grouped)
 
-
-@database.route("/delete_workflow_data/<workflow_id>")
+@database.route("/database/workflows/delete/<int:workflow_id>")
 @login_required
-def delete_workflow_data(workflow_id: str):
+def delete_workflow_data(workflow_id: int):
     """
     .. :quickref: Database; delete experiment data from database
 
     delete workflow data from database
 
-    .. http:get:: /delete_workflow_data/<workflow_id>
+    .. http:get:: /database/workflows/delete/<int:workflow_id>
 
     :param workflow_id: workflow id
-    :type workflow_id: str
-    :status 302: redirect to :http:get:`/ivoryos/workflow_runs/`
+    :type workflow_id: int
+    :status 302: redirect to :http:get:`/ivoryos/database/workflows/`
 
     """
     run = WorkflowRun.query.get(workflow_id)

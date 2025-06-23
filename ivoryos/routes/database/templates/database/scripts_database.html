@@ -35,19 +35,19 @@
             </tr>
         </thead>
         <tbody>
-            {% for workflow in workflows %}
+            {% for script in scripts %}
                 <tr>
-                    <td><a href="{{ url_for('database.edit_workflow', workflow_name=workflow.name) }}">{{ workflow.name }}</a></td>
-                    <td>{{ workflow.deck }}</td>
-                    <td>{{ workflow.status }}</td>
-                    <td>{{ workflow.time_created }}</td>
-                    <td>{{ workflow.last_modified }}</td>
-                    <td>{{ workflow.author }}</td>
+                    <td><a href="{{ url_for('database.edit_workflow', script_name=script.name) }}">{{ script.name }}</a></td>
+                    <td>{{ script.deck }}</td>
+                    <td>{{ script.status }}</td>
+                    <td>{{ script.time_created }}</td>
+                    <td>{{ script.last_modified }}</td>
+                    <td>{{ script.author }}</td>
 {#                    <td>{{ workflow.registered }}</td>#}
                     <td>
                         {#not workflow.status == "finalized" or#}
-                        {% if session['user'] == 'admin' or session['user'] == workflow.author %}
-                            <a href="{{ url_for('database.delete_workflow', workflow_name=workflow.name) }}">delete</a>
+                        {% if session['user'] == 'admin' or session['user'] == script.author %}
+                            <a href="{{ url_for('database.delete_workflow', script_name=script.name) }}">delete</a>
                         {% else %}
                             <a class="disabled-link">delete</a>
                         {% endif %}
@@ -57,18 +57,27 @@
         </tbody>
     </table>
 
-{#    paging#}
+    {#    paging#}
     <div class="pagination justify-content-center">
-        <div class="page-item {{ 'disabled' if not workflows.has_prev else '' }}">
-            <a class="page-link" href="{{ url_for('database.load_from_database', page=workflows.prev_num) }}">Previous</a>
+        <div class="page-item {{ 'disabled' if not scripts.has_prev else '' }}">
+            <a class="page-link" href="{{ url_for('database.load_from_database', page=scripts.prev_num) }}">Previous</a>
         </div>
-        {% for num in workflows.iter_pages() %}
-            <div class="page-item">
-                <a class="page-link {{ 'active' if num == workflows.page else '' }}" href="{{ url_for('database.load_from_database', page=num) }}">{{ num }}</a>
-            </div>
+
+        {% for num in scripts.iter_pages() %}
+            {% if num %}
+                <div class="page-item {{ 'active' if num == scripts.page else '' }}">
+                    <a class="page-link" href="{{ url_for('database.load_from_database', page=num) }}">{{ num }}</a>
+                </div>
+            {% else %}
+                <div class="page-item disabled">
+                    <span class="page-link">…</span>
+                </div>
+            {% endif %}
         {% endfor %}
-        <div class="page-item {{ 'disabled' if not workflows.has_next else '' }}">
-            <a class="page-link" href="{{ url_for('database.load_from_database', page=workflows.next_num) }}">Next</a>
+
+        <div class="page-item {{ 'disabled' if not scripts.has_next else '' }}">
+            <a class="page-link" href="{{ url_for('database.load_from_database', page=scripts.next_num) }}">Next</a>
         </div>
     </div>
+
 {% endblock %}
