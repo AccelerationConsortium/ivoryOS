@@ -3,6 +3,7 @@ import json
 import os
 import pickle
 import sys
+import time
 
 from flask import Blueprint, redirect, url_for, flash, jsonify, send_file, request, render_template, session, \
     current_app, g
@@ -11,7 +12,6 @@ from flask_socketio import SocketIO
 from werkzeug.utils import secure_filename
 
 from ivoryos.utils import utils
-from ivoryos.utils.client_proxy import create_function, export_to_python
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.form import create_builtin_form, create_action_button, format_name, create_form_from_pseudo, \
     create_form_from_action, create_all_builtin_forms
@@ -328,7 +328,7 @@ def experiment_run():
         # todo
         exec_string = script.python_script if script.python_script else script.compile(current_app.config['SCRIPT_FOLDER'])
         # exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
-        print(exec_string)
+        # print(exec_string)
     except Exception as e:
         flash(e.__str__())
         # handle api request
@@ -409,7 +409,9 @@ def experiment_run():
             else:
                 flash(e)
     if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
-
+        # wait to get a workflow ID
+        while not global_config.runner_status:
+            time.sleep(1)
         return jsonify({"status": "task started", "task_id": global_config.runner_status.get("id")})
     else:
         return render_template('experiment_run.html', script=script.script_dict, filename=filename,
