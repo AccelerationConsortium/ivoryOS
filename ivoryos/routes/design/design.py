@@ -3,6 +3,7 @@ import json
 import os
 import pickle
 import sys
+import time
 
 from flask import Blueprint, redirect, url_for, flash, jsonify, send_file, request, render_template, session, \
     current_app, g
@@ -11,7 +12,6 @@ from flask_socketio import SocketIO
 from werkzeug.utils import secure_filename
 
 from ivoryos.utils import utils
-from ivoryos.utils.client_proxy import create_function, export_to_python
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.form import create_builtin_form, create_action_button, format_name, create_form_from_pseudo, \
     create_form_from_action, create_all_builtin_forms
@@ -74,8 +74,8 @@ def handle_abort_action():
         socketio.emit('log', {'message': message})
 
 
-@design.route("/experiment/build/", methods=['GET', 'POST'])
-@design.route("/experiment/build/<instrument>/", methods=['GET', 'POST'])
+@design.route("/design/script/", methods=['GET', 'POST'])
+@design.route("/design/script/<instrument>/", methods=['GET', 'POST'])
 @login_required
 def experiment_builder(instrument=None):
     """
@@ -86,7 +86,7 @@ def experiment_builder(instrument=None):
     This route allows users to build and edit experiment workflows. Users can interact with available instruments,
     define variables, and manage experiment scripts.
 
-    .. http:get:: /experiment/build
+    .. http:get:: /design/script
 
     Load the experiment builder interface.
 
@@ -94,7 +94,7 @@ def experiment_builder(instrument=None):
     :type instrument: str
     :status 200: Experiment builder loaded successfully.
 
-    .. http:post:: /experiment/build
+    .. http:post:: /design/script
 
     Submit form data to add or modify actions in the experiment script.
 
@@ -248,17 +248,17 @@ def experiment_builder(instrument=None):
                            use_llm=enable_llm)
 
 
-@design.route("/generate_code", methods=['POST'])
+@design.route("/design/generate_code", methods=['POST'])
 @login_required
 def generate_code():
     """
     .. :quickref: Text to Code; Generate code from user input and update the design canvas.
 
-    .. http:post:: /generate_code
+    .. http:post:: /design/generate_code
 
     :form prompt: user's prompt
     :status 200: and then redirects to :http:get:`/experiment/build`
-    :status 400: failed to initialize the AI agent redirects to :http:get:`/experiment/build`
+    :status 400: failed to initialize the AI agent redirects to :http:get:`/design/script`
 
     """
     agent = global_config.agent
@@ -296,17 +296,17 @@ def generate_code():
     return redirect(url_for("design.experiment_builder", instrument=instrument, use_llm=True))
 
 
-@design.route("/experiment", methods=['GET', 'POST'])
+@design.route("/design/campaign", methods=['GET', 'POST'])
 @login_required
 def experiment_run():
     """
     .. :quickref: Workflow Execution; Execute/iterate the workflow
 
-    .. http:get:: /experiment
+    .. http:get:: /design/campaign
 
     Compile the workflow and load the experiment execution interface.
 
-    .. http:post:: /experiment
+    .. http:post:: /design/campaign
 
     Start workflow execution
 
@@ -328,7 +328,7 @@ def experiment_run():
         # todo
         exec_string = script.python_script if script.python_script else script.compile(current_app.config['SCRIPT_FOLDER'])
         # exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
-
+        # print(exec_string)
     except Exception as e:
         flash(e.__str__())
         # handle api request
@@ -351,6 +351,7 @@ def experiment_run():
         for key, func_str in exec_string.items():
             exec(func_str)
         line_collection = script.convert_to_lines(exec_string)
+
     except Exception:
         flash(f"Please check {key} syntax!!")
         return redirect(url_for("design.experiment_builder"))
@@ -408,6 +409,9 @@ def experiment_run():
             else:
                 flash(e)
     if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+        # wait to get a workflow ID
+        while not global_config.runner_status:
+            time.sleep(1)
         return jsonify({"status": "task started", "task_id": global_config.runner_status.get("id")})
     else:
         return render_template('experiment_run.html', script=script.script_dict, filename=filename,
@@ -418,15 +422,15 @@ def experiment_run():
                            history=deck_list, pause_status=runner.pause_status())
 
 
-@design.route("/toggle_script_type/<stype>")
+@design.route("/design/script/toggle/<stype>")
 @login_required
 def toggle_script_type(stype=None):
     """
     .. :quickref: Workflow Design; toggle the experimental phase for design canvas.
 
-    .. http:get:: /toggle_script_type
+    .. http:get:: /design/script/toggle/<stype>
 
-    :status 200: and then redirects to :http:get:`/experiment/build`
+    :status 200: and then redirects to :http:get:`/design/script`
 
     """
     script = utils.get_script_file()
@@ -446,16 +450,16 @@ def update_list():
 
 
 # --------------------handle all the import/export and download/upload--------------------------
-@design.route("/clear")
+@design.route("/design/clear")
 @login_required
 def clear():
     """
     .. :quickref: Workflow Design; clear the design canvas.
 
-    .. http:get:: /clear
+    .. http:get:: /design/clear
 
     :form prompt: user's prompt
-    :status 200: clear canvas and then redirects to :http:get:`/experiment/build`
+    :status 200: clear canvas and then redirects to :http:get:`/design/script`
     """
     deck = global_config.deck
     pseudo_name = session.get("pseudo_deck", "")
@@ -471,16 +475,16 @@ def clear():
     return redirect(url_for("design.experiment_builder"))
 
 
-@design.route("/import_pseudo", methods=['POST'])
+@design.route("/design/import/pseudo", methods=['POST'])
 @login_required
 def import_pseudo():
     """
     .. :quickref: Workflow Design; Import pseudo deck from deck history
 
-    .. http:post:: /import_pseudo
+    .. http:post:: /design/import/pseudo
 
     :form pkl_name: pseudo deck name
-    :status 302: load pseudo deck and then redirects to :http:get:`/experiment/build`
+    :status 302: load pseudo deck and then redirects to :http:get:`/design/script`
     """
     pkl_name = request.form.get('pkl_name')
     script = utils.get_script_file()
@@ -494,16 +498,16 @@ def import_pseudo():
     return redirect(url_for("design.experiment_builder"))
 
 
-@design.route('/uploads', methods=['POST'])
+@design.route('/design/uploads', methods=['POST'])
 @login_required
 def upload():
     """
     .. :quickref: Workflow Execution; upload a workflow config file (.CSV)
 
-    .. http:post:: /uploads
+    .. http:post:: /design/uploads
 
     :form file: workflow CSV config file
-    :status 302: save csv file and then redirects to :http:get:`/experiment`
+    :status 302: save csv file and then redirects to :http:get:`/design/campaign`
     """
     if request.method == "POST":
         f = request.files['file']
@@ -519,14 +523,20 @@ def upload():
             return redirect(url_for("design.experiment_run"))
 
 
-@design.route('/download_results/<filename>')
+@design.route('/design/workflow/download/<filename>')
 @login_required
 def download_results(filename):
+    """
+    .. :quickref: Workflow Design; download a workflow data file
+
+    .. http:get:: /design/workflow/download/<filename>
+
+    """
     filepath = os.path.join(current_app.config["DATA_FOLDER"], filename)
     return send_file(os.path.abspath(filepath), as_attachment=True)
 
 
-@design.route('/load_json', methods=['POST'])
+@design.route('/design/load_json', methods=['POST'])
 @login_required
 def load_json():
     """
@@ -535,7 +545,7 @@ def load_json():
     .. http:post:: /load_json
 
     :form file: workflow design JSON file
-    :status 302: load pseudo deck and then redirects to :http:get:`/experiment/build`
+    :status 302: load pseudo deck and then redirects to :http:get:`/design/script`
     """
     if request.method == "POST":
         f = request.files['file']
@@ -549,9 +559,15 @@ def load_json():
     return redirect(url_for("design.experiment_builder"))
 
 
-@design.route('/download/<filetype>')
+@design.route('/design/script/download/<filetype>')
 @login_required
 def download(filetype):
+    """
+    .. :quickref: Workflow Design Ext; download a workflow design file
+
+    .. http:get:: /design/script/download/<filetype>
+
+    """
     script = utils.get_script_file()
     run_name = script.name if script.name else "untitled"
     if filetype == "configure":
@@ -569,40 +585,28 @@ def download(filetype):
             outfile.write(json_object)
     elif filetype == "python":
         filepath = os.path.join(current_app.config["SCRIPT_FOLDER"], f"{run_name}.py")
-    elif filetype == "proxy":
-        snapshot = global_config.deck_snapshot.copy()
-        class_definitions = {}
-        # Iterate through each instrument in the snapshot
-        for instrument_key, instrument_data in snapshot.items():
-            # Iterate through each function associated with the current instrument
-            for function_key, function_data in instrument_data.items():
-                # Convert the function signature to a string representation
-                function_data['signature'] = str(function_data['signature'])
-            class_name = instrument_key.split('.')[-1]  # Extracting the class name from the path
-            class_definitions[class_name.capitalize()] = create_function(request.url_root, class_name, instrument_data)
-        # Export the generated class definitions to a .py script
-        export_to_python(class_definitions, current_app.config["OUTPUT_FOLDER"])
-        filepath = os.path.join(current_app.config["OUTPUT_FOLDER"], "generated_proxy.py")
+    else:
+        return "Unsupported file type", 400
     return send_file(os.path.abspath(filepath), as_attachment=True)
 
 
-@design.route("/edit/<uuid>", methods=['GET', 'POST'])
+@design.route("/design/step/edit/<uuid>", methods=['GET', 'POST'])
 @login_required
 def edit_action(uuid: str):
     """
     .. :quickref: Workflow Design; edit parameters of an action step on canvas
 
-    .. http:get:: /edit
+    .. http:get:: /design/step/edit/<uuid>
 
     Load parameter form of an action step
 
-    .. http:post:: /edit
+    .. http:post:: /design/step/edit/<uuid>
 
     :param uuid: The step's uuid
     :type uuid: str
 
     :form dynamic form: workflow step dynamic inputs
-    :status 302: save changes and then redirects to :http:get:`/experiment/build`
+    :status 302: save changes and then redirects to :http:get:`/design/script`
     """
     script = utils.get_script_file()
     action = script.find_by_uuid(uuid)
@@ -625,18 +629,18 @@ def edit_action(uuid: str):
     return redirect(url_for('design.experiment_builder'))
 
 
-@design.route("/delete/<id>")
+@design.route("/design/step/delete/<id>")
 @login_required
 def delete_action(id: int):
     """
     .. :quickref: Workflow Design; delete an action step on canvas
 
-    .. http:get:: /delete
+    .. http:get:: /design/step/delete/<id>
 
     :param id: The step number id
     :type id: int
 
-    :status 302: save changes and then redirects to :http:get:`/experiment/build`
+    :status 302: save changes and then redirects to :http:get:`/design/script`
     """
     back = request.referrer
     script = utils.get_script_file()
@@ -645,18 +649,18 @@ def delete_action(id: int):
     return redirect(back)
 
 
-@design.route("/duplicate/<id>")
+@design.route("/design/step/duplicate/<id>")
 @login_required
 def duplicate_action(id: int):
     """
     .. :quickref: Workflow Design; duplicate an action step on canvas
 
-    .. http:get:: /duplicate
+    .. http:get:: /design/step/duplicate/<id>
 
     :param id: The step number id
     :type id: int
 
-    :status 302: save changes and then redirects to :http:get:`/experiment/build`
+    :status 302: save changes and then redirects to :http:get:`/design/script`
     """
     back = request.referrer
     script = utils.get_script_file()
@@ -667,8 +671,15 @@ def duplicate_action(id: int):
 
 # ---- HTTP API Endpoints ----
 
-@design.route("/api/status", methods=["GET"])
+@design.route("/api/runner/status", methods=["GET"])
 def runner_status():
+    """
+    .. :quickref: Workflow Design; get the execution status
+
+    .. http:get:: /api/runner/status
+
+    :status 200: status
+    """
     runner_busy = global_config.runner_lock.locked()
     status = {"busy": runner_busy}
     task_status = global_config.runner_status
@@ -692,39 +703,69 @@ def runner_status():
 
 
 
-@design.route("/api/abort_pending", methods=["POST"])
+@design.route("/api/runner/abort_pending", methods=["POST"])
 def api_abort_pending():
+    """
+    .. :quickref: Workflow Design; abort pending action(s) during execution
+
+    .. http:get:: /api/runner/abort_pending
+
+    :status 200: {"status": "ok"}
+    """
     abort_pending()
     return jsonify({"status": "ok"}), 200
 
-@design.route("/api/abort_current", methods=["POST"])
+@design.route("/api/runner/abort_current", methods=["POST"])
 def api_abort_current():
+    """
+    .. :quickref: Workflow Design; abort right after current action during execution
+
+    .. http:get:: /api/runner/abort_current
+
+    :status 200: {"status": "ok"}
+    """
     abort_current()
     return jsonify({"status": "ok"}), 200
 
-@design.route("/api/pause", methods=["POST"])
+@design.route("/api/runner/pause", methods=["POST"])
 def api_pause():
+    """
+    .. :quickref: Workflow Design; pause during execution
+
+    .. http:get:: /api/runner/pause
+
+    :status 200: {"status": "ok"}
+    """
     msg = pause()
     return jsonify({"status": "ok", "pause_status": msg}), 200
 
-@design.route("/api/retry", methods=["POST"])
+@design.route("/api/runner/retry", methods=["POST"])
 def api_retry():
+    """
+    .. :quickref: Workflow Design; retry when error occur during execution
+
+    .. http:get:: /api/runner/retry
+
+    :status 200: {"status": "ok"}
+    """
     retry()
     return jsonify({"status": "ok, retrying failed step"}), 200
 
 
-@design.route("/api/get_script", methods=["GET", "POST"])
-def get_script():
-    script = utils.get_script_file()
-    script.sort_actions()
-    script_collection = script.compile()
-    if request.method == "POST":
-        # create a brand-new script
-        deck = global_config.deck
-        deck_name = os.path.splitext(os.path.basename(deck.__file__))[0] if deck.__name__ == "__main__" else deck.__name__
-        script = Script(author=session.get('user'), deck=deck_name)
-        script_collection = request.get_json()
-        script.python_script = script_collection
-        utils.post_script_file(script)
-        return jsonify({"status": "ok"}), 200
-    return jsonify(script_collection), 200
+@design.route("/api/design/submit", methods=["POST"])
+def submit_script():
+    """
+    .. :quickref: Workflow Design; submit script
+
+    .. http:get:: /api/design/submit
+
+    :status 200: {"status": "ok"}
+    """
+    deck = global_config.deck
+    deck_name = os.path.splitext(os.path.basename(deck.__file__))[0] if deck.__name__ == "__main__" else deck.__name__
+    script = Script(author=session.get('user'), deck=deck_name)
+    script_collection = request.get_json()
+    script.python_script = script_collection
+    # todo check script format
+    utils.post_script_file(script)
+    return jsonify({"status": "ok"}), 200

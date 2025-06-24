@@ -1,8 +1,10 @@
 import os
 
-from flask import Blueprint, redirect, url_for, flash, request, render_template, session, current_app, jsonify
+from flask import Blueprint, redirect, url_for, flash, request, render_template, session, current_app, jsonify, \
+    send_file
 from flask_login import login_required
 
+from ivoryos.utils.client_proxy import export_to_python, create_function
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils import utils
 from ivoryos.utils.form import create_form_from_module, format_name
@@ -14,7 +16,7 @@ runner = TaskRunner()
 control = Blueprint('control', __name__, template_folder='templates/control')
 
 
-@control.route("/my_deck")
+@control.route("/control/home/deck", strict_slashes=False)
 @login_required
 def deck_controllers():
     """
@@ -22,15 +24,15 @@ def deck_controllers():
 
     deck control home interface for listing all deck instruments
 
-    .. http:get:: /my_deck
+    .. http:get:: /control/home/deck
     """
     deck_variables = global_config.deck_snapshot.keys()
     deck_list = utils.import_history(os.path.join(current_app.config["OUTPUT_FOLDER"], 'deck_history.txt'))
     return render_template('controllers_home.html', defined_variables=deck_variables, deck=True, history=deck_list)
 
 
-@control.route("/new_controller/")
-@control.route("/new_controller/<instrument>", methods=['GET', 'POST'])
+@control.route("/control/new/", strict_slashes=False)
+@control.route("/control/new/<instrument>", methods=['GET', 'POST'])
 @login_required
 def new_controller(instrument=None):
     """
@@ -38,12 +40,12 @@ def new_controller(instrument=None):
 
     interface for connecting a new <instrument>
 
-    .. http:get:: /new_controller
+    .. http:get:: /control/new/
 
     :param instrument: instrument name
     :type instrument: str
 
-    .. http:post:: /new_controller
+    .. http:post:: /control/new/
 
     :form device_name: module instance name (e.g. my_instance = MyClass())
     :form kwargs: dynamic module initialization kwargs fields
@@ -88,7 +90,7 @@ def new_controller(instrument=None):
                            device=device, args=args, defined_variables=global_config.defined_variables)
 
 
-@control.route("/controllers")
+@control.route("/control/home/temp", strict_slashes=False)
 @login_required
 def controllers_home():
     """
@@ -96,14 +98,15 @@ def controllers_home():
 
     temporarily connected devices home interface for listing all instruments
 
-    .. http:get:: /controllers
+    .. http:get:: /control/home/temp
 
     """
     # defined_variables = parse_deck(deck)
-    return render_template('controllers_home.html', defined_variables=global_config.defined_variables)
+    defined_variables = global_config.defined_variables.keys()
+    return render_template('controllers_home.html', defined_variables=defined_variables)
 
 
-@control.route("/controllers/<instrument>", methods=['GET', 'POST'])
+@control.route("/control/<instrument>/methods", methods=['GET', 'POST'])
 @login_required
 def controllers(instrument: str):
     """
@@ -111,12 +114,12 @@ def controllers(instrument: str):
 
     control interface for selected <instrument>
 
-    .. http:get:: /controllers
+    .. http:get:: /control/<instrument>/methods
 
     :param instrument: instrument name
     :type instrument: str
 
-    .. http:post:: /controllers
+    .. http:post:: /control/<instrument>/methods
 
     :form hidden_name: function name (hidden field)
     :form kwargs: dynamic kwargs field
@@ -154,24 +157,50 @@ def controllers(instrument: str):
             flash(form.errors)
     return render_template('controllers.html', instrument=instrument, forms=forms, format_name=format_name)
 
+@control.route("/control/download", strict_slashes=False)
+@login_required
+def download_proxy():
+    """
+    .. :quickref: Direct Control; download proxy interface
 
-@control.route("/backend_control/<instrument>", methods=['POST'])
+    download proxy interface
+
+    .. http:get:: /control/download
+    """
+    snapshot = global_config.deck_snapshot.copy()
+    class_definitions = {}
+    # Iterate through each instrument in the snapshot
+    for instrument_key, instrument_data in snapshot.items():
+        # Iterate through each function associated with the current instrument
+        for function_key, function_data in instrument_data.items():
+            # Convert the function signature to a string representation
+            function_data['signature'] = str(function_data['signature'])
+        class_name = instrument_key.split('.')[-1]  # Extracting the class name from the path
+        class_definitions[class_name.capitalize()] = create_function(request.url_root, class_name, instrument_data)
+    # Export the generated class definitions to a .py script
+    export_to_python(class_definitions, current_app.config["OUTPUT_FOLDER"])
+    filepath = os.path.join(current_app.config["OUTPUT_FOLDER"], "generated_proxy.py")
+    return send_file(os.path.abspath(filepath), as_attachment=True)
+
+@control.route("/api/control/", strict_slashes=False, methods=['GET'])
+@control.route("/api/control/<instrument>", methods=['POST'])
 def backend_control(instrument: str=None):
     """
     .. :quickref: Backend Control; backend control
 
     backend control through http requests
 
-    .. http:get:: /backend_control
+    .. http:get:: /api/control/
 
     :param instrument: instrument name
     :type instrument: str
 
-    .. http:post:: /backend_control
+    .. http:post:: /api/control/
 
     """
-    inst_object = find_instrument_by_name(instrument)
-    forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
+    if instrument:
+        inst_object = find_instrument_by_name(instrument)
+        forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
 
     if request.method == 'POST':
         method_name = request.form.get("hidden_name", None)
@@ -183,42 +212,48 @@ def backend_control(instrument: str=None):
                                             current_app=current_app._get_current_object())
             return jsonify(output), 200
 
-
-@control.route("/backend_control", methods=['GET'])
-def backend_client():
-    """
-    .. :quickref: Backend Control; get snapshot
-
-    backend control through http requests
-
-    .. http:get:: /backend_control
-    """
-    # Create a snapshot of the current deck configuration
     snapshot = global_config.deck_snapshot.copy()
-
     # Iterate through each instrument in the snapshot
     for instrument_key, instrument_data in snapshot.items():
         # Iterate through each function associated with the current instrument
         for function_key, function_data in instrument_data.items():
             # Convert the function signature to a string representation
             function_data['signature'] = str(function_data['signature'])
+    return jsonify(snapshot), 200
 
-    json_output = jsonify(snapshot)
-    return json_output, 200
+# @control.route("/api/control", strict_slashes=False, methods=['GET'])
+# def backend_client():
+#     """
+#     .. :quickref: Backend Control; get snapshot
+#
+#     backend control through http requests
+#
+#     .. http:get:: /api/control/summary
+#     """
+#     # Create a snapshot of the current deck configuration
+#     snapshot = global_config.deck_snapshot.copy()
+#
+#     # Iterate through each instrument in the snapshot
+#     for instrument_key, instrument_data in snapshot.items():
+#         # Iterate through each function associated with the current instrument
+#         for function_key, function_data in instrument_data.items():
+#             # Convert the function signature to a string representation
+#             function_data['signature'] = str(function_data['signature'])
+#     return jsonify(snapshot), 200
 
 
-@control.route("/import_api", methods=['POST'])
+@control.route("/control/import/module", methods=['POST'])
 def import_api():
     """
     .. :quickref: Advanced Features; Manually import API module(s)
 
     importing other Python modules
 
-    .. http:post:: /import_api
+    .. http:post:: /control/import/module
 
     :form filepath: API (Python class) module filepath
 
-    import the module and redirect to :http:get:`/ivoryos/new_controller/`
+    import the module and redirect to :http:get:`/ivoryos/control/new/`
 
     """
     filepath = request.form.get('filepath')
@@ -266,12 +301,12 @@ def import_api():
 #     return redirect(url_for('control.deck_controllers'))
 
 
-@control.route("/import_deck", methods=['POST'])
+@control.route("/control/import/deck", methods=['POST'])
 def import_deck():
     """
     .. :quickref: Advanced Features; Manually import a deck
 
-    .. http:post:: /import_deck
+    .. http:post:: /control/import_deck
 
     :form filepath: deck module filepath
 
@@ -304,12 +339,12 @@ def import_deck():
     return redirect(back)
 
 
-@control.route('/save-order/<instrument>', methods=['POST'])
+@control.route('/control/<instrument>/save-order', methods=['POST'])
 def save_order(instrument: str):
     """
     .. :quickref: Control Customization; Save functions' order
 
-    .. http:post:: /save-order
+    .. http:post:: /control/save-order
 
     save function drag and drop order for the given <instrument>
 
@@ -320,12 +355,12 @@ def save_order(instrument: str):
     return '', 204
 
 
-@control.route('/hide_function/<instrument>/<function>')
+@control.route('/control/<instrument>/<function>/hide')
 def hide_function(instrument, function):
     """
     .. :quickref: Control Customization; Hide function
 
-    .. http:get:: /hide_function
+    .. http:get:: //control/<instrument>/<function>/hide
 
     Hide the given <instrument> and <function>
 
@@ -341,12 +376,12 @@ def hide_function(instrument, function):
     return redirect(back)
 
 
-@control.route('/remove_hidden/<instrument>/<function>')
+@control.route('/control/<instrument>/<function>/unhide')
 def remove_hidden(instrument: str, function: str):
     """
     .. :quickref: Control Customization; Remove a hidden function
 
-    .. http:get:: /remove_hidden
+    .. http:get:: /control/<instrument>/<function>/unhide
 
     Un-hide the given <instrument> and <function>
 

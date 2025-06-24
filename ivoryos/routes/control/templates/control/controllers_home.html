@@ -6,21 +6,21 @@
         {% for instrument in defined_variables %}
             <div class="col-xl-3 col-lg-4 col-md-6 mb-4 ">
                 <div class="bg-white rounded shadow-sm position-relative">
-{#                    {% if not deck %}#}
+                    {% if deck %}
 {#                        <a href="{{ url_for('control.disconnect', instrument=instrument) }}" class="stretched-link controller-card" style="float: right;color: red; position: relative;">Disconnect <i class="bi bi-x-square"></i></a>#}
                         <div class="p-4 controller-card">
                             <h5 class=""><a href="{{ url_for('control.controllers', instrument=instrument) }}" class="text-dark stretched-link">{{instrument.split(".")[1]}}</a></h5>
                         </div>
-{#                    {% else %}#}
-{#                        <div class="p-4 controller-card">#}
-{#                            <h5 class=""><a href="{{ url_for('control.controllers', instrument=instrument) }}" class="text-dark stretched-link">{{instrument}}</a></h5>#}
-{#                        </div>#}
-{#                    {% endif %}#}
+                    {% else %}
+                        <div class="p-4 controller-card">
+                            <h5 class=""><a href="{{ url_for('control.controllers', instrument=instrument) }}" class="text-dark stretched-link">{{instrument}}</a></h5>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         {% endfor %}
         <div class="d-flex mb-3">
-            <a href="{{ url_for('design.download', filetype='proxy') }}" class="btn btn-outline-primary">
+            <a href="{{ url_for('control.download_proxy', filetype='proxy') }}" class="btn btn-outline-primary">
                 <i class="bi bi-download"></i> Download remote control script
             </a>
         </div>

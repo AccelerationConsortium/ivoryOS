@@ -69,7 +69,7 @@ class ScriptRunner:
 
         if self.current_app is None:
             self.current_app = current_app
-        time.sleep(1)  # Optional: may help ensure deck readiness
+        # time.sleep(1)  # Optional: may help ensure deck readiness
 
         # Try to acquire lock without blocking
         if not self.lock.acquire(blocking=False):
