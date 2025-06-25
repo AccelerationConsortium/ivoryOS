@@ -8,7 +8,7 @@ import os
 
 # Function to create class and methods dynamically
 def create_function(url, class_name, functions):
-    class_template = f'class {class_name.capitalize()}:\n    url = "{url}ivoryos/backend_control/deck.{class_name}"\n'
+    class_template = f'class {class_name.capitalize()}:\n    url = "{url}ivoryos/api/control/deck.{class_name}"\n'
 
     for function_name, details in functions.items():
         signature = details['signature']
