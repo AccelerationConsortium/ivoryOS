@@ -240,6 +240,7 @@ class ScriptRunner:
             for i in config:
                 try:
                     i = utils.convert_config_type(i, arg_type)
+                    compiled = True
                 except Exception as e:
                     logger.info(e)
                     compiled = False
