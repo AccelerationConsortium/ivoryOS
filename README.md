@@ -156,6 +156,22 @@ When you run the application for the first time, it will automatically create th
 - [x] show line number option ✅  
 - [ ] snapshot version control
 
+## Citing
+
+If you find this project useful, please consider citing the following manuscript:
+
+> Citation with hyperlink
+
+```bibtex
+```
+
+For an additional perspective related to the development of the tool, please see:
+
+> Citation with hyperlink
+
+```bibtex
+```
+
 ## Authors and Acknowledgement
 Ivory Zhang, Lucy Hao
 
