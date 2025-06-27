@@ -160,16 +160,36 @@ When you run the application for the first time, it will automatically create th
 
 If you find this project useful, please consider citing the following manuscript:
 
-> Citation with hyperlink
+> Zhang, W., Hao, L., Lai, V. et al. [IvoryOS: an interoperable web interface for orchestrating Python-based self-driving laboratories.](https://www.nature.com/articles/s41467-025-60514-w) Nat Commun 16, 5182 (2025).
 
 ```bibtex
+@article{zhang_et_al_2025,
+  author       = {Wenyu Zhang and Lucy Hao and Veronica Lai and Ryan Corkery and Jacob Jessiman and Jiayu Zhang and Junliang Liu and Yusuke Sato and Maria Politi and Matthew E. Reish and Rebekah Greenwood and Noah Depner and Jiyoon Min and Rama El-khawaldeh and Paloma Prieto and Ekaterina Trushina and Jason E. Hein},
+  title        = {{IvoryOS}: an interoperable web interface for orchestrating {Python-based} self-driving laboratories},
+  journal      = {Nature Communications},
+  year         = {2025},
+  volume       = {16},
+  number       = {1},
+  pages        = {5182},
+  doi          = {10.1038/s41467-025-60514-w},
+  url          = {https://doi.org/10.1038/s41467-025-60514-w}
+}
 ```
 
 For an additional perspective related to the development of the tool, please see:
 
-> Citation with hyperlink
+> Zhang, W., Hein, J. [Behind IvoryOS: Empowering Scientists to Harness Self-Driving Labs for Accelerated Discovery](https://communities.springernature.com/posts/behind-ivoryos-empowering-scientists-to-harness-self-driving-labs-for-accelerated-discovery). Springer Nature Research Communities (2025).
 
 ```bibtex
+@misc{zhang_hein_2025,
+  author       = {Wenyu Zhang and Jason Hein},
+  title        = {Behind {IvoryOS}: Empowering Scientists to Harness Self-Driving Labs for Accelerated Discovery},
+  howpublished = {Springer Nature Research Communities},
+  year         = {2025},
+  month        = {Jun},
+  day          = {18},
+  url          = {https://communities.springernature.com/posts/behind-ivoryos-empowering-scientists-to-harness-self-driving-labs-for-accelerated-discovery}
+}
 ```
 
 ## Authors and Acknowledgement
