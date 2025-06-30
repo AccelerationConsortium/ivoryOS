@@ -12,7 +12,7 @@ from ivoryos.routes.design.design import design, socketio
 from ivoryos.routes.main.main import main
 # from ivoryos.routes.monitor.monitor import monitor
 from ivoryos.utils import utils
-from ivoryos.utils.db_models import db
+from ivoryos.utils.db_models import db, User
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.script_runner import ScriptRunner
 from ivoryos.version import __version__ as ivoryos_version
@@ -39,6 +39,15 @@ app.register_blueprint(auth, url_prefix=url_prefix)
 app.register_blueprint(control, url_prefix=url_prefix)
 app.register_blueprint(design, url_prefix=url_prefix)
 app.register_blueprint(database, url_prefix=url_prefix)
+
+@login_manager.user_loader
+def load_user(user_id):
+    """
+    This function is called by Flask-Login on every request to get the
+    current user object from the user ID stored in the session.
+    """
+    # The correct implementation is to fetch the user from the database.
+    return db.session.get(User, user_id)
 
 
 def create_app(config_class=None):

@@ -240,6 +240,10 @@ def experiment_builder(instrument=None):
                 forms = create_form_from_pseudo(functions, autofill=autofill, script=script)
 
     utils.post_script_file(script)
+
+    exec_string = script.python_script if script.python_script else script.compile(current_app.config['SCRIPT_FOLDER'])
+    session['python_code'] = exec_string
+
     design_buttons = create_action_button(script)
     return render_template('experiment_builder.html', off_line=off_line, instrument=instrument, history=deck_list,
                            script=script, defined_variables=deck_variables,
@@ -439,14 +443,24 @@ def toggle_script_type(stype=None):
     return redirect(url_for('design.experiment_builder'))
 
 
-@design.route("/updateList", methods=['GET', 'POST'])
+@design.route("/updateList", methods=['POST'])
 @login_required
 def update_list():
     order = request.form['order']
     script = utils.get_script_file()
     script.currently_editing_order = order.split(",", len(script.currently_editing_script))
+    script.sort_actions()
+    exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
     utils.post_script_file(script)
-    return jsonify('Successfully Updated')
+    session['python_code'] = exec_string
+
+    return jsonify({'success': True})
+
+
+@design.route("/toggle_show_code", methods=["POST"])
+def toggle_show_code():
+    session["show_code"] = not session.get("show_code", False)
+    return redirect(request.referrer or url_for("design.experiment_builder"))
 
 
 # --------------------handle all the import/export and download/upload--------------------------

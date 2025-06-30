@@ -69,16 +69,18 @@ def signup():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        salt = bcrypt.gensalt()
-        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-        user = User(username, hashed)
-        try:
-            db.session.add(user)
-            db.session.commit()
-            return redirect(url_for('auth.login'))
-        except Exception:
-            flash("username exists :(", "error")
+
+        # Query the database to see if the user already exists.
+        existing_user = User.query.filter_by(username=username).first()
+
+        if existing_user:
+            flash("User already exists :(", "error")
             return render_template('signup.html'), 409
+        hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+        user = User(username, hashed)
+        db.session.add(user)
+        db.session.commit()
+        return redirect(url_for('auth.login'))
     return render_template('signup.html')
 
 
@@ -93,8 +95,3 @@ def logout():
     logout_user()
     session.clear()
     return redirect(url_for('auth.login'))
-
-
-@login_manager.user_loader
-def load_user(username):
-    return User(username, password=None)

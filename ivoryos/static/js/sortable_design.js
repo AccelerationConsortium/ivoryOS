@@ -21,7 +21,7 @@ $(document).ready(function () {
                 success: function (data) {
                     $("#response").html(data);
                     $("#response").slideDown("slow");
-                    slideout();
+                    window.location.href = window.location.href;
                 }
             });
         }
