@@ -330,8 +330,27 @@
                         {% endfor %}
                         </ul>
 
+                        <!-- Python Code Overlay -->
+                        <!-- Right side: Python code (conditionally shown) -->
+                        <!-- Python Code Slide-Over Panel -->
+                        {% if session.get('show_code') %}
+                        <div id="pythonCodeOverlay" class="code-overlay bg-light border-start show">
+                            <div class="overlay-header d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                                <strong>Python Code</strong>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="toggleCodeOverlay(false)">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            <div class="overlay-content p-3">
+                                {% for stype, script in session['python_code'].items() %}
+                                    <pre><code class="language-python">{{ script }}</code></pre>
+                                {% endfor %}
+                                <a href="{{ url_for('design.download', filetype='python') }}">Download <i class="bi bi-download"></i></a>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
-            </div>
             <div>
                 <a class="btn btn-dark {{ 'disabled' if not script.name or script.status == "finalized" else ''}}" href="{{url_for('database.publish')}}">Quick Save</a>
                 <a class="btn btn-dark " href="{{ url_for('design.experiment_run') }}">Compile and Run</a>
