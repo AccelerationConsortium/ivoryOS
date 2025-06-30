@@ -349,7 +349,7 @@ def experiment_run():
     if filename:
         # config_preview = list(csv.DictReader(open(os.path.join(current_app.config['CSV_FOLDER'], filename))))
         config = list(csv.DictReader(open(os.path.join(current_app.config['CSV_FOLDER'], filename))))
-        config_preview = config[1:6]
+        config_preview = config[1:]
         arg_type = config.pop(0)  # first entry is types
     try:
         for key, func_str in exec_string.items():
