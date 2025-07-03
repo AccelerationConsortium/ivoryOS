@@ -4,6 +4,7 @@ import inspect
 import logging
 import os
 import pickle
+import socket
 import subprocess
 import sys
 from collections import Counter
