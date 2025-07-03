@@ -120,7 +120,7 @@ def experiment_builder(instrument=None):
     if deck and script.deck is None:
         script.deck = os.path.splitext(os.path.basename(deck.__file__))[
             0] if deck.__name__ == "__main__" else deck.__name__
-    script.sort_actions()
+    # script.sort_actions()
 
     pseudo_deck_name = session.get('pseudo_deck', '')
     pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
@@ -202,11 +202,11 @@ def experiment_builder(instrument=None):
                 logic_type = kwargs.pop('builtin_name')
                 if 'variable' in kwargs:
                     try:
-                        script.add_variable(**kwargs, insert_position=insert_position)
+                        script.add_variable(insert_position=insert_position, **kwargs)
                     except ValueError:
                         flash("Invalid variable type")
                 else:
-                    script.add_logic_action(logic_type=logic_type, **kwargs, insert_position=insert_position)
+                    script.add_logic_action(logic_type=logic_type, insert_position=insert_position, **kwargs)
             else:
                 flash(form.errors)
         elif request.method == 'POST' and "workflow_name" in request.form:
@@ -317,7 +317,8 @@ def experiment_run():
     """
     deck = global_config.deck
     script = utils.get_script_file()
-    script.sort_actions()
+
+    # script.sort_actions() # handled in update list
     off_line = current_app.config["OFF_LINE"]
     deck_list = utils.import_history(os.path.join(current_app.config["OUTPUT_FOLDER"], 'deck_history.txt'))
     # if not off_line and deck is None:
