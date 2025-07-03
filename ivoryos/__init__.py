@@ -94,8 +94,8 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
         logger: Union[str, list] = None,
         logger_output_name: str = None,
         enable_design: bool = True,
-        blueprint_plugins: Union[list[Blueprint], Blueprint] = [],
-        exclude_names: list[str] = [],
+        blueprint_plugins: Union[list, Blueprint] = [],
+        exclude_names: list = [],
         ):
     """
     Start ivoryOS app server.
@@ -110,8 +110,8 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     :param logger: logger name of list of logger names, defaults to None
     :param logger_output_name: log file save name of logger, defaults to None, and will use "default.log"
     :param enable_design: enable design canvas, database and workflow execution
-    :param blueprint_plugins: custom Blueprint pages
-    :param exclude_names: module names to exclude from parsing
+    :param blueprint_plugins: Union[list[Blueprint], Blueprint] custom Blueprint pages
+    :param exclude_names: list[str] module names to exclude from parsing
     """
     app = create_app(config_class=config or get_config())  # Create app instance using factory function
 
@@ -162,6 +162,13 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     elif type(logger) is list:
         for log in logger:
             utils.start_logger(socketio, log_filename=logger_path, logger_name=log)
+
+    # in case Python 3.12 or higher doesn't log URL
+    if sys.version_info >= (3, 12):
+        ip = utils.get_ip_address()
+        print(f"Server running at http://localhost:{port}")
+        if not ip == "127.0.0.1":
+            print(f"Server running at http://{ip}:{port}")
     socketio.run(app, host=host, port=port, debug=debug, use_reloader=False, allow_unsafe_werkzeug=True)
     # return app
 
@@ -184,7 +191,7 @@ def load_installed_plugins(app, socketio):
     return plugin_names
 
 
-def load_plugins(blueprints: Union[list[Blueprint], Blueprint], app, socketio):
+def load_plugins(blueprints: Union[list, Blueprint], app, socketio):
     """
     Dynamically load installed plugins and attach Flask-SocketIO.
     """
