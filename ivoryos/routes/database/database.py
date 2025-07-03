@@ -20,7 +20,7 @@ def edit_workflow(script_name:str):
 
     :param script_name: script name
     :type script_name: str
-    :status 302: redirect to :http:get:`/ivoryos/experiment/build/`
+    :status 302: redirect to :http:get:`/ivoryos/design/script/`
     """
     row = Script.query.get(script_name)
     script = Script(**row.as_dict())
@@ -244,7 +244,7 @@ def get_workflow_steps(workflow_id:int):
     .. http:get:: /database/workflows/<int:workflow_id>
 
     """
-    workflow = WorkflowRun.query.get_or_404(workflow_id)
+    workflow = db.session.get(WorkflowRun, workflow_id)
     steps = WorkflowStep.query.filter_by(workflow_id=workflow_id).order_by(WorkflowStep.start_time).all()
 
     # Use full objects for template rendering

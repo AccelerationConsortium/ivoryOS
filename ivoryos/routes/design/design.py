@@ -120,7 +120,7 @@ def experiment_builder(instrument=None):
     if deck and script.deck is None:
         script.deck = os.path.splitext(os.path.basename(deck.__file__))[
             0] if deck.__name__ == "__main__" else deck.__name__
-    script.sort_actions()
+    # script.sort_actions()
 
     pseudo_deck_name = session.get('pseudo_deck', '')
     pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
@@ -202,11 +202,11 @@ def experiment_builder(instrument=None):
                 logic_type = kwargs.pop('builtin_name')
                 if 'variable' in kwargs:
                     try:
-                        script.add_variable(**kwargs, insert_position=insert_position)
+                        script.add_variable(insert_position=insert_position, **kwargs)
                     except ValueError:
                         flash("Invalid variable type")
                 else:
-                    script.add_logic_action(logic_type=logic_type, **kwargs, insert_position=insert_position)
+                    script.add_logic_action(logic_type=logic_type, insert_position=insert_position, **kwargs)
             else:
                 flash(form.errors)
         elif request.method == 'POST' and "workflow_name" in request.form:
@@ -240,6 +240,10 @@ def experiment_builder(instrument=None):
                 forms = create_form_from_pseudo(functions, autofill=autofill, script=script)
 
     utils.post_script_file(script)
+
+    exec_string = script.python_script if script.python_script else script.compile(current_app.config['SCRIPT_FOLDER'])
+    session['python_code'] = exec_string
+
     design_buttons = create_action_button(script)
     return render_template('experiment_builder.html', off_line=off_line, instrument=instrument, history=deck_list,
                            script=script, defined_variables=deck_variables,
@@ -313,7 +317,8 @@ def experiment_run():
     """
     deck = global_config.deck
     script = utils.get_script_file()
-    script.sort_actions()
+
+    # script.sort_actions() # handled in update list
     off_line = current_app.config["OFF_LINE"]
     deck_list = utils.import_history(os.path.join(current_app.config["OUTPUT_FOLDER"], 'deck_history.txt'))
     # if not off_line and deck is None:
@@ -345,7 +350,7 @@ def experiment_run():
     if filename:
         # config_preview = list(csv.DictReader(open(os.path.join(current_app.config['CSV_FOLDER'], filename))))
         config = list(csv.DictReader(open(os.path.join(current_app.config['CSV_FOLDER'], filename))))
-        config_preview = config[1:6]
+        config_preview = config[1:]
         arg_type = config.pop(0)  # first entry is types
     try:
         for key, func_str in exec_string.items():
@@ -439,14 +444,24 @@ def toggle_script_type(stype=None):
     return redirect(url_for('design.experiment_builder'))
 
 
-@design.route("/updateList", methods=['GET', 'POST'])
+@design.route("/updateList", methods=['POST'])
 @login_required
 def update_list():
     order = request.form['order']
     script = utils.get_script_file()
     script.currently_editing_order = order.split(",", len(script.currently_editing_script))
+    script.sort_actions()
+    exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
     utils.post_script_file(script)
-    return jsonify('Successfully Updated')
+    session['python_code'] = exec_string
+
+    return jsonify({'success': True})
+
+
+@design.route("/toggle_show_code", methods=["POST"])
+def toggle_show_code():
+    session["show_code"] = not session.get("show_code", False)
+    return redirect(request.referrer or url_for("design.experiment_builder"))
 
 
 # --------------------handle all the import/export and download/upload--------------------------
