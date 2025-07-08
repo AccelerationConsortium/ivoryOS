@@ -12,7 +12,7 @@ from ivoryos.routes.design.design import design, socketio
 from ivoryos.routes.main.main import main
 # from ivoryos.routes.monitor.monitor import monitor
 from ivoryos.utils import utils
-from ivoryos.utils.db_models import db
+from ivoryos.utils.db_models import db, User
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.script_runner import ScriptRunner
 from ivoryos.version import __version__ as ivoryos_version
@@ -39,6 +39,15 @@ app.register_blueprint(auth, url_prefix=url_prefix)
 app.register_blueprint(control, url_prefix=url_prefix)
 app.register_blueprint(design, url_prefix=url_prefix)
 app.register_blueprint(database, url_prefix=url_prefix)
+
+@login_manager.user_loader
+def load_user(user_id):
+    """
+    This function is called by Flask-Login on every request to get the
+    current user object from the user ID stored in the session.
+    """
+    # The correct implementation is to fetch the user from the database.
+    return db.session.get(User, user_id)
 
 
 def create_app(config_class=None):
@@ -85,8 +94,8 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
         logger: Union[str, list] = None,
         logger_output_name: str = None,
         enable_design: bool = True,
-        blueprint_plugins: Union[list[Blueprint], Blueprint] = [],
-        exclude_names: list[str] = [],
+        blueprint_plugins: Union[list, Blueprint] = [],
+        exclude_names: list = [],
         ):
     """
     Start ivoryOS app server.
@@ -101,8 +110,8 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     :param logger: logger name of list of logger names, defaults to None
     :param logger_output_name: log file save name of logger, defaults to None, and will use "default.log"
     :param enable_design: enable design canvas, database and workflow execution
-    :param blueprint_plugins: custom Blueprint pages
-    :param exclude_names: module names to exclude from parsing
+    :param blueprint_plugins: Union[list[Blueprint], Blueprint] custom Blueprint pages
+    :param exclude_names: list[str] module names to exclude from parsing
     """
     app = create_app(config_class=config or get_config())  # Create app instance using factory function
 
@@ -153,6 +162,13 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     elif type(logger) is list:
         for log in logger:
             utils.start_logger(socketio, log_filename=logger_path, logger_name=log)
+
+    # in case Python 3.12 or higher doesn't log URL
+    if sys.version_info >= (3, 12):
+        ip = utils.get_ip_address()
+        print(f"Server running at http://localhost:{port}")
+        if not ip == "127.0.0.1":
+            print(f"Server running at http://{ip}:{port}")
     socketio.run(app, host=host, port=port, debug=debug, use_reloader=False, allow_unsafe_werkzeug=True)
     # return app
 
@@ -175,7 +191,7 @@ def load_installed_plugins(app, socketio):
     return plugin_names
 
 
-def load_plugins(blueprints: Union[list[Blueprint], Blueprint], app, socketio):
+def load_plugins(blueprints: Union[list, Blueprint], app, socketio):
     """
     Dynamically load installed plugins and attach Flask-SocketIO.
     """

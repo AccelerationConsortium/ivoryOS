@@ -1,8 +1,9 @@
 from enum import Enum
+from typing import get_origin, get_args, Union, Any
 
 from wtforms.fields.choices import SelectField
 from wtforms.fields.core import Field
-from wtforms.validators import InputRequired, ValidationError
+from wtforms.validators import InputRequired, ValidationError, Optional
 from wtforms.widgets.core import TextInput
 
 from flask_wtf import FlaskForm
@@ -219,6 +220,26 @@ def format_name(name):
     text = ' '.join(word for word in name.split('_'))
     return text.capitalize()
 
+def parse_annotation(annotation):
+    """
+    Given a type annotation, return:
+    - a list of all valid types (excluding NoneType)
+    - a boolean indicating if the value can be None (optional)
+    """
+    origin = get_origin(annotation)
+    args = get_args(annotation)
+
+    if annotation is Any:
+        return [str], True  # fallback: accept any string, optional
+
+    if origin is Union:
+        types = list(set(args))
+        is_optional = type(None) in types
+        non_none_types = [t for t in types if t is not type(None)]
+        return non_none_types, is_optional
+
+    # Not a Union, just a regular type
+    return [annotation], False
 
 def create_form_for_method(method, autofill, script=None, design=True):
     """
@@ -258,7 +279,7 @@ def create_form_for_method(method, autofill, script=None, design=True):
         field_kwargs = {
             "label": formatted_param_name,
             "default": default_value,
-            "validators": [InputRequired()] if param.default is param.empty else None,
+            "validators": [InputRequired()] if param.default is param.empty else [Optional()],
             **({"script": script} if (autofill or design) else {})
         }
         if isinstance(param.annotation, type) and issubclass(param.annotation, Enum):
@@ -267,11 +288,17 @@ def create_form_for_method(method, autofill, script=None, design=True):
             placeholder_text = f"Choose or type a value for {param.annotation.__name__} (start with # for custom)"
             extra_kwargs = {"choices": param.annotation}
         else:
+            # print(param.annotation)
+            annotation, optional = parse_annotation(param.annotation)
+            annotation = annotation[0]
             field_class, placeholder_text = annotation_mapping.get(
-                param.annotation,
+                annotation,
                 (VariableOrStringField if design else StringField, f'Enter {param.annotation} value')
             )
             extra_kwargs = {}
+            if optional:
+                field_kwargs["filters"] = [lambda x: x if x != '' else None]
+
 
         render_kwargs = {"placeholder": placeholder_text}
 
