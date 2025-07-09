@@ -55,9 +55,9 @@ def create_app(config_class=None):
     create app, init database
     """
     app.config.from_object(config_class or 'config.get_config()')
-
+    os.makedirs(app.config["OUTPUT_FOLDER"], exist_ok=True)
     # Initialize extensions
-    socketio.init_app(app)
+    socketio.init_app(app, cors_allowed_origins="*", cookie=None, logger=True, engineio_logger=True)
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
     db.init_app(app)
@@ -114,7 +114,6 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     :param exclude_names: list[str] module names to exclude from parsing
     """
     app = create_app(config_class=config or get_config())  # Create app instance using factory function
-    os.makedirs(app.config["OUTPUT_FOLDER"], exist_ok=True)
 
     # plugins = load_installed_plugins(app, socketio)
     plugins = []
