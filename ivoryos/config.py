@@ -36,6 +36,14 @@ class ProductionConfig(Config):
 class TestingConfig(Config):
     DEBUG = True
     TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # Use an in-memory SQLite database for tests
+    WTF_CSRF_ENABLED = False  # Disable CSRF for testing forms
+
+
+class DemoConfig(Config):
+
+    DEBUG = False
+    OFF_LINE = False
 
 class DemoConfig(Config):
     DEBUG = False
