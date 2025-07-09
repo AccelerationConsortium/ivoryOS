@@ -297,7 +297,7 @@ def web_config_entry_wrapper(data: dict, config_type: list):
     return filtered_rows
 
 
-def create_deck_snapshot(deck, save: bool = False, output_path: str = '', exclude_names: list[str] = []):
+def create_deck_snapshot(deck, save: bool = False, output_path: str = '', exclude_names: list = []):
     """
     Create a deck snapshot of the given script
     :param deck: python module name to create the deck snapshot from e.g. __main__
