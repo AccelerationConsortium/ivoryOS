@@ -136,13 +136,14 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     app.config["LOGGERS"] = logger
     app.config["LOGGERS_PATH"] = logger_output_name or app.config["LOGGERS_PATH"]  # default.log
     logger_path = os.path.join(app.config["OUTPUT_FOLDER"], app.config["LOGGERS_PATH"])
+    dummy_deck_path = os.path.join(app.config["OUTPUT_FOLDER"], app.config["DUMMY_DECK"])
 
     if module:
         app.config["MODULE"] = module
         app.config["OFF_LINE"] = False
         global_config.deck = sys.modules[module]
         global_config.deck_snapshot = utils.create_deck_snapshot(global_config.deck,
-                                                                 output_path=app.config["DUMMY_DECK"],
+                                                                 output_path=dummy_deck_path,
                                                                  save=True,
                                                                  exclude_names=exclude_names
                                                                  )

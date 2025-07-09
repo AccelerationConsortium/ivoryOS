@@ -1,4 +1,4 @@
-image: python:3.9  # Specify the Docker image with Python
+image: python:3.10-slim  # Specify the Docker image with Python
 
 # Define stages
 stages:
@@ -22,7 +22,7 @@ install_dependencies:
 # Job to build the package
 build_package:
   stage: build
-  image: python:3.9
+  image: python:3.10-slim
   script:
     - pip install --upgrade pip
     - pip install setuptools wheel twine
@@ -36,7 +36,7 @@ build_package:
 # Job to deploy to PyPI
 deploy_pypi:
   stage: deploy
-  image: python:3.9
+  image: python:3.10-slim
   variables:
     TWINE_USERNAME: __token__
     TWINE_PASSWORD: $PYPI_PASSWORD_IVORY
