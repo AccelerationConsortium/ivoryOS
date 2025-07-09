@@ -114,6 +114,7 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     :param exclude_names: list[str] module names to exclude from parsing
     """
     app = create_app(config_class=config or get_config())  # Create app instance using factory function
+    os.makedirs(app.config["OUTPUT_FOLDER"], exist_ok=True)
 
     # plugins = load_installed_plugins(app, socketio)
     plugins = []
