@@ -36,12 +36,25 @@ class ProductionConfig(Config):
 class TestingConfig(Config):
     DEBUG = True
     TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # Use an in-memory SQLite database for tests
+    WTF_CSRF_ENABLED = False  # Disable CSRF for testing forms
+
+
 
 class DemoConfig(Config):
     DEBUG = False
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    OUTPUT_FOLDER = "/tmp/ivoryos_data"
-
+    OUTPUT_FOLDER = os.path.join(os.path.abspath(os.curdir), '/tmp/ivoryos_data')
+    CSV_FOLDER = os.path.join(OUTPUT_FOLDER, 'config_csv/')
+    SCRIPT_FOLDER = os.path.join(OUTPUT_FOLDER, 'scripts/')
+    DATA_FOLDER = os.path.join(OUTPUT_FOLDER, 'results/')
+    DUMMY_DECK = os.path.join(OUTPUT_FOLDER, 'pseudo_deck/')
+    LLM_OUTPUT = os.path.join(OUTPUT_FOLDER, 'llm_output/')
+    DECK_HISTORY = os.path.join(OUTPUT_FOLDER, 'deck_history.txt')
+    # session and cookies
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = "None"
+    SESSION_COOKIE_HTTPONLY = True
 
 def get_config(env='dev'):
     if env == 'production':
