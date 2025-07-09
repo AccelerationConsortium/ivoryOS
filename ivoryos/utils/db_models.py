@@ -1,4 +1,10 @@
 import ast
+try:
+    from ast import unparse as ast_unparse
+except ImportError:
+    import astor
+    ast_unparse = astor.to_source
+
 import builtins
 import json
 import keyword
@@ -419,7 +425,7 @@ class Script(db.Model):
                 func_def = next(node for node in module.body if isinstance(node, ast.FunctionDef))
 
                 # Extract function body as source lines
-                line_collection[stype] = [ast.unparse(node) for node in func_def.body if not isinstance(node, ast.Return)]
+                line_collection[stype] = [ast_unparse(node) for node in func_def.body if not isinstance(node, ast.Return)]
                 # print(line_collection[stype])
         return line_collection
 

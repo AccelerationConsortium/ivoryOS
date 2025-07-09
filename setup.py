@@ -31,5 +31,8 @@ setup(
         # "openai",
         "python-dotenv",
     ],
+    extras_require={
+        ":python_version<'3.9'": ["astor"]
+    },
     url='https://gitlab.com/heingroup/ivoryos'
 )
