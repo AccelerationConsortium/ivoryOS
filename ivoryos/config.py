@@ -10,7 +10,6 @@ class Config:
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', None)
 
     OUTPUT_FOLDER = os.path.join(os.path.abspath(os.curdir), 'ivoryos_data')
-    os.makedirs(OUTPUT_FOLDER, exist_ok=True)
     CSV_FOLDER = os.path.join(OUTPUT_FOLDER, 'config_csv/')
     SCRIPT_FOLDER = os.path.join(OUTPUT_FOLDER, 'scripts/')
     DATA_FOLDER = os.path.join(OUTPUT_FOLDER, 'results/')
@@ -38,10 +37,17 @@ class TestingConfig(Config):
     DEBUG = True
     TESTING = True
 
+class DemoConfig(Config):
+    DEBUG = False
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    OUTPUT_FOLDER = "/tmp/ivoryos_data"
+
 
 def get_config(env='dev'):
     if env == 'production':
         return ProductionConfig()
     elif env == 'testing':
         return TestingConfig()
+    elif env == 'demo':
+        return DemoConfig()
     return DevelopmentConfig()
