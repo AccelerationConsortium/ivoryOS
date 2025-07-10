@@ -11,6 +11,7 @@ from flask_login import login_required
 from flask_socketio import SocketIO
 from werkzeug.utils import secure_filename
 
+from ivoryos.routes.database.database import publish
 from ivoryos.utils import utils
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.form import create_builtin_form, create_action_button, format_name, create_form_from_pseudo, \
@@ -355,7 +356,7 @@ def experiment_run():
     try:
         for key, func_str in exec_string.items():
             exec(func_str)
-        line_collection = script.convert_to_lines(exec_string)
+        line_collection =  script.convert_to_lines(exec_string)
 
     except Exception:
         flash(f"Please check {key} syntax!!")
@@ -780,6 +781,9 @@ def submit_script():
     deck_name = os.path.splitext(os.path.basename(deck.__file__))[0] if deck.__name__ == "__main__" else deck.__name__
     script = Script(author=session.get('user'), deck=deck_name)
     script_collection = request.get_json()
+    workflow_name = script_collection.get("workflow_name", "untitled")
+    script.name = workflow_name
+    script_collection.pop("workflow_name")
     script.python_script = script_collection
     # todo check script format
     utils.post_script_file(script)
