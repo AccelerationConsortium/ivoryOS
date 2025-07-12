@@ -1,0 +1,29 @@
+{# Edit action form component #}
+{% with action = session["edit_action"] %}
+    <h5> {{ format_name(action['action']) }} </h5>
+    <form role="form" method='POST' name="{{instrument}}" action="{{ url_for('design.design_steps.edit_action', uuid=session["edit_action"]['uuid']) }}">
+        {% if not action['args'] == None %}
+        <div class="form-group">
+            {% if not action['args'].__class__.__name__ == 'dict' %}
+                <div class="input-group mb-3">
+                    <label class="input-group-text">{{ action['action'] }}</label>
+                    <input class="form-control" type="text" id="arg" name="arg" placeholder="{{ action['arg_types']}}" value="{{ action['args'] }}" aria-labelledby="variableHelpBlock">
+                </div>
+            {% else %}
+                {{ forms.hidden_tag() }}
+                {% for field in forms %}
+                    {% if field.type not in ['CSRFTokenField'] %}
+                        <div class="input-group mb-3">
+                            <label class="input-group-text">{{ field.label.text }}</label>
+                            {{ field(class="form-control") }}
+                            <div class="form-text">{{ field.description }} </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        </div>
+        {% endif %}
+        <button class="btn btn-primary" type="submit">Save</button>
+        <button class="btn btn-primary" type="submit" name="back" id="back" value="back">Back</button>
+    </form>
+{% endwith %} 

@@ -4,9 +4,8 @@
 {% block body %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
 
-
     {% if no_deck_warning and not dismiss %}
-{#      auto pop import when there is no deck#}
+        {# auto pop import when there is no deck#}
         <script type="text/javascript">
             function OpenBootstrapPopup() {
                 $("#importModal").modal('show');
@@ -18,133 +17,11 @@
     {% endif %}
 
     <div class="row">
-        {% if script['script'] or script['prep'] or script['cleanup'] %}
-            <div class="col-lg-6 col-sm-12" id="run-panel"  style="{{ 'display: none;'  if pause_status else '' }}">
-                <ul class="nav nav-tabs" id="myTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <a class="nav-link {{ 'disabled' if config_list else '' }} {{ 'active' if not config_list else '' }}" id="tab1-tab" data-bs-toggle="tab" href="#tab1" role="tab" aria-controls="tab1" aria-selected="false">Repeat</a>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <a class="nav-link {{ 'disabled' if not config_list else '' }} {{ 'active' if config_list else '' }}" id="tab4-tab" data-bs-toggle="tab" href="#tab4" role="tab" aria-controls="tab4" aria-selected="false">Configuration</a>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <a class="nav-link {{ 'disabled' if not config_list or not return_list else '' }}" id="tab3-tab" data-bs-toggle="tab" href="#tab3" role="tab" aria-controls="tab3" aria-selected="false">Bayesian Optimization</a>
-                    </li>
-                </ul>
-                <div class="tab-content" id="myTabsContent">
-                    <div class="tab-pane fade {{ 'show active' if not config_list else '' }}" id="tab1" role="tabpanel" aria-labelledby="tab1-tab">
-                        <p><h5>Control panel:</h5></p>
-                        <form role="form" method='POST' name="run" action="{{url_for('design.experiment_run')}}">
-                            <div class="input-group mb-3">
-                                <label class="input-group-text" for="repeat">Repeat for </label>
-                                <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="1000" value="1">
-                                <label class="input-group-text" for="repeat"> times</label>
-                            </div>
-                            <div class="input-group mb-3">
-                                <button class="form-control" type="submit" class="btn btn-dark">Run</button>
-                            </div>
-                        </form>
-                    </div>
-
-{#TODO#}
-<div class="tab-pane fade {{ 'show active' if config_list else '' }}" id="tab4" role="tabpanel" aria-labelledby="tab4-tab">
-    <!-- File Management Section -->
-    <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h6 class="mb-0"><i class="bi bi-file-earmark-text"></i> Configuration File</h6>
-            <small class="text-muted">
-                <a href="{{ url_for('design.download', filetype='configure') }}">
-                    <i class="bi bi-download"></i> Download Empty Template
-                </a>
-            </small>
-        </div>
-        <div class="card-body">
-            <div class="row g-3">
-                <!-- File Selection -->
-                <div class="col-md-6">
-                    <form name="filenameForm" id="filenameForm" method="GET" action="{{ url_for('design.experiment_run') }}" enctype="multipart/form-data">
-                        <div class="input-group">
-                            <label class="input-group-text"><i class="bi bi-folder2-open"></i></label>
-                            <select class="form-select" name="filename" id="filenameSelect" onchange="document.getElementById('filenameForm').submit();">
-                                <option {{ 'selected' if not filename else '' }} value="">-- Select existing file --</option>
-                                {% for config_file in config_file_list %}
-                                    <option {{ 'selected' if filename == config_file else '' }} value="{{ config_file }}">{{ config_file }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- File Upload -->
-                <div class="col-md-6">
-                    <form method="POST" id="loadFile" name="loadFile" action="{{ url_for('design.upload') }}" enctype="multipart/form-data">
-                        <div class="input-group">
-                            <input class="form-control" name="file" type="file" accept=".csv" required="required" onchange="document.getElementById('loadFile').submit();">
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+        {% include 'components/run_panel.html' %}
+        {% include 'components/progress_panel.html' %}
+        {% include 'components/logging_panel.html' %}
     </div>
-       <!-- Configuration Table -->
-
-
-
-    <div class="card mb-4">
-        <div class="card-header position-relative">
-            <div class="position-absolute top-50 end-0 translate-middle-y me-3">
-                <span id="saveStatus" class="badge bg-success" style="display: none;">
-                    <i class="bi bi-check-circle"></i> Auto-saved
-                </span>
-                <span id="modifiedStatus" class="badge bg-warning" style="display: none;">
-                    <i class="bi bi-pencil"></i> Modified
-                </span>
-            </div>
-        </div>
-        <div class="card-body p-0">
-            <form method="POST" name="online-config" id="online-config" action="{{url_for('design.experiment_run')}}">
-                <div class="table-responsive">
-                    <table id="dataInputTable" class="table table-striped table-hover mb-0">
-                        <thead class="table-dark">
-                        <tr>
-                            <th style="width: 40px;">#</th>
-                            {% for column in config_list %}
-                                <th>{{ column }}</th>
-                            {% endfor %}
-                            <th></th>
-                        </tr>
-                        </thead>
-                        <tbody id="tableBody">
-                        </tbody>
-                    </table>
-                </div>
-            <div class="card-footer">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-success" onclick="addRow()">
-                        <i class="bi bi-plus-circle"></i> Add Row
-                    </button>
-                    <button type="button" class="btn btn-warning" onclick="clearAllRows()">
-                        <i class="bi bi-trash"></i> Clear All
-                    </button>
-                    <button type="button" class="btn btn-info" onclick="resetToFile()" id="resetToFileBtn" style="display: none;">
-                        <i class="bi bi-arrow-clockwise"></i> Reset to File
-                    </button>
-                </div>
-                <button type="submit" name="online-config" class="btn btn-primary btn-lg">
-                    <i class="bi bi-play-circle"></i> Run
-                </button>
-            </div>
-            </div>
-            </form>
-        </div>
-        <!-- Config Preview (if loaded from file) -->
-        {% if config_preview %}
-            <div class="alert alert-info">
-                <small><i class="bi bi-info-circle"></i> {{ config_preview|length }} rows loaded from {{ filename }}</small>
-            </div>
-        {% endif %}
-    </div>
+<<<<<<< Updated upstream
 </div>
 
 
@@ -324,30 +201,8 @@
 
     </div>
 
-
-
-
-
-    <!-- Error Modal -->
-    <div class="modal fade" id="error-modal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="errorModalLabel">Error Detected</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <p id="error-message">An error has occurred.</p>
-            <p>Do you want to continue execution or stop?</p>
-          </div>
-          <div class="modal-footer">
-              <button type="button" class="btn btn-primary" id="retry-btn" data-bs-dismiss="modal">Rerun Current Step</button>
-              <button type="button" class="btn btn-success" id="continue-btn" data-bs-dismiss="modal">Continue</button>
-              <button type="button" class="btn btn-danger" id="stop-btn" data-bs-dismiss="modal">Stop Execution</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    {# Include error modal #}
+    {% include 'components/error_modal.html' %}
 
     <script src="{{ url_for('static', filename='js/socket_handler.js') }}"></script>
     <script>

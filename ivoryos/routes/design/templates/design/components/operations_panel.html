@@ -1,0 +1,43 @@
+{# Operations panel component #}
+<div style="margin-bottom: 4vh;"></div>
+<div class="accordion accordion-flush">
+    <div class="accordion-item design-control">
+        <h5 class="accordion-header">
+            <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#deck" role="button" aria-expanded="false" aria-controls="collapseExample">
+                Operations
+            </button>
+        </h5>
+        <div class="accordion-collapse collapse show" id="deck">
+            <ul class="list-group">
+                {% for instrument in defined_variables %}
+                    <form role="form" method='GET' name="{{instrument}}" action="{{url_for('design.experiment_builder',instrument=instrument)}}">
+                        <div>
+                            <button class="list-group-item list-group-item-action" type="submit">{{format_name(instrument)}}</button>
+                        </div>
+                    </form>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    {% if local_variables %}
+        <div class="accordion-item  design-control">
+            <h5 class="accordion-header">
+                <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#local" role="button" aria-expanded="false" aria-controls="collapseExample">
+                    Local Operations
+                </button>
+            </h5>
+            <div class="accordion-collapse collapse show" id="local">
+                <ul class="list-group">
+                    {% for instrument in local_variables %}
+                        <form role="form" method='GET' name="{{instrument}}" action="{{url_for('design.experiment_builder',instrument=instrument)}}">
+                            <div>
+                                <button class="list-group-item list-group-item-action" type="submit"  name="device" value="{{instrument}}" >{{instrument}}</button>
+                            </div>
+                        </form>
+                    {% endfor%}
+                </ul>
+            </div>
+        </div>
+    {% endif %}
+</div> 

@@ -321,6 +321,7 @@ def create_add_form(attr, attr_name, autofill: bool, script=None, design: bool =
     """
     signature = attr.get('signature', {})
     docstring = attr.get('docstring', "")
+    # print(signature, docstring)
     dynamic_form = create_form_for_method(signature, autofill, script, design)
     if design:
         return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
