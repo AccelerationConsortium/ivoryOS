@@ -1,0 +1,31 @@
+{# Script info component #}
+<div class="collapse" id="info">
+    <table class="table script-table">
+        <tbody>
+            <tr><th scope="row">Deck Name</th><td>{{script.deck}}</td></tr>
+            <tr><th scope="row">Script Name</th><td>{{ script.name }}</td></tr>
+            <tr>
+                <th scope="row">Editing status <a role="button" data-bs-toggle="popover" data-bs-title="How to use:" data-bs-content="You can choose to disable editing, so the script is finalized and cannot be edited. Use save as to rename the script"><i class="bi bi-info-circle"></i></a></th>
+                <td>{{script.status}}</td>
+            </tr>
+            <tr>
+                <th scope="row">Output Values <a role="button" data-bs-toggle="popover" data-bs-title="How to use:" data-bs-content="This will be your output data. If the return data is not a value, it will save as None is the result file"><i class="bi bi-info-circle"></i></a></th>
+                <td>
+                    {% for i in script.config_return()[1] %}
+                        <input type="checkbox">{{i}}
+                    {% endfor %}
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">Config Variables <a role="button" data-bs-toggle="popover" data-bs-title="How to use:" data-bs-content="This shows variables you want to configure later using .csv file"><i class="bi bi-info-circle"></i></a></th>
+                <td>
+                    <ul>
+                        {% for i in script.config("script")[0] %}
+                            <li>{{i}}</li>
+                        {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div> 

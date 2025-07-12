@@ -1,0 +1,31 @@
+{# Logging panel component for experiment run #}
+<div class="col-lg-6 col-sm-12 logging-panel">
+    <p>
+        <div class="p d-flex justify-content-between align-items-center">
+            <h5>Progress：</h5>
+            <div class="d-flex gap-2 ms-auto">
+                <button id="pause-resume" class="btn btn-info text-white" data-bs-toggle="tooltip" title="Pause execution">
+                    {% if pause_status %}
+                        <i class="bi bi-play-circle"></i>
+                    {% else %}
+                        <i class="bi bi-pause-circle"></i>
+                    {% endif %}
+                </button>
+                <button id="abort-current" class="btn btn-danger text-white" data-bs-toggle="tooltip" title="Stop execution after current step">
+                    <i class="bi bi-stop-circle"></i>
+                </button>
+                <button id="abort-pending" class="btn btn-warning text-white" data-bs-toggle="tooltip" title="Stop execution after current iteration">
+                    <i class="bi bi-hourglass-split"></i>
+                </button>
+            </div>
+        </div>
+        <div class="text-muted mt-2">
+            <small><strong>Note:</strong> The current step cannot be paused or stopped until it completes. </small>
+        </div>
+
+    <div class="progress" role="progressbar" aria-label="Animated striped example" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100">
+        <div id="progress-bar-inner" class="progress-bar progress-bar-striped progress-bar-animated"></div>
+    </div>
+    <p><h5>Log：</h5></p>
+    <div id="logging-panel"></div>
+</div> 

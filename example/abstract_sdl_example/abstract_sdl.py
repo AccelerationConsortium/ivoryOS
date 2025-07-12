@@ -16,9 +16,15 @@ import random
 from enum import Enum
 from typing import List, Union
 
+# from ivoryos.config import get_config
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
+
 from abstract_balance import AbstractBalance
 from abstract_pump import AbstractPump
-
+# import prefect
 
 class Solvent(Enum):
     Methanol = "Methanol"
@@ -32,28 +38,29 @@ class AbstractSDL(ABC):
         self.balance = balance
         self.logger = logging.getLogger(f"logger_name")
 
-    def analyze(self,
-                param_1:int,
-                param_2:int):
+    # @prefect.task
+    def analyze(self, param_1:int, param_2:int):
+        """analyze current chemical"""
         self.logger.info("analyze")
-        return random.randint(param_1, param_2)
+        print("analyzing")
+        time.sleep(1)
+        return random.random()
 
-
-    def dose_solid(self,
-                   amount_in_mg: float = 5,
-                   bring_in: bool = False
-                   ):
+    # @prefect.task
+    def dose_solid(self, amount_in_mg: float = 5,
+                   solid_name: str = "acetaminophen",):
         """dose current chemical"""
         print("dosing solid")
         self.balance.dose_solid(amount_in_mg=amount_in_mg)
         self.balance.weigh_sample()
         self.logger.info("Dosing solid")
-        time.sleep(3)
-        self.logger.info(f"dosing solid {amount_in_mg}, bring in {bring_in}")
+        time.sleep(1)
+        self.logger.info(f"dosing solid {amount_in_mg}")
         return 1
 
+    # @prefect.task
     def dose_solvent(self,
-                     solvent_name: Solvent = Solvent.Methanol,
+                     solvent_name: str = "Methanol",
                      amount_in_ml: float = 5,
                      rate_ml_per_minute: float = 1
                      ):
@@ -64,13 +71,13 @@ class AbstractSDL(ABC):
         time.sleep(1)
         return 1
 
-
-    def equilibrate(self,
-                    temp: float,
-                    duration: float
-                    ):
+    # @prefect.task
+    def equilibrate(self, temp: float, duration: float):
+        print("equilibrate")
+        time.sleep(1)
         self.logger.info(f"equilibrate at {temp} for {duration}")
 
+    # @prefect.task
     def simulate_error(self):
         raise ValueError("some error")
 
@@ -90,10 +97,14 @@ sdl = AbstractSDL(pump, balance)
 # pump_2 = AbstractPump("3")
 
 if __name__ == "__main__":
-    import ivoryos
-    from ivoryos_plugin.hello_world import plugin
+    
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+    from web_controller import ivoryos
     # USE CASE 1 - start OS using current module
-    ivoryos.run(__name__, blueprint_plugins=plugin)
+    ivoryos.run(__name__)
+
+
+
 
     # # USE CASE 2 - start OS using current module and enable LLM with Ollama
     # ivoryos.run(__name__, model="llama3.1", llm_server='localhost')

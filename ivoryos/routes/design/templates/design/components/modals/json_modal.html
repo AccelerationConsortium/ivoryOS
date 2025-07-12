@@ -1,0 +1,22 @@
+{# JSON import modal component #}
+<div class="modal fade" id="jsonModal" tabindex="-1" aria-labelledby="jsonModal" aria-hidden="true" >
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="jsonModal">Import from JSON</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('design.design_files.load_json') }}" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="input-group mb-3">
+                        <input class="form-control" type="file" name="file" required="required">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Close </button>
+                    <button type="submit" class="btn btn-primary"> Upload </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div> 

@@ -35,7 +35,7 @@
 
                     <td>
                         {% if workflow.data_path %}
-                          <a href="{{ url_for('design.download_results', filename=workflow.data_path) }}">{{ workflow.data_path }}</a>
+                          <a href="{{ url_for('design.design_files.download_results', filename=workflow.data_path) }}">{{ workflow.data_path }}</a>
                         {% endif %}
                     </td>
                     <td>

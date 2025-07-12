@@ -1,0 +1,20 @@
+{# Error modal component for experiment run #}
+<div class="modal fade" id="error-modal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="errorModalLabel">Error Detected</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p id="error-message">An error has occurred.</p>
+        <p>Do you want to continue execution or stop?</p>
+      </div>
+      <div class="modal-footer">
+          <button type="button" class="btn btn-primary" id="retry-btn" data-bs-dismiss="modal">Rerun Current Step</button>
+          <button type="button" class="btn btn-success" id="continue-btn" data-bs-dismiss="modal">Continue</button>
+          <button type="button" class="btn btn-danger" id="stop-btn" data-bs-dismiss="modal">Stop Execution</button>
+      </div>
+    </div>
+  </div>
+</div> 

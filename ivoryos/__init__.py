@@ -3,6 +3,7 @@ import sys
 from typing import Union
 
 from flask import Flask, redirect, url_for, g, Blueprint
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from ivoryos.config import Config, get_config
 from ivoryos.routes.auth.auth import auth, login_manager

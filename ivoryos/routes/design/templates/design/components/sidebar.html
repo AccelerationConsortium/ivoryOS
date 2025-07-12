@@ -1,0 +1,16 @@
+{# Sidebar component for experiment builder #}
+<div class="col-md-3 scroll-column">
+    {# select deck if this is online#}
+    {% if off_line %}
+        {% include 'components/deck_selector.html' %}
+    {% endif %}
+
+    {# edit action #}
+    {% if session["edit_action"] %}
+        {% include 'components/edit_action_form.html' %}
+    {% elif instrument %}
+        {% include 'components/instrument_panel.html' %}
+    {% else %}
+        {% include 'components/operations_panel.html' %}
+    {% endif %}
+</div> 

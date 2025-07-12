@@ -1,0 +1,20 @@
+{# Text-to-code panel component #}
+<div class="accordion-item text-to-code">
+    <h2 class="accordion-header">
+        <button class="accordion-button text-to-code" type="button" data-bs-toggle="collapse" data-bs-target="#text-to-code" aria-expanded="false" aria-controls="collapseExample">
+            Text-to-Code
+        </button>
+    </h2>
+    <div id="text-to-code" class="accordion-collapse collapse show" data-bs-parent="#accordionActions">
+        <div class="accordion-body">
+            <form role="form" method='POST' name="generate" id="generate" action="{{url_for('design.generate_code')}}">
+                <input type="hidden" id="instrument" name="instrument" value="{{instrument}}">
+                <textarea class="form-control" id="prompt" name="prompt" rows="6" aria-describedby="promptHelpBlock">{{ session['prompt'][instrument] if instrument in session['prompt'] else '' }}</textarea>
+                <div id="promptHelpBlock" class="form-text">
+                    This will overwrite current design.
+                </div>
+                <button type="submit" class="btn btn-dark" id="gen" name="gen">Generate</button>
+            </form>
+        </div>
+    </div>
+</div> 

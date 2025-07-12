@@ -1,0 +1,98 @@
+{# Configuration tab component #}
+<div class="tab-pane fade {{ 'show active' if config_list else '' }}" id="tab4" role="tabpanel" aria-labelledby="tab4-tab">
+    <!-- File Management Section -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-file-earmark-text"></i> Configuration File</h6>
+            <small class="text-muted">
+                <a href="{{ url_for('design.design_files.download', filetype='configure') }}">
+                    <i class="bi bi-download"></i> Download Empty Template
+                </a>
+            </small>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <!-- File Selection -->
+                <div class="col-md-6">
+                    <form name="filenameForm" id="filenameForm" method="GET" action="{{ url_for('design.experiment_run') }}" enctype="multipart/form-data">
+                        <div class="input-group">
+                            <label class="input-group-text"><i class="bi bi-folder2-open"></i></label>
+                            <select class="form-select" name="filename" id="filenameSelect" onchange="document.getElementById('filenameForm').submit();">
+                                <option {{ 'selected' if not filename else '' }} value="">-- Select existing file --</option>
+                                {% for config_file in config_file_list %}
+                                    <option {{ 'selected' if filename == config_file else '' }} value="{{ config_file }}">{{ config_file }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- File Upload -->
+                <div class="col-md-6">
+                    <form method="POST" id="loadFile" name="loadFile" action="{{ url_for('design.design_files.upload') }}" enctype="multipart/form-data">
+                        <div class="input-group">
+                            <input class="form-control" name="file" type="file" accept=".csv" required="required" onchange="document.getElementById('loadFile').submit();">
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration Table -->
+    <div class="card mb-4">
+        <div class="card-header position-relative">
+            <div class="position-absolute top-50 end-0 translate-middle-y me-3">
+                <span id="saveStatus" class="badge bg-success" style="display: none;">
+                    <i class="bi bi-check-circle"></i> Auto-saved
+                </span>
+                <span id="modifiedStatus" class="badge bg-warning" style="display: none;">
+                    <i class="bi bi-pencil"></i> Modified
+                </span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <form method="POST" name="online-config" id="online-config" action="{{url_for('design.experiment_run')}}">
+                <div class="table-responsive">
+                    <table id="dataInputTable" class="table table-striped table-hover mb-0">
+                        <thead class="table-dark">
+                        <tr>
+                            <th style="width: 40px;">#</th>
+                            {% for column in config_list %}
+                                <th>{{ column }}</th>
+                            {% endfor %}
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                        </tbody>
+                    </table>
+                </div>
+            <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-success" onclick="addRow()">
+                        <i class="bi bi-plus-circle"></i> Add Row
+                    </button>
+                    <button type="button" class="btn btn-warning" onclick="clearAllRows()">
+                        <i class="bi bi-trash"></i> Clear All
+                    </button>
+                    <button type="button" class="btn btn-info" onclick="resetToFile()" id="resetToFileBtn" style="display: none;">
+                        <i class="bi bi-arrow-clockwise"></i> Reset to File
+                    </button>
+                </div>
+                <button type="submit" name="online-config" class="btn btn-primary btn-lg">
+                    <i class="bi bi-play-circle"></i> Run
+                </button>
+            </div>
+            </div>
+            </form>
+        </div>
+        <!-- Config Preview (if loaded from file) -->
+        {% if config_preview %}
+            <div class="alert alert-info">
+                <small><i class="bi bi-info-circle"></i> {{ config_preview|length }} rows loaded from {{ filename }}</small>
+            </div>
+        {% endif %}
+    </div>
+</div> 
