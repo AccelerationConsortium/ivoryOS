@@ -17,6 +17,7 @@ from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.form import create_builtin_form, create_action_button, format_name, create_form_from_pseudo, \
     create_form_from_action, create_all_builtin_forms
 from ivoryos.utils.db_models import Script, WorkflowRun, SingleStep, WorkflowStep
+from ivoryos.utils.py_to_json import convert_to_cards
 from ivoryos.utils.script_runner import ScriptRunner
 # from ivoryos.utils.utils import load_workflows
 
@@ -318,7 +319,7 @@ def experiment_run():
     """
     deck = global_config.deck
     script = utils.get_script_file()
-
+    existing_data = None
     # script.sort_actions() # handled in update list
     off_line = current_app.config["OFF_LINE"]
     deck_list = utils.import_history(os.path.join(current_app.config["OUTPUT_FOLDER"], 'deck_history.txt'))
@@ -356,7 +357,7 @@ def experiment_run():
     try:
         for key, func_str in exec_string.items():
             exec(func_str)
-        line_collection =  script.convert_to_lines(exec_string)
+        line_collection = script.convert_to_lines(exec_string)
 
     except Exception:
         flash(f"Please check {key} syntax!!")
@@ -395,6 +396,7 @@ def experiment_run():
         else:
             if "bo" in request.form:
                 bo_args = request.form.to_dict()
+                existing_data = bo_args.pop("existing_data")
             if "online-config" in request.form:
                 config = utils.web_config_entry_wrapper(request.form.to_dict(), config_list)
             repeat = request.form.get('repeat', None)
@@ -404,7 +406,7 @@ def experiment_run():
             run_name = script.validate_function_name(run_name)
             runner.run_script(script=script, run_name=run_name, config=config, bo_args=bo_args,
                               logger=g.logger, socketio=g.socketio, repeat_count=repeat,
-                              output_path=datapath, compiled=compiled,
+                              output_path=datapath, compiled=compiled, history=existing_data,
                               current_app=current_app._get_current_object()
                               )
             if utils.check_config_duplicate(config):
@@ -421,11 +423,11 @@ def experiment_run():
         return jsonify({"status": "task started", "task_id": global_config.runner_status.get("id")})
     else:
         return render_template('experiment_run.html', script=script.script_dict, filename=filename,
-                           dot_py=exec_string, line_collection=line_collection,
-                           return_list=return_list, config_list=config_list, config_file_list=config_file_list,
-                           config_preview=config_preview, data_list=data_list, config_type_list=config_type_list,
-                           no_deck_warning=no_deck_warning, dismiss=dismiss, design_buttons=design_buttons,
-                           history=deck_list, pause_status=runner.pause_status())
+                                dot_py=exec_string, line_collection=line_collection,
+                                return_list=return_list, config_list=config_list, config_file_list=config_file_list,
+                                config_preview=config_preview, data_list=data_list, config_type_list=config_type_list,
+                                no_deck_warning=no_deck_warning, dismiss=dismiss, design_buttons=design_buttons,
+                                history=deck_list, pause_status=runner.pause_status())
 
 
 @design.route("/design/script/toggle/<stype>")
@@ -533,6 +535,30 @@ def upload():
             filename = secure_filename(f.filename)
             f.save(os.path.join(current_app.config['CSV_FOLDER'], filename))
             session['config_file'] = filename
+            return redirect(url_for("design.experiment_run"))
+        else:
+            flash("Config file is in csv format")
+            return redirect(url_for("design.experiment_run"))
+
+
+@design.route('/design/upload_history', methods=['POST'])
+@login_required
+def upload_history():
+    """
+    .. :quickref: Workflow Execution; upload a workflow data file (.CSV)
+
+    .. http:post:: /design/upload_history
+
+    :form file: workflow CSV config file
+    :status 302: save csv file and then redirects to :http:get:`/design/campaign`
+    """
+    if request.method == "POST":
+        f = request.files['file']
+        if 'file' not in request.files:
+            flash('No file part')
+        if f.filename.split('.')[-1] == "csv":
+            filename = secure_filename(f.filename)
+            f.save(os.path.join(current_app.config['DATA_FOLDER'], filename))
             return redirect(url_for("design.experiment_run"))
         else:
             flash("Config file is in csv format")
@@ -781,10 +807,23 @@ def submit_script():
     deck_name = os.path.splitext(os.path.basename(deck.__file__))[0] if deck.__name__ == "__main__" else deck.__name__
     script = Script(author=session.get('user'), deck=deck_name)
     script_collection = request.get_json()
-    workflow_name = script_collection.get("workflow_name", "untitled")
-    script.name = workflow_name
-    script_collection.pop("workflow_name")
+
+    workflow_name = script_collection.pop("workflow_name")
+
     script.python_script = script_collection
-    # todo check script format
+    script.name = workflow_name
+    result = {}
+    for stype, py_str in script_collection.items():
+        try:
+            card = convert_to_cards(py_str)
+            script.script_dict[stype] = card
+            result[stype] = "success"
+        except Exception as e:
+            result[stype] = f"failed to transcript to ivoryos visualization, but function can still run. error: {str(e)}"
     utils.post_script_file(script)
-    return jsonify({"status": "ok"}), 200
+    try:
+        publish()
+        db_status = "success"
+    except Exception as e:
+        db_status = "failed"
+    return jsonify({"script": result, "db":db_status}), 200

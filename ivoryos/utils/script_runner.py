@@ -62,11 +62,11 @@ class ScriptRunner:
 
 
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None, bo_args=None,
-                   output_path="", compiled=False, current_app=None):
+                   output_path="", compiled=False, current_app=None, history=None):
         global deck
         if deck is None:
             deck = global_config.deck
-
+        print("history", history)
         if self.current_app is None:
             self.current_app = current_app
         # time.sleep(1)  # Optional: may help ensure deck readiness
