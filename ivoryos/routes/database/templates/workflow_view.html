@@ -110,21 +110,21 @@
 {% if grouped.prep %}
   <h4 class="mt-4">Prep Phase</h4>
   {% for step in grouped.prep %}
-    {% include "step_card.html" %}
+    {% include "components/step_card.html" %}
   {% endfor %}
 {% endif %}
 
 {% for repeat_index, step_list in grouped.script.items()|sort %}
   <h4 class="mt-4" id="card-iter{{ repeat_index }}">Iteration {{ repeat_index }}</h4>
   {% for step in step_list %}
-    {% include "step_card.html" %}
+    {% include "components/step_card.html" %}
   {% endfor %}
 {% endfor %}
 
 {% if grouped.cleanup %}
   <h4 class="mt-4">Cleanup Phase</h4>
   {% for step in grouped.cleanup %}
-    {% include "step_card.html" %}
+    {% include "components/step_card.html" %}
   {% endfor %}
 {% endif %}
 {% endblock %}

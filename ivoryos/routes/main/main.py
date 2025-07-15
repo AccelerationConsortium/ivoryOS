@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, current_app
 from flask_login import login_required
 from ivoryos.version import __version__ as ivoryos_version
 
-main = Blueprint('main', __name__, template_folder='templates/main')
+main = Blueprint('main', __name__, template_folder='templates')
 
 @main.route("/")
 @login_required

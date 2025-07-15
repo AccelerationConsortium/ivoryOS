@@ -7,21 +7,7 @@ from ivoryos.utils import utils
 
 files = Blueprint('design_files', __name__)
 
-@files.route('/design/uploads', methods=['POST'])
-def upload():
-    """Upload a workflow config file (.CSV)"""
-    if request.method == "POST":
-        f = request.files['file']
-        if 'file' not in request.files:
-            flash('No file part')
-        if f.filename.split('.')[-1] == "csv":
-            filename = secure_filename(f.filename)
-            f.save(os.path.join(current_app.config['CSV_FOLDER'], filename))
-            session['config_file'] = filename
-            return redirect(url_for("design.experiment_run"))
-        else:
-            flash("Config file is in csv format")
-            return redirect(url_for("design.experiment_run"))
+
 
 @files.route('/design/workflow/download/<filename>')
 def download_results(filename):
@@ -69,17 +55,3 @@ def download(filetype):
     return send_file(os.path.abspath(filepath), as_attachment=True)
 
 
-@files.route('/design/upload_history', methods=['POST'])
-def upload_history():
-    """Upload a workflow history file (.CSV)"""
-    if request.method == "POST":
-        f = request.files['historyfile']
-        if 'historyfile' not in request.files:
-            flash('No file part')
-        if f.filename.split('.')[-1] == "csv":
-            filename = secure_filename(f.filename)
-            f.save(os.path.join(current_app.config['DATA_FOLDER'], filename))
-            return redirect(url_for("design.experiment_run"))
-        else:
-            flash("Config file is in csv format")
-            return redirect(url_for("design.experiment_run")) 

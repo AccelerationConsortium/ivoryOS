@@ -1,6 +1,6 @@
 {# Bayesian optimization tab component #}
 <div class="tab-pane fade" id="tab3" role="tabpanel" aria-labelledby="tab3-tab">
-    <form method="POST" name="bo" action="{{ url_for('design.experiment_run') }}">
+    <form method="POST" name="bo" action="{{ url_for('execute.experiment_run') }}">
         <div class="container py-2">
             <!-- Data Loading Section -->
             <h6 class="fw-bold mt-2 mb-1">Load Previous Data</h6>
@@ -17,7 +17,7 @@
                     </div>
                 </div>
                 <div class="col-6">
-                    <form method="POST" id="loadHistory" name="loadHistory" action="{{ url_for('design.design_files.upload_history') }}" enctype="multipart/form-data">
+                    <form method="POST" id="loadHistory" name="loadHistory" action="{{ url_for('execute.upload_history') }}" enctype="multipart/form-data">
                         <div class="input-group">
                             <input class="form-control" name="historyfile" id="historyfile" type="file" accept=".csv" onchange="var f=document.getElementById('loadHistory'); if(f) f.submit();">
                         </div>
