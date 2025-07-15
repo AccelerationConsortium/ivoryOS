@@ -10,20 +10,15 @@ from ivoryos.utils import utils
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.form import create_action_button, format_name, create_form_from_pseudo, \
     create_form_from_action, create_all_builtin_forms
-from ivoryos.utils.db_models import Script
-from ivoryos.utils.script_runner import ScriptRunner
+
 from werkzeug.utils import secure_filename
-# Import the new modular components
-from .api_routes import api
-# from .file_operations import files
+
+from ivoryos.socket_handlers import runner
 
 execute = Blueprint('execute', __name__, template_folder='templates')
 
 # Register sub-blueprints
-execute.register_blueprint(api)
-
 global_config = GlobalConfig()
-runner = ScriptRunner()
 
 
 @execute.route("/design/campaign", methods=['GET', 'POST'])
@@ -43,7 +38,7 @@ def experiment_run():
     """
     deck = global_config.deck
     script = utils.get_script_file()
-
+    # runner = global_config.runner
     existing_data = None
     # script.sort_actions() # handled in update list
     off_line = current_app.config["OFF_LINE"]
@@ -186,3 +181,25 @@ def upload_history():
         else:
             flash("Config file is in csv format")
             return redirect(url_for("execute.experiment_run"))
+
+
+
+@execute.route('/execute/data_preview/<filename>')
+@login_required
+def data_preview(filename):
+    """Serve a preview of the selected data file (CSV) as JSON."""
+    import csv
+    import os
+    from flask import abort
+
+    data_folder = current_app.config['DATA_FOLDER']
+    file_path = os.path.join(data_folder, filename)
+    if not os.path.exists(file_path):
+        abort(404)
+    with open(file_path, newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        rows = list(reader)
+    # Limit preview to first 10 rows
+    return jsonify({"columns": reader.fieldnames, "rows": rows})
+
+

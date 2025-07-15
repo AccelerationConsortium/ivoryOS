@@ -5,19 +5,22 @@ from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.db_models import Script, WorkflowRun, SingleStep, WorkflowStep
 from ivoryos.utils.py_to_json import convert_to_cards
 from ivoryos.routes.database.database import publish
-from ivoryos.routes.execute.socket_handlers import abort_pending, abort_current, pause, retry
+from ivoryos.socket_handlers import abort_pending, abort_current, pause, retry, runner
 
-api = Blueprint('design_api', __name__)
+api = Blueprint('api', __name__)
 global_config = GlobalConfig()
+
+
 
 @api.route("/api/runner/status", methods=["GET"])
 def runner_status():
     """Get the execution status"""
+    # runner = global_config.runner
     runner_busy = global_config.runner_lock.locked()
     status = {"busy": runner_busy}
     task_status = global_config.runner_status
     current_step = {}
-    
+
     if task_status is not None:
         task_type = task_status["type"]
         task_id = task_status["id"]
@@ -27,12 +30,14 @@ def runner_status():
         if task_type == "workflow":
             workflow = WorkflowRun.query.get(task_id)
             if workflow is not None:
-                latest_step = WorkflowStep.query.filter_by(workflow_id=workflow.id).order_by(WorkflowStep.start_time.desc()).first()
+                latest_step = WorkflowStep.query.filter_by(workflow_id=workflow.id).order_by(
+                    WorkflowStep.start_time.desc()).first()
                 if latest_step is not None:
                     current_step = latest_step.as_dict()
                 status["workflow_status"] = {"workflow_info": workflow.as_dict(), "runner_status": runner.get_status()}
     status["current_task"] = current_step
     return jsonify(status), 200
+
 
 @api.route("/api/runner/abort_pending", methods=["POST"])
 def api_abort_pending():
@@ -40,11 +45,13 @@ def api_abort_pending():
     abort_pending()
     return jsonify({"status": "ok"}), 200
 
+
 @api.route("/api/runner/abort_current", methods=["POST"])
 def api_abort_current():
     """Abort right after current action during execution"""
     abort_current()
     return jsonify({"status": "ok"}), 200
+
 
 @api.route("/api/runner/pause", methods=["POST"])
 def api_pause():
@@ -52,11 +59,13 @@ def api_pause():
     msg = pause()
     return jsonify({"status": "ok", "pause_status": msg}), 200
 
+
 @api.route("/api/runner/retry", methods=["POST"])
 def api_retry():
     """Retry when error occur during execution"""
     retry()
     return jsonify({"status": "ok, retrying failed step"}), 200
+
 
 @api.route("/api/design/submit", methods=["POST"])
 def submit_script():
@@ -76,11 +85,12 @@ def submit_script():
             script.script_dict[stype] = card
             result[stype] = "success"
         except Exception as e:
-            result[stype] = f"failed to transcript to ivoryos visualization, but function can still run. error: {str(e)}"
+            result[
+                stype] = f"failed to transcript to ivoryos visualization, but function can still run. error: {str(e)}"
     utils.post_script_file(script)
     try:
         publish()
         db_status = "success"
     except Exception as e:
         db_status = "failed"
-    return jsonify({"script": result, "db":db_status}), 200 
+    return jsonify({"script": result, "db": db_status}), 200

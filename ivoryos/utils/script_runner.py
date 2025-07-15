@@ -81,7 +81,8 @@ class ScriptRunner:
 
         thread = threading.Thread(
             target=self._run_with_stop_check,
-            args=(script, repeat_count, run_name, logger, socketio, config, bo_args, output_path, current_app, compiled)
+            args=(script, repeat_count, run_name, logger, socketio, config, bo_args, output_path, current_app, compiled,
+                  history)
         )
         thread.start()
         return thread
@@ -182,7 +183,7 @@ class ScriptRunner:
         return exec_locals  # Return the 'results' variable
 
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, logger, socketio, config, bo_args,
-                             output_path, current_app, compiled):
+                             output_path, current_app, compiled, history=None):
         time.sleep(1)
         # _func_str = script.compile()
         # step_list_dict: dict = script.convert_to_lines(_func_str)
@@ -205,7 +206,8 @@ class ScriptRunner:
             # Run "script" section multiple times
             if repeat_count:
                 self._run_repeat_section(repeat_count, arg_type, bo_args, output_list, script,
-                                         run_name, return_list, compiled, logger, socketio, run_id=run_id)
+                                         run_name, return_list, compiled, logger, socketio,
+                                         history, output_path, run_id=run_id)
             elif config:
                 self._run_config_section(config, arg_type, output_list, script, run_name, logger,
                                          socketio, run_id=run_id, compiled=compiled)
@@ -262,13 +264,26 @@ class ScriptRunner:
                     output_list.append(output)
 
     def _run_repeat_section(self, repeat_count, arg_types, bo_args, output_list, script, run_name, return_list, compiled,
-                            logger, socketio, run_id):
+                            logger, socketio, history, output_path, run_id):
         if bo_args:
             logger.info('Initializing optimizer...')
             if compiled:
                 ax_client = bo_campaign.ax_init_opc(bo_args)
             else:
-                ax_client = bo_campaign.ax_init_form(bo_args, arg_types)
+                if history:
+                    import pandas as pd
+                    file_path = os.path.join(output_path, history)
+                    previous_runs = pd.read_csv(file_path).to_dict(orient='records')
+
+                ax_client = bo_campaign.ax_init_form(bo_args, arg_types, len(previous_runs))
+                if previous_runs:
+                    for row in previous_runs:
+                        parameter = {key: value for key, value in row.items() if key in arg_types.keys()}
+                        raw_data = {key: value for key, value in row.items() if key in return_list}
+                        _, trial_index = ax_client.attach_trial(parameter)
+                        ax_client.complete_trial(trial_index=trial_index, raw_data=raw_data)
+                        output_list.append(row)
+
         for i_progress in range(int(repeat_count)):
             if self.stop_pending_event.is_set():
                 logger.info(f'Stopping execution during {run_name}: {i_progress + 1}/{int(repeat_count)}')

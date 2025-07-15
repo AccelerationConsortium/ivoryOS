@@ -1,7 +1,10 @@
+from ax.generation_strategy.generation_node import GenerationStep
+from ax.generation_strategy.generation_strategy import GenerationStrategy
+from ax.modelbridge.registry import Generators
 from ivoryos.utils.utils import install_and_import
 
 
-def ax_init_form(data, arg_types):
+def ax_init_form(data, arg_types, previous_data_len=0):
     """
     create Ax campaign from the web form input
     :param data:
@@ -9,7 +12,11 @@ def ax_init_form(data, arg_types):
     install_and_import("ax", "ax-platform")
     parameter, objectives = ax_wrapper(data, arg_types)
     from ax.service.ax_client import AxClient
-    ax_client = AxClient()
+    if previous_data_len > 0:
+        gs = exisitng_data_gs(previous_data_len)
+        ax_client = AxClient(generation_strategy=gs)
+    else:
+        ax_client = AxClient()
     ax_client.create_experiment(parameter, objectives=objectives)
     return ax_client
 
@@ -85,3 +92,37 @@ def ax_init_opc(bo_args):
     ax_client.create_experiment(**bo_args)
 
     return ax_client
+
+
+def exisitng_data_gs(data_len):
+    """
+    temporal generation strategy for existing data
+    """
+
+    if data_len > 4:
+        gs = GenerationStrategy(
+            steps=[
+                GenerationStep(
+                    model=Generators.BOTORCH_MODULAR,
+                    num_trials=-1,
+                    max_parallelism=3,
+                ),
+            ]
+        )
+    else:
+        gs = GenerationStrategy(
+            steps=[
+                GenerationStep(
+                    model=Generators.SOBOL,
+                    num_trials=5-data_len,  # how many sobol trials to perform (rule of thumb: 2 * number of params)
+                    max_parallelism=5,
+                    model_kwargs={"seed": 999},
+                ),
+                GenerationStep(
+                    model=Generators.BOTORCH_MODULAR,
+                    num_trials=-1,
+                    max_parallelism=3,
+                ),
+            ]
+        )
+    return gs

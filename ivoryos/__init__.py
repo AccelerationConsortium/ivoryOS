@@ -11,7 +11,8 @@ from ivoryos.routes.control.control import control
 from ivoryos.routes.database.database import database
 from ivoryos.routes.design.design import design
 from ivoryos.routes.execute.execute import execute
-from ivoryos.routes.execute.socket_handlers import socketio
+from ivoryos.routes.api.api import api
+from ivoryos.socket_handlers import socketio
 from ivoryos.routes.main.main import main
 # from ivoryos.routes.monitor.monitor import monitor
 from ivoryos.utils import utils
@@ -43,6 +44,7 @@ app.register_blueprint(control, url_prefix=url_prefix)
 app.register_blueprint(design, url_prefix=url_prefix)
 app.register_blueprint(execute, url_prefix=url_prefix)
 app.register_blueprint(database, url_prefix=url_prefix)
+app.register_blueprint(api, url_prefix=url_prefix)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -61,7 +63,7 @@ def create_app(config_class=None):
     app.config.from_object(config_class or 'config.get_config()')
     os.makedirs(app.config["OUTPUT_FOLDER"], exist_ok=True)
     # Initialize extensions
-    socketio.init_app(app, cors_allowed_origins="*", cookie=None, async_mode='eventlet')
+    socketio.init_app(app, cors_allowed_origins="*", cookie=None)
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
     db.init_app(app)
