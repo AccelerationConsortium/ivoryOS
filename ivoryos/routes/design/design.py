@@ -12,19 +12,16 @@ from ivoryos.utils.db_models import Script
 from ivoryos.utils.script_runner import ScriptRunner
 
 # Import the new modular components
-from ivoryos.routes.execute.api_routes import api
 from .file_operations import files
 from .step_management import steps
 
 design = Blueprint('design', __name__, template_folder='templates')
 
 # Register sub-blueprints
-design.register_blueprint(api)
 design.register_blueprint(files)
 design.register_blueprint(steps)
 
 global_config = GlobalConfig()
-runner = ScriptRunner()
 
 # ---- Main Design Routes ----
 
