@@ -14,7 +14,7 @@
             <div class="row g-3">
                 <!-- File Selection -->
                 <div class="col-md-6">
-                    <form name="filenameForm" id="filenameForm" method="GET" action="{{ url_for('design.experiment_run') }}" enctype="multipart/form-data">
+                    <form name="filenameForm" id="filenameForm" method="GET" action="{{ url_for('execute.experiment_run') }}" enctype="multipart/form-data">
                         <div class="input-group">
                             <label class="input-group-text"><i class="bi bi-folder2-open"></i></label>
                             <select class="form-select" name="filename" id="filenameSelect" onchange="document.getElementById('filenameForm').submit();">
@@ -29,7 +29,7 @@
 
                 <!-- File Upload -->
                 <div class="col-md-6">
-                    <form method="POST" id="loadFile" name="loadFile" action="{{ url_for('design.design_files.upload') }}" enctype="multipart/form-data">
+                    <form method="POST" id="loadFile" name="loadFile" action="{{ url_for('execute.upload') }}" enctype="multipart/form-data">
                         <div class="input-group">
                             <input class="form-control" name="file" type="file" accept=".csv" required="required" onchange="document.getElementById('loadFile').submit();">
                         </div>
@@ -52,7 +52,7 @@
             </div>
         </div>
         <div class="card-body p-0">
-            <form method="POST" name="online-config" id="online-config" action="{{url_for('design.experiment_run')}}">
+            <form method="POST" name="online-config" id="online-config" action="{{url_for('execute.experiment_run')}}">
                 <div class="table-responsive">
                     <table id="dataInputTable" class="table table-striped table-hover mb-0">
                         <thead class="table-dark">

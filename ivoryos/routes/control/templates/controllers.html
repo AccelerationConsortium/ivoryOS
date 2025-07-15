@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% block title %}IvoryOS | Controllers {% endblock %}
+
+{% block body %}
+<div id="overlay" class="overlay">
+    <div>
+        <h3 id="overlay-text"></h3>
+        <div class="spinner-border" role="status"></div>
+    </div>
+</div>
+<div class="container-fluid">
+  <div class="row">
+    <!-- Sidebar: Instruments -->
+    <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar py-3">
+      <div class="sidebar-sticky">
+        <div class="mb-4">
+          <h6 class="fw-bold text-secondary mb-2" style="letter-spacing: 1px;">Deck Instruments</h6>
+          <div class="list-group">
+            {% for inst in defined_variables %}
+              <a class="list-group-item list-group-item-action d-flex align-items-center {% if instrument == inst %}active bg-primary text-white border-0{% else %}bg-light{% endif %}"
+                 href="{{ url_for('control.deck_controllers') }}?instrument={{ inst }}"
+                 style="border-radius: 0.5rem; margin-bottom: 0.5rem; transition: background 0.2s;">
+                <span class="flex-grow-1">{{ format_name(inst) }}</span>
+                {% if instrument == inst %}
+                  <i class="bi bi-chevron-right ms-auto"></i>
+                {% endif %}
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="d-flex mb-4">
+          <a href="{{ url_for('control.download_proxy', filetype='proxy') }}" class="btn btn-outline-primary w-100">
+            <i class="bi bi-download"></i> Download remote script
+          </a>
+        </div>
+        {% if temp_variables %}
+          <div class="mb-4">
+            <h6 class="fw-bold text-secondary mb-2" style="letter-spacing: 1px;">Temp Instruments</h6>
+            <div class="list-group">
+              {% for inst in temp_variables %}
+                <a class="list-group-item list-group-item-action d-flex align-items-center {% if instrument == inst %}active bg-warning text-dark border-0{% else %}bg-light{% endif %}"
+                   href="{{ url_for('control.deck_controllers') }}?instrument={{ inst }}"
+                   style="border-radius: 0.5rem; margin-bottom: 0.5rem; transition: background 0.2s;">
+                  <span class="flex-grow-1">{{ format_name(inst) }}</span>
+                  {% if instrument == inst %}
+                    <i class="bi bi-chevron-right ms-auto"></i>
+                  {% endif %}
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+        <div class="mt-3">
+          <a href="{{ url_for('control.new_controller') }}" class="btn btn-outline-success w-100">
+            <i class="bi bi-plus-circle"></i> New connection
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main: Method Cards -->
+    <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+      {% if instrument and forms %}
+        <h2 class="text-secondary" >{{ instrument }} controller</h2>
+        <div class="grid-container" id="sortable-grid">
+          {% set hidden = session.get('hidden_functions', {}) %}
+          {% set hidden_instrument = hidden.get(instrument, []) %}
+          {% for function, form in forms.items() %}
+            {% if function not in hidden_instrument %}
+              <div class="card my-3" id="{{function}}">
+                <div class="bg-white rounded shadow-sm flex-fill">
+                  <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top" title='{{ form.hidden_name.description or "Docstring is not available" }}' ></i>
+                  <a style="float: right" aria-label="Close" href="{{ url_for('control.hide_function', instrument=instrument, function=function) }}"><i class="bi bi-eye-slash-fill"></i></a>
+                  <div class="form-control" style="border: none">
+                    <form role="form" method='POST' name="{{function}}" id="{{function}}" action="{{ url_for('control.deck_controllers') }}?instrument={{ instrument }}">
+                      <div class="form-group">
+                        {{ form.hidden_tag() }}
+                        {% for field in form %}
+                          {% if field.type not in ['CSRFTokenField', 'HiddenField'] %}
+                            <div class="input-group mb-3">
+                              <label class="input-group-text">{{ field.label.text }}</label>
+                              {% if field.type == "SubmitField" %}
+                                {{ field(class="btn btn-dark") }}
+                              {% elif field.type == "BooleanField" %}
+                                {{ field(class="form-check-input") }}
+                              {% else %}
+                                {{ field(class="form-control") }}
+                              {% endif %}
+                            </div>
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                      <div class="input-group mb-3">
+                        <button type="submit" name="{{ function }}" id="{{ function }}" class="form-control" style="background-color: #a5cece;">{{format_name(function)}} </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <!-- Hidden functions accordion -->
+        <div class="accordion accordion-flush" id="accordionActions" >
+          <div class="accordion-item">
+            <h4 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#hidden">
+                Hidden functions
+              </button>
+            </h4>
+          </div>
+          <div id="hidden" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
+            <div class="accordion-body">
+              {% for function in hidden_instrument %}
+                <div>
+                  {{ function }} <a href="{{ url_for('control.remove_hidden', instrument=instrument, function=function) }}"><i class="bi bi-eye-fill"></i></a>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <script>
+          const saveOrderUrl = `{{ url_for('control.save_order', instrument=instrument) }}`;
+          const buttonIds = {{ session['card_order'][instrument] | tojson }};
+        </script>
+        <script src="{{ url_for('static', filename='js/sortable_card.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/overlay.js') }}"></script>
+      {% else %}
+        <div class="alert alert-info mt-4">Select an instrument to view its methods.</div>
+      {% endif %}
+    </main>
+  </div>
+</div>
+{% endblock %} 

@@ -4,7 +4,7 @@ from flask_login import login_required
 from ivoryos.utils.db_models import Script, db, WorkflowRun, WorkflowStep
 from ivoryos.utils.utils import get_script_file, post_script_file
 
-database = Blueprint('database', __name__, template_folder='templates/database')
+database = Blueprint('database', __name__, template_folder='templates')
 
 
 

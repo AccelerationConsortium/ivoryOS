@@ -13,22 +13,7 @@ from ivoryos.utils.task_runner import TaskRunner
 global_config = GlobalConfig()
 runner = TaskRunner()
 
-control = Blueprint('control', __name__, template_folder='templates/control')
-
-
-@control.route("/control/home/deck", strict_slashes=False)
-@login_required
-def deck_controllers():
-    """
-    .. :quickref: Direct Control; controls home interface
-
-    deck control home interface for listing all deck instruments
-
-    .. http:get:: /control/home/deck
-    """
-    deck_variables = global_config.deck_snapshot.keys()
-    deck_list = utils.import_history(os.path.join(current_app.config["OUTPUT_FOLDER"], 'deck_history.txt'))
-    return render_template('controllers_home.html', defined_variables=deck_variables, deck=True, history=deck_list)
+control = Blueprint('control', __name__, template_folder='templates')
 
 
 @control.route("/control/new/", strict_slashes=False)
@@ -62,9 +47,9 @@ def new_controller(instrument=None):
             device_name = request.form.get("device_name", "")
             if device_name and device_name in globals():
                 flash("Device name is defined. Try another name, or leave it as blank to auto-configure")
-                return render_template('controllers_new.html', instrument=instrument,
-                                       api_variables=global_config.api_variables,
-                                       device=device, args=args, defined_variables=global_config.defined_variables)
+                # return render_template('controllers_new.html', instrument=instrument,
+                #                        api_variables=global_config.api_variables,
+                #                        device=device, args=args, defined_variables=global_config.defined_variables)
             if device_name == "":
                 device_name = device.__name__.lower() + "_"
                 num = 1
@@ -83,79 +68,62 @@ def new_controller(instrument=None):
             try:
                 global_config.defined_variables[device_name] = device(**kwargs)
                 # global_config.defined_variables.add(device_name)
-                return redirect(url_for('control.controllers_home'))
+                return redirect(url_for('control.deck_controllers'))
             except Exception as e:
                 flash(e)
     return render_template('controllers_new.html', instrument=instrument, api_variables=global_config.api_variables,
                            device=device, args=args, defined_variables=global_config.defined_variables)
 
 
-@control.route("/control/home/temp", strict_slashes=False)
+@control.route("/control/home", strict_slashes=False, methods=["GET", "POST"])
 @login_required
-def controllers_home():
+def deck_controllers():
     """
-    .. :quickref: Direct Control; temp control home interface
-
-    temporarily connected devices home interface for listing all instruments
-
-    .. http:get:: /control/home/temp
-
+    Combined controllers page: sidebar with all instruments, main area with method cards for selected instrument.
     """
-    # defined_variables = parse_deck(deck)
-    defined_variables = global_config.defined_variables.keys()
-    return render_template('controllers_home.html', defined_variables=defined_variables)
-
-
-@control.route("/control/<instrument>/methods", methods=['GET', 'POST'])
-@login_required
-def controllers(instrument: str):
-    """
-    .. :quickref: Direct Control; control interface
-
-    control interface for selected <instrument>
-
-    .. http:get:: /control/<instrument>/methods
-
-    :param instrument: instrument name
-    :type instrument: str
-
-    .. http:post:: /control/<instrument>/methods
-
-    :form hidden_name: function name (hidden field)
-    :form kwargs: dynamic kwargs field
-
-    """
-    inst_object = find_instrument_by_name(instrument)
-    _forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
-    functions = list(_forms.keys())
-
-    order = get_session_by_instrument('card_order', instrument)
-    hidden_functions = get_session_by_instrument('hide_function', instrument)
-
-    for function in functions:
-        if function not in hidden_functions and function not in order:
-            order.append(function)
-    post_session_by_instrument('card_order', instrument, order)
-    forms = {name: _forms[name] for name in order if name in _forms}
-    if request.method == 'POST':
-        all_kwargs = request.form.copy()
-        method_name = all_kwargs.pop("hidden_name", None)
-        # if method_name is not None:
-        form = forms.get(method_name)
-        kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
-        function_executable = getattr(inst_object, method_name)
-        if form and form.validate_on_submit():
-            try:
-                kwargs.pop("hidden_name")
-                output = runner.run_single_step(instrument, method_name, kwargs, wait=True,
-                                                current_app=current_app._get_current_object())
-                # output = function_executable(**kwargs)
-                flash(f"\nRun Success! Output value: {output}.")
-            except Exception as e:
-                flash(e.__str__())
-        else:
-            flash(form.errors)
-    return render_template('controllers.html', instrument=instrument, forms=forms, format_name=format_name)
+    deck_variables = global_config.deck_snapshot.keys()
+    temp_variables = global_config.defined_variables.keys()
+    instrument = request.args.get('instrument')
+    forms = None
+    # format_name_fn = format_name
+    if instrument:
+        inst_object = find_instrument_by_name(instrument)
+        _forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
+        order = get_session_by_instrument('card_order', instrument)
+        hidden_functions = get_session_by_instrument('hidden_functions', instrument)
+        functions = list(_forms.keys())
+        for function in functions:
+            if function not in hidden_functions and function not in order:
+                order.append(function)
+        post_session_by_instrument('card_order', instrument, order)
+        forms = {name: _forms[name] for name in order if name in _forms}
+        # Handle POST for method execution
+        if request.method == 'POST':
+            all_kwargs = request.form.copy()
+            method_name = all_kwargs.pop("hidden_name", None)
+            form = forms.get(method_name)
+            kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'} if form else {}
+            if form and form.validate_on_submit():
+                try:
+                    kwargs.pop("hidden_name", None)
+                    output = runner.run_single_step(instrument, method_name, kwargs, wait=True, current_app=current_app._get_current_object())
+                    flash(f"\nRun Success! Output value: {output}.")
+                except Exception as e:
+                    flash(str(e))
+            else:
+                if form:
+                    flash(form.errors)
+                else:
+                    flash("Invalid method selected.")
+    return render_template(
+        'controllers.html',
+        defined_variables=deck_variables,
+        temp_variables=temp_variables,
+        instrument=instrument,
+        forms=forms,
+        format_name=format_name,
+        session=session
+    )
 
 @control.route("/control/download", strict_slashes=False)
 @login_required
