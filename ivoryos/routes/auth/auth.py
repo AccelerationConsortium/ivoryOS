@@ -6,7 +6,7 @@ from ivoryos.utils.db_models import Script, User, db
 from ivoryos.utils.utils import post_script_file
 login_manager = LoginManager()
 
-auth = Blueprint('auth', __name__, template_folder='templates/auth')
+auth = Blueprint('auth', __name__, template_folder='templates')
 
 
 @auth.route('/auth/login', methods=['GET', 'POST'])
