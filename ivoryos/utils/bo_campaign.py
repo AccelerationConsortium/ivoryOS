@@ -1,6 +1,3 @@
-from ax.generation_strategy.generation_node import GenerationStep
-from ax.generation_strategy.generation_strategy import GenerationStrategy
-from ax.modelbridge.registry import Generators
 from ivoryos.utils.utils import install_and_import
 
 
@@ -98,7 +95,9 @@ def exisitng_data_gs(data_len):
     """
     temporal generation strategy for existing data
     """
-
+    from ax.generation_strategy.generation_node import GenerationStep
+    from ax.generation_strategy.generation_strategy import GenerationStrategy
+    from ax.modelbridge.registry import Generators
     if data_len > 4:
         gs = GenerationStrategy(
             steps=[
