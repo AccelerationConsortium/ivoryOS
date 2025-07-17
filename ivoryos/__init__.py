@@ -201,6 +201,10 @@ def load_installed_plugins(app, socketio):
 def load_plugins(blueprints: Union[list, Blueprint], app, socketio):
     """
     Dynamically load installed plugins and attach Flask-SocketIO.
+    :param blueprints: Union[list, Blueprint] list of Blueprint objects or a single Blueprint object
+    :param app: Flask application instance
+    :param socketio: Flask-SocketIO instance
+    :return: list of plugin names
     """
     plugin_names = []
     if not isinstance(blueprints, list):
