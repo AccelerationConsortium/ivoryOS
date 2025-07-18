@@ -8,7 +8,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from ivoryos.config import Config, get_config
 from ivoryos.routes.auth.auth import auth, login_manager
 from ivoryos.routes.control.control import control
-from ivoryos.routes.database.database import database
+from ivoryos.routes.data.data import data
+from ivoryos.routes.library.library import library
 from ivoryos.routes.design.design import design
 from ivoryos.routes.execute.execute import execute
 from ivoryos.routes.api.api import api

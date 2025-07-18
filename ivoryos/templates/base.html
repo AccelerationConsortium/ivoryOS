@@ -38,7 +38,7 @@
                     </li>
                     {% if enable_design %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('database.load_from_database') }}" aria-current="page">Library</a>
+                            <a class="nav-link" href="{{ url_for('library.load_from_database') }}" aria-current="page">Library</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('design.experiment_builder') }}">Design</a>
@@ -47,7 +47,7 @@
                             <a class="nav-link" href="{{ url_for('execute.experiment_run') }}">Compile/Run</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('database.list_workflows') }}">Data</a>
+                            <a class="nav-link" href="{{ url_for('data.list_workflows') }}">Data</a>
                         </li>
                     {% endif %}
 
@@ -116,7 +116,7 @@
                     <h1 class="modal-title fs-5" id="importModal">Import deck by file path</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form method="POST" action="{{ url_for('control.import_deck') }}" enctype="multipart/form-data">
+                <form method="POST" action="{{ url_for('control.temp.import_deck') }}" enctype="multipart/form-data">
                     <div class="modal-body">
                         <h5>from connection history</h5>
                         <div class="form-group">

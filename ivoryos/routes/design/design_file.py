@@ -9,13 +9,13 @@ files = Blueprint('design_files', __name__)
 
 
 
-@files.route('/design/workflow/download/<filename>')
+@files.route('/download/data/<filename>')
 def download_results(filename):
     """Download a workflow data file"""
     filepath = os.path.join(current_app.config["DATA_FOLDER"], filename)
     return send_file(os.path.abspath(filepath), as_attachment=True)
 
-@files.route('/design/load_json', methods=['POST'])
+@files.route('/upload/json', methods=['POST'])
 def load_json():
     """Upload a workflow design file (.JSON)"""
     if request.method == "POST":
@@ -29,7 +29,7 @@ def load_json():
             flash("Script file need to be JSON file")
     return redirect(url_for("design.experiment_builder"))
 
-@files.route('/design/script/download/<filetype>')
+@files.route('/download/script/<filetype>')
 def download(filetype):
     """Download a workflow design file"""
     script = utils.get_script_file()

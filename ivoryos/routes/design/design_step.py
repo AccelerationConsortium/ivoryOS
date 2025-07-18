@@ -4,7 +4,7 @@ from ivoryos.utils.form import create_form_from_action
 
 steps = Blueprint('design_steps', __name__)
 
-@steps.route("/design/step/edit/<uuid>", methods=['GET', 'POST'])
+@steps.route("/step/edit/<uuid>", methods=['GET', 'POST'])
 def edit_action(uuid: str):
     """Edit parameters of an action step on canvas"""
     script = utils.get_script_file()
@@ -24,7 +24,7 @@ def edit_action(uuid: str):
         session.pop('edit_action')
     return redirect(url_for('design.experiment_builder'))
 
-@steps.route("/design/step/delete/<id>")
+@steps.route("/step/delete/<id>")
 def delete_action(id: int):
     """Delete an action step on canvas"""
     back = request.referrer
@@ -33,7 +33,7 @@ def delete_action(id: int):
     utils.post_script_file(script)
     return redirect(back)
 
-@steps.route("/design/step/duplicate/<id>")
+@steps.route("/step/duplicate/<id>")
 def duplicate_action(id: int):
     """Duplicate an action step on canvas"""
     back = request.referrer
