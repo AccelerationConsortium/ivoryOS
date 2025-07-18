@@ -10,15 +10,15 @@ from ivoryos.version import __version__
 external_readme = [
     {
         "name": 'plugin.rst',
-        "url": "https://gitlab.com/heingroup/ivoryos-plugin-template/-/raw/main/README.rst"
+        "url": "https://gitlab.com/heingroup/ivoryos-suite/ivoryos-plugin-template/-/raw/main/README.rst"
     },
     {
         "name": 'client.rst',
-        "url": "https://gitlab.com/heingroup/ivoryos-client/-/raw/main/README.rst"
+        "url": "https://gitlab.com/heingroup/ivoryos-suite/ivoryos-client/-/raw/main/README.rst"
     },
     {
         "name": 'mcp.rst',
-        "url": "https://gitlab.com/heingroup/ivoryos-mcp/-/raw/main/README.rst"
+        "url": "https://gitlab.com/heingroup/ivoryos-suite/ivoryos-mcp/-/raw/main/README.rst"
     }
 ]
 for item in external_readme:
