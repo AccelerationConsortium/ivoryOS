@@ -24,7 +24,7 @@ external_readme = [
 for item in external_readme:
     readme_url = item['url']
     name = item['name']
-    output_path = os.path.join(os.path.dirname(__file__), 'plugin.rst')
+    output_path = os.path.join(os.path.dirname(__file__), name)
     if not os.path.exists(output_path):
         urllib.request.urlretrieve(readme_url, output_path)
 
