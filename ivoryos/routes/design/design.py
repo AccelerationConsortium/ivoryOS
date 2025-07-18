@@ -4,16 +4,20 @@ from flask import Blueprint, redirect, url_for, flash, jsonify, request, render_
     current_app
 from flask_login import login_required
 
+from ivoryos.routes.library.library import publish
 from ivoryos.utils import utils
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.form import create_action_button, format_name, create_form_from_pseudo, \
     create_form_from_action, create_all_builtin_forms
 from ivoryos.utils.db_models import Script
+from ivoryos.utils.py_to_json import convert_to_cards
 from ivoryos.utils.script_runner import ScriptRunner
 
 # Import the new modular components
-from .file_operations import files
-from .step_management import steps
+from ivoryos.routes.design.design_file import files
+from ivoryos.routes.design.design_step import steps
+
+# from ...utils.py_to_json import convert_to_cards
 
 design = Blueprint('design', __name__, template_folder='templates')
 
@@ -25,8 +29,8 @@ global_config = GlobalConfig()
 
 # ---- Main Design Routes ----
 
-@design.route("/design/script/", methods=['GET', 'POST'])
-@design.route("/design/script/<instrument>/", methods=['GET', 'POST'])
+@design.route("/script/", methods=['GET', 'POST'])
+@design.route("/script/<instrument>/", methods=['GET', 'POST'])
 @login_required
 def experiment_builder(instrument=None):
     """
@@ -195,7 +199,7 @@ def experiment_builder(instrument=None):
                            use_llm=enable_llm)
 
 
-@design.route("/design/generate_code", methods=['POST'])
+@design.route("/generate_code", methods=['POST'])
 @login_required
 def generate_code():
     """
@@ -243,7 +247,7 @@ def generate_code():
 
 
 
-@design.route("/design/script/toggle/<stype>")
+@design.route("/script/toggle/<stype>")
 @login_required
 def toggle_script_type(stype=None):
     """
@@ -281,7 +285,7 @@ def toggle_show_code():
 
 
 # --------------------handle all the import/export and download/upload--------------------------
-@design.route("/design/clear")
+@design.route("/clear")
 @login_required
 def clear():
     """
@@ -306,7 +310,7 @@ def clear():
     return redirect(url_for("design.experiment_builder"))
 
 
-@design.route("/design/import/pseudo", methods=['POST'])
+@design.route("/import/pseudo", methods=['POST'])
 @login_required
 def import_pseudo():
     """
@@ -330,6 +334,32 @@ def import_pseudo():
 
 
 
-
+@design.route("/submit_python", methods=["POST"])
+def submit_script():
+    """Submit script"""
+    deck = global_config.deck
+    deck_name = os.path.splitext(os.path.basename(deck.__file__))[0] if deck.__name__ == "__main__" else deck.__name__
+    script = Script(author=session.get('user'), deck=deck_name)
+    script_collection = request.get_json()
+    workflow_name = script_collection.pop("workflow_name")
+    script.python_script = script_collection
+    # todo check script format
+    script.name = workflow_name
+    result = {}
+    for stype, py_str in script_collection.items():
+        try:
+            card = convert_to_cards(py_str)
+            script.script_dict[stype] = card
+            result[stype] = "success"
+        except Exception as e:
+            result[
+                stype] = f"failed to transcript to ivoryos visualization, but function can still run. error: {str(e)}"
+    utils.post_script_file(script)
+    try:
+        publish()
+        db_status = "success"
+    except Exception as e:
+        db_status = "failed"
+    return jsonify({"script": result, "db": db_status}), 200
 
 

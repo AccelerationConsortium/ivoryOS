@@ -1,10 +1,11 @@
 import os
-from flask import Blueprint, jsonify, request, session
-from ivoryos.utils import utils
+from flask import Blueprint, jsonify, request, current_app
+
+from ivoryos.routes.control.control import find_instrument_by_name
+from ivoryos.utils.form import create_form_from_module
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.db_models import Script, WorkflowRun, SingleStep, WorkflowStep
-from ivoryos.utils.py_to_json import convert_to_cards
-from ivoryos.routes.database.database import publish
+
 from ivoryos.socket_handlers import abort_pending, abort_current, pause, retry, runner
 
 api = Blueprint('api', __name__)
@@ -12,7 +13,7 @@ global_config = GlobalConfig()
 
 
 
-@api.route("/api/runner/status", methods=["GET"])
+@api.route("/runner/status", methods=["GET"])
 def runner_status():
     """Get the execution status"""
     # runner = global_config.runner
@@ -39,7 +40,7 @@ def runner_status():
     return jsonify(status), 200
 
 
-@api.route("/api/runner/abort_pending", methods=["POST"])
+@api.route("/runner/abort_pending", methods=["POST"])
 def api_abort_pending():
     """Abort pending action(s) during execution"""
     abort_pending()
@@ -53,7 +54,7 @@ def api_abort_current():
     return jsonify({"status": "ok"}), 200
 
 
-@api.route("/api/runner/pause", methods=["POST"])
+@api.route("/runner/pause", methods=["POST"])
 def api_pause():
     """Pause during execution"""
     msg = pause()
@@ -67,30 +68,42 @@ def api_retry():
     return jsonify({"status": "ok, retrying failed step"}), 200
 
 
-@api.route("/api/design/submit", methods=["POST"])
-def submit_script():
-    """Submit script"""
-    deck = global_config.deck
-    deck_name = os.path.splitext(os.path.basename(deck.__file__))[0] if deck.__name__ == "__main__" else deck.__name__
-    script = Script(author=session.get('user'), deck=deck_name)
-    script_collection = request.get_json()
-    workflow_name = script_collection.pop("workflow_name")
-    script.python_script = script_collection
-    # todo check script format
-    script.name = workflow_name
-    result = {}
-    for stype, py_str in script_collection.items():
-        try:
-            card = convert_to_cards(py_str)
-            script.script_dict[stype] = card
-            result[stype] = "success"
-        except Exception as e:
-            result[
-                stype] = f"failed to transcript to ivoryos visualization, but function can still run. error: {str(e)}"
-    utils.post_script_file(script)
-    try:
-        publish()
-        db_status = "success"
-    except Exception as e:
-        db_status = "failed"
-    return jsonify({"script": result, "db": db_status}), 200
+
+@api.route("/control/", strict_slashes=False, methods=['GET'])
+@api.route("/control/<instrument>", methods=['POST'])
+def backend_control(instrument: str=None):
+    """
+    .. :quickref: Backend Control; backend control
+
+    backend control through http requests
+
+    .. http:get:: /api/control/
+
+    :param instrument: instrument name
+    :type instrument: str
+
+    .. http:post:: /api/control/
+
+    """
+    if instrument:
+        inst_object = find_instrument_by_name(instrument)
+        forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
+
+    if request.method == 'POST':
+        method_name = request.form.get("hidden_name", None)
+        form = forms.get(method_name, None)
+        if form:
+            kwargs = {field.name: field.data for field in form if field.name not in ['csrf_token', 'hidden_name']}
+            wait = request.form.get("hidden_wait", "true") == "true"
+            output = runner.run_single_step(component=instrument, method=method_name, kwargs=kwargs, wait=wait,
+                                            current_app=current_app._get_current_object())
+            return jsonify(output), 200
+
+    snapshot = global_config.deck_snapshot.copy()
+    # Iterate through each instrument in the snapshot
+    for instrument_key, instrument_data in snapshot.items():
+        # Iterate through each function associated with the current instrument
+        for function_key, function_data in instrument_data.items():
+            # Convert the function signature to a string representation
+            function_data['signature'] = str(function_data['signature'])
+    return jsonify(snapshot), 200

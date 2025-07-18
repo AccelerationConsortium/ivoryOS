@@ -6,6 +6,7 @@ from flask import Blueprint, redirect, url_for, flash, jsonify, request, render_
     current_app, g
 from flask_login import login_required
 
+from ivoryos.routes.execute.execute_file import files
 from ivoryos.utils import utils
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.form import create_action_button, format_name, create_form_from_pseudo, \
@@ -17,11 +18,12 @@ from ivoryos.socket_handlers import runner
 
 execute = Blueprint('execute', __name__, template_folder='templates')
 
+execute.register_blueprint(files)
 # Register sub-blueprints
 global_config = GlobalConfig()
 
 
-@execute.route("/design/campaign", methods=['GET', 'POST'])
+@execute.route("/campaign", methods=['GET', 'POST'])
 @login_required
 def experiment_run():
     """
@@ -150,41 +152,7 @@ def experiment_run():
                                history=deck_list, pause_status=runner.pause_status())
 
 
-@execute.route('/design/uploads', methods=['POST'])
-def upload():
-    """Upload a workflow config file (.CSV)"""
-    if request.method == "POST":
-        f = request.files['file']
-        if 'file' not in request.files:
-            flash('No file part')
-        if f.filename.split('.')[-1] == "csv":
-            filename = secure_filename(f.filename)
-            f.save(os.path.join(current_app.config['CSV_FOLDER'], filename))
-            session['config_file'] = filename
-            return redirect(url_for("execute.experiment_run"))
-        else:
-            flash("Config file is in csv format")
-            return redirect(url_for("execute.experiment_run"))
-
-
-@execute.route('/design/upload_history', methods=['POST'])
-def upload_history():
-    """Upload a workflow history file (.CSV)"""
-    if request.method == "POST":
-        f = request.files['historyfile']
-        if 'historyfile' not in request.files:
-            flash('No file part')
-        if f.filename.split('.')[-1] == "csv":
-            filename = secure_filename(f.filename)
-            f.save(os.path.join(current_app.config['DATA_FOLDER'], filename))
-            return redirect(url_for("execute.experiment_run"))
-        else:
-            flash("Config file is in csv format")
-            return redirect(url_for("execute.experiment_run"))
-
-
-
-@execute.route('/execute/data_preview/<filename>')
+@execute.route('/data_preview/<filename>')
 @login_required
 def data_preview(filename):
     """Serve a preview of the selected data file (CSV) as JSON."""

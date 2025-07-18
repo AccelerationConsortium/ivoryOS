@@ -13,7 +13,7 @@
                      {% for instrument in api_variables %}
                          <div class="card mb-2">
                              <div class="card-body p-2">
-                                 <a href="{{ url_for('control.new_controller', instrument=instrument) }}" class="text-dark stretched-link">{{ instrument }}</a>
+                                 <a href="{{ url_for('control.temp.new_controller', instrument=instrument) }}" class="text-dark stretched-link">{{ instrument }}</a>
                              </div>
                          </div>
                      {% endfor %}
@@ -31,12 +31,13 @@
          <!-- Connecting Device -->
          <div class="col-xl-5 col-lg-5 col-md-6 mb-4">
              {% if device %}
+                 {{ device }}
              <div class="card shadow-sm mb-4">
                  <div class="card-header">
                      <h5 class="mb-0">Connecting</h5>
                  </div>
                  <div class="card-body">
-                     <form role="form" method="POST" name="init" action="{{ url_for('control.new_controller', instrument=instrument) }}">
+                     <form role="form" method="POST" name="init" action="{{ url_for('control.temp.new_controller', instrument=instrument) }}">
                          <div class="mb-3">
                              <label class="form-label" for="device_name">Name this device</label>
                              <input class="form-control" type="text" id="device_name" name="device_name" aria-describedby="nameHelpBlock" placeholder="e.g. {{device.__name__}}_1">
@@ -52,7 +53,7 @@
                                          placeholder="{{device.__init__.__annotations__[arg].__name__}}"
                                          value="{{args.parameters[arg].default if not args.parameters[arg].default.__name__ == '_empty' else ''}}">
                                      {% if device.__init__.__annotations__[arg].__module__ is not in ["builtins", "typing"] %}
-                                         <a role="button" href="{{ url_for('control.new_controller', instrument=device.__init__.__annotations__[arg].__name__) }}" class="btn btn-secondary btn-sm mt-2">Initialize {{device.__init__.__annotations__[arg].__name__}} first</a>
+                                         <a role="button" href="{{ url_for('control.temp.new_controller', instrument=device.__init__.__annotations__[arg].__name__) }}" class="btn btn-secondary btn-sm mt-2">Initialize {{device.__init__.__annotations__[arg].__name__}} first</a>
                                      {% endif %}
                                  </div>
                              {% endif %}
@@ -93,7 +94,7 @@
                      <h1 class="modal-title fs-5" id="importModal">Import API by file path</h1>
                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                  </div>
-                 <form method="POST" action="{{ url_for('control.import_api') }}" enctype="multipart/form-data">
+                 <form method="POST" action="{{ url_for('control.temp.import_api') }}" enctype="multipart/form-data">
                      <div class="modal-body">
                          <div class="mb-3">
                              <label class="form-label" for="filepath">File Path:</label>

@@ -3,7 +3,7 @@
 {% block title %}IvoryOS | Design Database{% endblock %}
 {% block body %}
     <div class="div">
-        <form id="search" style="display: inline-block;float: right;" action="{{url_for('database.list_workflows',deck_name=deck_name)}}" method="GET">
+        <form id="search" style="display: inline-block;float: right;" action="{{url_for('data.list_workflows',deck_name=deck_name)}}" method="GET">
             <div class="input-group">
                 <div class="form-outline">
                     <input type="search" name="keyword" id="keyword" class="form-control" placeholder="Search workflows...">
@@ -28,7 +28,7 @@
         <tbody>
             {% for workflow in workflows %}
                 <tr>
-                    <td><a href="{{ url_for('database.get_workflow_steps', workflow_id=workflow.id) }}">{{ workflow.name }}</a></td>
+                    <td><a href="{{ url_for('data.get_workflow_steps', workflow_id=workflow.id) }}">{{ workflow.name }}</a></td>
                     <td>{{ workflow.id }}</td>
                     <td>{{ workflow.start_time.strftime("%Y-%m-%d %H:%M:%S") if workflow.start_time else '' }}</td>
                     <td>{{ workflow.end_time.strftime("%Y-%m-%d %H:%M:%S") if workflow.end_time else '' }}</td>
@@ -40,7 +40,7 @@
                     </td>
                     <td>
                         {% if session['user'] == 'admin' or session['user'] == workflow.author %}
-                            <a href="{{ url_for('database.delete_workflow_data', workflow_id=workflow.id) }}">delete</a>
+                            <a href="{{ url_for('data.delete_workflow_data', workflow_id=workflow.id) }}">delete</a>
                         {% else %}
                             <a class="disabled-link">delete</a>
                         {% endif %}
@@ -53,13 +53,13 @@
     {#    paging#}
     <div class="pagination justify-content-center">
         <div class="page-item {{ 'disabled' if not workflows.has_prev else '' }}">
-            <a class="page-link" href="{{ url_for('database.list_workflows', page=workflows.prev_num) }}">Previous</a>
+            <a class="page-link" href="{{ url_for('data.list_workflows', page=workflows.prev_num) }}">Previous</a>
         </div>
 
         {% for num in workflows.iter_pages() %}
             {% if num %}
                 <div class="page-item {{ 'active' if num == workflows.page else '' }}">
-                    <a class="page-link" href="{{ url_for('database.list_workflows', page=num) }}">{{ num }}</a>
+                    <a class="page-link" href="{{ url_for('data.list_workflows', page=num) }}">{{ num }}</a>
                 </div>
             {% else %}
                 <div class="page-item disabled">
@@ -69,7 +69,7 @@
         {% endfor %}
 
         <div class="page-item {{ 'disabled' if not workflows.has_next else '' }}">
-            <a class="page-link" href="{{ url_for('database.list_workflows', page=workflows.next_num) }}">Next</a>
+            <a class="page-link" href="{{ url_for('data.list_workflows', page=workflows.next_num) }}">Next</a>
         </div>
     </div>
 

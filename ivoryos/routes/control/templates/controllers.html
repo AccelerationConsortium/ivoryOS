@@ -51,10 +51,10 @@
         {% endif %}
         <!-- Action Buttons -->
         <div class="mb-4">
-          <a href="{{ url_for('control.download_proxy', filetype='proxy') }}" class="btn btn-outline-primary w-100 mb-2">
+          <a href="{{ url_for('control.file.download_proxy', filetype='proxy') }}" class="btn btn-outline-primary w-100 mb-2">
             Download proxy
           </a>
-          <a href="{{ url_for('control.new_controller') }}" class="btn btn-outline-success w-100">
+          <a href="{{ url_for('control.temp.new_controller') }}" class="btn btn-outline-success w-100">
             New connection
           </a>
         </div>
@@ -64,7 +64,7 @@
     <!-- Main: Method Cards -->
     <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: 100vh; overflow-y: auto;">
       {% if instrument and forms %}
-        <h2 class="text-secondary">{{ instrument }} controller</h2>
+{#        <h2 class="text-secondary">{{ instrument }} controller</h2>#}
         <div class="grid-container" id="sortable-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1rem; width: 100%;">
           {% set hidden = session.get('hidden_functions', {}) %}
           {% set hidden_instrument = hidden.get(instrument, []) %}

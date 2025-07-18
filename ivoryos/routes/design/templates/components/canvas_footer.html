@@ -1,5 +1,5 @@
 {# Canvas footer component #}
 <div>
-    <a class="btn btn-dark {{ 'disabled' if not script.name or script.status == "finalized" else ''}}" href="{{url_for('database.publish')}}">Quick Save</a>
+    <a class="btn btn-dark {{ 'disabled' if not script.name or script.status == "finalized" else ''}}" href="{{url_for('library.publish')}}">Quick Save</a>
     <a class="btn btn-dark " href="{{ url_for('execute.experiment_run') }}">Compile and Run</a>
 </div> 

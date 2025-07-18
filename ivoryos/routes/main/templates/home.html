@@ -19,7 +19,7 @@
                             <i class="bi bi-folder2-open me-2"></i>Browse designs
                         </h5>
                         <p class="card-text">View all saved workflows from the database.</p>
-                        <a href="{{ url_for('database.load_from_database') }}" class="stretched-link"></a>
+                        <a href="{{ url_for('library.load_from_database') }}" class="stretched-link"></a>
                     </div>
                 </div>
             </div>
@@ -48,7 +48,7 @@
                             <i class="bi bi-graph-up-arrow me-2"></i>Experiment data
                         </h5>
                         <p class="card-text">Browse workflow logs and output data.</p>
-                        <a href="{{ url_for('database.list_workflows') }}" class="stretched-link"></a>
+                        <a href="{{ url_for('data.list_workflows') }}" class="stretched-link"></a>
                     </div>
                 </div>
             </div>
@@ -93,7 +93,7 @@
                             <i class="bi bi-usb-plug me-2"></i>Connect a new device
                         </h5>
                         <p class="card-text">Add new hardware temporarily or for testing purposes.</p>
-                        <a href="{{ url_for('control.new_controller') }}" class="stretched-link"></a>
+                        <a href="{{ url_for('control.temp.new_controller') }}" class="stretched-link"></a>
                     </div>
                 </div>
             </div>

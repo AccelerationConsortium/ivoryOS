@@ -315,7 +315,9 @@ class ScriptRunner:
             if output:
                 output_list.append(output)
                 logger.info(f'Output value: {output}')
-        ax_client.save_to_json_file(os.path.join(output_path, f"{run_name}_ax_client.json"))
+
+        if bo_args:
+            ax_client.save_to_json_file(os.path.join(output_path, f"{run_name}_ax_client.json"))
         logger.info(
             f'Optimization complete. Results saved to {os.path.join(output_path, f"{run_name}_ax_client.json")}'
         )
