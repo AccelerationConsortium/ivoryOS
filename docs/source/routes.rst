@@ -7,8 +7,9 @@ ivoryOS routes docs
    routes/home
    routes/control
    routes/design
+   routes/library
    routes/execute
-   routes/database
+   routes/data
    routes/auth
    routes/api
 

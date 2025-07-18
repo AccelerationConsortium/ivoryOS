@@ -155,6 +155,7 @@ When you run the application for the first time, it will automatically create th
 - [x] dropdown input ✅  
 - [x] show line number option ✅  
 - [ ] snapshot version control
+- [ ] migrate to ax-platform 1.0.0
 
 ## Citing
 
