@@ -28,7 +28,7 @@ With the least modification of the current workflow, user can design, manage and
 This software is developed and tested using Windows. This software and its dependencies are compatible across major platforms: Linux, macOS, and Windows. Some dependencies (Flask-SQLAlchemy) may require additional setup.
 
 ### Python Version
-Python >=3.7, but Python >=3.10 for best compatibility (e.g. ax-platform).
+Python >=3.10 for best compatibility. Python >=3.7 without Ax.
 ### Python dependencies
 This software is compatible with the latest versions of all dependencies. 
 - bcrypt~=4.0
@@ -39,8 +39,7 @@ This software is compatible with the latest versions of all dependencies.
 - SQLAlchemy-Utils~=0.41
 - Flask-WTF~=1.2
 - python-dotenv==1.0.1
-- openai (optional ~=1.53)
-- ax-platform (optional ~=0.3 or ~=0.4 for Python>=3.9)
+- ax-platform (optional ~=0.4 for Python>=3.9)
 
 ## Installation
 ```bash
@@ -50,7 +49,7 @@ or
 ```bash
 git clone https://gitlab.com/heingroup/ivoryos.git
 cd ivoryos
-pip install -e .
+pip install .
 ```
 
 The installation may take 10 to 30 seconds to install. The installation time may vary and take up to several minutes, depending on the network speed, computer performance, and virtual environment settings.
@@ -78,7 +77,7 @@ Create an account and login (local database)
 [//]: # (![PyPI - Downloads]&#40;https://img.shields.io/pypi/dm/ivoryos&#41;)
 
 
-### Additional settings
+### Additional settings (not actively maintained)
 #### AI assistant
 To streamline the experimental design on SDLs, we also integrate Large Language Models (LLMs) to interpret the inspected functions and generate code according to task descriptions.
 
@@ -130,8 +129,6 @@ ivoryos.run(__name__)
 ### Deck function and web form 
 ![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/demo.gif)
 
-### Text-to-code demo
-![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/text-to-code.gif)
 
 ### Directory structure
 
@@ -155,7 +152,6 @@ When you run the application for the first time, it will automatically create th
 - [x] dropdown input ✅  
 - [x] show line number option ✅  
 - [ ] snapshot version control
-- [ ] migrate to ax-platform 1.0.0
 
 ## Citing
 

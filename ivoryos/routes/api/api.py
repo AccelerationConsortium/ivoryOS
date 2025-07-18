@@ -47,7 +47,7 @@ def api_abort_pending():
     return jsonify({"status": "ok"}), 200
 
 
-@api.route("/api/runner/abort_current", methods=["POST"])
+@api.route("/runner/abort_current", methods=["POST"])
 def api_abort_current():
     """Abort right after current action during execution"""
     abort_current()
@@ -61,7 +61,7 @@ def api_pause():
     return jsonify({"status": "ok", "pause_status": msg}), 200
 
 
-@api.route("/api/runner/retry", methods=["POST"])
+@api.route("/runner/retry", methods=["POST"])
 def api_retry():
     """Retry when error occur during execution"""
     retry()
