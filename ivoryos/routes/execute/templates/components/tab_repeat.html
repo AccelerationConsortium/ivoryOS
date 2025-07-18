@@ -1,0 +1,14 @@
+{# Repeat tab component #}
+<div class="tab-pane fade {{ 'show active' if not config_list else '' }}" id="tab1" role="tabpanel" aria-labelledby="tab1-tab">
+    <p><h5>Control panel:</h5></p>
+    <form role="form" method='POST' name="run" action="{{url_for('execute.experiment_run')}}">
+        <div class="input-group mb-3">
+            <label class="input-group-text" for="repeat">Repeat for </label>
+            <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="1000" value="1">
+            <label class="input-group-text" for="repeat"> times</label>
+        </div>
+        <div class="input-group mb-3">
+            <button class="form-control" type="submit" class="btn btn-dark">Run</button>
+        </div>
+    </form>
+</div> 

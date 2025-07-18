@@ -6,10 +6,10 @@ from ivoryos.utils.db_models import Script, User, db
 from ivoryos.utils.utils import post_script_file
 login_manager = LoginManager()
 
-auth = Blueprint('auth', __name__, template_folder='templates/auth')
+auth = Blueprint('auth', __name__, template_folder='templates')
 
 
-@auth.route('/auth/login', methods=['GET', 'POST'])
+@auth.route('/login', methods=['GET', 'POST'])
 def login():
     """
     .. :quickref: User; login user
@@ -46,11 +46,11 @@ def login():
             return redirect(url_for('main.index'))
         else:
             flash("Incorrect username or password")
-            return redirect(url_for('auth.login')), 401
+            return redirect(url_for('auth.login'))
     return render_template('login.html')
 
 
-@auth.route('/auth/signup', methods=['GET', 'POST'])
+@auth.route('/signup', methods=['GET', 'POST'])
 def signup():
     """
     .. :quickref: User; signup for a new account
@@ -84,7 +84,7 @@ def signup():
     return render_template('signup.html')
 
 
-@auth.route("/auth/logout")
+@auth.route("/logout")
 @login_required
 def logout():
     """

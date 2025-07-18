@@ -1,0 +1,17 @@
+{# Run tabs component for experiment run #}
+<ul class="nav nav-tabs" id="myTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <a class="nav-link {{ 'disabled' if config_list else '' }} {{ 'active' if not config_list else '' }}" id="tab1-tab" data-bs-toggle="tab" href="#tab1" role="tab" aria-controls="tab1" aria-selected="false">Repeat</a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link {{ 'disabled' if not config_list else '' }} {{ 'active' if config_list else '' }}" id="tab2-tab" data-bs-toggle="tab" href="#tab2" role="tab" aria-controls="tab2" aria-selected="false">Configuration</a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link {{ 'disabled' if not config_list or not return_list else '' }}" id="tab3-tab" data-bs-toggle="tab" href="#tab3" role="tab" aria-controls="tab3" aria-selected="false">Bayesian Optimization</a>
+    </li>
+</ul>
+<div class="tab-content" id="myTabsContent">
+    {% include 'components/tab_repeat.html' %}
+    {% include 'components/tab_configuration.html' %}
+    {% include 'components/tab_bayesian.html' %}
+</div> 

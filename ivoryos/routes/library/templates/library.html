@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}IvoryOS | Design Database{% endblock %}
+{% block body %}
+    <div class="database-filter">
+        {% for deck_name in deck_list %}
+            {% if deck_name == "ALL" %}<a class="btn btn-secondary" href="{{url_for('library.load_from_database')}}">Back</a>
+            {% else %}<a class="btn btn-secondary" href="{{url_for('library.load_from_database',deck_name=deck_name)}}">{{deck_name}}</a>
+            {% endif %}
+        {% endfor %}
+
+        <form id="search" style="display: inline-block;float: right;" action="{{url_for('library.load_from_database',deck_name=deck_name)}}" method="GET">
+            <div class="input-group">
+                <div class="form-outline">
+                    <input type="search" name="keyword" id="keyword" class="form-control" placeholder="Search workflows...">
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <table class="table table-hover" id="workflowLibrary">
+        <thead>
+            <tr>
+                <th scope="col">Workflow name</th>
+                <th scope="col">Deck </th>
+                <th scope="col">Editing</th>
+                <th scope="col">Time created</th>
+                <th scope="col">Last modified</th>
+                <th scope="col">Author</th>
+{#                <th scope="col">Registered</th>#}
+                <th scope="col"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for script in scripts %}
+                <tr>
+                    <td><a href="{{ url_for('library.edit_workflow', script_name=script.name) }}">{{ script.name }}</a></td>
+                    <td>{{ script.deck }}</td>
+                    <td>{{ script.status }}</td>
+                    <td>{{ script.time_created }}</td>
+                    <td>{{ script.last_modified }}</td>
+                    <td>{{ script.author }}</td>
+{#                    <td>{{ workflow.registered }}</td>#}
+                    <td>
+                        {#not workflow.status == "finalized" or#}
+                        {% if session['user'] == 'admin' or session['user'] == script.author %}
+                            <a href="{{ url_for('library.delete_workflow', script_name=script.name) }}">delete</a>
+                        {% else %}
+                            <a class="disabled-link">delete</a>
+                        {% endif %}
+                    <td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {#    paging#}
+    <div class="pagination justify-content-center">
+        <div class="page-item {{ 'disabled' if not scripts.has_prev else '' }}">
+            <a class="page-link" href="{{ url_for('library.load_from_database', page=scripts.prev_num) }}">Previous</a>
+        </div>
+
+        {% for num in scripts.iter_pages() %}
+            {% if num %}
+                <div class="page-item {{ 'active' if num == scripts.page else '' }}">
+                    <a class="page-link" href="{{ url_for('library.load_from_database', page=num) }}">{{ num }}</a>
+                </div>
+            {% else %}
+                <div class="page-item disabled">
+                    <span class="page-link">…</span>
+                </div>
+            {% endif %}
+        {% endfor %}
+
+        <div class="page-item {{ 'disabled' if not scripts.has_next else '' }}">
+            <a class="page-link" href="{{ url_for('library.load_from_database', page=scripts.next_num) }}">Next</a>
+        </div>
+    </div>
+
+{% endblock %}

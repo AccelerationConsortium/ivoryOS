@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block title %}IvoryOS | Welcome{% endblock %}
+
+{% block body %}
+    <div class="p-4">
+        <h1 class="mb-4" style="font-size: 3rem; font-weight: bold; color: #343a40;">
+            Welcome
+        </h1>
+        <p class="mb-5">Version: {{ version }}</p>
+
+        {% if enable_design %}
+        <!-- Workflow Design Section -->
+        <h4 class="mb-3">Workflow Design</h4>
+        <div class="row">
+            <div class="col-lg-6 mb-3 d-flex align-items-stretch">
+                <div class="card rounded shadow-sm flex-fill">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-folder2-open me-2"></i>Browse designs
+                        </h5>
+                        <p class="card-text">View all saved workflows from the database.</p>
+                        <a href="{{ url_for('library.load_from_database') }}" class="stretched-link"></a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 mb-3 d-flex align-items-stretch">
+                <div class="card rounded shadow-sm flex-fill">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-pencil-square me-2"></i>Edit designs
+                        </h5>
+                        <p class="card-text">Create or modify workflows using available functions.</p>
+                        <a href="{{ url_for('design.experiment_builder') }}" class="stretched-link"></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Workflow Control and Monitor Section -->
+        <h4 class="mt-5 mb-3">Workflow Control & Monitoring</h4>
+        <div class="row">
+            <!-- Always visible: Experiment data -->
+            <div class="col-lg-6 mb-3 d-flex align-items-stretch">
+                <div class="card rounded shadow-sm flex-fill">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-graph-up-arrow me-2"></i>Experiment data
+                        </h5>
+                        <p class="card-text">Browse workflow logs and output data.</p>
+                        <a href="{{ url_for('data.list_workflows') }}" class="stretched-link"></a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conditionally visible: Run current workflow -->
+            {% if not off_line %}
+            <div class="col-lg-6 mb-3 d-flex align-items-stretch">
+                <div class="card rounded shadow-sm flex-fill">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-play-circle me-2"></i>Run current workflow
+                        </h5>
+                        <p class="card-text">Execute workflows with configurable parameters.</p>
+                        <a href="{{ url_for('execute.experiment_run') }}" class="stretched-link"></a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+
+
+        {% if not off_line %}
+        <!-- Direct Control Section -->
+        <h4 class="mt-5 mb-3">Direct Control</h4>
+        <div class="row">
+            <div class="col-lg-6 mb-3 d-flex align-items-stretch">
+                <div class="card rounded shadow-sm flex-fill">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-toggle-on me-2"></i>Direct control
+                        </h5>
+                        <p class="card-text">Manually control individual components.</p>
+                        <a href="{{ url_for('control.deck_controllers') }}" class="stretched-link"></a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 mb-3 d-flex align-items-stretch">
+                <div class="card rounded shadow-sm flex-fill">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-usb-plug me-2"></i>Connect a new device
+                        </h5>
+                        <p class="card-text">Add new hardware temporarily or for testing purposes.</p>
+                        <a href="{{ url_for('control.temp.new_controller') }}" class="stretched-link"></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+{% endblock %}

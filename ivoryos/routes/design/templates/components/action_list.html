@@ -1,0 +1,15 @@
+{# Action list component #}
+<div class="list-group" id="list" style="margin-top: 20px">
+    <ul class="reorder">
+    {% for button in buttons %}
+        <li id="{{ button['id'] }}" style="list-style-type: none;">
+            <span class="line-number d-none">{{ button['id'] }}.</span>
+            <a href="{{ url_for('design.design_steps.edit_action', uuid=button['uuid']) }}" type="button" class="btn btn-light" style="{{ button['style'] }}">{{ button['label'] }}</a>
+            {% if not button["instrument"] in ["if","while","repeat"] %}
+                <a href="{{ url_for('design.design_steps.duplicate_action', id=button['id']) }}" type="button" class="btn btn-light"><span class="bi bi-copy"></span></a>
+            {% endif %}
+            <a href="{{ url_for('design.design_steps.delete_action', id=button['id']) }}" type="button" class="btn btn-light"><span class="bi bi-trash"></span></a>
+        </li>
+    {% endfor %}
+    </ul>
+</div> 

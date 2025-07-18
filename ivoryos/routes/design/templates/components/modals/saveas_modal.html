@@ -1,0 +1,27 @@
+{# Save as modal component #}
+<div class="modal fade" id="saveasModal" tabindex="-1" aria-labelledby="saveasModal" aria-hidden="true" >
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="saveasModal">Save your script as </h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" name="run_name" action="{{ url_for('library.save_as') }}">
+                <div class="modal-body">
+                    <div class="input-group mb-3">
+                        <label class="input-group-text" for="run_name">Run Name</label>
+                        <input class="form-control" type="text" name="run_name" id="run_name" placeholder="{{script['name']}}" required="required">
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="register_workflow" id="register_workflow">
+                        <label class="input-group-label" for="register_workflow">Register this workflow</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Close </button>
+                    <button type="submit"  class="btn btn-primary"> Save </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div> 

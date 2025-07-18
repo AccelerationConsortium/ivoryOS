@@ -1,0 +1,52 @@
+{# Action form component #}
+<div class="accordion-item design-control" draggable="true">
+    <h2 class="accordion-header">
+        <button class="accordion-button collapsed draggable-action"
+                type="button" data-bs-toggle="collapse"
+                data-bs-target="#{{name}}" aria-expanded="false"
+                aria-controls="collapseExample"
+                 data-action="{{ name }}">
+            {{ format_name(name) }}
+        </button>
+    </h2>
+    <div id="{{name}}" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
+        <div class="accordion-body">
+            <form role="form" method='POST' name="add" id="add-{{name}}">
+                <div class="form-group">
+                    {{ form.hidden_tag() }}
+                    {% for field in form %}
+                        {% if field.type not in ['CSRFTokenField', 'HiddenField'] %}
+                            <div class="input-group mb-3">
+                                <label class="input-group-text">{{ field.label.text }}</label>
+                                {% if field.type == "SubmitField" %}
+                                    {{ field(class="btn btn-dark") }}
+                                {% elif field.type == "BooleanField" %}
+                                    {{ field(class="form-check-input") }}
+                                {% elif field.type == "FlexibleEnumField" %}
+                                   <input type="text" id="{{ field.id }}" name="{{ field.name }}" value="{{ field.data }}"
+                                      list="{{ field.id }}_options" placeholder="{{ field.render_kw.placeholder if field.render_kw and field.render_kw.placeholder }}"
+                                      class="form-control">
+                                   <datalist id="{{ field.id }}_options">
+                                      {% for key in field.choices %}
+                                         <option value="{{ key }}">{{ key }}</option>
+                                      {% endfor %}
+                                   </datalist>
+                                {% else %}
+                                    {{ field(class="form-control") }}
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn btn-dark">Add</button>
+                {% if 'hidden_name' in form %}
+                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top"
+                       title='{{ form.hidden_name.description or "Docstring is not available" }}'>
+                    </i>
+                {% else %}
+                    <!-- handle info tooltip for flow control / workflows -->
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div> 

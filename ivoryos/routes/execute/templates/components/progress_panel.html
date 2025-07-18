@@ -1,0 +1,27 @@
+{# Progress panel component for experiment run #}
+<div class="col-lg-6 col-sm-12" id="code-panel" style="{{ '' if pause_status else 'display: none;'}}">
+    <p>
+        <h5>Progress：</h5>
+        {% if "prep" in line_collection.keys() %}
+            {% set stype = "prep" %}
+            <h6>Preparation：</h6>
+            {% for code in line_collection["prep"] %}
+                <pre style="margin: 0; padding: 0; line-height: 1;"><code class="python" id="{{ stype }}-{{ loop.index0 }}" >{{code}}</code></pre>
+            {% endfor %}
+        {% endif %}
+        {% if "script" in line_collection.keys() %}
+            {% set stype = "script" %}
+            <h6>Experiment：</h6>
+            {% for code in line_collection["script"] %}
+                <pre style="margin: 0; padding: 0; line-height: 1;"><code class="python" id="{{ stype }}-{{ loop.index0 }}" >{{code}}</code></pre>
+            {% endfor %}
+        {% endif %}
+        {% if "cleanup" in line_collection.keys() %}
+            {% set stype = "cleanup" %}
+            <h6>Cleanup：</h6>
+            {% for code in line_collection["cleanup"] %}
+                <pre style="margin: 0; padding: 0; line-height: 1;"><code class="python" id="{{ stype }}-{{ loop.index0 }}" >{{code}}</code></pre>
+            {% endfor %}
+        {% endif %}
+    </p>
+</div> 

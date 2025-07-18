@@ -1,0 +1,23 @@
+{# Rename modal component #}
+<div class="modal fade" id="renameModal" tabindex="-1" aria-labelledby="renameModal" aria-hidden="true" >
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="renameModal">Rename your script</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" name="run_name" action="{{ url_for('library.edit_run_name') }}">
+                <div class="modal-body">
+                    <div class="input-group mb-3">
+                        <label class="input-group-text" for="run_name">Run Name</label>
+                        <input class="form-control" type="text" name="run_name" id="run_name" placeholder="{{script['name']}}" required="required">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Close </button>
+                    <button type="submit"  class="btn btn-primary"> Save </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div> 

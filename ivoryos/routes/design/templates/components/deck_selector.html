@@ -1,0 +1,12 @@
+{# Deck selector component #}
+<form id="select-deck" method="POST" action="{{ url_for('design.temp.import_pseudo') }}" enctype="multipart/form-data">
+    <div class="input-group mb-3">
+        <select class="form-select" name="pkl_name" id="pkl_name" required onchange="document.getElementById('select-deck').submit();">
+            <option {{ '' if 'pseudo_deck' in session else 'selected' }} disabled hidden style="overflow-wrap: break-word;" name="pkl_name" id="pkl_name" value=""> -- choose deck --</option>
+            {% for connection in history %}
+                <option {{ 'selected' if session['pseudo_deck']==connection else '' }} style="overflow-wrap: break-word;" name="pkl_name" id="pkl_name" value="{{connection}}">{{connection.split('.')[0]}}</option>
+            {% endfor %}
+        </select>
+    </div>
+</form>
+<hr> 

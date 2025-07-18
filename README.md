@@ -28,7 +28,7 @@ With the least modification of the current workflow, user can design, manage and
 This software is developed and tested using Windows. This software and its dependencies are compatible across major platforms: Linux, macOS, and Windows. Some dependencies (Flask-SQLAlchemy) may require additional setup.
 
 ### Python Version
-Python >=3.7 for best compatibility.
+Python >=3.7, but Python >=3.10 for best compatibility (e.g. ax-platform).
 ### Python dependencies
 This software is compatible with the latest versions of all dependencies. 
 - bcrypt~=4.0
@@ -155,6 +155,7 @@ When you run the application for the first time, it will automatically create th
 - [x] dropdown input ✅  
 - [x] show line number option ✅  
 - [ ] snapshot version control
+- [ ] migrate to ax-platform 1.0.0
 
 ## Citing
 

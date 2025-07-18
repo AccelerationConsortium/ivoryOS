@@ -1,0 +1,18 @@
+{# New script modal component #}
+<div class="modal fade" id="newScriptModal" tabindex="-1" aria-labelledby="newScriptModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="newScriptModalLabel">Save your current editing!</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                The current editing won't be saved. Are you sure you want to proceed?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Continue editing </button>
+                <a role="button" class="btn btn-primary" href="{{url_for('design.clear')}}"> Already saved, clear all </a>
+            </div>
+        </div>
+    </div>
+</div> 

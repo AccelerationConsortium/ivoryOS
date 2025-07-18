@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}IvoryOS | Design{% endblock %}
+
+{% block body %}
+    {# overlay block for text-to-code gen #}
+    <style>
+    .code-overlay {
+        position: absolute;
+        top: 0;
+        right: -50%;
+        height: 100%;
+        width: 50%;
+        z-index: 100;
+        background: #f8f9fa;
+        box-shadow: -2px 0 6px rgba(0, 0, 0, 0.1);
+        transition: right 0.3s ease;
+        overflow-y: auto;
+    }
+    .code-overlay.show {
+        right: 0;
+    }
+</style>
+    <div id="overlay" class="overlay">
+        <div>
+            <h3 id="overlay-text">Generating design, please wait...</h3>
+            <div class="spinner-border" role="status"></div>
+        </div>
+    </div>
+
+    <div class="row">
+        {% include 'components/sidebar.html' %}
+        {% include 'components/canvas.html' %}
+    </div>
+
+    {# Include all modals #}
+    {% include 'components/modals.html' %}
+
+    {# Include all scripts #}
+    {% include 'components/scripts.html' %}
+
+{% endblock %}

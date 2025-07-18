@@ -3,12 +3,17 @@ import sys
 from typing import Union
 
 from flask import Flask, redirect, url_for, g, Blueprint
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from ivoryos.config import Config, get_config
 from ivoryos.routes.auth.auth import auth, login_manager
 from ivoryos.routes.control.control import control
-from ivoryos.routes.database.database import database
-from ivoryos.routes.design.design import design, socketio
+from ivoryos.routes.data.data import data
+from ivoryos.routes.library.library import library
+from ivoryos.routes.design.design import design
+from ivoryos.routes.execute.execute import execute
+from ivoryos.routes.api.api import api
+from ivoryos.socket_handlers import socketio
 from ivoryos.routes.main.main import main
 # from ivoryos.routes.monitor.monitor import monitor
 from ivoryos.utils import utils
@@ -35,10 +40,13 @@ def enforce_sqlite_foreign_keys(dbapi_connection, connection_record):
 url_prefix = os.getenv('URL_PREFIX', "/ivoryos")
 app = Flask(__name__, static_url_path=f'{url_prefix}/static', static_folder='static')
 app.register_blueprint(main, url_prefix=url_prefix)
-app.register_blueprint(auth, url_prefix=url_prefix)
-app.register_blueprint(control, url_prefix=url_prefix)
-app.register_blueprint(design, url_prefix=url_prefix)
-app.register_blueprint(database, url_prefix=url_prefix)
+app.register_blueprint(auth, url_prefix=f'{url_prefix}/{auth.name}')
+app.register_blueprint(library, url_prefix=f'{url_prefix}/{library.name}')
+app.register_blueprint(control, url_prefix=f'{url_prefix}/{control.name}')
+app.register_blueprint(design, url_prefix=f'{url_prefix}/{design.name}')
+app.register_blueprint(execute, url_prefix=f'{url_prefix}/{execute.name}')
+app.register_blueprint(data, url_prefix=f'{url_prefix}/{data.name}')
+app.register_blueprint(api, url_prefix=f'{url_prefix}/{api.name}')
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -195,6 +203,10 @@ def load_installed_plugins(app, socketio):
 def load_plugins(blueprints: Union[list, Blueprint], app, socketio):
     """
     Dynamically load installed plugins and attach Flask-SocketIO.
+    :param blueprints: Union[list, Blueprint] list of Blueprint objects or a single Blueprint object
+    :param app: Flask application instance
+    :param socketio: Flask-SocketIO instance
+    :return: list of plugin names
     """
     plugin_names = []
     if not isinstance(blueprints, list):
