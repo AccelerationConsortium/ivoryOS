@@ -7,11 +7,26 @@ import urllib
 sys.path.insert(0, os.path.abspath('../../'))
 from ivoryos.version import __version__
 
-readme_url = "https://gitlab.com/heingroup/ivoryos-plugin-template/-/raw/main/README.rst"
-output_path = os.path.join(os.path.dirname(__file__), 'plugin.rst')
-
-if not os.path.exists(output_path):
-    urllib.request.urlretrieve(readme_url, output_path)
+external_readme = [
+    {
+        "name": 'plugin.rst',
+        "url": "https://gitlab.com/heingroup/ivoryos-plugin-template/-/raw/main/README.rst"
+    },
+    {
+        "name": 'client.rst',
+        "url": "https://gitlab.com/heingroup/ivoryos-client/-/raw/main/README.rst"
+    },
+    {
+        "name": 'mcp.rst',
+        "url": "https://gitlab.com/heingroup/ivoryos-mcp/-/raw/main/README.rst"
+    }
+]
+for item in external_readme:
+    readme_url = item['url']
+    name = item['name']
+    output_path = os.path.join(os.path.dirname(__file__), 'plugin.rst')
+    if not os.path.exists(output_path):
+        urllib.request.urlretrieve(readme_url, output_path)
 
 # -- Project information
 project = 'ivoryOS'

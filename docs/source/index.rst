@@ -42,6 +42,8 @@ In a python script, containing the initialized Python modules:
    usage
    integration
    plugin
+   client
+   mcp
 
 
 .. toctree::
