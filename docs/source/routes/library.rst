@@ -1,5 +1,6 @@
-Workflow Database
-====================
+Workflow script Database
+=========================
+
 
 Interface Screenshot
 ------------------------
@@ -10,13 +11,13 @@ Interface Screenshot
 Routes
 --------
 .. qrefflask:: ivoryos:app
-   :blueprints: database
+   :blueprints: library
    :endpoints:
 
 
 Docs
 --------
 .. autoflask:: ivoryos:app
-   :blueprints: database
+   :blueprints: library
    :endpoints:
 
