@@ -19,6 +19,7 @@ from ivoryos.routes.main.main import main
 from ivoryos.utils import utils
 from ivoryos.utils.db_models import db, User
 from ivoryos.utils.global_config import GlobalConfig
+from ivoryos.optimizer.registry import OPTIMIZER_REGISTRY
 from ivoryos.utils.script_runner import ScriptRunner
 from ivoryos.version import __version__ as ivoryos_version
 from importlib.metadata import entry_points
@@ -144,7 +145,7 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     app.config["LOGGERS_PATH"] = logger_output_name or app.config["LOGGERS_PATH"]  # default.log
     logger_path = os.path.join(app.config["OUTPUT_FOLDER"], app.config["LOGGERS_PATH"])
     dummy_deck_path = os.path.join(app.config["OUTPUT_FOLDER"], app.config["DUMMY_DECK"])
-
+    global_config.optimizers = OPTIMIZER_REGISTRY
     if module:
         app.config["MODULE"] = module
         app.config["OFF_LINE"] = False

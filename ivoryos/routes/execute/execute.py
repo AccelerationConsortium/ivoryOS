@@ -8,6 +8,7 @@ from flask_login import login_required
 
 from ivoryos.routes.execute.execute_file import files
 from ivoryos.utils import utils
+from ivoryos.utils.bo_campaign import parse_optimization_form
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.form import create_action_button, format_name, create_form_from_pseudo, \
     create_form_from_action, create_all_builtin_forms
@@ -45,7 +46,7 @@ def experiment_run():
     # script.sort_actions() # handled in update list
     off_line = current_app.config["OFF_LINE"]
     deck_list = utils.import_history(os.path.join(current_app.config["OUTPUT_FOLDER"], 'deck_history.txt'))
-
+    optimizers_schema = {k: v.get_schema() for k, v in global_config.optimizers.items()}
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
     config_preview = []
     config_file_list = [i for i in os.listdir(current_app.config["CSV_FOLDER"]) if not i == ".gitkeep"]
@@ -149,7 +150,38 @@ def experiment_run():
                                return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                                config_preview=config_preview, data_list=data_list, config_type_list=config_type_list,
                                no_deck_warning=no_deck_warning, dismiss=dismiss, design_buttons=design_buttons,
-                               history=deck_list, pause_status=runner.pause_status())
+                               history=deck_list, pause_status=runner.pause_status(), optimizer_schema=optimizers_schema)
+
+@execute.route("/campaign/run_bo", methods=["POST"])
+@login_required
+def run_bo():
+    script = utils.get_script_file()
+    run_name = script.name if script.name else "untitled"
+    payload = request.form.to_dict()
+    repeat = payload.pop("repeat", None)
+    optimizer_type = payload.pop("optimizer_type", None)
+    existing_data = payload.pop("existing_data", None)
+    parameters, objectives, steps = parse_optimization_form(payload)
+    try:
+        datapath = current_app.config["DATA_FOLDER"]
+        run_name = script.validate_function_name(run_name)
+        Optimizer = global_config.optimizers.get(optimizer_type, None)
+        if not Optimizer:
+            raise ValueError(f"Optimizer {optimizer_type} is not supported or not found.")
+        optimizer = Optimizer(experiment_name=run_name, parameter_space=parameters, objective_config=objectives,
+                              optimizer_config=steps)
+        runner.run_script(script=script, run_name=run_name, optimizer=optimizer,
+                          logger=g.logger, socketio=g.socketio, repeat_count=repeat,
+                          output_path=datapath, compiled=False, history=existing_data,
+                          current_app=current_app._get_current_object()
+                          )
+
+    except Exception as e:
+        if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+            return jsonify({"error": e.__str__()})
+        else:
+            flash(e.__str__())
+    return redirect(url_for("execute.experiment_run"))
 
 
 @execute.route('/data_preview/<filename>')
