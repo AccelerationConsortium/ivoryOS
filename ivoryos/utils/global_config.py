@@ -15,6 +15,7 @@ class GlobalConfig:
             cls._instance._deck_snapshot = {}
             cls._instance._runner_lock = threading.Lock()
             cls._instance._runner_status = None
+            cls._instance._optimizers = {}
         return cls._instance
 
     @property
@@ -85,3 +86,14 @@ class GlobalConfig:
     @runner_status.setter
     def runner_status(self, value):
         self._runner_status = value
+
+    @property
+    def optimizers(self):
+        return self._optimizers
+
+    @optimizers.setter
+    def optimizers(self, value):
+        if isinstance(value, dict):
+            self._optimizers = value
+        else:
+            raise ValueError("Optimizers must be a dictionary.")

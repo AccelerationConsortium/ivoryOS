@@ -62,7 +62,7 @@ class ScriptRunner:
 
 
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None, bo_args=None,
-                   output_path="", compiled=False, current_app=None, history=None):
+                   output_path="", compiled=False, current_app=None, history=None, optimizer=None):
         global deck
         if deck is None:
             deck = global_config.deck
@@ -82,7 +82,7 @@ class ScriptRunner:
         thread = threading.Thread(
             target=self._run_with_stop_check,
             args=(script, repeat_count, run_name, logger, socketio, config, bo_args, output_path, current_app, compiled,
-                  history)
+                  history, optimizer)
         )
         thread.start()
         return thread
@@ -183,7 +183,7 @@ class ScriptRunner:
         return exec_locals  # Return the 'results' variable
 
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, logger, socketio, config, bo_args,
-                             output_path, current_app, compiled, history=None):
+                             output_path, current_app, compiled, history=None, optimizer=None):
         time.sleep(1)
         # _func_str = script.compile()
         # step_list_dict: dict = script.convert_to_lines(_func_str)
@@ -207,7 +207,7 @@ class ScriptRunner:
             if repeat_count:
                 self._run_repeat_section(repeat_count, arg_type, bo_args, output_list, script,
                                          run_name, return_list, compiled, logger, socketio,
-                                         history, output_path, run_id=run_id)
+                                         history, output_path, run_id=run_id, optimizer=optimizer)
             elif config:
                 self._run_config_section(config, arg_type, output_list, script, run_name, logger,
                                          socketio, run_id=run_id, compiled=compiled)
@@ -264,7 +264,7 @@ class ScriptRunner:
                     output_list.append(output)
 
     def _run_repeat_section(self, repeat_count, arg_types, bo_args, output_list, script, run_name, return_list, compiled,
-                            logger, socketio, history, output_path, run_id):
+                            logger, socketio, history, output_path, run_id, optimizer=None):
         if bo_args:
             logger.info('Initializing optimizer...')
             if compiled:
@@ -283,6 +283,14 @@ class ScriptRunner:
                         output_list.append(row)
                 else:
                     ax_client = bo_campaign.ax_init_form(bo_args, arg_types)
+        elif optimizer and history:
+            import pandas as pd
+            file_path = os.path.join(output_path, history)
+
+            previous_runs = pd.read_csv(file_path)
+            optimizer.append_existing_data(previous_runs)
+            for row in previous_runs:
+                output_list.append(row)
 
 
 
@@ -304,6 +312,17 @@ class ScriptRunner:
                     _output = {key: value for key, value in output.items() if key in return_list}
                     ax_client.complete_trial(trial_index=trial_index, raw_data=_output)
                     output.update(parameters)
+                except Exception as e:
+                    logger.info(f'Optimization error: {e}')
+                    break
+            elif optimizer:
+                try:
+                    parameters = optimizer.suggest(1)
+                    logger.info(f'Output value: {parameters}')
+                    output = self.exec_steps(script, "script", logger, socketio, run_id, i_progress, **parameters)
+                    if output:
+                        optimizer.observe(output)
+                        output.update(parameters)
                 except Exception as e:
                     logger.info(f'Optimization error: {e}')
                     break
