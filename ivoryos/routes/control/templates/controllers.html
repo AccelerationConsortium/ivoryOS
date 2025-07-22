@@ -63,7 +63,7 @@
 
     <!-- Main: Method Cards -->
     <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: 100vh; overflow-y: auto;">
-      {% if instrument and forms %}
+      {% if instrument%}
 {#        <h2 class="text-secondary">{{ instrument }} controller</h2>#}
         <div class="grid-container" id="sortable-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1rem; width: 100%;">
           {% set hidden = session.get('hidden_functions', {}) %}

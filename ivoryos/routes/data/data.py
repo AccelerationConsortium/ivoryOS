@@ -1,8 +1,9 @@
-from flask import Blueprint, redirect, url_for, flash, request, render_template, session, current_app, jsonify
+import os
+
+from flask import Blueprint, redirect, url_for, request, render_template, current_app, jsonify, send_file
 from flask_login import login_required
 
-from ivoryos.utils.db_models import Script, db, WorkflowRun, WorkflowStep
-from ivoryos.utils.utils import get_script_file, post_script_file
+from ivoryos.utils.db_models import db, WorkflowRun, WorkflowStep
 
 data = Blueprint('data', __name__, template_folder='templates')
 
@@ -11,11 +12,11 @@ data = Blueprint('data', __name__, template_folder='templates')
 @data.route('/all')
 def list_workflows():
     """
-    .. :quickref: Database; list all workflow logs
+    .. :quickref: Workflow Data Database; list all workflow logs
 
-    list all workflow logs
+    list all workflow data logs
 
-    .. http:get:: /database/workflows/
+    .. http:get:: /data/all/
 
     """
     query = WorkflowRun.query.order_by(WorkflowRun.id.desc())
@@ -39,12 +40,14 @@ def list_workflows():
 @data.route("/get/<int:workflow_id>")
 def get_workflow_steps(workflow_id:int):
     """
-    .. :quickref: Database; list all workflow logs
+    .. :quickref: Workflow Data Database; get workflow data logs
 
-    list all workflow logs
+    get workflow data logs by workflow id
 
-    .. http:get:: /database/workflows/<int:workflow_id>
+    .. http:get:: /data/get/<int:workflow_id>
 
+    :param workflow_id: workflow id
+    :type workflow_id: int
     """
     workflow = db.session.get(WorkflowRun, workflow_id)
     steps = WorkflowStep.query.filter_by(workflow_id=workflow_id).order_by(WorkflowStep.start_time).all()
@@ -91,18 +94,35 @@ def get_workflow_steps(workflow_id:int):
 @login_required
 def delete_workflow_data(workflow_id: int):
     """
-    .. :quickref: Database; delete experiment data from database
+    .. :quickref: Workflow Data Database; delete experiment data from database
 
     delete workflow data from database
 
-    .. http:get:: /database/workflows/delete/<int:workflow_id>
+    .. http:get:: /data/delete/<int:workflow_id>
 
     :param workflow_id: workflow id
     :type workflow_id: int
-    :status 302: redirect to :http:get:`/ivoryos/database/workflows/`
+    :status 302: redirect to :http:get:`/ivoryos/data/all/`
 
     """
     run = WorkflowRun.query.get(workflow_id)
     db.session.delete(run)
     db.session.commit()
     return redirect(url_for('database.list_workflows'))
+
+
+@data.route('/download/data/<string:filename>')
+def download_results(filename:str):
+    """
+    .. :quickref: Workflow data; download a workflow data file (.CSV)
+
+    .. http:get:: data/download/data
+
+    :param filename: workflow data filename
+    :type filename: str
+
+    # :status 302: load pseudo deck and then redirects to :http:get:`/ivoryos/data/all`
+    """
+
+    filepath = os.path.join(current_app.config["DATA_FOLDER"], filename)
+    return send_file(os.path.abspath(filepath), as_attachment=True)

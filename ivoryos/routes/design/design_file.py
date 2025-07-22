@@ -1,7 +1,7 @@
-import csv
+
 import json
 import os
-from flask import Blueprint, send_file, request, flash, redirect, url_for, session, current_app
+from flask import Blueprint, send_file, request, flash, redirect, url_for, current_app
 from werkzeug.utils import secure_filename
 from ivoryos.utils import utils
 
@@ -9,15 +9,19 @@ files = Blueprint('design_files', __name__)
 
 
 
-@files.route('/download/data/<filename>')
-def download_results(filename):
-    """Download a workflow data file"""
-    filepath = os.path.join(current_app.config["DATA_FOLDER"], filename)
-    return send_file(os.path.abspath(filepath), as_attachment=True)
+
 
 @files.route('/upload/json', methods=['POST'])
 def load_json():
-    """Upload a workflow design file (.JSON)"""
+    """
+    .. :quickref: Workflow Design Ext; upload a workflow design file (.JSON)
+
+    .. http:post:: /upload/json
+
+    :form file: workflow design JSON file
+    :status 302: load script json and then redirects to :http:get:`/ivoryos/design/script`
+    """
+
     if request.method == "POST":
         f = request.files['file']
         if 'file' not in request.files:
@@ -29,29 +33,38 @@ def load_json():
             flash("Script file need to be JSON file")
     return redirect(url_for("design.experiment_builder"))
 
-@files.route('/download/script/<filetype>')
-def download(filetype):
-    """Download a workflow design file"""
+@files.route('/download/script')
+def download_python():
+    """
+    .. :quickref: Workflow Design Ext; export a workflow design file (.py)
+
+    .. http:post:: /download/script
+
+    :status 302: redirects to :http:get:`/ivoryos/design/script`
+    """
     script = utils.get_script_file()
     run_name = script.name if script.name else "untitled"
-    
-    if filetype == "configure":
-        filepath = os.path.join(current_app.config['SCRIPT_FOLDER'], f"{run_name}_config.csv")
-        with open(filepath, 'w', newline='') as f:
-            writer = csv.writer(f)
-            cfg, cfg_types = script.config("script")
-            writer.writerow(cfg)
-            writer.writerow(list(cfg_types.values()))
-    elif filetype == "script":
-        script.sort_actions()
-        json_object = json.dumps(script.as_dict())
-        filepath = os.path.join(current_app.config['SCRIPT_FOLDER'], f"{run_name}.json")
-        with open(filepath, "w") as outfile:
-            outfile.write(json_object)
-    elif filetype == "python":
-        filepath = os.path.join(current_app.config["SCRIPT_FOLDER"], f"{run_name}.py")
-    else:
-        return "Unsupported file type", 400
+    filepath = os.path.join(current_app.config["SCRIPT_FOLDER"], f"{run_name}.py")
+    return send_file(os.path.abspath(filepath), as_attachment=True)
+
+
+@files.route('/download/json')
+def download_json():
+    """
+    .. :quickref: Workflow Design Ext; export a workflow design file (.JSON)
+
+    .. http:post:: /download/json
+
+    :status 302: redirects to :http:get:`/ivoryos/design/script`
+    """
+    script = utils.get_script_file()
+    run_name = script.name if script.name else "untitled"
+
+    script.sort_actions()
+    json_object = json.dumps(script.as_dict())
+    filepath = os.path.join(current_app.config['SCRIPT_FOLDER'], f"{run_name}.json")
+    with open(filepath, "w") as outfile:
+        outfile.write(json_object)
     return send_file(os.path.abspath(filepath), as_attachment=True)
 
 

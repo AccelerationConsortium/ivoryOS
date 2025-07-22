@@ -22,7 +22,12 @@ control.register_blueprint(control_temp)
 @login_required
 def deck_controllers():
     """
-    Combined controllers page: sidebar with all instruments, main area with method cards for selected instrument.
+    .. :quickref: Direct Control; device home interface
+
+    device home interface for listing all instruments and methods
+
+    .. http:get:: /control/home
+
     """
     deck_variables = global_config.deck_snapshot.keys()
     temp_variables = global_config.defined_variables.keys()
@@ -68,7 +73,7 @@ def deck_controllers():
         session=session
     )
 
-@control.route('/<instrument>/save-order', methods=['POST'])
+@control.route('/save-order/<string:instrument>', methods=['POST'])
 def save_order(instrument: str):
     """
     .. :quickref: Control Customization; Save functions' order
@@ -84,12 +89,12 @@ def save_order(instrument: str):
     return '', 204
 
 
-@control.route('/<instrument>/<function>/hide')
-def hide_function(instrument, function):
+@control.route('/hide/<string:instrument>/<string:function>')
+def hide_function(instrument:str, function:str):
     """
     .. :quickref: Control Customization; Hide function
 
-    .. http:get:: //control/<instrument>/<function>/hide
+    .. http:get:: /hide/<instrument>/<function>
 
     Hide the given <instrument> and <function>
 
@@ -105,7 +110,7 @@ def hide_function(instrument, function):
     return redirect(back)
 
 
-@control.route('/<instrument>/<function>/unhide')
+@control.route('/unhide/<string:instrument>/<string:function>')
 def remove_hidden(instrument: str, function: str):
     """
     .. :quickref: Control Customization; Remove a hidden function

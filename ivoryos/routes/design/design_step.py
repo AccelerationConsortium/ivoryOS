@@ -4,9 +4,24 @@ from ivoryos.utils.form import create_form_from_action
 
 steps = Blueprint('design_steps', __name__)
 
-@steps.route("/step/edit/<uuid>", methods=['GET', 'POST'])
+@steps.route("/step/edit/<string:uuid>", methods=['GET', 'POST'])
 def edit_action(uuid: str):
-    """Edit parameters of an action step on canvas"""
+    """
+    .. :quickref: Workflow Design Steps; edit parameters of an action step on canvas
+
+    .. http:get:: /design/step/edit
+
+    Load parameter form of an action step
+
+    .. http:post:: /design/step/edit
+
+    :param uuid: The step's uuid
+    :type uuid: str
+
+    :form dynamic form: workflow step dynamic inputs
+    :status 302: save changes and then redirects to :http:get:`/ivoryos/design/script/`
+    """
+
     script = utils.get_script_file()
     action = script.find_by_uuid(uuid)
     session['edit_action'] = action
@@ -24,18 +39,38 @@ def edit_action(uuid: str):
         session.pop('edit_action')
     return redirect(url_for('design.experiment_builder'))
 
-@steps.route("/step/delete/<id>")
+@steps.route("/step/delete/<int:id>")
 def delete_action(id: int):
-    """Delete an action step on canvas"""
+    """
+    .. :quickref: Workflow Design; delete an action step on canvas
+
+    .. http:get:: /design/step/delete
+
+    :param id: The step number id
+    :type id: int
+
+    :status 302: save changes and then redirects to :http:get:`/ivoryos/design/script/`
+    """
+
     back = request.referrer
     script = utils.get_script_file()
     script.delete_action(id)
     utils.post_script_file(script)
     return redirect(back)
 
-@steps.route("/step/duplicate/<id>")
+@steps.route("/step/duplicate/<int:id>")
 def duplicate_action(id: int):
-    """Duplicate an action step on canvas"""
+    """
+    .. :quickref: Workflow Design; duplicate an action step on canvas
+
+    .. http:get:: /design/step/duplicate/<int:id>
+
+    :param id: The step number id
+    :type id: int
+
+    :status 302: save changes and then redirects to :http:get:`/ivoryos/design/script/`
+    """
+
     back = request.referrer
     script = utils.get_script_file()
     script.duplicate_action(id)

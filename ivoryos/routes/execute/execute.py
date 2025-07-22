@@ -29,11 +29,11 @@ def experiment_run():
     """
     .. :quickref: Workflow Execution; Execute/iterate the workflow
 
-    .. http:get:: /design/campaign
+    .. http:get:: /execute/campaign
 
     Compile the workflow and load the experiment execution interface.
 
-    .. http:post:: /design/campaign
+    .. http:post:: /execute/campaign
 
     Start workflow execution
 
@@ -152,10 +152,17 @@ def experiment_run():
                                history=deck_list, pause_status=runner.pause_status())
 
 
-@execute.route('/data_preview/<filename>')
+@execute.route('/data_preview/<string:filename>')
 @login_required
 def data_preview(filename):
-    """Serve a preview of the selected data file (CSV) as JSON."""
+    """
+    .. :quickref: Workflow Execution; preview a workflow history file (.CSV)
+
+    .. http:post:: /data_preview/<str:filename>
+
+    :form file: workflow CSV config file
+    :status 302: save csv file and then redirects to :http:get:`/ivoryos/execute/campaign/`
+    """
     import csv
     import os
     from flask import abort

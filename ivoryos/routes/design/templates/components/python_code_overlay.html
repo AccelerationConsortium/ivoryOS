@@ -11,7 +11,7 @@
         {% for stype, script in session['python_code'].items() %}
             <pre><code class="language-python">{{ script }}</code></pre>
         {% endfor %}
-        <a href="{{ url_for('design.design_files.download', filetype='python') }}">Download <i class="bi bi-download"></i></a>
+        <a href="{{ url_for('design.design_files.download_python', filetype='python') }}">Download <i class="bi bi-download"></i></a>
     </div>
 </div>
 {% endif %} 

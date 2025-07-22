@@ -14,11 +14,11 @@ control_file = Blueprint('file', __name__)
 @login_required
 def download_proxy():
     """
-    .. :quickref: Direct Control; download proxy interface
+    .. :quickref: Direct Control Files; download proxy interface
 
-    download proxy interface
+    download proxy Python interface
 
-    .. http:get:: /control/download
+    .. http:get:: /control/download/proxy
     """
     snapshot = global_config.deck_snapshot.copy()
     class_definitions = {}

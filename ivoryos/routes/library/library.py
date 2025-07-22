@@ -8,15 +8,15 @@ library = Blueprint('library', __name__, template_folder='templates')
 
 
 
-@library.route("/edit/<script_name>")
+@library.route("/edit/<string:script_name>")
 @login_required
 def edit_workflow(script_name:str):
     """
-    .. :quickref: Database; load workflow script to canvas
+    .. :quickref: Script Database; load workflow script to canvas
 
     load the selected workflow to the design canvas
 
-    .. http:get:: /database/scripts/edit/<script_name>
+    .. http:get:: /library/edit/<str:script_name>
 
     :param script_name: script name
     :type script_name: str
@@ -37,19 +37,19 @@ def edit_workflow(script_name:str):
     return redirect(url_for('design.experiment_builder'))
 
 
-@library.route("/delete/<script_name>")
+@library.route("/delete/<string:script_name>")
 @login_required
 def delete_workflow(script_name: str):
     """
-    .. :quickref: Database; delete workflow
+    .. :quickref: Script Database; delete workflow
 
     delete workflow from database
 
-    .. http:get:: /database/scripts/delete/<script_name>
+    .. http:get:: /library//delete/<string:script_name>
 
     :param script_name: workflow name
     :type script_name: str
-    :status 302: redirect to :http:get:`/ivoryos/database/scripts/`
+    :status 302: redirect to :http:get:`/ivoryos/library/get/`
 
     """
     Script.query.filter(Script.name == script_name).delete()
@@ -61,13 +61,13 @@ def delete_workflow(script_name: str):
 @login_required
 def publish():
     """
-    .. :quickref: Database; save workflow to database
+    .. :quickref: Script Database; save workflow to database
 
     save workflow to database
 
-    .. http:get:: /database/scripts/save
+    .. http:get:: /library/save
 
-    :status 302: redirect to :http:get:`/ivoryos/experiment/build/`
+    :status 302: redirect to :http:get:`/ivoryos/design/script/`
     """
     script = get_script_file()
     if not script.name or not script.deck:
@@ -88,13 +88,13 @@ def publish():
 @login_required
 def finalize():
     """
-    .. :quickref: Database; finalize the workflow
+    .. :quickref: Script Database; finalize the workflow
 
     [protected workflow] prevent saving edited workflow to the same workflow name
 
-    .. http:get:: /finalize
+    .. http:get:: library/finalize
 
-    :status 302: redirect to :http:get:`/ivoryos/experiment/build/`
+    :status 302: redirect to :http:get:`/ivoryos/design/script/`
 
     """
     script = get_script_file()
@@ -107,15 +107,15 @@ def finalize():
 
 
 @library.route("/get/", strict_slashes=False)
-@library.route("/get/<deck_name>")
+@library.route("/get/<string:deck_name>")
 @login_required
-def load_from_database(deck_name=None):
+def load_from_database(deck_name:str=None):
     """
-    .. :quickref: Database; database page
+    .. :quickref: Script Database; database page
 
     backend control through http requests
 
-    .. http:get:: /database/scripts/<deck_name>
+    .. http:get:: /library/get/<deck_name>
 
     :param deck_name: filter for deck name
     :type deck_name: str
@@ -151,14 +151,14 @@ def load_from_database(deck_name=None):
 @login_required
 def edit_run_name():
     """
-    .. :quickref: Database; edit workflow name
+    .. :quickref: Script Database; edit workflow name
 
     edit the name of the current workflow, won't save to the database
 
-    .. http:post:: database/scripts/rename
+    .. http:post:: /library/rename
 
     : form run_name: new workflow name
-    :status 302: redirect to :http:get:`/ivoryos/experiment/build/`
+    :status 302: redirect to :http:get:`/ivoryos/design/script/`
 
     """
     if request.method == "POST":
@@ -177,14 +177,14 @@ def edit_run_name():
 @login_required
 def save_as():
     """
-    .. :quickref: Database; save the run name as
+    .. :quickref: Script Database; save the run name as
 
     save the current workflow script as
 
-    .. http:post:: /database/scripts/save_as
+    .. http:post:: /library/save_as
 
     : form run_name: new workflow name
-    :status 302: redirect to :http:get:`/ivoryos/experiment/build/`
+    :status 302: redirect to :http:get:`/ivoryos/design/script/`
 
     """
     if request.method == "POST":

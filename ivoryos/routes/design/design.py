@@ -1,7 +1,6 @@
 import os
 
-from flask import Blueprint, redirect, url_for, flash, jsonify, request, render_template, session, \
-    current_app
+from flask import Blueprint, redirect, url_for, flash, jsonify, request, render_template, session, current_app
 from flask_login import login_required
 
 from ivoryos.routes.library.library import publish
@@ -11,13 +10,11 @@ from ivoryos.utils.form import create_action_button, format_name, create_form_fr
     create_form_from_action, create_all_builtin_forms
 from ivoryos.utils.db_models import Script
 from ivoryos.utils.py_to_json import convert_to_cards
-from ivoryos.utils.script_runner import ScriptRunner
 
 # Import the new modular components
 from ivoryos.routes.design.design_file import files
 from ivoryos.routes.design.design_step import steps
 
-# from ...utils.py_to_json import convert_to_cards
 
 design = Blueprint('design', __name__, template_folder='templates')
 
@@ -208,8 +205,8 @@ def generate_code():
     .. http:post:: /design/generate_code
 
     :form prompt: user's prompt
-    :status 200: and then redirects to :http:get:`/experiment/build`
-    :status 400: failed to initialize the AI agent redirects to :http:get:`/design/script`
+    :status 200: and then redirects to :http:get:`/ivoryos/design/script`
+    :status 400: failed to initialize the AI agent redirects to :http:get:`/ivoryos/design/script`
 
     """
     agent = global_config.agent
@@ -255,7 +252,7 @@ def toggle_script_type(stype=None):
 
     .. http:get:: /design/script/toggle/<stype>
 
-    :status 200: and then redirects to :http:get:`/design/script`
+    :status 200: and then redirects to :http:get:`/ivoryos/design/script`
 
     """
     script = utils.get_script_file()
@@ -294,7 +291,7 @@ def clear():
     .. http:get:: /design/clear
 
     :form prompt: user's prompt
-    :status 200: clear canvas and then redirects to :http:get:`/design/script`
+    :status 200: clear canvas and then redirects to :http:get:`/ivoryos/design/script`
     """
     deck = global_config.deck
     pseudo_name = session.get("pseudo_deck", "")
@@ -336,7 +333,16 @@ def import_pseudo():
 
 @design.route("/submit_python", methods=["POST"])
 def submit_script():
-    """Submit script"""
+    """
+    .. :quickref: Workflow Design; convert Python to workflow script
+    .. http:post:: /design/submit_python
+
+    :form workflow_name: workflow name
+    :form script: main script
+    :form prep: prep script
+    :form cleanup: post script
+    :status 200: clear canvas
+    """
     deck = global_config.deck
     deck_name = os.path.splitext(os.path.basename(deck.__file__))[0] if deck.__name__ == "__main__" else deck.__name__
     script = Script(author=session.get('user'), deck=deck_name)
@@ -352,8 +358,7 @@ def submit_script():
             script.script_dict[stype] = card
             result[stype] = "success"
         except Exception as e:
-            result[
-                stype] = f"failed to transcript to ivoryos visualization, but function can still run. error: {str(e)}"
+            result[stype] = f"failed to transcript, but function can still run. error: {str(e)}"
     utils.post_script_file(script)
     try:
         publish()

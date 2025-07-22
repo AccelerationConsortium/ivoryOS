@@ -50,7 +50,7 @@ def import_deck():
     """
     .. :quickref: Advanced Features; Manually import a deck
 
-    .. http:post:: /control/import_deck
+    .. http:post:: /control/import/deck
 
     :form filepath: deck module filepath
 
@@ -84,11 +84,11 @@ def import_deck():
 
 
 @control_temp.route("/new/", strict_slashes=False)
-@control_temp.route("/new/<instrument>", methods=['GET', 'POST'])
+@control_temp.route("/new/<string:instrument>", methods=['GET', 'POST'])
 @login_required
-def new_controller(instrument=None):
+def new_controller(instrument:str=None):
     """
-    .. :quickref: Direct Control; connect to a new device
+    .. :quickref: Advanced Features; connect to a new device
 
     interface for connecting a new <instrument>
 
