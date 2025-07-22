@@ -7,6 +7,9 @@ import urllib
 sys.path.insert(0, os.path.abspath('../../'))
 from ivoryos.version import __version__
 
+
+# appending suite readme.rst to doc
+
 external_readme = [
     {
         "name": 'plugin.rst',
@@ -21,6 +24,7 @@ external_readme = [
         "url": "https://gitlab.com/heingroup/ivoryos-suite/ivoryos-mcp/-/raw/main/README.rst"
     }
 ]
+
 for item in external_readme:
     readme_url = item['url']
     name = item['name']

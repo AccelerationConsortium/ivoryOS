@@ -9,12 +9,17 @@ Interface Screenshot
 
 
 
-Routes
+Control Routes
 --------
 .. qrefflask:: ivoryos:app
    :blueprints: control
    :endpoints:
 
+Control File Management Routes
+--------
+.. qrefflask:: ivoryos:app
+   :blueprints: control.file
+   :endpoints:
 
 Docs
 --------
@@ -22,3 +27,9 @@ Docs
    :blueprints: control
    :endpoints:
 
+
+Docs
+--------
+.. autoflask:: ivoryos:app
+   :blueprints: control.file
+   :endpoints:
