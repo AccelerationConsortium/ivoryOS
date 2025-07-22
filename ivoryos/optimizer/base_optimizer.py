@@ -2,7 +2,6 @@
 
 from abc import ABC, abstractmethod
 
-from pandas.core.interchange.dataframe_protocol import DataFrame
 
 
 class OptimizerBase(ABC):
@@ -44,7 +43,7 @@ class OptimizerBase(ABC):
         pass
 
     @abstractmethod
-    def append_existing_data(self, existing_data: DataFrame):
+    def append_existing_data(self, existing_data):
         pass
 
     @staticmethod

@@ -1,7 +1,6 @@
 ### Directory: ivoryos/optimizers/baybe_optimizer.py
 from typing import Dict
 
-import pandas as pd
 
 from ivoryos.utils.utils import install_and_import
 from ivoryos.optimizer.base_optimizer import OptimizerBase
@@ -45,6 +44,7 @@ class BaybeOptimizer(OptimizerBase):
         Append existing data to the Ax experiment.
         :param existing_data: A dictionary containing existing data.
         """
+        import pandas as pd
         if not existing_data:
             return
         # parameter_names = [i.get("name") for i in self.parameter_space]
