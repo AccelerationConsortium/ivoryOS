@@ -205,8 +205,8 @@ def generate_code():
     .. http:post:: /design/generate_code
 
     :form prompt: user's prompt
-    :status 200: and then redirects to :http:get:`/ivoryos/design/script`
-    :status 400: failed to initialize the AI agent redirects to :http:get:`/ivoryos/design/script`
+    :status 200: and then redirects to :http:get:`/ivoryos/design/script/`
+    :status 400: failed to initialize the AI agent redirects to :http:get:`/ivoryos/design/script/`
 
     """
     agent = global_config.agent
@@ -252,7 +252,7 @@ def toggle_script_type(stype=None):
 
     .. http:get:: /design/script/toggle/<stype>
 
-    :status 200: and then redirects to :http:get:`/ivoryos/design/script`
+    :status 200: and then redirects to :http:get:`/ivoryos/design/script/`
 
     """
     script = utils.get_script_file()
@@ -291,7 +291,7 @@ def clear():
     .. http:get:: /design/clear
 
     :form prompt: user's prompt
-    :status 200: clear canvas and then redirects to :http:get:`/ivoryos/design/script`
+    :status 200: clear canvas and then redirects to :http:get:`/ivoryos/design/script/`
     """
     deck = global_config.deck
     pseudo_name = session.get("pseudo_deck", "")
@@ -316,7 +316,7 @@ def import_pseudo():
     .. http:post:: /design/import/pseudo
 
     :form pkl_name: pseudo deck name
-    :status 302: load pseudo deck and then redirects to :http:get:`/design/script`
+    :status 302: load pseudo deck and then redirects to :http:get:`/ivoryos/design/script/`
     """
     pkl_name = request.form.get('pkl_name')
     script = utils.get_script_file()

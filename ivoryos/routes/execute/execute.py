@@ -193,7 +193,7 @@ def data_preview(filename):
     .. http:post:: /data_preview/<str:filename>
 
     :form file: workflow CSV config file
-    :status 302: save csv file and then redirects to :http:get:`/ivoryos/execute/campaign/`
+    :status 302: save csv file and then redirects to :http:get:`/ivoryos/execute/campaign`
     """
     import csv
     import os

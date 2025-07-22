@@ -16,7 +16,7 @@ def download_empty_config():
     .. http:get:: /download/config
 
     :form file: workflow design CSV file
-    :status 302: load pseudo deck and then redirects to :http:get:`/ivoryos/execute/campaign/`
+    :status 302: load pseudo deck and then redirects to :http:get:`/ivoryos/execute/campaign`
     """
     script = utils.get_script_file()
     run_name = script.name if script.name else "untitled"
@@ -37,7 +37,7 @@ def upload():
     .. http:post:: /uploads/config
 
     :form file: workflow CSV config file
-    :status 302: save csv file and then redirects to :http:get:`/ivoryos/execute/campaign/`
+    :status 302: save csv file and then redirects to :http:get:`/ivoryos/execute/campaign`
     """
     if request.method == "POST":
         f = request.files['file']
@@ -61,7 +61,7 @@ def upload_history():
     .. http:post:: /uploads/history
 
     :form file: workflow history CSV file
-    :status 302: save csv file and then redirects to :http:get:`/ivoryos/execute/campaign/`
+    :status 302: save csv file and then redirects to :http:get:`/ivoryos/execute/campaign`
     """
     if request.method == "POST":
         f = request.files['historyfile']

@@ -42,7 +42,7 @@ def edit_action(uuid: str):
 @steps.route("/step/delete/<int:id>")
 def delete_action(id: int):
     """
-    .. :quickref: Workflow Design; delete an action step on canvas
+    .. :quickref: Workflow Design Steps; delete an action step on canvas
 
     .. http:get:: /design/step/delete
 
@@ -61,7 +61,7 @@ def delete_action(id: int):
 @steps.route("/step/duplicate/<int:id>")
 def duplicate_action(id: int):
     """
-    .. :quickref: Workflow Design; duplicate an action step on canvas
+    .. :quickref: Workflow Design Steps; duplicate an action step on canvas
 
     .. http:get:: /design/step/duplicate/<int:id>
 

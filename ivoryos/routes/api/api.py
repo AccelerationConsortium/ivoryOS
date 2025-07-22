@@ -15,7 +15,15 @@ global_config = GlobalConfig()
 
 @api.route("/runner/status", methods=["GET"])
 def runner_status():
-    """Get the execution status"""
+    """
+    .. :quickref: Runner Status; backend runner status
+
+    get is system is busy and current task
+
+    .. http:get:: /api/runner/status
+
+
+    """
     # runner = global_config.runner
     runner_busy = global_config.runner_lock.locked()
     status = {"busy": runner_busy}
@@ -42,35 +50,63 @@ def runner_status():
 
 @api.route("/runner/abort_pending", methods=["POST"])
 def api_abort_pending():
-    """Abort pending action(s) during execution"""
+    """
+    .. :quickref: Workflow Control; abort pending workflow
+
+    finish current iteration, and stop pending workflow iterations
+
+    .. http:get:: /api/runner/abort_pending
+
+    """
     abort_pending()
     return jsonify({"status": "ok"}), 200
 
 
 @api.route("/runner/abort_current", methods=["POST"])
 def api_abort_current():
-    """Abort right after current action during execution"""
+    """
+    .. :quickref: Workflow Control; abort starting from next task
+
+    finish current task, and stop all pending tasks or iterations
+
+    .. http:get:: /api/runner/abort_current
+
+    """
     abort_current()
     return jsonify({"status": "ok"}), 200
 
 
 @api.route("/runner/pause", methods=["POST"])
 def api_pause():
-    """Pause during execution"""
+    """
+    .. :quickref: Workflow Control; pause and resume
+
+    pause workflow iterations or resume workflow iterations
+
+    .. http:get:: /api/runner/pause
+
+    """
     msg = pause()
     return jsonify({"status": "ok", "pause_status": msg}), 200
 
 
 @api.route("/runner/retry", methods=["POST"])
 def api_retry():
-    """Retry when error occur during execution"""
+    """
+    .. :quickref: Workflow Control; retry the failed workflow step.
+
+    retry workflow step
+
+    .. http:get:: /api/runner/retry
+
+    """
     retry()
     return jsonify({"status": "ok, retrying failed step"}), 200
 
 
 
 @api.route("/control/", strict_slashes=False, methods=['GET'])
-@api.route("/control/<instrument>", methods=['POST'])
+@api.route("/control/<string:instrument>", methods=['POST'])
 def backend_control(instrument: str=None):
     """
     .. :quickref: Backend Control; backend control
