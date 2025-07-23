@@ -7,10 +7,11 @@ from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.db_models import Script, WorkflowRun, SingleStep, WorkflowStep
 
 from ivoryos.socket_handlers import abort_pending, abort_current, pause, retry, runner
+from ivoryos.utils.task_runner import TaskRunner
 
 api = Blueprint('api', __name__)
 global_config = GlobalConfig()
-
+task_runner = TaskRunner()
 
 
 @api.route("/runner/status", methods=["GET"])
@@ -131,7 +132,7 @@ def backend_control(instrument: str=None):
         if form:
             kwargs = {field.name: field.data for field in form if field.name not in ['csrf_token', 'hidden_name']}
             wait = request.form.get("hidden_wait", "true") == "true"
-            output = runner.run_single_step(component=instrument, method=method_name, kwargs=kwargs, wait=wait,
+            output = task_runner.run_single_step(component=instrument, method=method_name, kwargs=kwargs, wait=wait,
                                             current_app=current_app._get_current_object())
             return jsonify(output), 200
 
