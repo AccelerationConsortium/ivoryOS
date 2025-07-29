@@ -14,7 +14,7 @@
                                 type="button"
                                 name="device"
                                 value="{{instrument}}"
-                                data-get-url="{{ url_for('design.methods_handler', instrument=instrument) }}"
+                                data-get-url="{{ url_for('design.get_operation_sidebar', instrument=instrument) }}"
                                 onclick="updateInstrumentPanel(this)">
                             {{format_name(instrument)}}
                         </button>
@@ -37,7 +37,7 @@
                                 type="button"
                                 name="device"
                                 value="{{instrument}}"
-                                data-get-url="{{ url_for('design.methods_handler', instrument=instrument) }}"
+                                data-get-url="{{ url_for('design.get_operation_sidebar', instrument=instrument) }}"
                                 onclick="updateInstrumentPanel(this)">
                             {{instrument}}
                         </button>

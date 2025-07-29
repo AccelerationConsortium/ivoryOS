@@ -43,7 +43,7 @@
 {#                            <a href="{{ url_for('data.delete_workflow_data', workflow_id=workflow.id) }}">delete</a>#}
                             <a href="#"
                                class="text-danger"
-                               data-delete-url="{{ url_for('data.workflow_logs', workflow_id=workflow.id) }}"
+                               data-delete-url="{{ url_for('data.delete_workflow_record', workflow_id=workflow.id) }}"
                                onclick="deleteWorkflow(this); return false;">
                                Delete
                             </a>

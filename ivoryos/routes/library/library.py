@@ -11,20 +11,24 @@ library = Blueprint('library', __name__, template_folder='templates')
 @library.route("/<string:script_name>", methods=["GET", "POST", "DELETE"])
 @login_required
 def workflow_script(script_name:str):
+    # todo: split this into two routes, one for GET and POST, another for DELETE
     """
     .. :quickref: Workflow Script Database; get, post, delete workflow script
 
     .. http:get:: /<string:script_name>
+
     :param script_name: script name
     :type script_name: str
     :status 302: redirect to :http:get:`/ivoryos/design/script/`
 
     .. http:post:: /<string:script_name>
+
     :param script_name: script name
     :type script_name: str
     :status 200: json response with success status
 
     .. http:delete:: /<string:script_name>
+
     :param script_name: script name
     :type script_name: str
     :status 302: redirect to :http:get:`/ivoryos/design/script/`
@@ -77,7 +81,7 @@ def publish():
         return {"success": True, "message": "Script published successfully"}
 
 
-@library.route("/", strict_slashes=False)
+@library.get("/", strict_slashes=False)
 @login_required
 def load_from_database():
     """
@@ -120,7 +124,7 @@ def load_from_database():
 
 
 
-@library.route("/", methods=['POST'])
+@library.post("/", strict_slashes=False)
 @login_required
 def save_as():
     """

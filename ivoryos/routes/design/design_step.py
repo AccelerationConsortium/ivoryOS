@@ -5,22 +5,14 @@ from ivoryos.utils.form import create_form_from_action, create_action_button, fo
 steps = Blueprint('design_steps', __name__)
 
 
-@steps.route("/steps/<int:uuid>", methods=['GET', 'POST', 'DELETE'])
-def design_step(uuid: int):
+@steps.get("/draft/steps/<int:uuid>")
+def get_step(uuid: int):
     """
-    .. :quickref: Workflow Design Steps; delete an action step on canvas
+    .. :quickref: Workflow Design Steps; get an action step editing form
 
     .. http:get:: /steps/<int:uuid>
 
     get the editing form for an action step
-
-    .. http:post:: /steps/<int:uuid>
-
-    save the changes of an action step
-
-    .. http:delete:: /steps/<int:uuid>
-
-    delete an action step
 
     :param uuid: The step number id
     :type uuid: int
@@ -36,7 +28,25 @@ def design_step(uuid: int):
                                action=action,
                                format_name=format_name,
                                forms=create_form_from_action(action, script=script))
-    elif request.method == 'POST':
+
+
+@steps.post("/draft/steps/<int:uuid>")
+def save_step(uuid: int):
+    """
+    .. :quickref: Workflow Design Steps; save an action step on canvas
+
+    .. http:post:: /steps/<int:uuid>
+
+        save the changes of an action step
+
+        :param uuid: The step number id
+        :type uuid: int
+
+    :status 200: render template with action step form
+    """
+    script = utils.get_script_file()
+    action = script.find_by_uuid(uuid)
+    if request.method == 'POST':
         if action is not None:
             forms = create_form_from_action(action, script=script)
             kwargs = {field.name: field.data for field in forms if field.name != 'csrf_token'}
@@ -47,8 +57,22 @@ def design_step(uuid: int):
             else:
                 flash(forms.errors)
 
-    elif request.method == 'DELETE':
-        # script = utils.get_script_file()
+@steps.delete("/draft/steps/<int:uuid>")
+def delete_step(uuid: int):
+    """
+    .. :quickref: Workflow Design Steps; delete an action step on canvas
+
+    .. http:delete:: /steps/<int:uuid>
+
+        delete an action step
+
+        :param uuid: The step number id
+        :type uuid: int
+
+    :status 200: render template with action step form
+    """
+    script = utils.get_script_file()
+    if request.method == 'DELETE':
         script.delete_action(uuid)
     utils.post_script_file(script)
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
@@ -57,12 +81,12 @@ def design_step(uuid: int):
                                buttons_dict=design_buttons)
 
 
-@steps.route("/steps/<int:uuid>/duplicate", methods=["POST"], strict_slashes=False,)
+@steps.route("/draft/steps/<int:uuid>/duplicate", methods=["POST"], strict_slashes=False,)
 def duplicate_action(uuid: int):
     """
     .. :quickref: Workflow Design Steps; duplicate an action step on canvas
 
-    .. http:post:: /design/step/duplicate/<int:id>
+    .. http:post:: /draft/steps/<int:uuid>/duplicate
 
     :param uuid: The step number uuid
     :type uuid: int

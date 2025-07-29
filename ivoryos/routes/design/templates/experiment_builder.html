@@ -29,7 +29,7 @@
         const updateListUrl = "{{ url_for('design.update_list') }}";
         const scriptUIStateUrl = "{{ url_for('design.update_ui_state') }}";
         const scriptMetaUrl = "{{ url_for('design.update_script_meta') }}";
-        const scriptStepUrl = `{{ url_for('design.design_steps.design_step', uuid=0) }}`;
+        const scriptStepUrl = `{{ url_for('design.design_steps.get_step', uuid=0) }}`;
         const scriptDeleteUrl = "{{ url_for('design.clear_draft') }}";
     </script>
     <script src="{{ url_for('static', filename='js/sortable_design.js') }}"></script>

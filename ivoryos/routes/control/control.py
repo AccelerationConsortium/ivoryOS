@@ -28,9 +28,16 @@ def deck_controllers():
     device home interface for listing all instruments and methods, selecting an instrument to run its methods
 
     .. http:get:: /instruments
+
+        get all instruments for home page
+
     .. http:get:: /instruments/<string:instrument>
+
+        get all methods of the given <instrument>
+
     .. http:post:: /instruments/<string:instrument>
-    send POST request to run a method of the given <instrument>
+
+        send POST request to run a method of the given <instrument>
 
     :param instrument: instrument name, if not provided, list all instruments
     :type instrument: str

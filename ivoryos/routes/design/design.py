@@ -44,7 +44,7 @@ def _create_forms(instrument, script, autofill, pseudo_deck = None):
         forms = create_form_from_pseudo(pseudo=functions, autofill=autofill, script=script)
     return functions, forms
 
-@design.route("/")
+@design.route("/draft")
 @login_required
 def experiment_builder():
     """
@@ -52,15 +52,10 @@ def experiment_builder():
 
     **Experiment Builder**
 
-    This route allows users to build and edit experiment workflows. Users can interact with available instruments,
-    define variables, and manage experiment scripts.
-
     .. http:get:: /draft
 
-    Load the experiment builder interface.
+    Load the experiment builder page where users can design their workflow by adding actions, instruments, and logic.
 
-    :param instrument: The specific instrument for which to load functions and forms.
-    :type instrument: str
     :status 200: Experiment builder loaded successfully.
 
     """
@@ -101,9 +96,22 @@ def experiment_builder():
                            local_variables=global_config.defined_variables)
 
 
-@design.route("/meta", methods=["PATCH"])
+@design.route("/draft/meta", methods=["PATCH"])
 @login_required
 def update_script_meta():
+    """
+    .. :quickref: Workflow Design; update the script metadata.
+
+    .. http:patch:: /draft/meta
+
+    Update the script metadata, including the script name and status. If the script name is provided,
+    it saves the script with that name. If the status is "finished", it finalizes the script.
+
+    :form name: The name to save the script as.
+    :form status: The status of the script (e.g., "finished").
+
+    :status 200: Successfully updated the script metadata.
+    """
     data = request.get_json()
     script = utils.get_script_file()
     if 'name' in data:
@@ -124,14 +132,22 @@ def update_script_meta():
     return jsonify(success=False)
 
 
-@design.route("/ui-state", methods=["PATCH"])
+@design.route("/draft/ui-state", methods=["PATCH"])
 @login_required
 def update_ui_state():
     """
     .. :quickref: Workflow Design; update the UI state for the design canvas.
-    .. http:patch:: /
+
+    .. http:patch:: /draft/ui-state
+
+    Update the UI state for the design canvas, including showing code overlays, setting editing types,
+    and handling deck selection.
+
     :form show_code: Whether to show the code overlay (true/false).
     :form editing_type: The type of editing to set (prep, script, cleanup).
+    :form autofill: Whether to enable autofill for the instrument panel (true/false).
+    :form deck_name: The name of the deck to select.
+
     :status 200: Updates the UI state and returns a success message.
     """
     data = request.get_json()
@@ -182,9 +198,19 @@ def update_ui_state():
     return jsonify({"error": "Invalid request"}), 400
 
 
-@design.route("/steps/order", methods=['POST'])
+@design.route("/draft/steps/order", methods=['POST'])
 @login_required
 def update_list():
+    """
+    .. :quickref: Workflow Design Steps; update the order of steps in the design canvas when reordering steps.
+
+    .. http:post:: /draft/steps/order
+
+    Update the order of steps in the design canvas when reordering steps.
+
+    :form order: A comma-separated string representing the new order of steps.
+    :status 200: Successfully updated the order of steps.
+    """
     order = request.form['order']
     script = utils.get_script_file()
     script.currently_editing_order = order.split(",", len(script.currently_editing_script))
@@ -197,13 +223,13 @@ def update_list():
 
 
 
-@design.route("/", methods=['DELETE'])
+@design.route("/draft", methods=['DELETE'])
 @login_required
 def clear_draft():
     """
     .. :quickref: Workflow Design; clear the design canvas.
 
-    .. http:delete:: /
+    .. http:delete:: /draft
 
     :status 200: clear canvas
     """
@@ -221,11 +247,14 @@ def clear_draft():
 
 
 
-@design.route("/submit_python", methods=["POST"])
+@design.route("/draft/submit_python", methods=["POST"])
 def submit_script():
     """
     .. :quickref: Workflow Design; convert Python to workflow script
+
     .. http:post:: /design/submit_python
+
+    Convert a Python script to a workflow script and save it in the database.
 
     :form workflow_name: workflow name
     :form script: main script
@@ -255,14 +284,16 @@ def submit_script():
 
 
 
-@design.route("/instruments", methods=["GET"])
-@design.route("/instruments/<string:instrument>", methods=["GET", "POST"])
+@design.post("/draft/instruments/<string:instrument>")
 @login_required
 def methods_handler(instrument: str = ''):
     """
     .. :quickref: Workflow Design; handle methods of a specific instrument
-    .. http:get:: /design/instruments/<string:instrument>
-    .. http:post:: /design/instruments/<string:instrument>
+
+    .. http:post:: /draft/instruments/<string:instrument>
+
+    Add methods for a specific instrument in the workflow design.
+
     :param instrument: The name of the instrument to handle methods for.
     :type instrument: str
     :status 200: Render the methods for the specified instrument.
@@ -276,95 +307,117 @@ def methods_handler(instrument: str = ''):
 
     functions, forms = _create_forms(instrument, script, autofill, pseudo_deck)
 
-    if request.method == 'POST':
-        success = True
-        msg = ""
-        if "hidden_name" in request.form:
-            method_name = request.form.get("hidden_name", None)
-            form = forms.get(method_name) if forms else None
-            insert_position = request.form.get("drop_target_id", None)
-            if form:
-                kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
-                if form.validate_on_submit():
-                    function_name = kwargs.pop("hidden_name")
-                    save_data = kwargs.pop('return', '')
-                    primitive_arg_types = utils.get_arg_type(kwargs, functions[function_name])
-                    script.eval_list(kwargs, primitive_arg_types)
-                    kwargs = script.validate_variables(kwargs)
-                    action = {"instrument": instrument, "action": function_name,
-                              "args": kwargs,
-                              "return": save_data,
-                              'arg_types': primitive_arg_types}
-                    script.add_action(action=action, insert_position=insert_position)
-                else:
-                    msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
-                    success = False
-        elif "builtin_name" in request.form:
-            function_name = request.form.get("builtin_name")
-            form = forms.get(function_name) if forms else None
-            insert_position = request.form.get("drop_target_id", None)
-            if form:
-                kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
-                if form.validate_on_submit():
-                    logic_type = kwargs.pop('builtin_name')
-                    if 'variable' in kwargs:
-                        try:
-                            script.add_variable(insert_position=insert_position, **kwargs)
-                        except ValueError:
-                            success = False
-                            msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
-                    else:
-                        script.add_logic_action(logic_type=logic_type, insert_position=insert_position, **kwargs)
-                else:
-                    success = False
-                    msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
-        elif "workflow_name" in request.form:
-            workflow_name = request.form.get("workflow_name")
-            form = forms.get(workflow_name) if forms else None
-            insert_position = request.form.get("drop_target_id", None)
-            if form:
-                kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
-                if form.validate_on_submit():
-                    save_data = kwargs.pop('return', '')
-                    primitive_arg_types = utils.get_arg_type(kwargs, functions[workflow_name])
-                    script.eval_list(kwargs, primitive_arg_types)
-                    kwargs = script.validate_variables(kwargs)
-                    action = {"instrument": instrument, "action": workflow_name,
-                              "args": kwargs,
-                              "return": save_data,
-                              'arg_types': primitive_arg_types}
-                    script.add_action(action=action, insert_position=insert_position)
-                    script.add_workflow(**kwargs, insert_position=insert_position)
-                else:
-                    success = False
-                    msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
-
-        utils.post_script_file(script)
-        design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
-        html = render_template("components/canvas_main.html", script=script, buttons_dict=design_buttons)
-        return jsonify({"html": html, "success": success, "error": msg})
-    if request.method == 'GET':
-        if instrument:
-            html = render_template("components/sidebar.html", forms=forms, instrument=instrument, script=script,
-                                   format_name=format_name)
-        else:
-            pseudo_deck_name = session.get('pseudo_deck', '')
-            pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
-            off_line = current_app.config["OFF_LINE"]
-            pseudo_deck = utils.load_deck(pseudo_deck_path) if off_line and pseudo_deck_name else None
-            if off_line and pseudo_deck is None:
-                flash("Choose available deck below.")
-            deck_list = utils.available_pseudo_deck(current_app.config["DUMMY_DECK"])
-            if not off_line:
-                deck_variables = list(global_config.deck_snapshot.keys())
-                deck_variables.insert(0, "flow_control")
+    success = True
+    msg = ""
+    if "hidden_name" in request.form:
+        method_name = request.form.get("hidden_name", None)
+        form = forms.get(method_name) if forms else None
+        insert_position = request.form.get("drop_target_id", None)
+        if form:
+            kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
+            if form.validate_on_submit():
+                function_name = kwargs.pop("hidden_name")
+                save_data = kwargs.pop('return', '')
+                primitive_arg_types = utils.get_arg_type(kwargs, functions[function_name])
+                script.eval_list(kwargs, primitive_arg_types)
+                kwargs = script.validate_variables(kwargs)
+                action = {"instrument": instrument, "action": function_name,
+                          "args": kwargs,
+                          "return": save_data,
+                          'arg_types': primitive_arg_types}
+                script.add_action(action=action, insert_position=insert_position)
             else:
-                deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
-                deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
-            # edit_action_info = session.get("edit_action")
-            html = render_template("components/sidebar.html", off_line=off_line, history=deck_list,
-                                   defined_variables=deck_variables, format_name=format_name,
-                                   local_variables=global_config.defined_variables)
-        return jsonify({"html": html})
+                msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
+                success = False
+    elif "builtin_name" in request.form:
+        function_name = request.form.get("builtin_name")
+        form = forms.get(function_name) if forms else None
+        insert_position = request.form.get("drop_target_id", None)
+        if form:
+            kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
+            if form.validate_on_submit():
+                logic_type = kwargs.pop('builtin_name')
+                if 'variable' in kwargs:
+                    try:
+                        script.add_variable(insert_position=insert_position, **kwargs)
+                    except ValueError:
+                        success = False
+                        msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
+                else:
+                    script.add_logic_action(logic_type=logic_type, insert_position=insert_position, **kwargs)
+            else:
+                success = False
+                msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
+    elif "workflow_name" in request.form:
+        workflow_name = request.form.get("workflow_name")
+        form = forms.get(workflow_name) if forms else None
+        insert_position = request.form.get("drop_target_id", None)
+        if form:
+            kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
+            if form.validate_on_submit():
+                save_data = kwargs.pop('return', '')
+                primitive_arg_types = utils.get_arg_type(kwargs, functions[workflow_name])
+                script.eval_list(kwargs, primitive_arg_types)
+                kwargs = script.validate_variables(kwargs)
+                action = {"instrument": instrument, "action": workflow_name,
+                          "args": kwargs,
+                          "return": save_data,
+                          'arg_types': primitive_arg_types}
+                script.add_action(action=action, insert_position=insert_position)
+                script.add_workflow(**kwargs, insert_position=insert_position)
+            else:
+                success = False
+                msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
+    utils.post_script_file(script)
+    design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
+    html = render_template("components/canvas_main.html", script=script, buttons_dict=design_buttons)
+    return jsonify({"html": html, "success": success, "error": msg})
+
+
+@design.get("/draft/instruments")
+@design.get("/draft/instruments/<string:instrument>")
+@login_required
+def get_operation_sidebar(instrument: str = ''):
+    """
+    .. :quickref: Workflow Design; handle methods of a specific instrument
+
+    .. http:get:: /design/instruments/<string:instrument>
+
+    :param instrument: The name of the instrument to handle methods for.
+    :type instrument: str
+
+    :status 200: Render the methods for the specified instrument.
+    """
+    script = utils.get_script_file()
+    pseudo_deck_name = session.get('pseudo_deck', '')
+    pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
+    off_line = current_app.config["OFF_LINE"]
+    pseudo_deck = utils.load_deck(pseudo_deck_path) if off_line and pseudo_deck_name else None
+    autofill = session.get('autofill', False)
+
+    functions, forms = _create_forms(instrument, script, autofill, pseudo_deck)
+
+    if instrument:
+        html = render_template("components/sidebar.html", forms=forms, instrument=instrument, script=script,
+                               format_name=format_name)
+    else:
+        pseudo_deck_name = session.get('pseudo_deck', '')
+        pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
+        off_line = current_app.config["OFF_LINE"]
+        pseudo_deck = utils.load_deck(pseudo_deck_path) if off_line and pseudo_deck_name else None
+        if off_line and pseudo_deck is None:
+            flash("Choose available deck below.")
+        deck_list = utils.available_pseudo_deck(current_app.config["DUMMY_DECK"])
+        if not off_line:
+            deck_variables = list(global_config.deck_snapshot.keys())
+            deck_variables.insert(0, "flow_control")
+        else:
+            deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
+            deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
+        # edit_action_info = session.get("edit_action")
+        html = render_template("components/sidebar.html", off_line=off_line, history=deck_list,
+                               defined_variables=deck_variables, format_name=format_name,
+                               local_variables=global_config.defined_variables)
+    return jsonify({"html": html})
 
 

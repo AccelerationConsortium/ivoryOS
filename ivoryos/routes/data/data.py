@@ -16,7 +16,7 @@ def list_workflows():
 
     list all workflow execution records
 
-    .. http:get:: /executions
+    .. http:get:: /executions/records
 
     """
     query = WorkflowRun.query.order_by(WorkflowRun.id.desc())
@@ -37,10 +37,10 @@ def list_workflows():
         return render_template('workflow_database.html', workflows=workflows)
 
 
-@data.route("/executions/records/<int:workflow_id>", methods=['GET', 'DELETE'])
+@data.get("/executions/records/<int:workflow_id>")
 def workflow_logs(workflow_id:int):
     """
-    .. :quickref: Workflow Data Database; get workflow data logs
+    .. :quickref: Workflow Data Database; get workflow data, steps, and logs
 
     get workflow data logs by workflow id
 
@@ -49,11 +49,6 @@ def workflow_logs(workflow_id:int):
     :param workflow_id: workflow id
     :type workflow_id: int
     """
-    if request.method == 'DELETE':
-        run = WorkflowRun.query.get(workflow_id)
-        db.session.delete(run)
-        db.session.commit()
-        return jsonify(success=True)
 
     if request.method == 'GET':
         workflow = db.session.get(WorkflowRun, workflow_id)
@@ -97,6 +92,24 @@ def workflow_logs(workflow_id:int):
             return render_template("workflow_view.html", workflow=workflow, grouped=grouped)
 
 
+@data.delete("/executions/records/<int:workflow_id>")
+@login_required
+def delete_workflow_record(workflow_id: int):
+    """
+    .. :quickref: Workflow Data Database; delete a workflow execution record
+
+    delete a workflow execution record by workflow id
+
+    .. http:delete:: /executions/records/<int:workflow_id>
+
+    :param workflow_id: workflow id
+    :type workflow_id: int
+    :status 200: return success message
+    """
+    run = WorkflowRun.query.get(workflow_id)
+    db.session.delete(run)
+    db.session.commit()
+    return jsonify(success=True)
 
 
 @data.route('/files/execution-data/<string:filename>')
