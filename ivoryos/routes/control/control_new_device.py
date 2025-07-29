@@ -10,18 +10,18 @@ global_config = GlobalConfig()
 
 control_temp = Blueprint('temp', __name__)
 
-@control_temp.route("/import/module", methods=['POST'])
+@control_temp.route("/new/module", methods=['POST'])
 def import_api():
     """
     .. :quickref: Advanced Features; Manually import API module(s)
 
     importing other Python modules
 
-    .. http:post:: /control/import/module
+    .. http:post:: /instruments/new/module
 
     :form filepath: API (Python class) module filepath
 
-    import the module and redirect to :http:get:`/ivoryos/control/new/`
+    import the module and redirect to :http:get:`/ivoryos/instruments/new/`
 
     """
     filepath = request.form.get('filepath')
@@ -45,12 +45,12 @@ def import_api():
 
 
 
-@control_temp.route("/import/deck", methods=['POST'])
+@control_temp.route("/new/deck-python", methods=['POST'])
 def import_deck():
     """
     .. :quickref: Advanced Features; Manually import a deck
 
-    .. http:post:: /control/import/deck
+    .. http:post:: /instruments/new/deck-python
 
     :form filepath: deck module filepath
 
@@ -92,12 +92,12 @@ def new_controller(instrument:str=None):
 
     interface for connecting a new <instrument>
 
-    .. http:get:: /control/new/
+    .. http:get:: /instruments/new/
 
     :param instrument: instrument name
     :type instrument: str
 
-    .. http:post:: /control/new/
+    .. http:post:: /instruments/new/
 
     :form device_name: module instance name (e.g. my_instance = MyClass())
     :form kwargs: dynamic module initialization kwargs fields

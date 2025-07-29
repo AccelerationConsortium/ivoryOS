@@ -73,9 +73,12 @@
               <div class="card" id="{{function}}" style="margin: 0;">
                 <div class="bg-white rounded shadow-sm h-100">
                   <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top" title='{{ form.hidden_name.description or "Docstring is not available" }}' ></i>
-                  <a style="float: right" aria-label="Close" href="{{ url_for('control.hide_function', instrument=instrument, function=function) }}"><i class="bi bi-eye-slash-fill"></i></a>
-                  <div class="form-control" style="border: none">
-                    <form role="form" method='POST' name="{{function}}" id="{{function}}" action="{{ url_for('control.deck_controllers') }}?instrument={{ instrument }}">
+                    <a href="{{ url_for('control.hide_function', instrument=instrument, function=function) }}"
+                       data-method="patch" data-payload='{"hidden":true}' class="toggle-visibility">
+                       <i style="float: right;" class="bi bi-eye-slash-fill text-muted" title="Hide function"></i>
+                    </a>
+                    <div class="form-control" style="border: none">
+                        <form role="form" method='POST' name="{{function}}" id="{{function}}" action="{{ url_for('control.deck_controllers') }}?instrument={{ instrument }}">
                       <div class="form-group">
                         {{ form.hidden_tag() }}
                         {% for field in form %}
@@ -116,13 +119,37 @@
             <div class="accordion-body">
               {% for function in hidden_instrument %}
                 <div>
-                  {{ function }} <a href="{{ url_for('control.remove_hidden', instrument=instrument, function=function) }}"><i class="bi bi-eye-fill"></i></a>
+                  {{ function }}
+                    <a href="{{ url_for('control.hide_function', instrument=instrument, function=function) }}"
+                       data-method="patch" data-payload='{"hidden":false}' class="toggle-visibility">
+                       <i class="bi bi-eye-fill text-success" title="Show function"></i>
+                    </a>
                 </div>
               {% endfor %}
             </div>
           </div>
         </div>
         <script>
+
+document.querySelectorAll('.toggle-visibility').forEach(el => {
+  el.addEventListener('click', e => {
+    e.preventDefault();
+    const url = el.getAttribute('href');
+    const payload = JSON.parse(el.getAttribute('data-payload') || '{}');
+    fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    }).then(response => {
+      if (response.ok) {
+        location.reload(); // or update the DOM directly
+      }
+    });
+  });
+});
+
           const saveOrderUrl = `{{ url_for('control.save_order', instrument=instrument) }}`;
           const buttonIds = {{ session['card_order'][instrument] | tojson }};
         </script>

@@ -43,10 +43,10 @@ app = Flask(__name__, static_url_path=f'{url_prefix}/static', static_folder='sta
 app.register_blueprint(main, url_prefix=url_prefix)
 app.register_blueprint(auth, url_prefix=f'{url_prefix}/{auth.name}')
 app.register_blueprint(library, url_prefix=f'{url_prefix}/{library.name}')
-app.register_blueprint(control, url_prefix=f'{url_prefix}/{control.name}')
-app.register_blueprint(design, url_prefix=f'{url_prefix}/{design.name}')
-app.register_blueprint(execute, url_prefix=f'{url_prefix}/{execute.name}')
-app.register_blueprint(data, url_prefix=f'{url_prefix}/{data.name}')
+app.register_blueprint(control, url_prefix=f'{url_prefix}/instruments')
+app.register_blueprint(design, url_prefix=f'{url_prefix}/design/draft')
+app.register_blueprint(execute, url_prefix=f'{url_prefix}')
+app.register_blueprint(data, url_prefix=f'{url_prefix}')
 app.register_blueprint(api, url_prefix=f'{url_prefix}/{api.name}')
 
 @login_manager.user_loader

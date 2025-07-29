@@ -10,11 +10,14 @@
         <div class="accordion-collapse collapse show" id="deck">
             <ul class="list-group">
                 {% for instrument in defined_variables %}
-                    <form role="form" method='GET' name="{{instrument}}" action="{{url_for('design.experiment_builder',instrument=instrument)}}">
-                        <div>
-                            <button class="list-group-item list-group-item-action" type="submit">{{format_name(instrument)}}</button>
-                        </div>
-                    </form>
+                        <button class="list-group-item list-group-item-action"
+                                type="button"
+                                name="device"
+                                value="{{instrument}}"
+                                data-get-url="{{ url_for('design.methods_handler', instrument=instrument) }}"
+                                onclick="updateInstrumentPanel(this)">
+                            {{format_name(instrument)}}
+                        </button>
                 {% endfor %}
             </ul>
         </div>
@@ -30,11 +33,14 @@
             <div class="accordion-collapse collapse show" id="local">
                 <ul class="list-group">
                     {% for instrument in local_variables %}
-                        <form role="form" method='GET' name="{{instrument}}" action="{{url_for('design.experiment_builder',instrument=instrument)}}">
-                            <div>
-                                <button class="list-group-item list-group-item-action" type="submit"  name="device" value="{{instrument}}" >{{instrument}}</button>
-                            </div>
-                        </form>
+                        <button class="list-group-item list-group-item-action"
+                                type="button"
+                                name="device"
+                                value="{{instrument}}"
+                                data-get-url="{{ url_for('design.methods_handler', instrument=instrument) }}"
+                                onclick="updateInstrumentPanel(this)">
+                            {{instrument}}
+                        </button>
                     {% endfor%}
                 </ul>
             </div>

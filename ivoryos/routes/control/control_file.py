@@ -10,7 +10,7 @@ global_config = GlobalConfig()
 control_file = Blueprint('file', __name__)
 
 
-@control_file.route("/download/proxy", strict_slashes=False)
+@control_file.route("/files/proxy", strict_slashes=False)
 @login_required
 def download_proxy():
     """
@@ -18,7 +18,7 @@ def download_proxy():
 
     download proxy Python interface
 
-    .. http:get:: /control/download/proxy
+    .. http:get:: /files/proxy
     """
     snapshot = global_config.deck_snapshot.copy()
     class_definitions = {}

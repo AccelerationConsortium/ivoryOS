@@ -8,15 +8,15 @@ from ivoryos.utils import utils
 files = Blueprint('execute_files', __name__)
 
 
-@files.route('/download/config')
+@files.route('/files/execution-configs')
 def download_empty_config():
     """
     .. :quickref: Workflow Files; download an empty workflow config file (.CSV)
 
-    .. http:get:: /download/config
+    .. http:get:: /files/execution-configs
 
     :form file: workflow design CSV file
-    :status 302: load pseudo deck and then redirects to :http:get:`/ivoryos/execute/campaign`
+    :status 302: load pseudo deck and then redirects to :http:get:`/ivoryos/executions/config`
     """
     script = utils.get_script_file()
     run_name = script.name if script.name else "untitled"
@@ -29,15 +29,15 @@ def download_empty_config():
         writer.writerow(list(cfg_types.values()))
     return send_file(os.path.abspath(filepath), as_attachment=True)
 
-@files.route('/upload/config', methods=['POST'])
+@files.route('/files/execution-configs', methods=['POST'])
 def upload():
     """
     .. :quickref: Workflow Files; upload a workflow config file (.CSV)
 
-    .. http:post:: /uploads/config
+    .. http:post:: /files/execution-configs
 
     :form file: workflow CSV config file
-    :status 302: save csv file and then redirects to :http:get:`/ivoryos/execute/campaign`
+    :status 302: save csv file and then redirects to :http:get:`/ivoryos/executions/config`
     """
     if request.method == "POST":
         f = request.files['file']
@@ -53,15 +53,15 @@ def upload():
             return redirect(url_for("execute.experiment_run"))
 
 
-@files.route('/upload/history', methods=['POST'])
+@files.route('/files/execution-data', methods=['POST'])
 def upload_history():
     """
     .. :quickref: Workflow Files; upload a workflow history file (.CSV)
 
-    .. http:post:: /uploads/history
+    .. http:post:: /files/execution-data
 
     :form file: workflow history CSV file
-    :status 302: save csv file and then redirects to :http:get:`/ivoryos/execute/campaign`
+    :status 302: save csv file and then redirects to :http:get:`/ivoryos/executions/config`
     """
     if request.method == "POST":
         f = request.files['historyfile']

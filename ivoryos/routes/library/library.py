@@ -8,114 +8,84 @@ library = Blueprint('library', __name__, template_folder='templates')
 
 
 
-@library.route("/edit/<string:script_name>")
+@library.route("/<string:script_name>", methods=["GET", "POST", "DELETE"])
 @login_required
-def edit_workflow(script_name:str):
+def workflow_script(script_name:str):
     """
-    .. :quickref: Script Database; load workflow script to canvas
+    .. :quickref: Workflow Script Database; get, post, delete workflow script
 
-    load the selected workflow to the design canvas
-
-    .. http:get:: /library/edit/<str:script_name>
-
+    .. http:get:: /<string:script_name>
     :param script_name: script name
     :type script_name: str
     :status 302: redirect to :http:get:`/ivoryos/design/script/`
+
+    .. http:post:: /<string:script_name>
+    :param script_name: script name
+    :type script_name: str
+    :status 200: json response with success status
+
+    .. http:delete:: /<string:script_name>
+    :param script_name: script name
+    :type script_name: str
+    :status 302: redirect to :http:get:`/ivoryos/design/script/`
+
     """
     row = Script.query.get(script_name)
-    script = Script(**row.as_dict())
-    post_script_file(script)
-    pseudo_name = session.get("pseudo_deck", "")
-    off_line = current_app.config["OFF_LINE"]
-    if off_line and pseudo_name and not script.deck == pseudo_name:
-        flash(f"Choose the deck with name {script.deck}")
-    if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
-        return jsonify({
-            "script": script.as_dict(),
-            "python_script": script.compile(),
-        })
-    return redirect(url_for('design.experiment_builder'))
+    if request.method == "DELETE":
+        if not row:
+            return jsonify(success=False)
+        db.session.delete(row)
+        db.session.commit()
+        return jsonify(success=True)
+    if request.method == "GET":
+        if not row:
+            return jsonify(success=False)
+        script = Script(**row.as_dict())
+        post_script_file(script)
+        pseudo_name = session.get("pseudo_deck", "")
+        off_line = current_app.config["OFF_LINE"]
+        if off_line and pseudo_name and not script.deck == pseudo_name:
+            flash(f"Choose the deck with name {script.deck}")
+        if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+            return jsonify({
+                "script": script.as_dict(),
+                "python_script": script.compile(),
+            })
+        return redirect(url_for('design.experiment_builder'))
+    if request.method == "POST":
+        status = publish()
+        return jsonify(status)
+    return None
 
 
-@library.route("/delete/<string:script_name>")
-@login_required
-def delete_workflow(script_name: str):
-    """
-    .. :quickref: Script Database; delete workflow
-
-    delete workflow from database
-
-    .. http:get:: /library//delete/<string:script_name>
-
-    :param script_name: workflow name
-    :type script_name: str
-    :status 302: redirect to :http:get:`/ivoryos/library/get/`
-
-    """
-    Script.query.filter(Script.name == script_name).delete()
-    db.session.commit()
-    return redirect(url_for('database.load_from_database'))
-
-
-@library.route("/save")
-@login_required
 def publish():
-    """
-    .. :quickref: Script Database; save workflow to database
-
-    save workflow to database
-
-    .. http:get:: /library/save
-
-    :status 302: redirect to :http:get:`/ivoryos/design/script/`
-    """
     script = get_script_file()
+
+    if script.author is None:
+        script.author = session.get('user')
     if not script.name or not script.deck:
-        flash("Deck cannot be empty, try to re-submit deck configuration on the left panel")
+        return {"success": False, "error": "Deck cannot be empty, try to re-submit deck configuration on the left panel"}
     row = Script.query.get(script.name)
     if row and row.status == "finalized":
-        flash("This is a protected script, use save as to rename.")
-    elif row and not session['user'] == row.author:
-        flash("You are not the author, use save as to rename.")
+        return {"success": False, "error": "This is a protected script, use save as to rename."}
+
+    elif row and session.get('user') != row.author:
+        return {"success": False, "error": "You are not the author, use save as to rename."}
     else:
         db.session.merge(script)
         db.session.commit()
-        flash("Saved!")
-    return redirect(url_for('design.experiment_builder'))
+        return {"success": True, "message": "Script published successfully"}
 
 
-@library.route("/finalize")
+@library.route("/", strict_slashes=False)
 @login_required
-def finalize():
-    """
-    .. :quickref: Script Database; finalize the workflow
-
-    [protected workflow] prevent saving edited workflow to the same workflow name
-
-    .. http:get:: library/finalize
-
-    :status 302: redirect to :http:get:`/ivoryos/design/script/`
-
-    """
-    script = get_script_file()
-    script.finalize()
-    if script.name:
-        db.session.merge(script)
-        db.session.commit()
-    post_script_file(script)
-    return redirect(url_for('design.experiment_builder'))
-
-
-@library.route("/get/", strict_slashes=False)
-@library.route("/get/<string:deck_name>")
-@login_required
-def load_from_database(deck_name:str=None):
+def load_from_database():
     """
     .. :quickref: Script Database; database page
 
     backend control through http requests
 
-    .. http:get:: /library/get/<deck_name>
+    .. http:get:: /designs/get/<deck_name>
 
     :param deck_name: filter for deck name
     :type deck_name: str
@@ -124,6 +94,7 @@ def load_from_database(deck_name:str=None):
     session.pop('edit_action', None)  # reset cache
     query = Script.query
     search_term = request.args.get("keyword", None)
+    deck_name = request.args.get("deck", None)
     if search_term:
         query = query.filter(Script.name.like(f'%{search_term}%'))
     if deck_name is None:
@@ -147,37 +118,13 @@ def load_from_database(deck_name:str=None):
         return render_template("library.html", scripts=scripts, deck_list=deck_list, deck_name=deck_name)
 
 
-@library.route("/rename", methods=['POST'])
-@login_required
-def edit_run_name():
-    """
-    .. :quickref: Script Database; edit workflow name
-
-    edit the name of the current workflow, won't save to the database
-
-    .. http:post:: /library/rename
-
-    : form run_name: new workflow name
-    :status 302: redirect to :http:get:`/ivoryos/design/script/`
-
-    """
-    if request.method == "POST":
-        run_name = request.form.get("run_name")
-        exist_script = Script.query.get(run_name)
-        if not exist_script:
-            script = get_script_file()
-            script.save_as(run_name)
-            post_script_file(script)
-        else:
-            flash("Script name is already exist in database")
-        return redirect(url_for("design.experiment_builder"))
 
 
-@library.route("/save_as", methods=['POST'])
+@library.route("/", methods=['POST'])
 @login_required
 def save_as():
     """
-    .. :quickref: Script Database; save the run name as
+    .. :quickref: Script Database; save the script as
 
     save the current workflow script as
 
@@ -189,16 +136,20 @@ def save_as():
     """
     if request.method == "POST":
         run_name = request.form.get("run_name")
+        ## TODO: check if run_name is valid
         register_workflow = request.form.get("register_workflow")
-        exist_script = Script.query.get(run_name)
-        if not exist_script:
-            script = get_script_file()
-            script.save_as(run_name)
-            script.registered = register_workflow == "on"
-            script.author = session.get('user')
-            post_script_file(script)
-            publish()
+        script = get_script_file()
+        script.save_as(run_name)
+        script.registered = register_workflow == "on"
+        script.author = session.get('user')
+        post_script_file(script)
+        status = publish()
+        if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+            return jsonify(status)
         else:
-            flash("Script name is already exist in database")
-        return redirect(url_for("design.experiment_builder"))
+            if status["success"]:
+                flash("Script saved successfully")
+            else:
+                flash(status["error"], "error")
+            return redirect(url_for('design.experiment_builder'))
 

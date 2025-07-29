@@ -1,16 +1,56 @@
-$(document).ready(function () {
-    let dropTargetId = ""; // Store the ID of the drop target
+// Move triggerModal to global scope
+function triggerModal(formHtml, actionName, actionId, dropTargetId) {
+    if (formHtml && formHtml.trim() !== "") {
+        var $form = $("<div>").html(formHtml);
 
+        var $hiddenInput = $("<input>")
+            .attr("type", "hidden")
+            .attr("name", "drop_target_id")
+            .attr("id", "dropTargetInput")
+            .val(dropTargetId);
+
+        $form.find("button[type='submit']").before($hiddenInput);
+
+        $("#modalFormFields").empty().append($form.children());
+
+        const $modal = $("#dropModal");
+
+        setTimeout(() => {
+            showModal($modal);
+        }, 0);
+
+        $("#modalDropTarget").text(dropTargetId || "N/A");
+        $("#modalFormFields")
+            .data("action-id", actionId)
+            .data("action-name", actionName)
+            .data("drop-target-id", dropTargetId);
+    } else {
+        console.error("Form HTML is undefined or empty!");
+    }
+}
+
+function showModal($modal) {
+    $modal.modal({
+        backdrop: 'static',
+        keyboard: true,
+        focus: true
+    }).modal('show');
+}
+
+const state = {
+    dropTargetId: ""
+};
+
+function initializeCanvas() {
     $("#list ul").sortable({
         cancel: ".unsortable",
         opacity: 0.8,
         cursor: "move",
         placeholder: "drop-placeholder",
         update: function () {
-            var item_order = [];
-            $("ul.reorder li").each(function () {
-                item_order.push($(this).attr("id"));
-            });
+            const item_order = $("ul.reorder li").map(function () {
+                return this.id;
+            }).get();
             var order_string = "order=" + item_order.join(",");
 
             $.ajax({
@@ -21,85 +61,78 @@ $(document).ready(function () {
                 success: function (data) {
                     $("#response").html(data);
                     $("#response").slideDown("slow");
-                    window.location.href = window.location.href;
                 }
+            }).fail(function (jqXHR, textStatus, errorThrown) {
+                console.error("Failed to update order:", textStatus, errorThrown);
             });
         }
     });
 
     // Make Entire Accordion Item Draggable
-    $(".accordion-item").on("dragstart", function (event) {
-        let formHtml = $(this).find(".accordion-body").html(); // Get the correct form
-        event.originalEvent.dataTransfer.setData("form", formHtml || ""); // Store form HTML
+    $(".accordion-item").off("dragstart").on("dragstart", function (event) {
+        let formHtml = $(this).find(".accordion-body").html();
+        event.originalEvent.dataTransfer.setData("form", formHtml || "");
+        event.originalEvent.dataTransfer.setData("action", $(this).find(".draggable-action").data("action"));
+        event.originalEvent.dataTransfer.setData("id", $(this).find(".draggable-action").attr("id"));
+        $(this).addClass("dragging");
+    });
+
+    $("#list ul, .canvas").off("dragover").on("dragover", function (event) {
+        event.preventDefault();
+        let $target = $(event.target).closest("li");
+
+        if ($target.length) {
+            state.dropTargetId = $target.attr("id") || "";
+            insertDropPlaceholder($target);
+        } else if (!$("#list ul").children().length && $(this).hasClass("canvas")) {
+            $(".drop-placeholder").remove();
+        } else {
+            state.dropTargetId = "";
+        }
+    });
+
+    $("#list ul, .canvas").off("dragleave").on("dragleave", function () {
+        $(".drop-placeholder").remove();
+    });
+
+    $("#list ul, .canvas").off("drop").on("drop", function (event) {
+        event.preventDefault();
+        var actionName = event.originalEvent.dataTransfer.getData("action");
+        var actionId = event.originalEvent.dataTransfer.getData("id");
+        var formHtml = event.originalEvent.dataTransfer.getData("form");
+        let listLength = $("ul.reorder li").length;
+        state.dropTargetId = state.dropTargetId || listLength + 1;
+        $(".drop-placeholder").remove();
+        document.activeElement?.blur();
+        triggerModal(formHtml, actionName, actionId, state.dropTargetId);
+    });
+}
+
+function insertDropPlaceholder($target) {
+    $(".drop-placeholder").remove();
+    $("<li class='drop-placeholder'></li>").insertBefore($target);
+}
+
+// Add this function to sortable_design.js
+function initializeDragHandlers() {
+    $(".accordion-item").off("dragstart").on("dragstart", function (event) {
+        let formHtml = $(this).find(".accordion-body form").prop('outerHTML');
+
+        if (!formHtml) {
+            console.error("Form not found in accordion-body");
+            return false;
+        }
+
+        event.originalEvent.dataTransfer.setData("form", formHtml);
         event.originalEvent.dataTransfer.setData("action", $(this).find(".draggable-action").data("action"));
         event.originalEvent.dataTransfer.setData("id", $(this).find(".draggable-action").attr("id"));
 
         $(this).addClass("dragging");
     });
+}
 
-
-    $("#list ul, .canvas").on("dragover", function (event) {
-        event.preventDefault();
-        let $target = $(event.target).closest("li");
-
-        // If we're over a valid <li> element in the list
-        if ($target.length) {
-            dropTargetId = $target.attr("id") || ""; // Store the drop target ID
-
-            $(".drop-placeholder").remove(); // Remove existing placeholders
-            $("<li class='drop-placeholder'></li>").insertBefore($target); // Insert before the target element
-        } else if (!$("#list ul").children().length && $(this).hasClass("canvas")) {
-            $(".drop-placeholder").remove();  // Remove any placeholder
-            // $("#list ul").append("<li class='drop-placeholder'></li>"); // Append placeholder to canvas
-        } else {
-            dropTargetId = "";  // Append placeholder to canvas
-        }
-    });
-
-    $("#list ul, .canvas").on("dragleave", function () {
-        $(".drop-placeholder").remove(); // Remove placeholder on leave
-    });
-
-    $("#list ul, .canvas").on("drop", function (event) {
-        event.preventDefault();
-
-        var actionName = event.originalEvent.dataTransfer.getData("action");
-        var actionId = event.originalEvent.dataTransfer.getData("id");
-        var formHtml = event.originalEvent.dataTransfer.getData("form"); // Retrieve form HTML
-        let listLength = $("ul.reorder li").length;
-        dropTargetId = dropTargetId || listLength + 1;  // Assign a "last" ID or unique identifier
-        $(".drop-placeholder").remove();
-            // Trigger the modal with the appropriate action
-        triggerModal(formHtml, actionName, actionId, dropTargetId);
-
-    });
-
-    // Function to trigger the modal (same for both buttons and accordion items)
-    function triggerModal(formHtml, actionName, actionId, dropTargetId) {
-        if (formHtml && formHtml.trim() !== "") {
-            var $form = $("<div>").html(formHtml); // Convert HTML string to jQuery object
-
-            // Create a hidden input for the drop target ID
-            var $hiddenInput = $("<input>")
-                .attr("type", "hidden")
-                .attr("name", "drop_target_id")
-                .attr("id", "dropTargetInput")
-                .val(dropTargetId);
-
-            // Insert before the submit button
-            $form.find("button[type='submit']").before($hiddenInput);
-
-            $("#modalFormFields").empty().append($form.children());
-            $("#dropModal").modal("show"); // Show modal
-
-            // Store and display drop target ID in the modal
-            $("#modalDropTarget").text(dropTargetId || "N/A");
-
-            $("#modalFormFields").data("action-id", actionId);
-            $("#modalFormFields").data("action-name", actionName);
-            $("#modalFormFields").data("drop-target-id", dropTargetId);
-        } else {
-            console.error("Form HTML is undefined or empty!");
-        }
-    }
+// Make sure it's called in the document ready function
+$(document).ready(function () {
+    initializeCanvas();
+    initializeDragHandlers(); // Add this line
 });

@@ -9,14 +9,14 @@ data = Blueprint('data', __name__, template_folder='templates')
 
 
 
-@data.route('/all')
+@data.route('/executions/records')
 def list_workflows():
     """
-    .. :quickref: Workflow Data Database; list all workflow logs
+    .. :quickref: Workflow Execution Database; list all workflow execution records
 
-    list all workflow data logs
+    list all workflow execution records
 
-    .. http:get:: /data/all/
+    .. http:get:: /executions
 
     """
     query = WorkflowRun.query.order_by(WorkflowRun.id.desc())
@@ -37,91 +37,79 @@ def list_workflows():
         return render_template('workflow_database.html', workflows=workflows)
 
 
-@data.route("/get/<int:workflow_id>")
-def get_workflow_steps(workflow_id:int):
+@data.route("/executions/records/<int:workflow_id>", methods=['GET', 'DELETE'])
+def workflow_logs(workflow_id:int):
     """
     .. :quickref: Workflow Data Database; get workflow data logs
 
     get workflow data logs by workflow id
 
-    .. http:get:: /data/get/<int:workflow_id>
+    .. http:get:: /executions/<int:workflow_id>
 
     :param workflow_id: workflow id
     :type workflow_id: int
     """
-    workflow = db.session.get(WorkflowRun, workflow_id)
-    steps = WorkflowStep.query.filter_by(workflow_id=workflow_id).order_by(WorkflowStep.start_time).all()
+    if request.method == 'DELETE':
+        run = WorkflowRun.query.get(workflow_id)
+        db.session.delete(run)
+        db.session.commit()
+        return jsonify(success=True)
 
-    # Use full objects for template rendering
-    grouped = {
-        "prep": [],
-        "script": {},
-        "cleanup": [],
-    }
+    if request.method == 'GET':
+        workflow = db.session.get(WorkflowRun, workflow_id)
+        steps = WorkflowStep.query.filter_by(workflow_id=workflow_id).order_by(WorkflowStep.start_time).all()
 
-    # Use dicts for JSON response
-    grouped_json = {
-        "prep": [],
-        "script": {},
-        "cleanup": [],
-    }
+        # Use full objects for template rendering
+        grouped = {
+            "prep": [],
+            "script": {},
+            "cleanup": [],
+        }
 
-    for step in steps:
-        step_dict = step.as_dict()
+        # Use dicts for JSON response
+        grouped_json = {
+            "prep": [],
+            "script": {},
+            "cleanup": [],
+        }
 
-        if step.phase == "prep":
-            grouped["prep"].append(step)
-            grouped_json["prep"].append(step_dict)
+        for step in steps:
+            step_dict = step.as_dict()
 
-        elif step.phase == "script":
-            grouped["script"].setdefault(step.repeat_index, []).append(step)
-            grouped_json["script"].setdefault(step.repeat_index, []).append(step_dict)
+            if step.phase == "prep":
+                grouped["prep"].append(step)
+                grouped_json["prep"].append(step_dict)
 
-        elif step.phase == "cleanup" or step.method_name == "stop":
-            grouped["cleanup"].append(step)
-            grouped_json["cleanup"].append(step_dict)
+            elif step.phase == "script":
+                grouped["script"].setdefault(step.repeat_index, []).append(step)
+                grouped_json["script"].setdefault(step.repeat_index, []).append(step_dict)
 
-    if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
-        return jsonify({
-            "workflow_info": workflow.as_dict(),
-            "steps": grouped_json,
-        })
-    else:
-        return render_template("workflow_view.html", workflow=workflow, grouped=grouped)
+            elif step.phase == "cleanup" or step.method_name == "stop":
+                grouped["cleanup"].append(step)
+                grouped_json["cleanup"].append(step_dict)
 
-
-@data.route("/delete/<int:workflow_id>")
-@login_required
-def delete_workflow_data(workflow_id: int):
-    """
-    .. :quickref: Workflow Data Database; delete experiment data from database
-
-    delete workflow data from database
-
-    .. http:get:: /data/delete/<int:workflow_id>
-
-    :param workflow_id: workflow id
-    :type workflow_id: int
-    :status 302: redirect to :http:get:`/ivoryos/data/all/`
-
-    """
-    run = WorkflowRun.query.get(workflow_id)
-    db.session.delete(run)
-    db.session.commit()
-    return redirect(url_for('database.list_workflows'))
+        if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+            return jsonify({
+                "workflow_info": workflow.as_dict(),
+                "steps": grouped_json,
+            })
+        else:
+            return render_template("workflow_view.html", workflow=workflow, grouped=grouped)
 
 
-@data.route('/download/data/<string:filename>')
+
+
+@data.route('/files/execution-data/<string:filename>')
 def download_results(filename:str):
     """
     .. :quickref: Workflow data; download a workflow data file (.CSV)
 
-    .. http:get:: data/download/data
+    .. http:get:: /files/execution-data/<string:filename>
 
     :param filename: workflow data filename
     :type filename: str
 
-    # :status 302: load pseudo deck and then redirects to :http:get:`/ivoryos/data/all`
+    # :status 302: load pseudo deck and then redirects to :http:get:`/ivoryos/executions`
     """
 
     filepath = os.path.join(current_app.config["DATA_FOLDER"], filename)

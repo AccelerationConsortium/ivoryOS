@@ -28,7 +28,7 @@
         <tbody>
             {% for workflow in workflows %}
                 <tr>
-                    <td><a href="{{ url_for('data.get_workflow_steps', workflow_id=workflow.id) }}">{{ workflow.name }}</a></td>
+                    <td><a href="{{ url_for('data.workflow_logs', workflow_id=workflow.id) }}">{{ workflow.name }}</a></td>
                     <td>{{ workflow.id }}</td>
                     <td>{{ workflow.start_time.strftime("%Y-%m-%d %H:%M:%S") if workflow.start_time else '' }}</td>
                     <td>{{ workflow.end_time.strftime("%Y-%m-%d %H:%M:%S") if workflow.end_time else '' }}</td>
@@ -40,7 +40,13 @@
                     </td>
                     <td>
                         {% if session['user'] == 'admin' or session['user'] == workflow.author %}
-                            <a href="{{ url_for('data.delete_workflow_data', workflow_id=workflow.id) }}">delete</a>
+{#                            <a href="{{ url_for('data.delete_workflow_data', workflow_id=workflow.id) }}">delete</a>#}
+                            <a href="#"
+                               class="text-danger"
+                               data-delete-url="{{ url_for('data.workflow_logs', workflow_id=workflow.id) }}"
+                               onclick="deleteWorkflow(this); return false;">
+                               Delete
+                            </a>
                         {% else %}
                             <a class="disabled-link">delete</a>
                         {% endif %}
@@ -99,5 +105,5 @@
                 });
         }
     </script>
-
+    <script src="{{ url_for('static', filename='js/db_delete.js') }}"></script>
 {% endblock %}
