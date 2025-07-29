@@ -29,7 +29,7 @@ def download_empty_config():
         writer.writerow(list(cfg_types.values()))
     return send_file(os.path.abspath(filepath), as_attachment=True)
 
-@files.route('/files/execution-configs', methods=['POST'])
+@files.route('/files/batch-configs', methods=['POST'])
 def upload():
     """
     .. :quickref: Workflow Files; upload a workflow config file (.CSV)
