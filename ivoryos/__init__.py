@@ -95,6 +95,12 @@ def create_app(config_class=None):
     def redirect_to_prefix():
         return redirect(url_for('main.index', version=ivoryos_version))  # Assuming 'index' is a route in your blueprint
 
+    @app.template_filter('format_name')
+    def format_name(name):
+        name = name.split(".")[-1]
+        text = ' '.join(word for word in name.split('_'))
+        return text.capitalize()
+
     return app
 
 
