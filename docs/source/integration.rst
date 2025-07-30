@@ -20,9 +20,9 @@ Flow Chem
 ------------------
 The `Flow Chem <https://github.com/jiayu423/Autonomous-flow-optimizer>`_ code was optimized for ivoryOS (`flow_so_ivoryos <https://github.com/ivoryzh/Autonomous-flow-optimizer/blob/main/single%20objective%20edbo/flow_so_ivoryos.py>`_).
 
-LiLiE
+LLE
 -------------
-Liquid-Liquid Extraction (`LiLiE <https://gitlab.com/heingroup/automated-lle>`_) platform is a work-in-progress platform, aiming to sample biphasic reactions. The code repository may be unavailable at this moment.
+Liquid-Liquid Extraction (`LLE <https://gitlab.com/heingroup/automated-lle>`_) platform is a work-in-progress platform, aiming to sample biphasic reactions. The code repository may be unavailable at this moment.
 
 
 Telescope Solubility

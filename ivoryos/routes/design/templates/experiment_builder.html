@@ -3,23 +3,7 @@
 
 {% block body %}
     {# overlay block for text-to-code gen #}
-    <style>
-    .code-overlay {
-        position: absolute;
-        top: 0;
-        right: -50%;
-        height: 100%;
-        width: 50%;
-        z-index: 100;
-        background: #f8f9fa;
-        box-shadow: -2px 0 6px rgba(0, 0, 0, 0.1);
-        transition: right 0.3s ease;
-        overflow-y: auto;
-    }
-    .code-overlay.show {
-        right: 0;
-    }
-</style>
+
     <div id="overlay" class="overlay">
         <div>
             <h3 id="overlay-text">Generating design, please wait...</h3>
@@ -28,14 +12,30 @@
     </div>
 
     <div class="row">
-        {% include 'components/sidebar.html' %}
-        {% include 'components/canvas.html' %}
+        <div class="col-md-3 scroll-column" id="sidebar-wrapper">
+            {% include 'components/sidebar.html' %}
+        </div>
+        <div class="col-md-9 scroll-column" id="canvas-wrapper">
+            {% include 'components/canvas.html' %}
+        </div>
+
     </div>
 
     {# Include all modals #}
     {% include 'components/modals.html' %}
 
     {# Include all scripts #}
-    {% include 'components/scripts.html' %}
+    <script>
+        const updateListUrl = "{{ url_for('design.design_steps.update_list') }}";
+        const scriptUIStateUrl = "{{ url_for('design.update_ui_state') }}";
+        const scriptMetaUrl = "{{ url_for('design.update_script_meta') }}";
+        const scriptStepUrl = `{{ url_for('design.design_steps.get_step', uuid=0) }}`;
+        const scriptStepDupUrl = `{{ url_for('design.design_steps.duplicate_action', uuid=0) }}`;
+        const scriptDeleteUrl = "{{ url_for('design.clear_draft') }}";
+    </script>
+    <script src="{{ url_for('static', filename='js/sortable_design.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/action_handlers.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script_metadata.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui_state.js') }}"></script>
 
 {% endblock %}

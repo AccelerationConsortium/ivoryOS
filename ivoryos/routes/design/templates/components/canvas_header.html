@@ -18,12 +18,18 @@
                 <li>
                     <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#renameModal">Rename</button>
                 </li>
+                {% if script.name %}
                 <li>
-                    <a class="dropdown-item {% if not script.name or script.status == 'finalized' %}disabled{% endif %}" href="{% if script.name and script.status != 'finalized' %}{{url_for('library.publish')}}{% else %}#{% endif %}">Save</a>
+                    <a class="dropdown-item {{ 'disabled' if not script.name or script.status == "finalized" else '' }}"
+                       href="#" data-post-url="{{ url_for('library.workflow_script', script_name=script.name) }}"
+                       onclick="saveWorkflow(this); return false;">
+                        Save
+                    </a>
                 </li>
+                {% endif %}
                 {% if not script.status == 'finalized' %}
                 <li>
-                    <a class="dropdown-item" href="{{url_for('library.finalize')}}">Disable editing</a>
+                    <a class="dropdown-item" onclick="lockScriptEditing()">Disable editing</a>
                 </li>
                 {% endif %}
             </ul>
@@ -34,21 +40,36 @@
 <!-- Tabs for Info/Prep/Experiment/Cleanup below header -->
 <div class="d-flex align-items-center mt-2 justify-content-between">
     <ul class="nav nav-tabs mb-0">
-        <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='prep' else 'nav-link'}}" href="{{url_for('design.toggle_script_type', stype='prep') }}">Prep</a></li>
-        <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='script' else 'nav-link'}}" href="{{url_for('design.toggle_script_type', stype='script') }}">Experiment</a></li>
-        <li class="nav-item"><a class="{{'nav-link active' if script.editing_type=='cleanup' else 'nav-link'}}" href="{{url_for('design.toggle_script_type', stype='cleanup') }}">Clean up</a></li>
+        <li class="nav-item">
+            <a class="nav-link {{ 'active' if script.editing_type == 'prep' else '' }}"
+               href="#" onclick="setScriptPhase('prep')">
+                Prep
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{ 'active' if script.editing_type == 'script' else '' }}"
+               href="#" onclick="setScriptPhase('script')">
+                Experiment
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{ 'active' if script.editing_type == 'cleanup' else '' }}"
+               href="#" onclick="setScriptPhase('cleanup')">
+                Clean up
+            </a>
+        </li>
     </ul>
+
     <div class="d-flex align-items-center ms-auto">
-        <form method="POST" action="{{ url_for('design.toggle_show_code') }}" class="mb-0 me-3">
-            <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="showPythonCodeSwitch" name="show_code"
-                       onchange="this.form.submit()" {% if session.get('show_code') %}checked{% endif %}>
-                <label class="form-check-label" for="showPythonCodeSwitch">Show Code</label>
-            </div>
-        </form>
         <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="toggleLineNumbers" onchange="toggleLineNumbers()">
-            <label class="form-check-label" for="toggleLineNumbers">Show Line Numbers</label>
+        <input class="form-check-input" type="checkbox" id="showPythonCodeSwitch" name="show_code"
+                       onchange="toggleCodeOverlay()" {% if session.get('show_code') %}checked{% endif %}>
+            <label class="form-check-label" for="showPythonCodeSwitch">Preview code</label>
         </div>
+{#        <div class="form-check form-switch">#}
+{#            <input class="form-check-input" type="checkbox" id="toggleLineNumbers"#}
+{#                   onchange="toggleLineNumbers()">#}
+{#            <label class="form-check-label" for="toggleLineNumbers">Show Line Numbers</label>#}
+{#        </div>#}
     </div>
 </div>

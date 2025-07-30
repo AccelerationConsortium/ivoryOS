@@ -1,11 +1,11 @@
-from flask import Blueprint, redirect, flash, request, render_template, session, current_app
+from flask import Blueprint, redirect, flash, request, render_template, session, current_app, jsonify
 from flask_login import login_required
 
 from ivoryos.routes.control.control_file import control_file
 from ivoryos.routes.control.control_new_device import control_temp
 from ivoryos.routes.control.utils import post_session_by_instrument, get_session_by_instrument, find_instrument_by_name
 from ivoryos.utils.global_config import GlobalConfig
-from ivoryos.utils.form import create_form_from_module, format_name
+from ivoryos.utils.form import create_form_from_module
 from ivoryos.utils.task_runner import TaskRunner
 
 global_config = GlobalConfig()
@@ -18,22 +18,36 @@ control.register_blueprint(control_temp)
 
 
 
-@control.route("/home", strict_slashes=False, methods=["GET", "POST"])
+@control.route("/", strict_slashes=False, methods=["GET", "POST"])
+@control.route("/<string:instrument>", strict_slashes=False, methods=["GET", "POST"])
 @login_required
 def deck_controllers():
     """
-    .. :quickref: Direct Control; device home interface
+    .. :quickref: Direct Control; device (instruments) and methods
 
-    device home interface for listing all instruments and methods
+    device home interface for listing all instruments and methods, selecting an instrument to run its methods
 
-    .. http:get:: /control/home
+    .. http:get:: /instruments
+
+        get all instruments for home page
+
+    .. http:get:: /instruments/<string:instrument>
+
+        get all methods of the given <instrument>
+
+    .. http:post:: /instruments/<string:instrument>
+
+        send POST request to run a method of the given <instrument>
+
+    :param instrument: instrument name, if not provided, list all instruments
+    :type instrument: str
+    :status 200: render template with instruments and methods
 
     """
     deck_variables = global_config.deck_snapshot.keys()
     temp_variables = global_config.defined_variables.keys()
     instrument = request.args.get('instrument')
     forms = None
-    # format_name_fn = format_name
     if instrument:
         inst_object = find_instrument_by_name(instrument)
         _forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
@@ -52,12 +66,12 @@ def deck_controllers():
             form = forms.get(method_name)
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'} if form else {}
             if form and form.validate_on_submit():
-                try:
-                    kwargs.pop("hidden_name", None)
-                    output = runner.run_single_step(instrument, method_name, kwargs, wait=True, current_app=current_app._get_current_object())
-                    flash(f"\nRun Success! Output value: {output}.")
-                except Exception as e:
-                    flash(str(e))
+                kwargs.pop("hidden_name", None)
+                output = runner.run_single_step(instrument, method_name, kwargs, wait=True, current_app=current_app._get_current_object())
+                if output["success"]:
+                    flash(f"\nRun Success! Output value: {output.get('output', 'None')}.")
+                else:
+                    flash(f"\nRun Error! {output.get('output', 'Unknown error occurred.')}", "error")
             else:
                 if form:
                     flash(form.errors)
@@ -69,16 +83,15 @@ def deck_controllers():
         temp_variables=temp_variables,
         instrument=instrument,
         forms=forms,
-        format_name=format_name,
         session=session
     )
 
-@control.route('/save-order/<string:instrument>', methods=['POST'])
+@control.route('/<string:instrument>/actions/order', methods=['POST'])
 def save_order(instrument: str):
     """
     .. :quickref: Control Customization; Save functions' order
 
-    .. http:post:: /control/save-order
+    .. http:post:: instruments/<string:instrument>/actions/order
 
     save function drag and drop order for the given <instrument>
 
@@ -88,47 +101,32 @@ def save_order(instrument: str):
     post_session_by_instrument('card_order', instrument, data['order'])
     return '', 204
 
-
-@control.route('/hide/<string:instrument>/<string:function>')
-def hide_function(instrument:str, function:str):
+@control.route('/<string:instrument>/actions/<string:function>', methods=["PATCH"])
+def hide_function(instrument: str, function: str):
     """
-    .. :quickref: Control Customization; Hide function
+    .. :quickref: Control Customization; Toggle function visibility
 
-    .. http:get:: /hide/<instrument>/<function>
+    .. http:patch:: /instruments/<instrument>/actions/<function>
 
-    Hide the given <instrument> and <function>
+    Toggle visibility for the given <instrument> and <function>
 
     """
     back = request.referrer
+    data = request.get_json()
+    hidden = data.get('hidden', True)
     functions = get_session_by_instrument("hidden_functions", instrument)
     order = get_session_by_instrument("card_order", instrument)
-    if function not in functions:
+    if hidden and function not in functions:
         functions.append(function)
-        order.remove(function)
-    post_session_by_instrument('hidden_functions', instrument, functions)
-    post_session_by_instrument('card_order', instrument, order)
-    return redirect(back)
-
-
-@control.route('/unhide/<string:instrument>/<string:function>')
-def remove_hidden(instrument: str, function: str):
-    """
-    .. :quickref: Control Customization; Remove a hidden function
-
-    .. http:get:: /control/<instrument>/<function>/unhide
-
-    Un-hide the given <instrument> and <function>
-
-    """
-    back = request.referrer
-    functions = get_session_by_instrument("hidden_functions", instrument)
-    order = get_session_by_instrument("card_order", instrument)
-    if function in functions:
+        if function in order:
+            order.remove(function)
+    elif not hidden and function in functions:
         functions.remove(function)
-        order.append(function)
+        if function not in order:
+            order.append(function)
     post_session_by_instrument('hidden_functions', instrument, functions)
     post_session_by_instrument('card_order', instrument, order)
-    return redirect(back)
+    return jsonify(success=True, message="Visibility updated")
 
 
 

@@ -214,11 +214,6 @@ class FlexibleEnumField(StringField):
                     f"Invalid choice: '{key}'. Must match one of {list(self.enum_class.__members__.keys())}")
 
 
-def format_name(name):
-    """Converts 'example_name' to 'Example Name'."""
-    name = name.split(".")[-1]
-    text = ' '.join(word for word in name.split('_'))
-    return text.capitalize()
 
 def parse_annotation(annotation):
     """
@@ -264,7 +259,7 @@ def create_form_for_method(method, autofill, script=None, design=True):
     for param in sig.parameters.values():
         if param.name == 'self':
             continue
-        formatted_param_name = format_name(param.name)
+        # formatted_param_name = format_name(param.name)
 
         default_value = None
         if autofill:
@@ -277,7 +272,7 @@ def create_form_for_method(method, autofill, script=None, design=True):
                     default_value = param.default
 
         field_kwargs = {
-            "label": formatted_param_name,
+            "label": param.name,
             "default": default_value,
             "validators": [InputRequired()] if param.default is param.empty else [Optional()],
             **({"script": script} if (autofill or design) else {})
@@ -396,12 +391,12 @@ def create_form_from_action(action: dict, script=None, design=True):
     }
 
     for name, param_type in arg_types.items():
-        formatted_param_name = format_name(name)
+        # formatted_param_name = format_name(name)
         value = args.get(name, "")
         if type(value) is dict:
             value = next(iter(value))
         field_kwargs = {
-            "label": formatted_param_name,
+            "label": name,
             "default": f'{value}',
             "validators": [InputRequired()],
             **({"script": script})

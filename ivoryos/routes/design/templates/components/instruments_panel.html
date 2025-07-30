@@ -1,0 +1,66 @@
+{# Operations panel component #}
+<div style="margin-bottom: 4vh;"></div>
+<div class="accordion accordion-flush">
+    <div class="accordion-item design-control">
+        <h5 class="accordion-header">
+            <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#flow" role="button" aria-expanded="false" aria-controls="collapseExample">
+                Flow control
+            </button>
+        </h5>
+        <div class="accordion-collapse collapse show" id="flow">
+            <ul class="list-group">
+                <button class="list-group-item list-group-item-action"
+                        type="button"
+                        name="device"
+                        value="flow_control"
+                        data-get-url="{{ url_for('design.get_operation_sidebar', instrument='flow_control') }}"
+                        onclick="updateInstrumentPanel(this)">
+                    Flow control
+                </button>
+            </ul>
+        </div>
+        <h5 class="accordion-header">
+            <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#deck" role="button" aria-expanded="false" aria-controls="collapseExample">
+                Instruments
+            </button>
+        </h5>
+        <div class="accordion-collapse collapse show" id="deck">
+            <ul class="list-group">
+                {% for instrument in defined_variables %}
+                        <button class="list-group-item list-group-item-action"
+                                type="button"
+                                name="device"
+                                value="{{instrument}}"
+                                data-get-url="{{ url_for('design.get_operation_sidebar', instrument=instrument) }}"
+                                onclick="updateInstrumentPanel(this)">
+                            {{ instrument | format_name }}
+                        </button>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    {% if local_variables %}
+        <div class="accordion-item  design-control">
+            <h5 class="accordion-header">
+                <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#local" role="button" aria-expanded="false" aria-controls="collapseExample">
+                    Temp instruments
+                </button>
+            </h5>
+            <div class="accordion-collapse collapse show" id="local">
+                <ul class="list-group">
+                    {% for instrument in local_variables %}
+                        <button class="list-group-item list-group-item-action"
+                                type="button"
+                                name="device"
+                                value="{{instrument}}"
+                                data-get-url="{{ url_for('design.get_operation_sidebar', instrument=instrument) }}"
+                                onclick="updateInstrumentPanel(this)">
+                            {{instrument}}
+                        </button>
+                    {% endfor%}
+                </ul>
+            </div>
+        </div>
+    {% endif %}
+</div> 

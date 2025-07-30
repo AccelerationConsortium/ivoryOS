@@ -1,5 +1,9 @@
 {# Canvas footer component #}
 <div>
-    <a class="btn btn-dark {{ 'disabled' if not script.name or script.status == "finalized" else ''}}" href="{{url_for('library.publish')}}">Quick Save</a>
+    <a class="btn btn-dark {{ 'disabled' if not script.name or script.status == "finalized" else '' }}"
+       href="#" data-post-url="{{ url_for('library.workflow_script', script_name=script.name or 'untitled') }}"
+       onclick="saveWorkflow(this); return false;">
+        Quick Save
+    </a>
     <a class="btn btn-dark " href="{{ url_for('execute.experiment_run') }}">Compile and Run</a>
 </div> 

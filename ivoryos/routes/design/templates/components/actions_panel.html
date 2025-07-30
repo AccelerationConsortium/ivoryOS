@@ -1,8 +1,13 @@
 {# Instrument panel component #}
 <div>
     <div class="d-flex justify-content-between align-items-center " style="margin-bottom: 1vh;margin-top: 1vh;">
-        <a class="btn btn-primary" role="button" type="button" href="{{url_for('design.experiment_builder')}}"><i class="bi bi-arrow-return-left"></i></a>
-        {{ format_name(instrument) }}
+{#        <a class="btn btn-primary" role="button" type="button" href="{{url_for('design.experiment_builder')}}"><i class="bi bi-arrow-return-left"></i></a>#}
+        <a type="button"
+                data-get-url="{{ url_for('design.get_operation_sidebar') }}"
+                onclick="updateInstrumentPanel(this)">
+            <i class="bi bi-arrow-return-left"></i>
+        </a>
+        {{ instrument | format_name }}
     </div>
 
     {% if script.editing_type == "script" %}
@@ -12,9 +17,6 @@
 
     {# accordion for instrument #}
     <div class="accordion accordion-flush" id="accordionActions" >
-        {% if use_llm and not instrument == "flow_control" %}
-            {% include 'components/text_to_code_panel.html' %}
-        {% endif %}
 
         {% for name, form in forms.items() %}
             {% include 'components/action_form.html' %}
