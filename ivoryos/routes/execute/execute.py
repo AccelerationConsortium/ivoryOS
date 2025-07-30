@@ -11,8 +11,7 @@ from ivoryos.utils import utils
 from ivoryos.utils.bo_campaign import parse_optimization_form
 from ivoryos.utils.db_models import SingleStep, WorkflowRun, WorkflowStep
 from ivoryos.utils.global_config import GlobalConfig
-from ivoryos.utils.form import create_action_button, format_name, create_form_from_pseudo, \
-    create_form_from_action, create_all_builtin_forms
+from ivoryos.utils.form import create_action_button
 
 from werkzeug.utils import secure_filename
 
@@ -291,7 +290,7 @@ def api_retry():
     return jsonify({"status": "ok, retrying failed step"}), 200
 
 
-@execute.route('/files/execution-data/<string:filename>')
+@execute.route('/files/preview/<string:filename>')
 @login_required
 def data_preview(filename):
     """
@@ -299,7 +298,7 @@ def data_preview(filename):
 
     Preview the contents of a workflow history file in CSV format.
 
-    .. http:get:: /files/execution-data/<str:filename>
+    .. http:get:: /files/preview/<str:filename>
     """
     import csv
     import os

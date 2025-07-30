@@ -6,8 +6,7 @@ from flask_login import login_required
 from ivoryos.routes.library.library import publish
 from ivoryos.utils import utils
 from ivoryos.utils.global_config import GlobalConfig
-from ivoryos.utils.form import create_action_button, format_name, create_form_from_pseudo, \
-    create_form_from_action, create_all_builtin_forms
+from ivoryos.utils.form import create_action_button, create_form_from_pseudo, create_all_builtin_forms
 from ivoryos.utils.db_models import Script
 from ivoryos.utils.py_to_json import convert_to_cards
 
@@ -78,11 +77,11 @@ def experiment_builder():
 
     if deck:
         deck_variables = list(global_config.deck_snapshot.keys())
-        deck_variables.insert(0, "flow_control")
+        # deck_variables.insert(0, "flow_control")
     else:
         deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
         deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
-    
+
     # edit_action_info = session.get("edit_action")
 
 
@@ -92,7 +91,7 @@ def experiment_builder():
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
 
     return render_template('experiment_builder.html', off_line=off_line, history=deck_list,
-                           script=script, defined_variables=deck_variables, format_name=format_name, buttons_dict=design_buttons,
+                           script=script, defined_variables=deck_variables, buttons_dict=design_buttons,
                            local_variables=global_config.defined_variables)
 
 
@@ -115,20 +114,21 @@ def update_script_meta():
     data = request.get_json()
     script = utils.get_script_file()
     if 'name' in data:
-        run_name = request.form.get("run_name")
+        run_name = data.get("name")
         exist_script = Script.query.get(run_name)
-        if not exist_script:
+        if exist_script is None:
             script.save_as(run_name)
             utils.post_script_file(script)
-            jsonify(success=True)
+            return jsonify(success=True)
         else:
             flash("Script name is already exist in database")
+            return jsonify(success=False)
 
     if 'status' in data:
         if data['status'] == "finished":
             script.finalize()
             utils.post_script_file(script)
-            jsonify(success=True)
+            return jsonify(success=True)
     return jsonify(success=False)
 
 
@@ -173,7 +173,7 @@ def update_ui_state():
         autofill = data.get("autofill", False)
         session['autofill'] = autofill
         _, forms = _create_forms(instrument, script, autofill)
-        rendered_html = render_template("components/instrument_panel.html", forms=forms, script=script, instrument=instrument, format_name=format_name)
+        rendered_html = render_template("components/methods_panel.html", forms=forms, script=script, instrument=instrument)
         return jsonify({"html": rendered_html})
 
     if "deck_name" in data:
@@ -192,34 +192,33 @@ def update_ui_state():
         deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
         deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
         html = render_template("components/sidebar.html", history=deck_list,
-                               defined_variables=deck_variables, local_variables = global_config.defined_variables,
-                               format_name=format_name)
+                               defined_variables=deck_variables, local_variables = global_config.defined_variables)
         return jsonify({"html": html})
     return jsonify({"error": "Invalid request"}), 400
 
 
-@design.route("/draft/steps/order", methods=['POST'])
-@login_required
-def update_list():
-    """
-    .. :quickref: Workflow Design Steps; update the order of steps in the design canvas when reordering steps.
-
-    .. http:post:: /draft/steps/order
-
-    Update the order of steps in the design canvas when reordering steps.
-
-    :form order: A comma-separated string representing the new order of steps.
-    :status 200: Successfully updated the order of steps.
-    """
-    order = request.form['order']
-    script = utils.get_script_file()
-    script.currently_editing_order = order.split(",", len(script.currently_editing_script))
-    script.sort_actions()
-    exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
-    utils.post_script_file(script)
-    session['python_code'] = exec_string
-
-    return jsonify({'success': True})
+# @design.route("/draft/steps/order", methods=['POST'])
+# @login_required
+# def update_list():
+#     """
+#     .. :quickref: Workflow Design Steps; update the order of steps in the design canvas when reordering steps.
+#
+#     .. http:post:: /draft/steps/order
+#
+#     Update the order of steps in the design canvas when reordering steps.
+#
+#     :form order: A comma-separated string representing the new order of steps.
+#     :status 200: Successfully updated the order of steps.
+#     """
+#     order = request.form['order']
+#     script = utils.get_script_file()
+#     script.currently_editing_order = order.split(",", len(script.currently_editing_script))
+#     script.sort_actions()
+#     exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+#     utils.post_script_file(script)
+#     session['python_code'] = exec_string
+#
+#     return jsonify({'success': True})
 
 
 
@@ -241,6 +240,8 @@ def clear_draft():
         deck_name = session.get("pseudo_deck", "")
     script = Script(deck=deck_name, author=session.get('username'))
     utils.post_script_file(script)
+    exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+    session['python_code'] = exec_string
     return jsonify({'success': True})
 
 
@@ -319,6 +320,10 @@ def methods_handler(instrument: str = ''):
                 function_name = kwargs.pop("hidden_name")
                 save_data = kwargs.pop('return', '')
                 primitive_arg_types = utils.get_arg_type(kwargs, functions[function_name])
+
+                # todo
+                print(primitive_arg_types)
+
                 script.eval_list(kwargs, primitive_arg_types)
                 kwargs = script.validate_variables(kwargs)
                 action = {"instrument": instrument, "action": function_name,
@@ -369,12 +374,14 @@ def methods_handler(instrument: str = ''):
                 success = False
                 msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
     utils.post_script_file(script)
+    exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+    session['python_code'] = exec_string
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
     html = render_template("components/canvas_main.html", script=script, buttons_dict=design_buttons)
     return jsonify({"html": html, "success": success, "error": msg})
 
 
-@design.get("/draft/instruments")
+@design.get("/draft/instruments", strict_slashes=False)
 @design.get("/draft/instruments/<string:instrument>")
 @login_required
 def get_operation_sidebar(instrument: str = ''):
@@ -398,8 +405,7 @@ def get_operation_sidebar(instrument: str = ''):
     functions, forms = _create_forms(instrument, script, autofill, pseudo_deck)
 
     if instrument:
-        html = render_template("components/sidebar.html", forms=forms, instrument=instrument, script=script,
-                               format_name=format_name)
+        html = render_template("components/sidebar.html", forms=forms, instrument=instrument, script=script)
     else:
         pseudo_deck_name = session.get('pseudo_deck', '')
         pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
@@ -410,13 +416,12 @@ def get_operation_sidebar(instrument: str = ''):
         deck_list = utils.available_pseudo_deck(current_app.config["DUMMY_DECK"])
         if not off_line:
             deck_variables = list(global_config.deck_snapshot.keys())
-            deck_variables.insert(0, "flow_control")
         else:
             deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
             deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
         # edit_action_info = session.get("edit_action")
         html = render_template("components/sidebar.html", off_line=off_line, history=deck_list,
-                               defined_variables=deck_variables, format_name=format_name,
+                               defined_variables=deck_variables,
                                local_variables=global_config.defined_variables)
     return jsonify({"html": html})
 

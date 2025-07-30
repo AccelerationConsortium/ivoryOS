@@ -3,8 +3,25 @@
 <div class="accordion accordion-flush">
     <div class="accordion-item design-control">
         <h5 class="accordion-header">
+            <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#flow" role="button" aria-expanded="false" aria-controls="collapseExample">
+                Flow control
+            </button>
+        </h5>
+        <div class="accordion-collapse collapse show" id="flow">
+            <ul class="list-group">
+                <button class="list-group-item list-group-item-action"
+                        type="button"
+                        name="device"
+                        value="flow_control"
+                        data-get-url="{{ url_for('design.get_operation_sidebar', instrument='flow_control') }}"
+                        onclick="updateInstrumentPanel(this)">
+                    Flow control
+                </button>
+            </ul>
+        </div>
+        <h5 class="accordion-header">
             <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#deck" role="button" aria-expanded="false" aria-controls="collapseExample">
-                Operations
+                Instruments
             </button>
         </h5>
         <div class="accordion-collapse collapse show" id="deck">
@@ -16,7 +33,7 @@
                                 value="{{instrument}}"
                                 data-get-url="{{ url_for('design.get_operation_sidebar', instrument=instrument) }}"
                                 onclick="updateInstrumentPanel(this)">
-                            {{format_name(instrument)}}
+                            {{ instrument | format_name }}
                         </button>
                 {% endfor %}
             </ul>
@@ -27,7 +44,7 @@
         <div class="accordion-item  design-control">
             <h5 class="accordion-header">
                 <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#local" role="button" aria-expanded="false" aria-controls="collapseExample">
-                    Local Operations
+                    Temp instruments
                 </button>
             </h5>
             <div class="accordion-collapse collapse show" id="local">

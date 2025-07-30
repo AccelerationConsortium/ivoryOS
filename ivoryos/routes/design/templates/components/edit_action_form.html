@@ -1,14 +1,14 @@
 {# Edit action form component #}
     <div style="margin-bottom: 1vh;margin-top: 1vh;">
         <a type="button"
-           data-get-url="{{ url_for('design.methods_handler') }}"
+           data-get-url="{{ url_for('design.get_operation_sidebar') }}"
            onclick="updateInstrumentPanel(this)">
             <i class="bi bi-arrow-return-left"></i>
         </a>
     </div>
-    <h5> {{ format_name(action['action']) }} </h5>
+    <h5> {{ action['action'] | format_name }} </h5>
     <form role="form" method='POST' name="{{instrument}}" 
-          action="{{ url_for('design.design_steps.design_step', uuid=action['uuid']) }}"
+          action="{{ url_for('design.design_steps.get_step', uuid=action['uuid']) }}"
           onsubmit="submitEditForm(event); return false;">
         {% if not action['args'] == None %}
         <div class="form-group">

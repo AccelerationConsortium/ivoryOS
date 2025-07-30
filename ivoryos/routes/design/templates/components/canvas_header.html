@@ -40,19 +40,36 @@
 <!-- Tabs for Info/Prep/Experiment/Cleanup below header -->
 <div class="d-flex align-items-center mt-2 justify-content-between">
     <ul class="nav nav-tabs mb-0">
-        <li class="nav-item"><a class="nav-link {{ 'active' if script.editing_type == 'prep' else '' }}" href="#" onclick="setScriptPhase('prep')">Prep</a></li>
-        <li class="nav-item"><a class="nav-link {{ 'active' if script.editing_type == 'script' else '' }}" href="#" onclick="setScriptPhase('script')">Experiment</a></li>
-        <li class="nav-item"><a class="nav-link {{ 'active' if script.editing_type == 'cleanup' else '' }}" href="#" onclick="setScriptPhase('cleanup')">Clean up</a></li>
+        <li class="nav-item">
+            <a class="nav-link {{ 'active' if script.editing_type == 'prep' else '' }}"
+               href="#" onclick="setScriptPhase('prep')">
+                Prep
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{ 'active' if script.editing_type == 'script' else '' }}"
+               href="#" onclick="setScriptPhase('script')">
+                Experiment
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{ 'active' if script.editing_type == 'cleanup' else '' }}"
+               href="#" onclick="setScriptPhase('cleanup')">
+                Clean up
+            </a>
+        </li>
     </ul>
+
     <div class="d-flex align-items-center ms-auto">
         <div class="form-check form-switch">
         <input class="form-check-input" type="checkbox" id="showPythonCodeSwitch" name="show_code"
                        onchange="toggleCodeOverlay()" {% if session.get('show_code') %}checked{% endif %}>
-                <label class="form-check-label" for="showPythonCodeSwitch">Show Code</label>
+            <label class="form-check-label" for="showPythonCodeSwitch">Preview code</label>
         </div>
-        <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="toggleLineNumbers" onchange="toggleLineNumbers()">
-            <label class="form-check-label" for="toggleLineNumbers">Show Line Numbers</label>
-        </div>
+{#        <div class="form-check form-switch">#}
+{#            <input class="form-check-input" type="checkbox" id="toggleLineNumbers"#}
+{#                   onchange="toggleLineNumbers()">#}
+{#            <label class="form-check-label" for="toggleLineNumbers">Show Line Numbers</label>#}
+{#        </div>#}
     </div>
 </div>

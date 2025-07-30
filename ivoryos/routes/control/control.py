@@ -5,7 +5,7 @@ from ivoryos.routes.control.control_file import control_file
 from ivoryos.routes.control.control_new_device import control_temp
 from ivoryos.routes.control.utils import post_session_by_instrument, get_session_by_instrument, find_instrument_by_name
 from ivoryos.utils.global_config import GlobalConfig
-from ivoryos.utils.form import create_form_from_module, format_name
+from ivoryos.utils.form import create_form_from_module
 from ivoryos.utils.task_runner import TaskRunner
 
 global_config = GlobalConfig()
@@ -48,7 +48,6 @@ def deck_controllers():
     temp_variables = global_config.defined_variables.keys()
     instrument = request.args.get('instrument')
     forms = None
-    # format_name_fn = format_name
     if instrument:
         inst_object = find_instrument_by_name(instrument)
         _forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
@@ -84,7 +83,6 @@ def deck_controllers():
         temp_variables=temp_variables,
         instrument=instrument,
         forms=forms,
-        format_name=format_name,
         session=session
     )
 

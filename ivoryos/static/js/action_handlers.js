@@ -52,7 +52,7 @@ function addMethodToDesign(event, form) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            updateActionList(data.html);
+            updateActionCanvas(data.html);
             hideModal();
         } else {
             alert("Failed to add method: " + data.error);
@@ -62,12 +62,14 @@ function addMethodToDesign(event, form) {
 }
 
 
-function updateActionList(html) {
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
-    document.querySelector('#list').innerHTML = tempDiv.querySelector('#list').innerHTML;
+function updateActionCanvas(html) {
+    document.getElementById("canvas-action-wrapper").innerHTML = html;
     initializeCanvas(); // Reinitialize canvas functionality
+    document.querySelectorAll('#pythonCodeOverlay pre code').forEach((block) => {
+        hljs.highlightElement(block);
+    });
 }
+
 
 let lastFocusedElement = null;
 
@@ -95,7 +97,7 @@ function submitEditForm(event) {
     .then(html => {
         if (html) {
             // Update only the action list
-            updateActionList(html);
+            updateActionCanvas(html);
 
             if (previousHtmlState) {
                 document.getElementById('instrument-panel').innerHTML = previousHtmlState;
@@ -137,7 +139,7 @@ function duplicateAction(uuid) {
         return;
     }
 
-    fetch(scriptStepUrl.replace('0', uuid), {
+    fetch(scriptStepDupUrl.replace('0', uuid), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -146,7 +148,7 @@ function duplicateAction(uuid) {
 
     .then(response => response.text())
     .then(html => {
-        updateActionList(html);
+        updateActionCanvas(html);
     })
     .catch(error => console.error('Error:', error));
 }
@@ -199,7 +201,7 @@ function deleteAction(uuid) {
     .then(response => response.text())
     .then(html => {
         // Find the first list element's content and replace it
-        updateActionList(html);
+        updateActionCanvas(html);
     })
     .catch(error => console.error('Error:', error));
 }

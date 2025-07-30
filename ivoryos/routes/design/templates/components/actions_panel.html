@@ -7,7 +7,7 @@
                 onclick="updateInstrumentPanel(this)">
             <i class="bi bi-arrow-return-left"></i>
         </a>
-        {{ format_name(instrument) }}
+        {{ instrument | format_name }}
     </div>
 
     {% if script.editing_type == "script" %}

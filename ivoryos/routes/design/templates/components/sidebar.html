@@ -2,7 +2,7 @@
 <div class="instrument-panel" id="instrument-panel">
     {% if instrument %}
         <div class="instrument-methods" id="instrument-methods">
-        {% include 'components/instrument_panel.html' %}
+        {% include 'components/actions_panel.html' %}
         </div>
     {% else %}
         {# select deck if this is online#}
@@ -10,6 +10,6 @@
             {% include 'components/deck_selector.html' %}
         {% endif %}
 
-        {% include 'components/operations_panel.html' %}
+        {% include 'components/instruments_panel.html' %}
     {% endif %}
 </div>

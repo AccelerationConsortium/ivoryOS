@@ -1,10 +1,5 @@
  {% include 'components/canvas_header.html' %}
- <div class="canvas-wrapper position-relative">
-     <div class="canvas" droppable="true">
-         <div class="action-list-wrapper">
-             {% include 'components/canvas_main.html' %}
-         </div>
-         {% include 'components/python_code_overlay.html' %}
+     <div class="canvas canvas-action-wrapper position-relative" id="canvas-action-wrapper" droppable="true">
+         {% include 'components/canvas_main.html' %}
      </div>
- </div>
  {% include 'components/canvas_footer.html' %}

@@ -48,6 +48,9 @@ function setScriptPhase(stype) {
         if (data.html) {
             document.getElementById("canvas-wrapper").innerHTML = data.html;
             initializeCanvas(); // Reinitialize the canvas functionality
+            document.querySelectorAll('#pythonCodeOverlay pre code').forEach((block) => {
+                hljs.highlightElement(block);
+            });
         }
     })
     .catch(error => console.error("Failed to update editing type", error));
@@ -102,8 +105,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (savedState === 'true') {
         checkbox.checked = true;
     }
+    if (checkbox) {
+        toggleLineNumbers(false);  // don't overwrite localStorage on load
+        checkbox.addEventListener('change', () => toggleLineNumbers());
+    }
 
-    toggleLineNumbers(false);  // don't overwrite localStorage on load
-
-    checkbox.addEventListener('change', () => toggleLineNumbers());
 });

@@ -265,11 +265,20 @@ class Script(db.Model):
         output_variables: Dict[str, str] = self.get_variables()
         # print(output_variables)
         for key, value in kwargs.items():
-            if type(value) is str and value in output_variables:
-                var_type = output_variables[value]
-                kwargs[key] = {value: var_type}
-            if isinstance(value, str) and value.startswith("#"):
-                kwargs[key] = f"#{self.validate_function_name(value[1:])}"
+            if isinstance(value, str):
+                if value in output_variables:
+                    var_type = output_variables[value]
+                    kwargs[key] = {value: var_type}
+                elif value.startswith("#"):
+                    kwargs[key] = f"#{self.validate_function_name(value[1:])}"
+                else:
+                    # attempt to convert to numerical or bool value for args with no type hint
+                    try:
+                        converted = ast.literal_eval(value)
+                        if isinstance(converted, (int, float, bool)):
+                            kwargs[key] = converted
+                    except (ValueError, SyntaxError):
+                        pass
         return kwargs
 
     def add_logic_action(self, logic_type: str, statement, insert_position=None):

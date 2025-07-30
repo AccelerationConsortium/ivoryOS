@@ -59,8 +59,8 @@ function initializeCanvas() {
                 data: order_string,
                 cache: false,
                 success: function (data) {
-                    $("#response").html(data);
-                    $("#response").slideDown("slow");
+                    // Update the canvas content with the new HTML
+                    updateActionCanvas(data)
                 }
             }).fail(function (jqXHR, textStatus, errorThrown) {
                 console.error("Failed to update order:", textStatus, errorThrown);
