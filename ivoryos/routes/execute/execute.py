@@ -9,13 +9,13 @@ from flask_login import login_required
 from ivoryos.routes.execute.execute_file import files
 from ivoryos.utils import utils
 from ivoryos.utils.bo_campaign import parse_optimization_form
+from ivoryos.utils.db_models import SingleStep, WorkflowRun, WorkflowStep
 from ivoryos.utils.global_config import GlobalConfig
-from ivoryos.utils.form import create_action_button, format_name, create_form_from_pseudo, \
-    create_form_from_action, create_all_builtin_forms
+from ivoryos.utils.form import create_action_button
 
 from werkzeug.utils import secure_filename
 
-from ivoryos.socket_handlers import runner
+from ivoryos.socket_handlers import runner, retry, pause, abort_pending, abort_current
 
 execute = Blueprint('execute', __name__, template_folder='templates')
 
@@ -24,19 +24,19 @@ execute.register_blueprint(files)
 global_config = GlobalConfig()
 
 
-@execute.route("/campaign", methods=['GET', 'POST'])
+@execute.route("/executions/config", methods=['GET', 'POST'])
 @login_required
 def experiment_run():
     """
-    .. :quickref: Workflow Execution; Execute/iterate the workflow
+    .. :quickref: Workflow Execution Config; Execute/iterate the workflow
 
-    .. http:get:: /execute/campaign
+    .. http:get:: /executions/config
 
-    Compile the workflow and load the experiment execution interface.
+    Load the experiment execution interface.
 
-    .. http:post:: /execute/campaign
+    .. http:post:: /executions/config
 
-    Start workflow execution
+    Start workflow execution with experiment configuration.
 
     """
     deck = global_config.deck
@@ -152,9 +152,22 @@ def experiment_run():
                                no_deck_warning=no_deck_warning, dismiss=dismiss, design_buttons=design_buttons,
                                history=deck_list, pause_status=runner.pause_status(), optimizer_schema=optimizers_schema)
 
-@execute.route("/campaign/run_bo", methods=["POST"])
+@execute.route("/executions/campaign", methods=["POST"])
 @login_required
 def run_bo():
+    """
+    .. :quickref: Workflow Execution; run Bayesian Optimization
+    Run Bayesian Optimization with the given parameters and objectives.
+
+    .. http:post:: /executions/campaign
+
+    :form repeat: number of iterations to run
+    :form optimizer_type: type of optimizer to use
+    :form existing_data: existing data to use for optimization
+    :form parameters: parameters for optimization
+    :form objectives: objectives for optimization
+    TODO: merge to experiment_run or not, add more details about the form fields and their expected values.
+    """
     script = utils.get_script_file()
     run_name = script.name if script.name else "untitled"
     payload = request.form.to_dict()
@@ -184,16 +197,108 @@ def run_bo():
     return redirect(url_for("execute.experiment_run"))
 
 
-@execute.route('/data_preview/<string:filename>')
+
+@execute.route("/executions/status", methods=["GET"])
+def runner_status():
+    """
+    .. :quickref: Workflow Execution Control; backend runner status
+
+    get is system is busy and current task
+
+    .. http:get:: /executions/status
+
+
+    """
+    # runner = global_config.runner
+    runner_busy = global_config.runner_lock.locked()
+    status = {"busy": runner_busy}
+    task_status = global_config.runner_status
+    current_step = {}
+
+    if task_status is not None:
+        task_type = task_status["type"]
+        task_id = task_status["id"]
+        if task_type == "task":
+            # todo
+            step = SingleStep.query.get(task_id)
+            current_step = step.as_dict()
+        if task_type == "workflow":
+            workflow = WorkflowRun.query.get(task_id)
+            if workflow is not None:
+                latest_step = WorkflowStep.query.filter_by(workflow_id=workflow.id).order_by(
+                    WorkflowStep.start_time.desc()).first()
+                if latest_step is not None:
+                    current_step = latest_step.as_dict()
+                status["workflow_status"] = {"workflow_info": workflow.as_dict(), "runner_status": runner.get_status()}
+    status["current_task"] = current_step
+    return jsonify(status), 200
+
+
+@execute.route("/executions/abort/next-iteration", methods=["POST"])
+def api_abort_pending():
+    """
+    .. :quickref: Workflow Execution control; abort pending workflow
+
+    finish the current iteration and stop pending workflow iterations
+
+    .. http:get:: /executions/abort/next-iteration
+
+    """
+    abort_pending()
+    return jsonify({"status": "ok"}), 200
+
+
+@execute.route("/executions/abort/next-task", methods=["POST"])
+def api_abort_current():
+    """
+    .. :quickref: Workflow Execution Control; abort all pending tasks starting from the next task
+
+    finish the current task and stop all pending tasks or iterations
+
+    .. http:get:: /executions/abort/next-task
+
+    """
+    abort_current()
+    return jsonify({"status": "ok"}), 200
+
+
+@execute.route("/executions/pause-resume", methods=["POST"])
+def api_pause():
+    """
+    .. :quickref: Workflow Execution Control; pause and resume
+
+    pause workflow iterations or resume workflow iterations
+
+    .. http:get:: /executions/pause-resume
+
+    """
+    msg = pause()
+    return jsonify({"status": "ok", "pause_status": msg}), 200
+
+
+@execute.route("/executions/retry", methods=["POST"])
+def api_retry():
+    """
+    .. :quickref: Workflow Execution Control; retry the failed workflow execution step.
+
+    retry the failed workflow execution step.
+
+    .. http:get:: /executions/retry
+
+    """
+    retry()
+    return jsonify({"status": "ok, retrying failed step"}), 200
+
+
+@execute.route('/files/preview/<string:filename>')
 @login_required
 def data_preview(filename):
     """
-    .. :quickref: Workflow Execution; preview a workflow history file (.CSV)
+    .. :quickref: Workflow Execution Files; preview a workflow history file (.CSV)
 
-    .. http:post:: /data_preview/<str:filename>
+    Preview the contents of a workflow history file in CSV format.
 
-    :form file: workflow CSV config file
-    :status 302: save csv file and then redirects to :http:get:`/ivoryos/execute/campaign`
+    .. http:get:: /files/preview/<str:filename>
     """
     import csv
     import os

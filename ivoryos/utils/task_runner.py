@@ -72,10 +72,13 @@ class TaskRunner:
                 output = function_executable(**kwargs)
                 step.output = output
                 step.end_time = datetime.now()
+                success = True
             except Exception as e:
                 step.run_error = e.__str__()
                 step.end_time = datetime.now()
+                success = False
+                output = e.__str__()
             finally:
                 db.session.commit()
                 self.lock.release()
-            return output
+            return dict(success=success, output=output)

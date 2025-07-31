@@ -1,17 +1,39 @@
 {# Python code overlay component #}
+{#{% if session.get('show_code') %}#}
+<style>
+.code-overlay {
+    position: fixed;
+    right: 0;
+    top: 180px;
+    height: 100vh;
+    width: 400px;
+    z-index: 1000;
+    transition: transform 0.3s ease;
+    transform: translateX(100%);
+}
+
+.code-overlay.show {
+    transform: translateX(0);
+}
+</style>
+<script>hljs.highlightAll();</script>
 {% if session.get('show_code') %}
 <div id="pythonCodeOverlay" class="code-overlay bg-light border-start show">
+{% else %}
+<div id="pythonCodeOverlay" class="code-overlay bg-light border-start">
+{% endif %}
     <div class="overlay-header d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
         <strong>Python Code</strong>
-        <button class="btn btn-sm btn-outline-secondary" onclick="toggleCodeOverlay(false)">
+        <button class="btn btn-sm btn-outline-secondary" onclick="toggleCodeOverlay()">
             <i class="bi bi-x-lg"></i>
         </button>
     </div>
     <div class="overlay-content p-3">
-        {% for stype, script in session['python_code'].items() %}
+        {% for stype, script in session.get('python_code', {}).items() %}
             <pre><code class="language-python">{{ script }}</code></pre>
         {% endfor %}
-        <a href="{{ url_for('design.design_files.download_python', filetype='python') }}">Download <i class="bi bi-download"></i></a>
+        <a href="{{ url_for('design.design_files.download_python', filetype='python') }}">
+            Download <i class="bi bi-download"></i>
+        </a>
     </div>
 </div>
-{% endif %} 

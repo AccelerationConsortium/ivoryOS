@@ -3,6 +3,8 @@ import os
 import sys
 import urllib
 
+import requests
+
 # -- General configuration
 sys.path.insert(0, os.path.abspath('../../'))
 from ivoryos.version import __version__
@@ -29,8 +31,10 @@ for item in external_readme:
     readme_url = item['url']
     name = item['name']
     output_path = os.path.join(os.path.dirname(__file__), name)
+    r = requests.get(readme_url, verify=False)
     if not os.path.exists(output_path):
-        urllib.request.urlretrieve(readme_url, output_path)
+        with open(output_path, "wb") as f:
+            f.write(r.content)
 
 # -- Project information
 project = 'ivoryOS'

@@ -9,17 +9,15 @@ files = Blueprint('design_files', __name__)
 
 
 
-
-
-@files.route('/upload/json', methods=['POST'])
+@files.route('/files/script-json', methods=['POST'])
 def load_json():
     """
     .. :quickref: Workflow Design Ext; upload a workflow design file (.JSON)
 
-    .. http:post:: /upload/json
+    .. http:post:: /files/script-json
 
     :form file: workflow design JSON file
-    :status 302: load script json and then redirects to :http:get:`/ivoryos/design/script/`
+    :status 302: load script json and then redirects to :http:get:`/ivoryos/design/draft`
     """
 
     if request.method == "POST":
@@ -33,12 +31,12 @@ def load_json():
             flash("Script file need to be JSON file")
     return redirect(url_for("design.experiment_builder"))
 
-@files.route('/download/script')
+@files.route('/files/script-python')
 def download_python():
     """
     .. :quickref: Workflow Design Ext; export a workflow design file (.py)
 
-    .. http:post:: /download/script
+    .. http:post:: /files/script-python
 
     :status 302: redirects to :http:get:`/ivoryos/design/script/`
     """
@@ -48,12 +46,12 @@ def download_python():
     return send_file(os.path.abspath(filepath), as_attachment=True)
 
 
-@files.route('/download/json')
+@files.route('/files/script-json')
 def download_json():
     """
     .. :quickref: Workflow Design Ext; export a workflow design file (.JSON)
 
-    .. http:post:: /download/json
+    .. http:post:: /files/script-json
 
     :status 302: redirects to :http:get:`/ivoryos/design/script/`
     """

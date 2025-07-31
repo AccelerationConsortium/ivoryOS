@@ -1,14 +1,5 @@
-{# Canvas component for experiment builder #}
-<div class="col-md-9 scroll-column">
-    {% include 'components/canvas_header.html' %}
-    
-    <div class="canvas-wrapper position-relative">
-        <div class="canvas" droppable="true">
-            {% include 'components/script_info.html' %}
-            {% include 'components/action_list.html' %}
-            {% include 'components/python_code_overlay.html' %}
-        </div>
-    </div>
-    
-    {% include 'components/canvas_footer.html' %}
-</div> 
+ {% include 'components/canvas_header.html' %}
+     <div class="canvas canvas-action-wrapper position-relative" id="canvas-action-wrapper" droppable="true">
+         {% include 'components/canvas_main.html' %}
+     </div>
+ {% include 'components/canvas_footer.html' %}

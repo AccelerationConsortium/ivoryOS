@@ -6,18 +6,19 @@
                 data-bs-target="#{{name}}" aria-expanded="false"
                 aria-controls="collapseExample"
                  data-action="{{ name }}">
-            {{ format_name(name) }}
+            {{ name | format_name }}
         </button>
     </h2>
     <div id="{{name}}" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
         <div class="accordion-body">
-            <form role="form" method='POST' name="add" id="add-{{name}}">
+            <form role="form" method='POST' action="{{ url_for('design.methods_handler', instrument=instrument) }}"
+                  name="add" id="add-{{name}}" onsubmit="addMethodToDesign(event, this); return false;">
                 <div class="form-group">
                     {{ form.hidden_tag() }}
                     {% for field in form %}
                         {% if field.type not in ['CSRFTokenField', 'HiddenField'] %}
                             <div class="input-group mb-3">
-                                <label class="input-group-text">{{ field.label.text }}</label>
+                                <label class="input-group-text">{{ field.label.text | format_name }}</label>
                                 {% if field.type == "SubmitField" %}
                                     {{ field(class="btn btn-dark") }}
                                 {% elif field.type == "BooleanField" %}

@@ -1,7 +1,13 @@
 <div class="card mb-2 {{ 'border-danger text-danger bg-light' if step.run_error else 'border-secondary' }}">
   <div class="card-body p-2">
-    <strong>{{ step.method_name }}</strong>
-    <small>Start: {{ step.start_time }}</small>
-    <small>End: {{ step.end_time }}</small>
+    <strong>{{ step.method_name | format_name }}</strong>
+    <small class="text-muted">
+      <i class="fas fa-play-circle me-1"></i> Start: {{ step.start_time.strftime('%H:%M:%S') if step.start_time else 'N/A' }}
+      <i class="fas fa-stop-circle ms-2 me-1"></i> End: {{ step.end_time.strftime('%H:%M:%S') if step.end_time else 'N/A' }}
+      <!-- {% if step.run_error %}
+        <i class="fas fa-stop-circle ms-2 me-1"></i> Error: {{ step.run_error if step.run_error else 'N/A' }}
+      {% endif %} -->
+    </small>
+    <!-- <small>Error: {{ step.run_error }}</small> -->
   </div>
 </div>
