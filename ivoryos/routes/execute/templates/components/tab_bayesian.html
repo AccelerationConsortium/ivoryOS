@@ -13,23 +13,8 @@
 {#            </div>#}
             <h6 class="fw-bold mt-2 mb-1">Load Previous Data</h6>
 
-    <form method="POST" name="bo" action="{{ url_for('execute.run_bo') }}">
+        <form method="POST" name="bo" action="{{ url_for('execute.run_bo') }}">
             <div class="container py-2">
-                <!-- Optimizer Selection -->
-                <div class="input-group mb-3">
-                    <label class="input-group-text"><i class="bi bi-gear"></i></label>
-                    <select class="form-select" id="optimizer_type" name="optimizer_type" onchange="updateOptimizerInfo()">
-{#                        <option value="">Select optimizer...</option>#}
-                        {% for optimizer_name, optimizer_info in optimizer_schema.items() %}
-                            <option value="{{ optimizer_name }}"
-                                    data-multiobjective="{{ optimizer_info.multiple_objectives }}"
-                                    data-parameter-types="{{ optimizer_info.parameter_types|join(',') }}"
-                                    data-optimizer-config="{{ optimizer_info.optimizer_config|tojson|e }}">
-                                {{ optimizer_name }} {% if optimizer_info.multiple_objectives %}(Multi-objective supported){% endif %}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
 
                 <!-- Data Loading Section -->
                 <div class="input-group mb-3">
@@ -59,7 +44,21 @@
                 </div>
 
                 <hr class="my-3">
-
+                <!-- Optimizer Selection -->
+                <div class="input-group mb-3">
+                    <label class="input-group-text"><i class="bi bi-gear"></i></label>
+                    <select class="form-select" id="optimizer_type" name="optimizer_type" onchange="updateOptimizerInfo()">
+                        <option value="">Select optimizer...</option>
+                        {% for optimizer_name, optimizer_info in optimizer_schema.items() %}
+                            <option value="{{ optimizer_name }}"
+                                    data-multiobjective="{{ optimizer_info.multiple_objectives }}"
+                                    data-parameter-types="{{ optimizer_info.parameter_types|join(',') }}"
+                                    data-optimizer-config="{{ optimizer_info.optimizer_config|tojson|e }}">
+                                {{ optimizer_name }} {% if optimizer_info.multiple_objectives %}(Multi-objective supported){% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <!-- Tabs Navigation -->
                 <ul class="nav nav-tabs" id="configTabs" role="tablist">
                     <li class="nav-item" role="presentation">
