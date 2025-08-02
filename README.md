@@ -28,7 +28,7 @@ With the least modification of the current workflow, user can design, manage and
 This software is developed and tested using Windows. This software and its dependencies are compatible across major platforms: Linux, macOS, and Windows. Some dependencies (Flask-SQLAlchemy) may require additional setup.
 
 ### Python Version
-Python >=3.10 for best compatibility. Python >=3.7 without Ax.
+Python >=3.10 for the best compatibility. Python >=3.7 without Ax.
 ### Python dependencies
 This software is compatible with the latest versions of all dependencies. 
 - bcrypt~=4.0
@@ -39,7 +39,9 @@ This software is compatible with the latest versions of all dependencies.
 - SQLAlchemy-Utils~=0.41
 - Flask-WTF~=1.2
 - python-dotenv==1.0.1
-- ax-platform (optional ~=0.4 for Python>=3.9)
+- ax-platform (optional 1.0 for Python>=3.10)
+- baybe (optional)
+
 
 ## Installation
 ```bash
@@ -63,43 +65,60 @@ import ivoryos
 ivoryos.run(__name__)
 ```
 ### Login
-Create an account and login (local database)
+Create an account and login (local database with bcrypt password)
 ### Features
-- **Direct control**: direct function calling _Device_ tab
-- **Workflow design and iteration**:
-  - **Design**: add function to canvas in _Design_ tab. click `Compile and Run` button to go to the execution page
-  - **Execution**: configure iteration methods and parameters in _Compile/Run_ tab. 
-  - **Database**: manage workflows in _Library_ tab.
-- **Info page**: additional info in _About_ tab.
+- **Direct control**: direct function calling _Devices_ tab
+- **Workflows**:
+  - **Design Editor**: drag/add function to canvas in _Design_ tab. click `Compile and Run` button to go to the execution configuration page
+  - **Execution Config**: configure iteration methods and parameters in _Compile/Run_ tab. 
+  - **Design Library**: manage workflow scripts in _Library_ tab.
+  - **Workflow Data**: Execution records are in _Data_ tab.
 
 [//]: # (![Discord]&#40;https://img.shields.io/discord/1313641159356059770&#41;)
 
 [//]: # (![PyPI - Downloads]&#40;https://img.shields.io/pypi/dm/ivoryos&#41;)
 
 
-### Additional settings (not actively maintained)
-#### AI assistant
-To streamline the experimental design on SDLs, we also integrate Large Language Models (LLMs) to interpret the inspected functions and generate code according to task descriptions.
+### Additional settings
+[//]: # (#### AI assistant)
 
-#### Enable LLMs with [OpenAI API](https://github.com/openai/openai-python)
-1. Create a `.env` file for `OPENAI_API_KEY`
-```
-OPENAI_API_KEY="Your API Key"
-```
-2. In your SDL script, define model, you can use any GPT models.
+[//]: # (To streamline the experimental design on SDLs, we also integrate Large Language Models &#40;LLMs&#41; to interpret the inspected functions and generate code according to task descriptions.)
 
-```python
-ivoryos.run(__name__, model="gpt-3.5-turbo")
-```
+[//]: # ()
+[//]: # (#### Enable LLMs with [OpenAI API]&#40;https://github.com/openai/openai-python&#41;)
 
-#### Enable local LLMs with [Ollama](https://ollama.com/)
-1. Download Ollama.
-2. pull models from Ollama
-3. In your SDL script, define LLM server and model, you can use any models available on Ollama.
+[//]: # (1. Create a `.env` file for `OPENAI_API_KEY`)
 
-```python
-ivoryos.run(__name__, llm_server="localhost", model="llama3.1")
-```
+[//]: # (```)
+
+[//]: # (OPENAI_API_KEY="Your API Key")
+
+[//]: # (```)
+
+[//]: # (2. In your SDL script, define model, you can use any GPT models.)
+
+[//]: # ()
+[//]: # (```python)
+
+[//]: # (ivoryos.run&#40;__name__, model="gpt-3.5-turbo"&#41;)
+
+[//]: # (```)
+
+[//]: # ()
+[//]: # (#### Enable local LLMs with [Ollama]&#40;https://ollama.com/&#41;)
+
+[//]: # (1. Download Ollama.)
+
+[//]: # (2. pull models from Ollama)
+
+[//]: # (3. In your SDL script, define LLM server and model, you can use any models available on Ollama.)
+
+[//]: # ()
+[//]: # (```python)
+
+[//]: # (ivoryos.run&#40;__name__, llm_server="localhost", model="llama3.1"&#41;)
+
+[//]: # (```)
 
 #### Add additional logger(s)
 ```python
@@ -124,7 +143,7 @@ ivoryos.run(__name__)
 
  * Running on all addresses (0.0.0.0)
  * Running on http://127.0.0.1:8000
- * Running on http://xxx.xx.xx.xxx:8000
+ * Running on http://0.0.0.0:8000
 
 ### Deck function and web form 
 ![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/demo.gif)
@@ -152,6 +171,8 @@ When you run the application for the first time, it will automatically create th
 - [x] dropdown input ✅  
 - [x] show line number option ✅  
 - [ ] snapshot version control
+- [ ] optimizer-agnostic
+- [ ] check batch-config file compatibility
 
 ## Citing
 
@@ -192,4 +213,4 @@ For an additional perspective related to the development of the tool, please see
 ## Authors and Acknowledgement
 Ivory Zhang, Lucy Hao
 
-Authors acknowledge all former and current Hein Lab members for their valuable suggestions. 
+Authors acknowledge Telescope Innovations, Hein Lab members for their valuable suggestions and contributions.
