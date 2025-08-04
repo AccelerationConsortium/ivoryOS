@@ -1,8 +1,0 @@
-graft ivoryos/static
-graft ivoryos/templates
-graft ivoryos/routes
-global-exclude *.pyc
-
-# exclude examples
-prune ivoryos/example
-prune ivoryos/docs
