@@ -10,6 +10,7 @@ data = Blueprint('data', __name__, template_folder='templates')
 
 
 @data.route('/executions/records')
+@login_required
 def list_workflows():
     """
     .. :quickref: Workflow Execution Database; list all workflow execution records
@@ -113,6 +114,7 @@ def delete_workflow_record(workflow_id: int):
 
 
 @data.route('/files/execution-data/<string:filename>')
+@login_required
 def download_results(filename:str):
     """
     .. :quickref: Workflow data; download a workflow data file (.CSV)

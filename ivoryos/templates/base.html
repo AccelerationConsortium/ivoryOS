@@ -69,10 +69,10 @@
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav ms-auto">
-
-                    {% if session["user"] %}
+{#                    {{ current_user }}#}
+                    {% if current_user.is_authenticated %}
                         <div class="dropdown">
-                            <li class="nav-item " aria-expanded="false"><i class="bi bi-person-circle"></i> {{ session["user"] }}</li>
+                            <li class="nav-item " aria-expanded="false"><i class="bi bi-person-circle"></i> {{ current_user.get_id() }}</li>
                             <ul class="dropdown-menu">
                                 <li><a class="dropdown-item" href="{{ url_for("auth.logout") }}" role="button" aria-expanded="false">Logout</a></li>
                             </ul>

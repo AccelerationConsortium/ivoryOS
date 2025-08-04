@@ -49,7 +49,8 @@
 {#                    <td>{{ workflow.registered }}</td>#}
                     <td>
                         {#not workflow.status == "finalized" or#}
-                        {% if session['user'] == 'admin' or session['user'] == script.author %}
+                        {% set username = current_user.get_id() %}
+                        {% if username == 'admin' or username == script.author %}
                             <a href="#"
                                class="text-danger"
                                data-delete-url="{{ url_for('library.workflow_script', script_name=script.name) }}"

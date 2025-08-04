@@ -1,7 +1,7 @@
 import os
 
 from flask import Blueprint, redirect, url_for, flash, jsonify, request, render_template, session, current_app
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 from ivoryos.routes.library.library import publish
 from ivoryos.utils import utils
@@ -64,7 +64,7 @@ def experiment_builder():
     if deck and script.deck is None:
         script.deck = os.path.splitext(os.path.basename(deck.__file__))[
             0] if deck.__name__ == "__main__" else deck.__name__
-
+        utils.post_script_file(script)
     pseudo_deck_name = session.get('pseudo_deck', '')
     pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
     off_line = current_app.config["OFF_LINE"]
@@ -238,7 +238,7 @@ def clear_draft():
             0] if deck.__name__ == "__main__" else deck.__name__
     else:
         deck_name = session.get("pseudo_deck", "")
-    script = Script(deck=deck_name, author=session.get('username'))
+    script = Script(deck=deck_name, author=current_user.get_id())
     utils.post_script_file(script)
     exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
     session['python_code'] = exec_string
@@ -265,7 +265,7 @@ def submit_script():
     """
     deck = global_config.deck
     deck_name = os.path.splitext(os.path.basename(deck.__file__))[0] if deck.__name__ == "__main__" else deck.__name__
-    script = Script(author=session.get('user'), deck=deck_name)
+    script = Script(author=current_user.get_id(), deck=deck_name)
     script_collection = request.get_json()
     workflow_name = script_collection.pop("workflow_name")
     script.python_script = script_collection

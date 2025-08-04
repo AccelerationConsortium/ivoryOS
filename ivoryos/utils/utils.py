@@ -11,6 +11,7 @@ from collections import Counter
 
 import flask
 from flask import session
+from flask_login import current_user
 from flask_socketio import SocketIO
 
 from ivoryos.utils.db_models import Script
@@ -24,7 +25,7 @@ def get_script_file():
         s.__dict__.update(**session_script)
         return s
     else:
-        return Script(author=session.get('user'))
+        return Script(author=current_user.get_id(),)
 
 
 def post_script_file(script, is_dict=False):

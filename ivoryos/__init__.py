@@ -1,8 +1,11 @@
 import os
 import sys
+import uuid
 from typing import Union
 
-from flask import Flask, redirect, url_for, g, Blueprint
+from flask import Flask, redirect, url_for, g, Blueprint, session
+from flask_login import AnonymousUserMixin
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from ivoryos.config import Config, get_config
@@ -17,7 +20,7 @@ from ivoryos.socket_handlers import socketio
 from ivoryos.routes.main.main import main
 # from ivoryos.routes.monitor.monitor import monitor
 from ivoryos.utils import utils
-from ivoryos.utils.db_models import db, User
+from ivoryos.utils.db_models import db, User, DemoUser
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.optimizer.registry import OPTIMIZER_REGISTRY
 from ivoryos.utils.script_runner import ScriptRunner
@@ -90,6 +93,23 @@ def create_app(config_class=None):
         """
         g.logger = logger
         g.socketio = socketio
+        session.permanent = False
+        # DEMO_MODE: Simulate logged-in user per session
+        if app.config.get("DEMO_MODE", False):
+            if "demo_user_id" not in session:
+                session["demo_user_id"] = f"demo_{str(uuid.uuid4())[:8]}"
+
+            class SessionDemoUser(AnonymousUserMixin):
+                @property
+                def is_authenticated(self):
+                    return True
+
+                def get_id(self):
+                    return session.get("demo_user_id")
+
+            login_manager.anonymous_user = SessionDemoUser
+
+
 
     @app.route('/')
     def redirect_to_prefix():
@@ -101,6 +121,7 @@ def create_app(config_class=None):
         text = ' '.join(word for word in name.split('_'))
         return text.capitalize()
 
+    # app.config.setdefault("DEMO_MODE", False)
     return app
 
 

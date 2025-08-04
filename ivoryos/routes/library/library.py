@@ -1,5 +1,5 @@
 from flask import Blueprint, redirect, url_for, flash, request, render_template, session, current_app, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 from ivoryos.utils.db_models import Script, db, WorkflowRun, WorkflowStep
 from ivoryos.utils.utils import get_script_file, post_script_file
@@ -66,14 +66,14 @@ def publish():
     script = get_script_file()
 
     if script.author is None:
-        script.author = session.get('user')
+        script.author = current_user.get_id()
     if not script.name or not script.deck:
         return {"success": False, "error": "Deck cannot be empty, try to re-submit deck configuration on the left panel"}
     row = Script.query.get(script.name)
     if row and row.status == "finalized":
         return {"success": False, "error": "This is a protected script, use save as to rename."}
 
-    elif row and session.get('user') != row.author:
+    elif row and current_user.get_id() != row.author:
         return {"success": False, "error": "You are not the author, use save as to rename."}
     else:
         db.session.merge(script)
@@ -145,7 +145,7 @@ def save_as():
         script = get_script_file()
         script.save_as(run_name)
         script.registered = register_workflow == "on"
-        script.author = session.get('user')
+        script.author = current_user.get_id()
         post_script_file(script)
         status = publish()
         if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':

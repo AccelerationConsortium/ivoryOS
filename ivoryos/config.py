@@ -43,6 +43,7 @@ class TestingConfig(Config):
 
 class DemoConfig(Config):
     DEBUG = False
+    DEMO_MODE = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     OUTPUT_FOLDER = os.path.join(os.path.abspath(os.curdir), '/tmp/ivoryos_data')
     CSV_FOLDER = os.path.join(OUTPUT_FOLDER, 'config_csv/')

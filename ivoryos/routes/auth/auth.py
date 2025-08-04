@@ -5,6 +5,7 @@ import bcrypt
 from ivoryos.utils.db_models import Script, User, db
 from ivoryos.utils.utils import post_script_file
 login_manager = LoginManager()
+# from flask import g
 
 auth = Blueprint('auth', __name__, template_folder='templates')
 
@@ -37,7 +38,8 @@ def login():
             # password.encode("utf-8")
             # user = User(username, password.encode("utf-8"))
             login_user(user)
-            session['user'] = username
+            # g.user = user
+            # session['user'] = username
             script_file = Script(author=username)
             session["script"] = script_file.as_dict()
             session['hidden_functions'], session['card_order'], session['prompt'] = {}, {}, {}

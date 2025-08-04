@@ -66,7 +66,7 @@ class ScriptRunner:
         global deck
         if deck is None:
             deck = global_config.deck
-        print("history", history)
+        # print("history", history)
         if self.current_app is None:
             self.current_app = current_app
         # time.sleep(1)  # Optional: may help ensure deck readiness
