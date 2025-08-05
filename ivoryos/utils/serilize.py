@@ -7,8 +7,8 @@ import sys
 
 import flask
 
-from example.abstract_sdl_example.abstract_balance import AbstractBalance
-from example.abstract_sdl_example.abstract_pump import AbstractPump
+from example.abstract_sdl_example import abstract_sdl as deck
+
 
 
 class ScriptAnalyzer:
@@ -179,14 +179,12 @@ class ScriptAnalyzer:
                 print(f"  {name}: {error}")
 
 if __name__ == "__main__":
-    balance = AbstractBalance("re")
-    pump = AbstractPump("re")
 
     _analyzer = ScriptAnalyzer()
-    module = sys.modules[__name__]
+    # module = sys.modules[deck]
     try:
 
-        result, with_warnings, failed, _ = _analyzer.analyze_module(module)
+        result, with_warnings, failed, _ = _analyzer.analyze_module(deck)
 
         output_path = f"analysis.json"
         _analyzer.save_to_json(result, output_path)

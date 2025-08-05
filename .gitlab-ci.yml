@@ -20,18 +20,18 @@ install_dependencies:
       - venv/  # Store the virtual environment as an artifact (optional)
 
 # Job to build the package
-build_package:
+build-package:
   stage: build
-  image: python:3.10-slim
+  image: python:3.10
+  before_script:
+    - python -m pip install --upgrade pip build
   script:
-    - pip install --upgrade pip
-    - pip install setuptools wheel twine
-    - python setup.py sdist bdist_wheel
+    - python -m build
   only:
     - tags
   artifacts:
     paths:
-      - dist/*
+      - dist/
 
 # Job to deploy to PyPI
 deploy_pypi:

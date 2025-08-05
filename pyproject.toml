@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ivoryos"
+dynamic = ["version"]  # or dynamically read version with `dynamic = ["version"]`
+description = "an open-source Python package enabling Self-Driving Labs (SDLs) interoperability"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "MIT"}
+authors = [
+    {name = "Ivory Zhang", email = "ivoryzhang@chem.ubc.ca"}
+]
+dependencies = [
+    "bcrypt",
+    "Flask-Login",
+    "Flask-Session",
+    "Flask-SocketIO",
+    "Flask-SQLAlchemy",
+    "Flask-WTF",
+    "SQLAlchemy-Utils",
+    "python-dotenv",
+    "astor; python_version < '3.9'"
+]
+
+[project.optional-dependencies]
+optimizer = ["ax-platform", "baybe"]
+
+[project.urls]
+Homepage = "https://gitlab.com/heingroup/ivoryos"
+
+[tool.setuptools]
+include-package-data = true
+
+
+[tool.setuptools.dynamic]
+version = {attr = "ivoryos.version.__version__"}
