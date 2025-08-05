@@ -20,7 +20,7 @@ install_dependencies:
       - venv/  # Store the virtual environment as an artifact (optional)
 
 # Job to build the package
-build-package:
+build_package:
   stage: build
   image: python:3.10
   before_script:
