@@ -20,7 +20,7 @@ from ivoryos.socket_handlers import socketio
 from ivoryos.routes.main.main import main
 # from ivoryos.routes.monitor.monitor import monitor
 from ivoryos.utils import utils
-from ivoryos.utils.db_models import db, User, DemoUser
+from ivoryos.utils.db_models import db, User
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.optimizer.registry import OPTIMIZER_REGISTRY
 from ivoryos.utils.script_runner import ScriptRunner
