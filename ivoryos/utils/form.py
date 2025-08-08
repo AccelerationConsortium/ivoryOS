@@ -1,5 +1,10 @@
 from enum import Enum
-from typing import get_origin, get_args, Union, Any
+from typing import Union, Any
+try:
+    from typing import get_origin, get_args
+except ImportError:
+    # For Python versions = 3.7, use typing_extensions
+    from typing_extensions import get_origin, get_args
 
 from wtforms.fields.choices import SelectField
 from wtforms.fields.core import Field
