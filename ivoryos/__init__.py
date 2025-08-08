@@ -6,7 +6,7 @@ from typing import Union
 from flask import Flask, redirect, url_for, g, Blueprint, session
 from flask_login import AnonymousUserMixin
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from ivoryos.config import Config, get_config
 from ivoryos.routes.auth.auth import auth, login_manager
@@ -25,7 +25,7 @@ from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.optimizer.registry import OPTIMIZER_REGISTRY
 from ivoryos.utils.script_runner import ScriptRunner
 from ivoryos.version import __version__ as ivoryos_version
-from importlib.metadata import entry_points
+# from importlib.metadata import entry_points
 
 global_config = GlobalConfig()
 from sqlalchemy import event
@@ -210,22 +210,22 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     # return app
 
 
-def load_installed_plugins(app, socketio):
-    """
-    Dynamically load installed plugins and attach Flask-SocketIO.
-    """
-    plugin_names = []
-    for entry_point in entry_points().get("ivoryos.plugins", []):
-        plugin = entry_point.load()
-
-        # If the plugin has an `init_socketio()` function, pass socketio
-        if hasattr(plugin, 'init_socketio'):
-            plugin.init_socketio(socketio)
-
-        plugin_names.append(entry_point.name)
-        app.register_blueprint(getattr(plugin, entry_point.name), url_prefix=f"{url_prefix}/{entry_point.name}")
-
-    return plugin_names
+# def load_installed_plugins(app, socketio):
+#     """
+#     Dynamically load installed plugins and attach Flask-SocketIO.
+#     """
+#     plugin_names = []
+#     for entry_point in entry_points().get("ivoryos.plugins", []):
+#         plugin = entry_point.load()
+#
+#         # If the plugin has an `init_socketio()` function, pass socketio
+#         if hasattr(plugin, 'init_socketio'):
+#             plugin.init_socketio(socketio)
+#
+#         plugin_names.append(entry_point.name)
+#         app.register_blueprint(getattr(plugin, entry_point.name), url_prefix=f"{url_prefix}/{entry_point.name}")
+#
+#     return plugin_names
 
 
 def load_plugins(blueprints: Union[list, Blueprint], app, socketio):
