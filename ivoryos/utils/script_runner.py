@@ -188,44 +188,52 @@ class ScriptRunner:
         # _func_str = script.compile()
         # step_list_dict: dict = script.convert_to_lines(_func_str)
         self._emit_progress(socketio, 1)
+        filename = None
+        error_flag = False
+        # create a new run entry in the database
+        try:
+            with current_app.app_context():
+                run = WorkflowRun(name=script.name or "untitled", platform=script.deck or "deck",start_time=datetime.now())
+                db.session.add(run)
+                db.session.commit()
+                run_id = run.id  # Save the ID
+                global_config.runner_status = {"id":run_id, "type": "workflow"}
 
-        # Run "prep" section once
-        script_dict = script.script_dict
-        with current_app.app_context():
+                # Run "prep" section once
+                self._run_actions(script, section_name="prep", logger=logger, socketio=socketio, run_id=run_id)
+                output_list = []
+                _, arg_type = script.config("script")
+                _, return_list = script.config_return()
+                # Run "script" section multiple times
+                if repeat_count:
+                    self._run_repeat_section(repeat_count, arg_type, bo_args, output_list, script,
+                                             run_name, return_list, compiled, logger, socketio,
+                                             history, output_path, run_id=run_id, optimizer=optimizer)
+                elif config:
+                    self._run_config_section(config, arg_type, output_list, script, run_name, logger,
+                                             socketio, run_id=run_id, compiled=compiled)
+                # Run "cleanup" section once
+                self._run_actions(script, section_name="cleanup", logger=logger, socketio=socketio,run_id=run_id)
+                # Reset the running flag when done
 
-            run = WorkflowRun(name=script.name or "untitled", platform=script.deck or "deck",start_time=datetime.now())
-            db.session.add(run)
-            db.session.commit()
-            run_id = run.id  # Save the ID
-            global_config.runner_status = {"id":run_id, "type": "workflow"}
-            self._run_actions(script, section_name="prep", logger=logger, socketio=socketio, run_id=run_id)
-            output_list = []
-            _, arg_type = script.config("script")
-            _, return_list = script.config_return()
+                # Save results if necessary
 
-            # Run "script" section multiple times
-            if repeat_count:
-                self._run_repeat_section(repeat_count, arg_type, bo_args, output_list, script,
-                                         run_name, return_list, compiled, logger, socketio,
-                                         history, output_path, run_id=run_id, optimizer=optimizer)
-            elif config:
-                self._run_config_section(config, arg_type, output_list, script, run_name, logger,
-                                         socketio, run_id=run_id, compiled=compiled)
+                if not script.python_script and output_list:
+                    filename = self._save_results(run_name, arg_type, return_list, output_list, logger, output_path)
+                self._emit_progress(socketio, 100)
 
-            # Run "cleanup" section once
-            self._run_actions(script, section_name="cleanup", logger=logger, socketio=socketio,run_id=run_id)
-            # Reset the running flag when done
+        except Exception as e:
+            logger.error(f"Error during script execution: {e.__str__()}")
+            error_flag = True
+        finally:
             self.lock.release()
-            # Save results if necessary
-            filename = None
-            if not script.python_script and output_list:
-                filename = self._save_results(run_name, arg_type, return_list, output_list, logger, output_path)
-            self._emit_progress(socketio, 100)
-        with current_app.app_context():
-            run = db.session.get(WorkflowRun, run_id)  # SQLAlchemy 1.4+ recommended method
-            run.end_time = datetime.now()
-            run.data_path = filename
-            db.session.commit()
+            with current_app.app_context():
+                run = db.session.get(WorkflowRun, run_id)
+                run.end_time = datetime.now()
+                run.output_file = filename
+                run.run_error = error_flag
+                db.session.commit()
+
 
     def _run_actions(self, script, section_name="", logger=None, socketio=None, run_id=None):
         _func_str = script.python_script or script.compile()
@@ -254,7 +262,7 @@ class ScriptRunner:
                     logger.info(f'Stopping execution during {run_name}: {i + 1}/{len(config)}')
                     break
                 logger.info(f'Executing {i + 1} of {len(config)} with kwargs = {kwargs}')
-                progress = (i + 1) * 100 / len(config)
+                progress = ((i + 1) * 100 / len(config)) - 0.1
                 self._emit_progress(socketio, progress)
                 # fname = f"{run_name}_script"
                 # function = self.globals_dict[fname]
