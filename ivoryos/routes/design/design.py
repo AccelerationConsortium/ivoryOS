@@ -173,7 +173,7 @@ def update_ui_state():
         autofill = data.get("autofill", False)
         session['autofill'] = autofill
         _, forms = _create_forms(instrument, script, autofill)
-        rendered_html = render_template("components/methods_panel.html", forms=forms, script=script, instrument=instrument)
+        rendered_html = render_template("components/actions_panel.html", forms=forms, script=script, instrument=instrument)
         return jsonify({"html": rendered_html})
 
     if "deck_name" in data:

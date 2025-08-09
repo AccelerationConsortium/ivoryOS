@@ -94,6 +94,7 @@ function toggleAutoFill() {
     .then(data => {
         if (data.html) {
             document.getElementById("instrument-panel").innerHTML = data.html;
+            initializeDragHandlers()
         }
     })
 }
