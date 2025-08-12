@@ -474,7 +474,7 @@ class Script(db.Model):
         """
         configure, config_type = self.config(stype)
 
-        configure = [param + f":{param_type}" if not param_type == "any" else "" for param, param_type in
+        configure = [param + f":{param_type}" if not param_type == "any" else param for param, param_type in
                      config_type.items()]
 
         script_type = f"_{stype}" if stype != "script" else ""
