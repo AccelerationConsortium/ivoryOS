@@ -15,7 +15,7 @@ function saveWorkflow(link) {
     .then(data => {
         if (data.success) {
             // flash a success message
-            flash("Workflow saved successfully", "success");
+            // flash("Workflow saved successfully", "success");
             window.location.reload();  // or update the UI dynamically
         } else {
             alert("Failed to save workflow: " + data.error);

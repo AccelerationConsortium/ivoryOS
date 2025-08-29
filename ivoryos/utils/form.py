@@ -299,6 +299,11 @@ def create_form_for_method(method, autofill, script=None, design=True):
             if optional:
                 field_kwargs["filters"] = [lambda x: x if x != '' else None]
 
+            if annotation is bool:
+                # Boolean fields should not use InputRequired
+                field_kwargs["validators"] = []  # or [Optional()]
+            else:
+                field_kwargs["validators"] = [InputRequired()] if param.default is param.empty else [Optional()]
 
         render_kwargs = {"placeholder": placeholder_text}
 

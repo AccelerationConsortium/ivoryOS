@@ -37,7 +37,7 @@ def backend_control(instrument: str=None):
         forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
 
     if request.method == 'POST':
-        method_name = request.form.get("hidden_name", None)
+        method_name = request.json.get("hidden_name", None)
         form = forms.get(method_name, None)
         if form:
             kwargs = {field.name: field.data for field in form if field.name not in ['csrf_token', 'hidden_name']}
