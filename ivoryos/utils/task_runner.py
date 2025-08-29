@@ -74,10 +74,10 @@ class TaskRunner:
                 step.end_time = datetime.now()
                 success = True
             except Exception as e:
-                step.run_error = e.__str__()
+                step.run_error = str(e)
                 step.end_time = datetime.now()
                 success = False
-                output = e.__str__()
+                output = str(e)
             finally:
                 db.session.commit()
                 self.lock.release()
