@@ -17,7 +17,7 @@ class ProxyGenerator:
         "Any", "Callable", "Iterable", "Sequence", "Set"
     }
 
-    def __init__(self, base_url: str, api_path_template: str = "ivoryos/api/control/deck.{class_name}"):
+    def __init__(self, base_url: str, api_path_template: str = "ivoryos/instruments/deck.{class_name}"):
         """
         Initialize the ProxyGenerator.
 
@@ -64,6 +64,12 @@ class ProxyGenerator:
         class_template += f'    """Auto-generated API client for {class_name} operations."""\n'
         class_template += f'    url = "{api_url}"\n\n'
 
+        # Add the __init__ with auth
+        class_template += self._generate_init()
+
+        # Add the _auth
+        class_template += self._generate_auth()
+
         # Add the base _call method
         class_template += self._generate_call_method()
 
@@ -78,11 +84,21 @@ class ProxyGenerator:
         """Generate the base _call method for API communication."""
         return '''    def _call(self, payload):
         """Make API call with error handling."""
-        res = session.post(self.url, json=payload)
+        res = session.post(self.url, json=payload, allow_redirects=False)
+            # Handle 302 redirect (likely auth issue)
+        if res.status_code == 302:
+            try:
+                self._auth()
+                res = session.post(self.url, json=payload, allow_redirects=False)
+            except Exception as e:
+                raise AuthenticationError(
+                    "Authentication failed during re-attempt. "
+                    "Please check your credentials or connection."
+                ) from e
         res.raise_for_status()
         data = res.json()
         if not data.get('success'):
-            raise Exception(data.get('output', res.text))
+            raise Exception(data.get('output', "Unknown API error."))
         return data.get('output')
 
 '''
@@ -247,3 +263,26 @@ class ProxyGenerator:
 
         # Generate the proxy file
         return self.generate_proxy_file(snapshot, output_folder)
+
+    def _generate_init(self):
+        return '''    def __init__(self, username=None, password=None):
+        """Initialize the client with authentication."""
+        self.username = username
+        self.password = password
+        self._auth()
+
+'''
+
+
+    def _generate_auth(self):
+        return f"""    def _auth(self):
+        username = self.username or 'admin'
+        password = self.password or 'admin'
+        res = session.post(
+            '{self.base_url}/ivoryos/auth/login',
+            data={{"username": username, "password": password}}
+        )
+        if res.status_code != 200:
+            raise Exception("Authentication failed")
+                    
+"""
