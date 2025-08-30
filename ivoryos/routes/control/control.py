@@ -49,6 +49,14 @@ def deck_controllers(instrument: str = None):
     if instrument:
         inst_object = find_instrument_by_name(instrument)
         forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
+        order = get_session_by_instrument('card_order', instrument)
+        hidden_functions = get_session_by_instrument('hidden_functions', instrument)
+        functions = list(forms.keys())
+        for function in functions:
+            if function not in hidden_functions and function not in order:
+                order.append(function)
+        post_session_by_instrument('card_order', instrument, order)
+        forms = {name: forms[name] for name in order if name in forms}
 
     if request.method == "POST":
         if not forms:
@@ -83,7 +91,8 @@ def deck_controllers(instrument: str = None):
                 flash(f"Run Error! {output.get('output', 'Unknown error occurred.')}", "error")
 
     # GET request → render web form or return snapshot for API
-    if request.is_json or request.accept_mimetypes["application/json"]:
+    if request.is_json or request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+
         snapshot = global_config.deck_snapshot.copy()
         for instrument_key, instrument_data in snapshot.items():
             for function_key, function_data in instrument_data.items():
