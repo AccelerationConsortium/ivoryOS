@@ -83,7 +83,7 @@ def deck_controllers(instrument: str = None):
                 flash(f"Run Error! {output.get('output', 'Unknown error occurred.')}", "error")
 
     # GET request → render web form or return snapshot for API
-    if request.is_json:
+    if request.is_json or request.accept_mimetypes["application/json"]:
         snapshot = global_config.deck_snapshot.copy()
         for instrument_key, instrument_data in snapshot.items():
             for function_key, function_data in instrument_data.items():

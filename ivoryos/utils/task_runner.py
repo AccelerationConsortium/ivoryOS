@@ -64,7 +64,7 @@ class TaskRunner:
 
         # with self.lock:
         with current_app.app_context():
-            step = SingleStep(method_name=method_name, kwargs=kwargs, run_error=False, start_time=datetime.now())
+            step = SingleStep(method_name=method_name, kwargs=kwargs, run_error=None, start_time=datetime.now())
             db.session.add(step)
             db.session.commit()
             global_config.runner_status = {"id":step.id, "type": "task"}
