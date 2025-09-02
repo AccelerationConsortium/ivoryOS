@@ -2,6 +2,7 @@ import threading
 import time
 from datetime import datetime
 
+from ivoryos.utils.decorators import BUILDING_BLOCKS
 from ivoryos.utils.db_models import db, SingleStep
 from ivoryos.utils.global_config import GlobalConfig
 
@@ -48,16 +49,20 @@ class TaskRunner:
         if component.startswith("deck."):
             component = component.split(".")[1]
             instrument = getattr(deck, component)
+            function_executable = getattr(instrument, method)
+        elif component.startswith("blocks."):
+            component = component.split(".")[1]
+            function_executable = BUILDING_BLOCKS[component][method]["func"]
         else:
             temp_connections = global_config.defined_variables
             instrument = temp_connections.get(component)
-        function_executable = getattr(instrument, method)
+            function_executable = getattr(instrument, method)
         return function_executable
 
     def _run_single_step(self, component, method, kwargs, current_app=None):
         try:
             function_executable = self._get_executable(component, deck, method)
-            method_name = f"{function_executable.__self__.__class__.__name__}.{function_executable.__name__}"
+            method_name = f"{component}.{method}"
         except Exception as e:
             self.lock.release()
             return {"status": "error", "msg": e.__str__()}

@@ -13,6 +13,8 @@ def find_instrument_by_name(name: str):
     if name.startswith("deck"):
         name = name.replace("deck.", "")
         return getattr(global_config.deck, name)
+    elif name.startswith("blocks"):
+        return global_config.building_blocks[name]
     elif name in global_config.defined_variables:
         return global_config.defined_variables[name]
     elif name in globals():

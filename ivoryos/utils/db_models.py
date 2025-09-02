@@ -318,6 +318,12 @@ class Script(db.Model):
                     {"id": current_len + 2, "instrument": 'repeat', "action": 'endrepeat',
                      "args": {}, "return": '', "uuid": uid},
                 ],
+            "pause":
+                [
+                    {"id": current_len + 1, "instrument": 'pause', "action": "pause",
+                     "args": {"statement": 1 if statement == '' else statement}, "return": '', "uuid": uid,
+                     "arg_types": {"statement": "str"}}
+                ],
         }
         action_list = logic_dict[logic_type]
         self.currently_editing_script.extend(action_list)
@@ -443,6 +449,9 @@ class Script(db.Model):
         Compile the current script to a Python file.
         :return: String to write to a Python file.
         """
+        self.needs_call_human = False
+        self.blocks_included = False
+
         self.sort_actions()
         run_name = self.name if self.name else "untitled"
         run_name = self.validate_function_name(run_name)
@@ -524,6 +533,9 @@ class Script(db.Model):
             return f"{self.indent(indent_unit)}time.sleep({statement})", indent_unit
         elif instrument == 'repeat':
             return self._process_repeat(indent_unit, action_name, statement, next_action)
+        elif instrument == 'pause':
+            self.needs_call_human = True
+            return f"{self.indent(indent_unit)}pause('{statement}')", indent_unit
         #todo
         # elif instrument == 'registered_workflows':
         #     return inspect.getsource(my_function)
@@ -592,14 +604,18 @@ class Script(db.Model):
         """
         Process actions related to instruments.
         """
+        function_call = f"{instrument}.{action}"
+        if instrument.startswith("blocks"):
+            self.blocks_included = True
+            function_call = action
 
-        if isinstance(args, dict):
+        if isinstance(args, dict) and args != {}:
             args_str = self._process_dict_args(args)
-            single_line = f"{instrument}.{action}(**{args_str})"
+            single_line = f"{function_call}(**{args_str})"
         elif isinstance(args, str):
-            single_line = f"{instrument}.{action} = {args}"
+            single_line = f"{function_call} = {args}"
         else:
-            single_line = f"{instrument}.{action}()"
+            single_line = f"{function_call}()"
 
         if save_data:
             save_data += " = "
@@ -640,7 +656,7 @@ class Script(db.Model):
         """
         return arg in self.script_dict and self.script_dict[arg].get("arg_types") == "variable"
 
-    def _write_to_file(self, script_path, run_name, exec_string):
+    def _write_to_file(self, script_path, run_name, exec_string, call_human=False):
         """
         Write the compiled script to a file.
         """
@@ -650,8 +666,27 @@ class Script(db.Model):
             else:
                 s.write("deck = None")
             s.write("\nimport time")
+            if self.blocks_included:
+                s.write(f"\n{self._create_block_import()}")
+            if self.needs_call_human:
+                s.write("""\n\ndef pause(reason="Manual intervention required"):\n\tprint(f"\\nHUMAN INTERVENTION REQUIRED: {reason}")\n\tinput("Press Enter to continue...\\n")""")
+
             for i in exec_string.values():
                 s.write(f"\n\n\n{i}")
+
+    def _create_block_import(self):
+        imports = {}
+        from ivoryos.utils.decorators import BUILDING_BLOCKS
+        for category, methods in BUILDING_BLOCKS.items():
+            for method_name, meta in methods.items():
+                func = meta["func"]
+                module = meta["path"]
+                name = func.__name__
+                imports.setdefault(module, set()).add(name)
+        lines = []
+        for module, funcs in imports.items():
+            lines.append(f"from {module} import {', '.join(sorted(funcs))}")
+        return "\n".join(lines)
 
 class WorkflowRun(db.Model):
     __tablename__ = 'workflow_runs'

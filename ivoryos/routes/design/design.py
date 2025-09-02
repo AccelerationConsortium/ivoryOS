@@ -35,6 +35,9 @@ def _create_forms(instrument, script, autofill, pseudo_deck = None):
         _object = global_config.defined_variables.get(instrument)
         functions = utils._inspect_class(_object)
         forms = create_form_from_pseudo(pseudo=functions, autofill=autofill, script=script)
+    elif instrument.startswith("blocks"):
+        forms = create_form_from_pseudo(pseudo=global_config.building_blocks[instrument], autofill=autofill, script=script)
+        functions = global_config.building_blocks[instrument]
     else:
         if deck:
             functions = global_config.deck_snapshot.get(instrument, {})
@@ -92,7 +95,7 @@ def experiment_builder():
 
     return render_template('experiment_builder.html', off_line=off_line, history=deck_list,
                            script=script, defined_variables=deck_variables, buttons_dict=design_buttons,
-                           local_variables=global_config.defined_variables)
+                           local_variables=global_config.defined_variables, block_variables=global_config.building_blocks)
 
 
 @design.route("/draft/meta", methods=["PATCH"])
@@ -192,7 +195,8 @@ def update_ui_state():
         deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
         deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
         html = render_template("components/sidebar.html", history=deck_list,
-                               defined_variables=deck_variables, local_variables = global_config.defined_variables)
+                               defined_variables=deck_variables, local_variables = global_config.defined_variables,
+                               block_variables=global_config.building_blocks)
         return jsonify({"html": html})
     return jsonify({"error": "Invalid request"}), 400
 
@@ -310,6 +314,7 @@ def methods_handler(instrument: str = ''):
 
     success = True
     msg = ""
+    request.form
     if "hidden_name" in request.form:
         method_name = request.form.get("hidden_name", None)
         form = forms.get(method_name) if forms else None
@@ -322,7 +327,7 @@ def methods_handler(instrument: str = ''):
                 primitive_arg_types = utils.get_arg_type(kwargs, functions[function_name])
 
                 # todo
-                print(primitive_arg_types)
+                # print(primitive_arg_types)
 
                 script.eval_list(kwargs, primitive_arg_types)
                 kwargs = script.validate_variables(kwargs)
@@ -422,7 +427,9 @@ def get_operation_sidebar(instrument: str = ''):
         # edit_action_info = session.get("edit_action")
         html = render_template("components/sidebar.html", off_line=off_line, history=deck_list,
                                defined_variables=deck_variables,
-                               local_variables=global_config.defined_variables)
+                               local_variables=global_config.defined_variables,
+                               block_variables=global_config.building_blocks,
+                               )
     return jsonify({"html": html})
 
 
