@@ -115,20 +115,37 @@ function insertDropPlaceholder($target) {
 
 // Add this function to sortable_design.js
 function initializeDragHandlers() {
-    $(".accordion-item").off("dragstart").on("dragstart", function (event) {
-        let formHtml = $(this).find(".accordion-body form").prop('outerHTML');
+    const $cards = $(".accordion-item.design-control");
 
-        if (!formHtml) {
-            console.error("Form not found in accordion-body");
-            return false;
-        }
-
-        event.originalEvent.dataTransfer.setData("form", formHtml);
-        event.originalEvent.dataTransfer.setData("action", $(this).find(".draggable-action").data("action"));
-        event.originalEvent.dataTransfer.setData("id", $(this).find(".draggable-action").attr("id"));
-
-        $(this).addClass("dragging");
+    // Toggle draggable based on mouse/touch position
+    $cards.off("mousedown touchstart").on("mousedown touchstart", function (event) {
+        this.setAttribute("draggable", $(event.target).closest(".input-group").length ? "false" : "true");
     });
+
+    // Handle the actual drag
+    $cards.off("dragstart dragend").on({
+        dragstart: function (event) {
+            if (this.getAttribute("draggable") !== "true") {
+                event.preventDefault();
+                return false;
+            }
+
+            const formHtml = $(this).find(".accordion-body form").prop("outerHTML");
+            if (!formHtml) return false;
+
+            event.originalEvent.dataTransfer.setData("form", formHtml);
+            event.originalEvent.dataTransfer.setData("action", $(this).find(".draggable-action").data("action"));
+            event.originalEvent.dataTransfer.setData("id", $(this).find(".draggable-action").attr("id"));
+
+            $(this).addClass("dragging");
+        },
+        dragend: function () {
+            $(this).removeClass("dragging").attr("draggable", "false");
+        }
+    });
+
+    // Prevent form inputs from being draggable
+    $(".accordion-item input, .accordion-item select").attr("draggable", "false");
 }
 
 // Make sure it's called in the document ready function
