@@ -249,7 +249,7 @@ class ScriptRunner:
             with current_app.app_context():
                 run = db.session.get(WorkflowRun, run_id)
                 run.end_time = datetime.now()
-                run.output_file = filename
+                run.data_path = filename
                 run.run_error = error_flag
                 db.session.commit()
 
