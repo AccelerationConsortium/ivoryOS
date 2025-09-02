@@ -151,6 +151,7 @@ def _convert_by_str(args, arg_types):
                 return args
             except Exception:
                 raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
+    return args
 
 
 def _convert_by_class(args, arg_types):
