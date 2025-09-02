@@ -37,13 +37,43 @@ document.addEventListener("DOMContentLoaded", function() {
         console.error("Error received:", errorData);
         var progressBar = document.getElementById('progress-bar-inner');
 
-        progressBar.classList.remove('bg-success');
-        progressBar.classList.add('bg-danger'); // Red color for error
-                // Show error modal
-        var errorModal = new bootstrap.Modal(document.getElementById('error-modal'));
-        document.getElementById('error-message').innerText = "An error occurred: " + errorData.message;
-        errorModal.show();
+        progressBar.classList.remove('bg-success', 'bg-warning');
+        progressBar.classList.add('bg-danger');
 
+        var errorModal = new bootstrap.Modal(document.getElementById('error-modal'));
+        document.getElementById('errorModalLabel').innerText = "Error Detected";
+        document.getElementById('error-message').innerText =
+            "An error occurred: " + errorData.message;
+
+        // Show all buttons again
+        document.getElementById('retry-btn').style.display = "inline-block";
+        document.getElementById('continue-btn').style.display = "inline-block";
+        document.getElementById('stop-btn').style.display = "inline-block";
+
+        errorModal.show();
+    });
+
+
+    socket.on('human_intervention', function(data) {
+        console.warn("Human intervention required:", data);
+        var progressBar = document.getElementById('progress-bar-inner');
+
+        // Set progress bar to yellow
+        progressBar.classList.remove('bg-success', 'bg-danger');
+        progressBar.classList.add('bg-warning');
+
+        // Reuse error modal but update content
+        var errorModal = new bootstrap.Modal(document.getElementById('error-modal'));
+        document.getElementById('errorModalLabel').innerText = "Human Intervention Required";
+        document.getElementById('error-message').innerText =
+            "Workflow paused: " + (data.message || "Please check and manually resume.");
+
+        // Optionally: hide retry button, since it may not apply
+        document.getElementById('retry-btn').style.display = "none";
+        document.getElementById('continue-btn').style.display = "inline-block";
+        document.getElementById('stop-btn').style.display = "inline-block";
+
+        errorModal.show();
     });
 
     // Handle Pause/Resume Button
@@ -71,6 +101,11 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('continue-btn').addEventListener('click', function() {
         socket.emit('pause');  // Resume execution
         console.log("Execution resumed.");
+
+        // Reset progress bar color to running (blue)
+        var progressBar = document.getElementById('progress-bar-inner');
+        progressBar.classList.remove('bg-danger', 'bg-warning');
+        progressBar.classList.add('bg-primary');
     });
 
     document.getElementById('retry-btn').addEventListener('click', function() {

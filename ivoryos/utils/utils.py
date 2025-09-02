@@ -15,7 +15,7 @@ from flask_login import current_user
 from flask_socketio import SocketIO
 
 from ivoryos.utils.db_models import Script
-
+from ivoryos.utils.decorators import BUILDING_BLOCKS
 
 def get_script_file():
     """Get script from Flask session and returns the script"""
@@ -151,6 +151,7 @@ def _convert_by_str(args, arg_types):
                 return args
             except Exception:
                 raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
+    return args
 
 
 def _convert_by_class(args, arg_types):
@@ -363,6 +364,24 @@ def create_deck_snapshot(deck, save: bool = False, output_path: str = '', exclud
             pickle.dump(parse_dict, file)
     return deck_snapshot
 
+
+def create_block_snapshot(save: bool = False, output_path: str = ''):
+    block_snapshot = {}
+    included = {}
+    failed = {}
+    for category, data in BUILDING_BLOCKS.items():
+        key = f"blocks.{category}"
+        block_snapshot[key] = {}
+
+        for func_name, meta in data.items():
+            func = meta["func"]
+            block_snapshot[key][func_name] = {
+                "signature": meta["signature"],
+                "docstring": meta["docstring"],
+                "path": f"{func.__module__}.{func.__qualname__}"
+            }
+    print(block_snapshot)
+    return block_snapshot
 
 def load_deck(pkl_name: str):
     """

@@ -39,7 +39,29 @@
             </ul>
         </div>
     </div>
-
+    {% if block_variables %}
+        <div class="accordion-item  design-control">
+            <h5 class="accordion-header">
+                <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#block" role="button" aria-expanded="false" aria-controls="collapseExample">
+                    Methods
+                </button>
+            </h5>
+            <div class="accordion-collapse collapse show" id="block">
+                <ul class="list-group">
+                    {% for category in block_variables %}
+                        <button class="list-group-item list-group-item-action"
+                                type="button"
+                                name="device"
+                                value="{{category}}"
+                                data-get-url="{{ url_for('design.get_operation_sidebar', instrument=category) }}"
+                                onclick="updateInstrumentPanel(this)">
+                            {{ category|format_name }}
+                        </button>
+                    {% endfor%}
+                </ul>
+            </div>
+        </div>
+    {% endif %}
     {% if local_variables %}
         <div class="accordion-item  design-control">
             <h5 class="accordion-header">

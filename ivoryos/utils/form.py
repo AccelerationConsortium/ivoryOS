@@ -429,7 +429,7 @@ def create_form_from_action(action: dict, script=None, design=True):
 
 def create_all_builtin_forms(script):
     all_builtin_forms = {}
-    for logic_name in ['if', 'while', 'variable', 'wait', 'repeat']:
+    for logic_name in ['if', 'while', 'variable', 'wait', 'repeat', 'pause']:
         # signature = info.get('signature', {})
         form_class = create_builtin_form(logic_name, script)
         all_builtin_forms[logic_name] = form_class()
@@ -444,7 +444,8 @@ def create_builtin_form(logic_type, script):
 
     placeholder_text = {
         'wait': 'Enter second',
-        'repeat': 'Enter an integer'
+        'repeat': 'Enter an integer',
+        'pause': 'Human Intervention Message'
     }.get(logic_type, 'Enter statement')
     description_text = {
         'variable': 'Your variable can be numbers, boolean (True or False) or text ("text")',
@@ -536,6 +537,7 @@ def _action_button(action: dict, variables: dict):
         "repeat": "background-color: lightsteelblue",
         "if": "background-color: salmon",
         "while": "background-color: salmon",
+        "pause": "background-color: goldenrod",
     }.get(action['instrument'], "")
 
     if action['instrument'] in ['if', 'while', 'repeat']:

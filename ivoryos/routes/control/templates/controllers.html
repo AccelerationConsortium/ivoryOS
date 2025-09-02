@@ -49,6 +49,24 @@
             </div>
           </div>
         {% endif %}
+
+          {% if block_variables %}
+            <div class="mb-4">
+            <h6 class="fw-bold text-secondary mb-2" style="letter-spacing: 1px;">Methods</h6>
+            <div class="list-group">
+              {% for inst in block_variables %}
+                <a class="list-group-item list-group-item-action d-flex align-items-center {% if instrument == inst %}active bg-warning text-dark border-0{% else %}bg-light{% endif %}"
+                   href="{{ url_for('control.deck_controllers') }}?instrument={{ inst }}"
+                   style="border-radius: 0.5rem; margin-bottom: 0.5rem; transition: background 0.2s;">
+                  <span class="flex-grow-1">{{ inst | format_name }}</span>
+                  {% if instrument == inst %}
+                    <span class="ms-auto">&gt;</span>
+                  {% endif %}
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
         <!-- Action Buttons -->
         <div class="mb-4">
           <a href="{{ url_for('control.file.download_proxy', filetype='proxy') }}" class="btn btn-outline-primary w-100 mb-2">

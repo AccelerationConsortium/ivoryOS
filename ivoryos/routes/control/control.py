@@ -5,7 +5,7 @@ from ivoryos.routes.control.control_file import control_file
 from ivoryos.routes.control.control_new_device import control_temp
 from ivoryos.routes.control.utils import post_session_by_instrument, get_session_by_instrument, find_instrument_by_name
 from ivoryos.utils.global_config import GlobalConfig
-from ivoryos.utils.form import create_form_from_module
+from ivoryos.utils.form import create_form_from_module, create_form_from_pseudo
 from ivoryos.utils.task_runner import TaskRunner
 
 global_config = GlobalConfig()
@@ -48,7 +48,10 @@ def deck_controllers(instrument: str = None):
     forms = None
     if instrument:
         inst_object = find_instrument_by_name(instrument)
-        forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
+        if instrument.startswith("blocks"):
+            forms = create_form_from_pseudo(pseudo=inst_object, autofill=False, design=False)
+        else:
+            forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
         order = get_session_by_instrument('card_order', instrument)
         hidden_functions = get_session_by_instrument('hidden_functions', instrument)
         functions = list(forms.keys())
@@ -99,12 +102,11 @@ def deck_controllers(instrument: str = None):
                 function_data["signature"] = str(function_data["signature"])
         return jsonify(snapshot)
 
-    deck_variables = global_config.deck_snapshot.keys()
-    temp_variables = global_config.defined_variables.keys()
     return render_template(
         "controllers.html",
-        defined_variables=deck_variables,
-        temp_variables=temp_variables,
+        defined_variables=global_config.deck_snapshot.keys(),
+        block_variables=global_config.building_blocks.keys(),
+        temp_variables=global_config.defined_variables.keys(),
         instrument=instrument,
         forms=forms,
         session=session

@@ -8,12 +8,18 @@ from datetime import datetime
 from ivoryos.utils import utils, bo_campaign
 from ivoryos.utils.db_models import Script, WorkflowRun, WorkflowStep, db, SingleStep
 from ivoryos.utils.global_config import GlobalConfig
+from ivoryos.utils.decorators import BUILDING_BLOCKS
 
 global_config = GlobalConfig()
 global deck
 deck = None
 # global deck, registered_workflows
 # deck, registered_workflows = None, None
+class HumanInterventionRequired(Exception):
+    pass
+
+def pause(reason="Human intervention required"):
+    raise HumanInterventionRequired(reason)
 
 class ScriptRunner:
     def __init__(self, globals_dict=None):
@@ -110,9 +116,15 @@ class ScriptRunner:
         # Parse function body from string
         temp_connections = global_config.defined_variables
         # Prepare execution environment
-        exec_globals = {"deck": deck, "time":time}  # Add required global objects
+        exec_globals = {"deck": deck, "time":time, "pause": pause}  # Add required global objects
         # exec_globals = {"deck": deck, "time": time, "registered_workflows":registered_workflows}  # Add required global objects
         exec_globals.update(temp_connections)
+
+        # Inject all block categories
+        for category, data in BUILDING_BLOCKS.items():
+            for method_name, method in data.items():
+                exec_globals[method_name] = method["func"]
+
         exec_locals = {}  # Local execution scope
 
         # Define function arguments manually in exec_locals
@@ -161,6 +173,13 @@ class ScriptRunner:
                 else:
                     exec(line, exec_globals, exec_locals)
                 step.run_error = False
+
+            except HumanInterventionRequired as e:
+                logger.warning(f"Human intervention required: {e}")
+                socketio.emit('human_intervention', {'message': str(e)})
+                # Instead of auto-resume, explicitly stay paused until user action
+                self.toggle_pause()
+
             except Exception as e:
                 logger.error(f"Error during script execution: {e}")
                 socketio.emit('error', {'message': str(e)})
@@ -230,7 +249,7 @@ class ScriptRunner:
             with current_app.app_context():
                 run = db.session.get(WorkflowRun, run_id)
                 run.end_time = datetime.now()
-                run.output_file = filename
+                run.data_path = filename
                 run.run_error = error_flag
                 db.session.commit()
 

@@ -8,6 +8,7 @@ class GlobalConfig:
         if cls._instance is None:
             cls._instance = super(GlobalConfig, cls).__new__(cls, *args, **kwargs)
             cls._instance._deck = None
+            cls._instance._building_blocks = None
             cls._instance._registered_workflows = None
             cls._instance._agent = None
             cls._instance._defined_variables = {}
@@ -26,6 +27,15 @@ class GlobalConfig:
     def deck(self, value):
         if self._deck is None:
             self._deck = value
+
+    @property
+    def building_blocks(self):
+        return self._building_blocks
+
+    @building_blocks.setter
+    def building_blocks(self, value):
+        if self._building_blocks is None:
+            self._building_blocks = value
 
     @property
     def registered_workflows(self):

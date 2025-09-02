@@ -1,3 +1,17 @@
+V1.2.8
+- add human intervention (pause) to flow control
+- add @block decorator for python function
+- move run() from __init__.py to server.py
+- optimize drag/drop no drag when selecting text
+- fix type convertion error for "any" type
+
+V1.2.7
+- remove api function call backdoor
+- modify rpc script generation, to support auth
+- clean up function call error handling
+- bug fix for workflow save flash
+
+
 v0.1.23
 - Add show line number
 - Add dropdown menu option for Enum type
