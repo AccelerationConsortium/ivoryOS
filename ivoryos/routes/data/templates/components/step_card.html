@@ -1,13 +1,42 @@
-<div class="card mb-2 {{ 'border-danger text-danger bg-light' if step.run_error else 'border-secondary' }}">
-  <div class="card-body p-2">
-    <strong>{{ step.method_name | format_name }}</strong>
-    <small class="text-muted">
-      <i class="fas fa-play-circle me-1"></i> Start: {{ step.start_time.strftime('%H:%M:%S') if step.start_time else 'N/A' }}
-      <i class="fas fa-stop-circle ms-2 me-1"></i> End: {{ step.end_time.strftime('%H:%M:%S') if step.end_time else 'N/A' }}
-      <!-- {% if step.run_error %}
-        <i class="fas fa-stop-circle ms-2 me-1"></i> Error: {{ step.run_error if step.run_error else 'N/A' }}
-      {% endif %} -->
-    </small>
-    <!-- <small>Error: {{ step.run_error }}</small> -->
-  </div>
+<div class="card mb-2 {{ 'border-danger text-danger bg-light' if phase.run_error else 'border-secondary' }}">
+    <div class="card-body p-2">
+        <small class="text-muted">
+            <i class="fas fa-play-circle me-1"></i> Start: {{ phase.start_time.strftime('%H:%M:%S') if phase.start_time else 'N/A' }}
+            <i class="fas fa-stop-circle ms-2 me-1"></i> End: {{ phase.end_time.strftime('%H:%M:%S') if phase.end_time else 'N/A' }}
+        </small>
+            {% if phase.parameters %}
+            <div class="mt-2">
+                <strong>Parameters: </strong>
+                    {% for key, value in phase.parameters.items() %}
+                    <span class="badge bg-secondary me-1">{{ key }}: {{ value }}</span>
+                    {% endfor %}
+            </div>
+            {% endif %}
+        {% if phase.steps %}
+            <div class="mt-2">
+                <strong>Steps:</strong>
+                <ul class="mb-0">
+                    {% for step in phase.steps %}
+                        <li class="{{ 'text-danger' if step.run_error else '' }}">
+                            {{ step.method_name }}
+                            <small class="text-muted">
+                              ({{ step.start_time.strftime('%H:%M:%S') if step.start_time else 'N/A' }} –
+                              {{ step.end_time.strftime('%H:%M:%S') if step.end_time else 'N/A' }})
+                            </small>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        {% if phase.outputs %}
+            <div class="mt-1">
+                <strong>Outputs:</strong>
+                <ul class="mb-0">
+                    {% for key, value in phase.outputs.items() %}
+                        <li>{{ key }}: {{ value }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+    </div>
 </div>

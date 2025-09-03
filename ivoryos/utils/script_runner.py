@@ -6,7 +6,7 @@ import time
 from datetime import datetime
 
 from ivoryos.utils import utils, bo_campaign
-from ivoryos.utils.db_models import Script, WorkflowRun, WorkflowStep, db, SingleStep
+from ivoryos.utils.db_models import Script, WorkflowRun, WorkflowStep, db, WorkflowPhase
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.decorators import BUILDING_BLOCKS
 
@@ -93,7 +93,7 @@ class ScriptRunner:
         thread.start()
         return thread
 
-    def exec_steps(self, script, section_name, logger, socketio, run_id, i_progress, **kwargs):
+    def exec_steps(self, script, section_name, logger, socketio, phase_id, **kwargs):
         """
         Executes a function defined in a string line by line
         :param func_str: The function as a string
@@ -136,9 +136,9 @@ class ScriptRunner:
             if self.stop_current_event.is_set():
                 logger.info(f'Stopping execution during {section_name}')
                 step = WorkflowStep(
-                    workflow_id=run_id,
-                    phase=section_name,
-                    repeat_index=i_progress,
+                    phase_id=phase_id,
+                    # phase=section_name,
+                    # repeat_index=i_progress,
                     step_index=index,
                     method_name="stop",
                     start_time=datetime.now(),
@@ -148,21 +148,24 @@ class ScriptRunner:
                 db.session.add(step)
                 break
             line = step_list[index]
-            method_name = line.strip().split("(")[0] if "(" in line else line.strip()
-            start_time = datetime.now()
+
+            method_name = line.strip()
+            # start_time = datetime.now()
+
             step = WorkflowStep(
-                workflow_id=run_id,
-                phase=section_name,
-                repeat_index=i_progress,
+                phase_id=phase_id,
+                # phase=section_name,
+                # repeat_index=i_progress,
                 step_index=index,
                 method_name=method_name,
-                start_time=start_time,
+                start_time=datetime.now(),
             )
             db.session.add(step)
             db.session.commit()
+
             logger.info(f"Executing: {line}")
             socketio.emit('execution', {'section': f"{section_name}-{index}"})
-            # self._emit_progress(socketio, 100)
+
             # if line.startswith("registered_workflows"):
             #     line = line.replace("registered_workflows.", "")
             try:
@@ -172,12 +175,13 @@ class ScriptRunner:
                     self.safe_sleep(duration)
                 else:
                     exec(line, exec_globals, exec_locals)
-                step.run_error = False
+                # step.run_error = False
 
             except HumanInterventionRequired as e:
                 logger.warning(f"Human intervention required: {e}")
                 socketio.emit('human_intervention', {'message': str(e)})
                 # Instead of auto-resume, explicitly stay paused until user action
+                # step.run_error = False
                 self.toggle_pause()
 
             except Exception as e:
@@ -187,7 +191,7 @@ class ScriptRunner:
                 step.run_error = True
                 self.toggle_pause()
             step.end_time = datetime.now()
-            # db.session.add(step)
+            step.output = exec_locals
             db.session.commit()
 
             self.pause_event.wait()
@@ -195,10 +199,9 @@ class ScriptRunner:
             # todo update script during the run
             # _func_str = script.compile()
             # step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
-            if not step.run_error:
+            if not step.run_error or not self.retry:
                 index += 1
-            elif not self.retry:
-                index += 1
+
         return exec_locals  # Return the 'results' variable
 
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, logger, socketio, config, bo_args,
@@ -210,14 +213,17 @@ class ScriptRunner:
         filename = None
         error_flag = False
         # create a new run entry in the database
-        try:
-            with current_app.app_context():
-                run = WorkflowRun(name=script.name or "untitled", platform=script.deck or "deck",start_time=datetime.now())
-                db.session.add(run)
-                db.session.commit()
-                run_id = run.id  # Save the ID
-                global_config.runner_status = {"id":run_id, "type": "workflow"}
+        repeat_mode = "batch" if config else "optimizer" if bo_args or optimizer else "repeat"
+        with current_app.app_context():
+            run = WorkflowRun(name=script.name or "untitled", platform=script.deck or "deck", start_time=datetime.now(),
+                              repeat_mode=repeat_mode
+                              )
+            db.session.add(run)
+            db.session.commit()
+            run_id = run.id  # Save the ID
+            try:
 
+                global_config.runner_status = {"id":run_id, "type": "workflow"}
                 # Run "prep" section once
                 self._run_actions(script, section_name="prep", logger=logger, socketio=socketio, run_id=run_id)
                 output_list = []
@@ -234,35 +240,52 @@ class ScriptRunner:
                 # Run "cleanup" section once
                 self._run_actions(script, section_name="cleanup", logger=logger, socketio=socketio,run_id=run_id)
                 # Reset the running flag when done
-
                 # Save results if necessary
-
                 if not script.python_script and output_list:
                     filename = self._save_results(run_name, arg_type, return_list, output_list, logger, output_path)
                 self._emit_progress(socketio, 100)
 
-        except Exception as e:
-            logger.error(f"Error during script execution: {e.__str__()}")
-            error_flag = True
-        finally:
-            self.lock.release()
-            with current_app.app_context():
-                run = db.session.get(WorkflowRun, run_id)
-                run.end_time = datetime.now()
-                run.data_path = filename
-                run.run_error = error_flag
-                db.session.commit()
+            except Exception as e:
+                logger.error(f"Error during script execution: {e.__str__()}")
+                error_flag = True
+            finally:
+                self.lock.release()
+        with current_app.app_context():
+            run = db.session.get(WorkflowRun, run_id)
+            run.end_time = datetime.now()
+            run.data_path = filename
+            run.run_error = error_flag
+            db.session.commit()
 
 
     def _run_actions(self, script, section_name="", logger=None, socketio=None, run_id=None):
         _func_str = script.python_script or script.compile()
         step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
-        logger.info(f'Executing {section_name} steps') if step_list else logger.info(f'No {section_name} steps')
+        if not step_list:
+            logger.info(f'No {section_name} steps')
+            return None
+
+        logger.info(f'Executing {section_name} steps')
         if self.stop_pending_event.is_set():
             logger.info(f"Stopping execution during {section_name} section.")
-            return
-        if step_list:
-            self.exec_steps(script, section_name, logger, socketio, run_id=run_id, i_progress=0)
+            return None
+
+        phase = WorkflowPhase(
+            run_id=run_id,
+            name=section_name,
+            repeat_index=0,
+            start_time=datetime.now()
+        )
+        db.session.add(phase)
+        db.session.commit()
+        phase_id = phase.id
+
+        step_outputs = self.exec_steps(script, section_name, logger, socketio, phase_id=phase_id)
+        # Save phase-level output
+        phase.outputs = step_outputs
+        phase.end_time = datetime.now()
+        db.session.commit()
+        return step_outputs
 
     def _run_config_section(self, config, arg_type, output_list, script, run_name, logger, socketio, run_id, compiled=True):
         if not compiled:
@@ -285,10 +308,25 @@ class ScriptRunner:
                 self._emit_progress(socketio, progress)
                 # fname = f"{run_name}_script"
                 # function = self.globals_dict[fname]
-                output = self.exec_steps(script, "script", logger, socketio, run_id, i, **kwargs)
+
+                phase = WorkflowPhase(
+                    run_id=run_id,
+                    name="main",
+                    repeat_index=i,
+                    parameters=kwargs,
+                    start_time=datetime.now()
+                )
+                db.session.add(phase)
+                db.session.commit()
+
+                phase_id = phase.id
+                output = self.exec_steps(script, "script", logger, socketio, phase_id, **kwargs)
                 if output:
                     # kwargs.update(output)
                     output_list.append(output)
+                    phase.outputs = {k:v for k, v in output.items() if k not in arg_type.keys()}
+                phase.end_time = datetime.now()
+                db.session.commit()
 
     def _run_repeat_section(self, repeat_count, arg_types, bo_args, output_list, script, run_name, return_list, compiled,
                             logger, socketio, history, output_path, run_id, optimizer=None):
@@ -325,6 +363,17 @@ class ScriptRunner:
             if self.stop_pending_event.is_set():
                 logger.info(f'Stopping execution during {run_name}: {i_progress + 1}/{int(repeat_count)}')
                 break
+
+            phase = WorkflowPhase(
+                run_id=run_id,
+                name="main",
+                repeat_index=i_progress,
+                start_time=datetime.now()
+            )
+            db.session.add(phase)
+            db.session.commit()
+            phase_id = phase.id
+
             logger.info(f'Executing {run_name} experiment: {i_progress + 1}/{int(repeat_count)}')
             progress = (i_progress + 1) * 100 / int(repeat_count) - 0.1
             self._emit_progress(socketio, progress)
@@ -334,7 +383,9 @@ class ScriptRunner:
                     logger.info(f'Output value: {parameters}')
                     # fname = f"{run_name}_script"
                     # function = self.globals_dict[fname]
-                    output = self.exec_steps(script, "script", logger, socketio, run_id, i_progress, **parameters)
+                    phase.parameters = parameters
+
+                    output = self.exec_steps(script, "script", logger, socketio, phase_id, **parameters)
 
                     _output = {key: value for key, value in output.items() if key in return_list}
                     ax_client.complete_trial(trial_index=trial_index, raw_data=_output)
@@ -346,7 +397,8 @@ class ScriptRunner:
                 try:
                     parameters = optimizer.suggest(1)
                     logger.info(f'Output value: {parameters}')
-                    output = self.exec_steps(script, "script", logger, socketio, run_id, i_progress, **parameters)
+                    phase.parameters = parameters
+                    output = self.exec_steps(script, "script", logger, socketio, phase_id, **parameters)
                     if output:
                         optimizer.observe(output)
                         output.update(parameters)
@@ -356,17 +408,20 @@ class ScriptRunner:
             else:
                 # fname = f"{run_name}_script"
                 # function = self.globals_dict[fname]
-                output = self.exec_steps(script, "script", logger, socketio, run_id, i_progress)
+                output = self.exec_steps(script, "script", logger, socketio, phase_id)
 
             if output:
                 output_list.append(output)
                 logger.info(f'Output value: {output}')
+                phase.outputs = output
+            phase.end_time = datetime.now()
+            db.session.commit()
 
         if bo_args:
             ax_client.save_to_json_file(os.path.join(output_path, f"{run_name}_ax_client.json"))
-        logger.info(
-            f'Optimization complete. Results saved to {os.path.join(output_path, f"{run_name}_ax_client.json")}'
-        )
+            logger.info(
+                f'Optimization complete. Results saved to {os.path.join(output_path, f"{run_name}_ax_client.json")}'
+            )
         return output_list
 
     @staticmethod
