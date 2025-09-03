@@ -689,6 +689,7 @@ class Script(db.Model):
         return "\n".join(lines)
 
 class WorkflowRun(db.Model):
+    """Represents the entire experiment"""
     __tablename__ = 'workflow_runs'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -697,30 +698,55 @@ class WorkflowRun(db.Model):
     start_time = db.Column(db.DateTime, default=datetime.now())
     end_time = db.Column(db.DateTime)
     data_path = db.Column(db.String(256))
-    steps = db.relationship(
-        'WorkflowStep',
-        backref='workflow_runs',
+    # A run contains multiple iterations
+    iterations = db.relationship(
+        'WorkflowIteration',
+        backref='run', # Clearer back-reference name
         cascade='all, delete-orphan',
-        passive_deletes=True
+        lazy='dynamic' # Good for handling many iterations
     )
     def as_dict(self):
         dict = self.__dict__
         dict.pop('_sa_instance_state', None)
         return dict
 
+class WorkflowIteration(db.Model):
+    """Represents a single function call within a WorkflowRun."""
+    __tablename__ = 'workflow_iterations'
+
+    id = db.Column(db.Integer, primary_key=True)
+    # Foreign key to link this iteration to its parent run
+    run_id = db.Column(db.Integer, db.ForeignKey('workflow_runs.id', ondelete='CASCADE'), nullable=False)
+
+    # NEW: Store iteration-specific parameters here
+    phase = db.Column(db.String(64), nullable=False)  # 'prep', 'main_1', 'main_2', 'cleanup'
+    parameters = db.Column(JSONType)  # Use db.JSON for general support
+    outputs = db.Column(JSONType)
+    start_time = db.Column(db.DateTime, default=datetime.now)
+    end_time = db.Column(db.DateTime)
+
+    # An iteration contains multiple steps
+    steps = db.relationship(
+        'WorkflowStep',
+        backref='iteration',  # Clearer back-reference name
+        cascade='all, delete-orphan'
+    )
+
 class WorkflowStep(db.Model):
     __tablename__ = 'workflow_steps'
 
     id = db.Column(db.Integer, primary_key=True)
-    workflow_id = db.Column(db.Integer, db.ForeignKey('workflow_runs.id', ondelete='CASCADE'), nullable=False)
+    iteration_id = db.Column(db.Integer, db.ForeignKey('workflow_iterations.id', ondelete='CASCADE'), nullable=False)
 
-    phase = db.Column(db.String(64), nullable=False)  # 'prep', 'main', 'cleanup'
-    repeat_index = db.Column(db.Integer, default=0)   # Only applies to 'main' phase
+    # phase = db.Column(db.String(64), nullable=False)  # 'prep', 'main', 'cleanup'
+    # repeat_index = db.Column(db.Integer, default=0)   # Only applies to 'main' phase
     step_index = db.Column(db.Integer, default=0)
     method_name = db.Column(db.String(128), nullable=False)
     start_time = db.Column(db.DateTime)
     end_time = db.Column(db.DateTime)
     run_error = db.Column(db.Boolean, default=False)
+    output = db.Column(JSONType, default={})
+    # Using as_dict method from ModelBase
 
     def as_dict(self):
         dict = self.__dict__.copy()
