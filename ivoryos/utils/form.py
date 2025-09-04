@@ -210,10 +210,10 @@ class FlexibleEnumField(StringField):
             if key in self.choices:
                 # Convert the string key to Enum instance
                 self.data = self.enum_class[key].value
-            elif self.data.startswith("#"):
+            elif key.startswith("#"):
                 if not self.script.editing_type == "script":
                     raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
-                self.data = self.data
+                self.data = key
             else:
                 raise ValidationError(
                     f"Invalid choice: '{key}'. Must match one of {list(self.enum_class.__members__.keys())}")
@@ -286,7 +286,9 @@ def create_form_for_method(method, autofill, script=None, design=True):
             # enum_class = [(e.name, e.value) for e in param.annotation]
             field_class = FlexibleEnumField
             placeholder_text = f"Choose or type a value for {param.annotation.__name__} (start with # for custom)"
+
             extra_kwargs = {"choices": param.annotation}
+
         else:
             # print(param.annotation)
             annotation, optional = parse_annotation(param.annotation)
