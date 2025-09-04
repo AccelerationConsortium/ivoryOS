@@ -4,127 +4,348 @@
 
 {% block body %}
 <style>
-  .vis-time-axis .vis-text.vis-minor,
-  .vis-time-axis .vis-text.vis-major {
-    color: #666;
-  }
-  .vis-item.stop {
-    background-color: red;
-    color: white;
-    border: none;
-    font-weight: bold;
-  }
+    .vis-time-axis .vis-text.vis-minor,
+    .vis-time-axis .vis-text.vis-major {
+        color: #666;
+    }
+    .vis-item.stop {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        font-weight: bold;
+    }
+    .vis-item.prep {
+        background-color: #17a2b8;
+        border-color: #138496;
+    }
+    .vis-item.script {
+        background-color: #28a745;
+        border-color: #1e7e34;
+    }
+    .vis-item.cleanup {
+        background-color: #ffc107;
+        border-color: #d39e00;
+        color: #212529;
+    }
+    #visualization {
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        background-color: #fff;
+        min-height: 200px;
+    }
+
+    .section-header {
+        border-bottom: 2px solid #dee2e6;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+        color: #495057;
+    }
+    .loading-spinner {
+        display: none;
+    }
 </style>
 
-<div id="timeline"></div>
 
+    <div class="timeline-section" style="margin-bottom: 2rem;">
+        <h3 class="section-header">
+            <i class="fas fa-clock me-2"></i>Execution Timeline
+        </h3>
+        <div class="alert alert-info" role="alert">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Tip:</strong> Click on timeline items to navigate to detailed views. Use Ctrl+scroll to zoom.
+        </div>
+        <div id="visualization"></div>
+    </div>
+
+    <!-- Phase Output Plot Section -->
+
+    <div class="data-section" style="margin-bottom: 2rem;">
+        <h3 class="section-header">
+            <div class="col-md-6">
+                <label for="output-select" class="form-label">Select Data Type:</label>
+                <select id="output-select" class="form-select">
+                    <option value="">Loading data types...</option>
+                </select>
+            </div>
+        </h3>
+
+        <div class="plot-controls">
+            <div>
+                <div class="col-md-6 text-md-end">
+                    <div class="loading-spinner">
+                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        Loading plot data...
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="phase-plot" style="height:450px;" class="border rounded bg-white shadow-sm"></div>
+    </div>
+
+    <!-- Workflow Details Section -->
+
+    <div>
+        <h2 class="section-header">
+            <i class="fas fa-project-diagram me-2"></i>Workflow: {{ workflow.name }}
+        </h2>
+
+        <!-- Prep Phase -->
+        {% if grouped.prep %}
+            <div class="mb-4">
+                <h4 class="text-info mb-3">
+                    <i class="fas fa-tools me-2"></i>Prep
+                </h4>
+                <div class="row">
+                    {% for phase in grouped.prep %}
+                        <div class="col-lg-6 mb-3">
+                            {% include "components/step_card.html" %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Script Iterations -->
+        {% for repeat_index, phase_list in grouped.script.items()|sort %}
+            <div class="mb-4" id="card-iter{{ repeat_index }}">
+                <h4 class="text-success mb-3">
+                    <i class="fas fa-redo me-2"></i>Iteration {{ repeat_index }}
+                </h4>
+                <div class="row">
+                    {% for phase in phase_list %}
+                        <div class="col-lg-6 mb-3">
+                            {% include "components/step_card.html" %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+
+        <!-- Cleanup Phase -->
+        {% if grouped.cleanup %}
+            <div>
+                <h4 class="text-warning mb-3">
+                    <i class="fas fa-broom me-2"></i>Cleanup
+                </h4>
+                <div class="row">
+                    {% for phase in grouped.cleanup %}
+                        <div class="col-lg-6 mb-3">
+                            {% include "components/step_card.html" %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+
+
+<!-- External Dependencies -->
 <script src="https://unpkg.com/vis-timeline@latest/standalone/umd/vis-timeline-graph2d.min.js"></script>
 <link href="https://unpkg.com/vis-timeline@latest/styles/vis-timeline-graph2d.min.css" rel="stylesheet"/>
-
-<h1>Experiment Step View</h1>
-
-<div id="visualization"></div>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
 <script type="text/javascript">
-  var container = document.getElementById('visualization');
+    document.addEventListener('DOMContentLoaded', function() {
+        // ---------------- Timeline Setup ----------------
+        const container = document.getElementById('visualization');
+        const groups = [
+            { id: 'all', content: 'Workflow Execution' }
+        ];
 
-  const items = [
-    {% if grouped.prep %}
-      {
-        id: 'prep',
-        content: 'Prep Phase',
-        start: '{{ grouped.prep[0].start_time }}',
-        end: '{{ grouped.prep[-1].end_time }}',
-        className: 'prep',
-        group: 'prep'
-      },
-    {% endif %}
+        const items = [
+            {% if grouped.prep %}
+                {
+                    id: 'prep',
+                    content: 'Prep',
+                    start: '{{ grouped.prep[0].start_time }}',
+                    end: '{{ grouped.prep[-1].end_time }}',
+                    className: 'prep',
+                    group: 'all',
+                },
+            {% endif %}
 
-    {% for repeat_index, step_list in grouped.script.items()|sort %}
-      {
-        id: 'iter{{ repeat_index }}',
-        content: 'Iteration {{ repeat_index }}',
-        start: '{{ step_list[0].start_time }}',
-        end: '{{ step_list[-1].end_time }}',
-        className: 'script',
-        group: 'iter{{ repeat_index }}'
-      },
-      {% for step in step_list %}
-        {% if step.method_name == "stop" %}
-          {
-            id: 'stop-{{ step.id }}',
-            content: '🛑 Stop',
-            start: '{{ step.start_time }}',
-            type: 'point',
-            className: 'stop',
-            group: 'iter{{ repeat_index }}'
-          },
-        {% endif %}
-      {% endfor %}
-    {% endfor %}
+            {% for repeat_index, step_list in grouped.script.items()|sort %}
+                {
+                    id: 'iter{{ repeat_index }}',
+                    content: 'Iteration {{ repeat_index }}',
+                    start: '{{ step_list[0].start_time }}',
+                    end: '{{ step_list[-1].end_time }}',
+                    className: 'script',
+                    group: 'all',
+                },
+                {% for step in step_list %}
+                    {% if step.method_name == "stop" %}
+                        {
+                            id: 'stop-{{ step.id }}',
+                            content: '🛑 Stop',
+                            start: '{{ step.start_time }}',
+                            type: 'point',
+                            className: 'stop',
+                            group: 'all',
+                            title: 'Stop event at {{ step.start_time }}'
+                        },
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
 
-    {% if grouped.cleanup %}
-      {
-        id: 'cleanup',
-        content: 'Cleanup Phase',
-        start: '{{ grouped.cleanup[0].start_time }}',
-        end: '{{ grouped.cleanup[-1].end_time }}',
-        className: 'cleanup',
-        group: 'cleanup'
+            {% if grouped.cleanup %}
+                {
+                    id: 'cleanup',
+                    content: 'Cleanup ',
+                    start: '{{ grouped.cleanup[0].start_time }}',
+                    end: '{{ grouped.cleanup[-1].end_time }}',
+                    className: 'cleanup',
+                    group: 'all',
+                },
+            {% endif %}
+        ];
 
-      },
-    {% endif %}
-  ];
+        var timeline = new vis.Timeline(container, items, groups, {
+            clickToUse: true,
+            stack: false,        // keep items from overlapping vertically
+            horizontalScroll: true,
+            zoomKey: 'ctrlKey'
+        });
 
-  const groups = [
-      {% if grouped.prep %}{ id: 'prep', content: 'Prep' },{% endif %}
-      {% for repeat_index in grouped.script.keys()|sort %}{ id: 'iter{{ repeat_index }}', content: 'Iteration {{ repeat_index }}' },{% endfor %}
-      {% if grouped.cleanup %}{ id: 'cleanup', content: 'Cleanup' },{% endif %}
-  ];
+        timeline.on('select', function (props) {
+            const id = props.items[0];
+            if (id && id.startsWith('iter')) {
+                const card = document.getElementById('card-' + id);
+                if (card) {
+                    const yOffset = -80;
+                    const y = card.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                }
+            }
+        });
 
-  var options = {
-      clickToUse: true,
-      stack: false,  // important to keep point within group row
-      horizontalScroll: true,
-      zoomKey: 'ctrlKey'
-  };
+        // ---------------- Phase Data Plot ----------------
+        const loadingSpinner = document.querySelector('.loading-spinner');
+        const select = document.getElementById('output-select');
 
-  // Initialize your timeline with the sorted groups
-  const timeline = new vis.Timeline(container, items, groups, options);
+        loadingSpinner.style.display = 'block';
 
-  timeline.on('select', function (props) {
-    const id = props.items[0];
-    if (id && id.startsWith('iter')) {
-      const card = document.getElementById('card-' + id);
-      if (card) {
-        const yOffset = -80;
-        const y = card.getBoundingClientRect().top + window.pageYOffset + yOffset;
-        window.scrollTo({ top: y, behavior: 'smooth' });
-      }
-    }
-  });
+
+        fetch("{{ url_for('data.workflow_phase_data', workflow_id=workflow.id) }}")
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(data => {
+                loadingSpinner.style.display = 'none';
+
+                const repeatKeys = Object.keys(data).sort((a, b) => a - b);
+                const dataSection = document.querySelector('.data-section'); // Get the entire section
+
+                if (!repeatKeys.length) {
+                    // Hide the entire data section if no data
+                    dataSection.style.display = 'none';
+                    return;
+                }
+
+                const allKeys = new Set();
+                repeatKeys.forEach(k => {
+                    Object.keys(data[k]).forEach(key => allKeys.add(key));
+                });
+
+                // If no keys found, also hide the section
+                if (allKeys.size === 0) {
+                    dataSection.style.display = 'none';
+                    return;
+                }
+
+                // Show the data section since we have data
+                dataSection.style.display = 'block';
+
+                // Clear and populate select options
+                select.innerHTML = '';
+                allKeys.forEach(k => {
+                    const option = new Option(k, k);
+                    select.appendChild(option);
+                });
+
+                function plotData(selectedKey) {
+                    const x = [];
+                    const y = [];
+
+                    repeatKeys.forEach(repeat_index => {
+                        const arr = data[repeat_index][selectedKey];
+                        if (arr && arr.length) {
+                            arr.forEach(d => {
+                                if (typeof d === 'object' && d.x !== undefined && d.y !== undefined) {
+                                    x.push(d.x);
+                                    y.push(d.y);
+                                } else if (typeof d === 'number') {
+                                    x.push(parseInt(repeat_index));
+                                    y.push(d);
+                                }
+                            });
+                        }
+                    });
+
+                    const trace = {
+                        x: x,
+                        y: y,
+                        mode: 'markers',
+                        name: selectedKey,
+                    };
+
+                    const layout = {
+                        xaxis: {
+                            title: 'Iteration Index',
+                            gridcolor: '#e9ecef'
+                        },
+                        yaxis: {
+                            title: selectedKey,
+                            gridcolor: '#e9ecef'
+                        },
+                        plot_bgcolor: '#ffffff',
+                        paper_bgcolor: '#ffffff',
+                        margin: { t: 60, r: 40, b: 60, l: 80 }
+                    };
+
+                    const config = {
+                        responsive: true,
+                        displayModeBar: true,
+                        modeBarButtonsToRemove: ['lasso2d', 'select2d']
+                    };
+
+                    Plotly.newPlot('phase-plot', [trace], layout, config);
+                }
+
+                select.addEventListener('change', e => {
+                    if (e.target.value) {
+                        plotData(e.target.value);
+                    }
+                });
+
+                // Plot first available data type
+                if (allKeys.size > 0) {
+                    plotData([...allKeys][0]);
+                }
+            })
+            .catch(error => {
+                loadingSpinner.style.display = 'none';
+                console.error('Error loading phase data:', error);
+
+                const dataSection = document.querySelector('.data-section');
+                // Hide the section on error as well
+                dataSection.style.display = 'none';
+
+                // Optionally, you could show an error message instead:
+                // dataSection.innerHTML = `
+                //     <div class="alert alert-danger m-3" role="alert">
+                //         <i class="fas fa-exclamation-triangle me-2"></i>
+                //         <strong>Error:</strong> Unable to load phase data. ${error.message}
+                //     </div>
+                // `;
+            });
+    });
 </script>
 
-<h2>Workflow: {{ workflow.name }}</h2>
-
-{% if grouped.prep %}
-  <h4 class="mt-4">Prep Phase</h4>
-  {% for step in grouped.prep %}
-    {% include "components/step_card.html" %}
-  {% endfor %}
-{% endif %}
-
-{% for repeat_index, step_list in grouped.script.items()|sort %}
-  <h4 class="mt-4" id="card-iter{{ repeat_index }}">Iteration {{ repeat_index }}</h4>
-  {% for step in step_list %}
-    {% include "components/step_card.html" %}
-  {% endfor %}
-{% endfor %}
-
-{% if grouped.cleanup %}
-  <h4 class="mt-4">Cleanup Phase</h4>
-  {% for step in grouped.cleanup %}
-    {% include "components/step_card.html" %}
-  {% endfor %}
-{% endif %}
 {% endblock %}

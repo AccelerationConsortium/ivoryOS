@@ -94,12 +94,12 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
         app.config["MODULE"] = module
         app.config["OFF_LINE"] = False
         global_config.deck = sys.modules[module]
+        global_config.building_blocks = utils.create_block_snapshot()
         global_config.deck_snapshot = utils.create_deck_snapshot(global_config.deck,
                                                                  output_path=dummy_deck_path,
                                                                  save=True,
                                                                  exclude_names=exclude_names
                                                                  )
-        global_config.building_blocks = utils.create_block_snapshot()
 
     else:
         app.config["OFF_LINE"] = True

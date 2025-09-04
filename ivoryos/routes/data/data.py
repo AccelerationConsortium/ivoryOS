@@ -3,7 +3,7 @@ import os
 from flask import Blueprint, redirect, url_for, request, render_template, current_app, jsonify, send_file
 from flask_login import login_required
 
-from ivoryos.utils.db_models import db, WorkflowRun, WorkflowStep
+from ivoryos.utils.db_models import db, WorkflowRun, WorkflowStep, WorkflowPhase
 
 data = Blueprint('data', __name__, template_folder='templates')
 
@@ -37,7 +37,6 @@ def list_workflows():
     else:
         return render_template('workflow_database.html', workflows=workflows)
 
-
 @data.get("/executions/records/<int:workflow_id>")
 def workflow_logs(workflow_id:int):
     """
@@ -50,47 +49,87 @@ def workflow_logs(workflow_id:int):
     :param workflow_id: workflow id
     :type workflow_id: int
     """
+    workflow = db.session.get(WorkflowRun, workflow_id)
+    if not workflow:
+        return jsonify({"error": "Workflow not found"}), 404
 
-    if request.method == 'GET':
-        workflow = db.session.get(WorkflowRun, workflow_id)
-        steps = WorkflowStep.query.filter_by(workflow_id=workflow_id).order_by(WorkflowStep.start_time).all()
+    # Query all phases for this run, ordered by start_time
+    phases = WorkflowPhase.query.filter_by(run_id=workflow_id).order_by(WorkflowPhase.start_time).all()
 
-        # Use full objects for template rendering
-        grouped = {
-            "prep": [],
-            "script": {},
-            "cleanup": [],
-        }
+    # Prepare grouped data for template (full objects)
+    grouped = {
+        "prep": [],
+        "script": {},
+        "cleanup": [],
+    }
 
-        # Use dicts for JSON response
-        grouped_json = {
-            "prep": [],
-            "script": {},
-            "cleanup": [],
-        }
+    # Prepare grouped data for JSON (dicts)
+    grouped_json = {
+        "prep": [],
+        "script": {},
+        "cleanup": [],
+    }
 
-        for step in steps:
-            step_dict = step.as_dict()
+    for phase in phases:
+        phase_dict = phase.as_dict()
 
-            if step.phase == "prep":
-                grouped["prep"].append(step)
-                grouped_json["prep"].append(step_dict)
+        # Steps sorted by step_index
+        steps = sorted(phase.steps, key=lambda s: s.step_index)
+        phase_steps_dicts = [s.as_dict() for s in steps]
 
-            elif step.phase == "script":
-                grouped["script"].setdefault(step.repeat_index, []).append(step)
-                grouped_json["script"].setdefault(step.repeat_index, []).append(step_dict)
-
-            elif step.phase == "cleanup" or step.method_name == "stop":
-                grouped["cleanup"].append(step)
-                grouped_json["cleanup"].append(step_dict)
-
-        if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
-            return jsonify({
-                "workflow_info": workflow.as_dict(),
-                "steps": grouped_json,
+        if phase.name == "prep":
+            grouped["prep"].append(phase)
+            grouped_json["prep"].append({
+                **phase_dict,
+                "steps": phase_steps_dicts
             })
-        else:
-            return render_template("workflow_view.html", workflow=workflow, grouped=grouped)
+
+        elif phase.name == "main":
+            grouped["script"].setdefault(phase.repeat_index, []).append(phase)
+            grouped_json["script"].setdefault(phase.repeat_index, []).append({
+                **phase_dict,
+                "steps": phase_steps_dicts
+            })
+
+        elif phase.name == "cleanup":
+            grouped["cleanup"].append(phase)
+            grouped_json["cleanup"].append({
+                **phase_dict,
+                "steps": phase_steps_dicts
+            })
+
+    if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+        return jsonify({
+            "workflow_info": workflow.as_dict(),
+            "phases": grouped_json,
+        })
+    else:
+        return render_template("workflow_view.html", workflow=workflow, grouped=grouped)
+
+
+@data.get("/executions/data/<int:workflow_id>")
+def workflow_phase_data(workflow_id: int):
+    workflow = db.session.get(WorkflowRun, workflow_id)
+    if not workflow:
+        return jsonify({})
+
+    phase_data = {}
+    # Only plot 'main' phases
+    main_phases = WorkflowPhase.query.filter_by(run_id=workflow_id, name='main').order_by(
+        WorkflowPhase.repeat_index).all()
+
+    for phase in main_phases:
+        outputs = phase.outputs or {}
+        phase_index = phase.repeat_index
+        # Convert each key to list of dicts for x (phase_index) and y (value)
+        phase_data[phase_index] = {}
+        for k, v in outputs.items():
+            if isinstance(v, (int, float)):
+                phase_data[phase_index][k] = [{"x": phase_index, "y": v}]
+            elif isinstance(v, list) and all(isinstance(i, (int, float)) for i in v):
+                phase_data[phase_index][k] = v.map(lambda val, idx=0: {"x": phase_index, "y": val})
+
+    return jsonify(phase_data)
 
 
 @data.delete("/executions/records/<int:workflow_id>")

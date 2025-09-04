@@ -1,3 +1,4 @@
+import copy
 import os
 from flask import Blueprint, jsonify, request, current_app
 
@@ -46,7 +47,7 @@ def backend_control(instrument: str=None):
                                             current_app=current_app._get_current_object())
             return jsonify(output), 200
 
-    snapshot = global_config.deck_snapshot.copy()
+    snapshot = copy.deepcopy(global_config.deck_snapshot)
     # Iterate through each instrument in the snapshot
     for instrument_key, instrument_data in snapshot.items():
         # Iterate through each function associated with the current instrument
