@@ -745,7 +745,7 @@ class WorkflowStep(db.Model):
     __tablename__ = 'workflow_steps'
 
     id = db.Column(db.Integer, primary_key=True)
-    # workflow_id = db.Column(db.Integer, db.ForeignKey('workflow_runs.id', ondelete='CASCADE'), nullable=False)
+    # workflow_id = db.Column(db.Integer, db.ForeignKey('workflow_runs.id', ondelete='CASCADE'), nullable=True)
     phase_id = db.Column(db.Integer, db.ForeignKey('workflow_phases.id', ondelete='CASCADE'), nullable=True)
 
     # phase = db.Column(db.String(64), nullable=False)  # 'prep', 'main', 'cleanup'

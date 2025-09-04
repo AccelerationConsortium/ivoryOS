@@ -17,6 +17,42 @@ from ivoryos.routes.api.api import api
 from ivoryos.socket_handlers import socketio
 from ivoryos.routes.main.main import main
 from ivoryos.version import __version__ as ivoryos_version
+from sqlalchemy import inspect, text
+from flask import current_app
+
+
+def reset_old_schema(engine, db_dir):
+    inspector = inspect(engine)
+    tables = inspector.get_table_names()
+
+
+    # Check if old tables exist (no workflow_phases table)
+    has_workflow_phase = 'workflow_phases' in tables
+    old_workflow_run = 'old_workflow_run' in tables
+    old_workflow_step = 'workflow_steps' in tables
+
+    if not has_workflow_phase:
+        print("⚠️ Old workflow database detected! All previous workflows have been reset to support the new schema.")
+        # Backup old DB
+        db_path = os.path.join(db_dir, "ivoryos.db")
+        if os.path.exists(db_path):
+            # os.makedirs(backup_dir, exist_ok=True)
+            from datetime import datetime
+            import shutil
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_path = os.path.join(db_dir, f"ivoryos_backup_{ts}.db")
+            shutil.copy(db_path, backup_path)
+            print(f"Backup created at {backup_path}")
+        with engine.begin() as conn:
+            # Drop old tables
+            if old_workflow_step:
+                conn.execute(text("DROP TABLE IF EXISTS workflow_steps"))
+            if old_workflow_run:
+                conn.execute(text("DROP TABLE IF EXISTS workflow_runs"))
+
+    # Recreate new schema
+    db.create_all()  # creates workflow_runs, workflow_phases, workflow_steps
+
 
 def create_app(config_class=None):
     """
@@ -45,7 +81,8 @@ def create_app(config_class=None):
 
     # Create database tables
     with app.app_context():
-        db.create_all()
+        # db.create_all()
+        reset_old_schema(db.engine, app.config['OUTPUT_FOLDER'])
 
     # Additional setup
     utils.create_gui_dir(app.config['OUTPUT_FOLDER'])

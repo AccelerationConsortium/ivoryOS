@@ -349,8 +349,8 @@ def create_deck_snapshot(deck, save: bool = False, output_path: str = '', exclud
             for name, class_type in items.items():
                 print(f"  {name}: {class_type}")
 
-        print_section("✅ INCLUDED", deck_summary["included"])
-        print_section("❌ FAILED", deck_summary["failed"])
+        print_section("✅ INCLUDED MODULES", deck_summary["included"])
+        print_section("❌ FAILED MODULES", deck_summary["failed"])
         print("\n")
 
     print_deck_snapshot(deck_summary)
@@ -380,7 +380,10 @@ def create_block_snapshot(save: bool = False, output_path: str = ''):
                 "docstring": meta["docstring"],
                 "path": f"{func.__module__}.{func.__qualname__}"
             }
-    print(block_snapshot)
+    if block_snapshot:
+        print(f"\n=== ✅ BUILDING_BLOCKS ({len(block_snapshot)}) ===")
+        for category, blocks in block_snapshot.items():
+            print(f"  {category}: ", ",".join(blocks.keys()))
     return block_snapshot
 
 def load_deck(pkl_name: str):
