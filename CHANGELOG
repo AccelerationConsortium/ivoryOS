@@ -1,11 +1,17 @@
-V1.2.8
+v1.3.0
+- refactor the workflow record db to support visualization
+- old workflow db was be backup and dropped
+- bug fix - Enum dynamic input and input in Devices
+- bug fix - snapshot converted to str issue
+
+v1.2.8
 - add human intervention (pause) to flow control
 - add @block decorator for python function
 - move run() from __init__.py to server.py
 - optimize drag/drop no drag when selecting text
 - fix type convertion error for "any" type
 
-V1.2.7
+v1.2.7
 - remove api function call backdoor
 - modify rpc script generation, to support auth
 - clean up function call error handling
