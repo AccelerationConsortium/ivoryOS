@@ -1,0 +1,44 @@
+<button id="previewScriptBtn"
+        type="button"
+        class="btn btn-secondary"
+        data-bs-toggle="modal"
+        data-bs-target="#scriptPreviewModal">
+    Preview Script
+</button>
+
+<!-- Modal -->
+<div class="modal fade" id="scriptPreviewModal" tabindex="-1" aria-labelledby="scriptPreviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Execution Script Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <pre id="scriptPreview" class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto;">
+# Script will appear here...
+        </pre>
+      </div>
+      <div class="modal-footer">
+        <a id="downloadScriptBtn" class="btn btn-success" href="/download_script" download>
+          Download Script
+        </a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    document.getElementById("previewScriptBtn").addEventListener("click", function() {
+    fetch("{{ url_for('execute.preview_script') }}")
+        .then(response => response.text())
+        .then(script => {
+            document.getElementById("scriptPreview").textContent = script;
+        })
+        .catch(() => {
+            document.getElementById("scriptPreview").textContent = "⚠️ Failed to load script.";
+        });
+    });
+
+</script>

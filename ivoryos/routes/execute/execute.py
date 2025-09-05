@@ -23,6 +23,23 @@ execute.register_blueprint(files)
 # Register sub-blueprints
 global_config = GlobalConfig()
 
+@execute.route("/executions/config/script", methods=['GET', 'POST'])
+@login_required
+def preview_script():
+    script = utils.get_script_file()
+    config_file = session.get('config_file', "")
+    kwargs_list = []
+    if config_file:
+        kwargs_list = list(csv.DictReader(open(os.path.join(current_app.config['CSV_FOLDER'], config_file))))
+        kwargs_list.pop(0)
+        _, arg_type = script.config("script")
+        for kwargs in kwargs_list:
+            utils.convert_config_type(kwargs, arg_type)
+    import pprint
+    script = pprint.pformat(kwargs_list)
+    # pprint.pprint(kwargs_list)
+    return script, 200, {"Content-Type": "text/plain"}
+
 
 @execute.route("/executions/config", methods=['GET', 'POST'])
 @login_required
