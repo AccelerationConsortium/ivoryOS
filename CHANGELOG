@@ -1,3 +1,7 @@
+v1.3.1
+- fix socketio in demos
+- time sleep execution error in Python 3.7 (credit: Maria Politi)
+
 v1.3.0
 - refactor the workflow record db to support visualization
 - old workflow db was be backup and dropped
