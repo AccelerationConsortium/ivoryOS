@@ -170,7 +170,7 @@ class ScriptRunner:
             #     line = line.replace("registered_workflows.", "")
             try:
                 if line.startswith("time.sleep("): # add safe sleep for time.sleep lines
-                    duration_str = line[len("time.sleep("):-1]
+                    duration_str = line.strip()[len("time.sleep("):-1]
                     duration = float(duration_str)
                     self.safe_sleep(duration)
                 else:
