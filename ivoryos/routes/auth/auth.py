@@ -15,16 +15,16 @@ def login():
     """
     .. :quickref: User; login user
 
-    .. http:get:: /login
+    .. http:get:: /auth/login
 
     load user login form.
 
-    .. http:post:: /login
+    .. http:post:: /auth/login
 
     :form username: username
     :form password: password
     :status 302: and then redirects to homepage
-    :status 401: incorrect password, redirects to :http:get:`/ivoryos/login`
+    :status 401: incorrect password, redirects to :http:get:`/ivoryos/auth/login`
     """
     if request.method == 'POST':
         username = request.form.get('username')
@@ -57,16 +57,16 @@ def signup():
     """
     .. :quickref: User; signup for a new account
 
-    .. http:get:: /signup
+    .. http:get:: /auth/signup
 
     load user sighup
 
-    .. http:post:: /signup
+    .. http:post:: /auth/signup
 
     :form username: username
     :form password: password
-    :status 302: and then redirects to :http:get:`/ivoryos/login`
-    :status 409: when user already exists, redirects to :http:get:`/ivoryos/signup`
+    :status 302: and then redirects to :http:get:`/ivoryos/auth/login`
+    :status 409: when user already exists, redirects to :http:get:`/ivoryos/auth/signup`
     """
     if request.method == 'POST':
         username = request.form.get('username')
@@ -91,6 +91,8 @@ def signup():
 def logout():
     """
     .. :quickref: User; logout the user
+
+    .. http:get:: /auth/logout
 
     logout the current user, clear session info, and redirect to the login page.
     """

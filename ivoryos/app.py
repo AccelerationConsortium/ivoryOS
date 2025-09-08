@@ -20,6 +20,16 @@ from ivoryos.version import __version__ as ivoryos_version
 from sqlalchemy import inspect, text
 from flask import current_app
 
+url_prefix = os.getenv('URL_PREFIX', "/ivoryos")
+app = Flask(__name__, static_url_path=f'{url_prefix}/static', static_folder='static')
+app.register_blueprint(main, url_prefix=url_prefix)
+app.register_blueprint(auth, url_prefix=f'{url_prefix}/{auth.name}')
+app.register_blueprint(library, url_prefix=f'{url_prefix}/{library.name}')
+app.register_blueprint(control, url_prefix=f'{url_prefix}/instruments')
+app.register_blueprint(design, url_prefix=f'{url_prefix}')
+app.register_blueprint(execute, url_prefix=f'{url_prefix}')
+app.register_blueprint(data, url_prefix=f'{url_prefix}')
+app.register_blueprint(api, url_prefix=f'{url_prefix}/{api.name}')
 
 def reset_old_schema(engine, db_dir):
     inspector = inspect(engine)
@@ -58,18 +68,6 @@ def create_app(config_class=None):
     """
     create app, init database
     """
-
-    url_prefix = os.getenv('URL_PREFIX', "/ivoryos")
-    app = Flask(__name__, static_url_path=f'{url_prefix}/static', static_folder='static')
-    app.register_blueprint(main, url_prefix=url_prefix)
-    app.register_blueprint(auth, url_prefix=f'{url_prefix}/{auth.name}')
-    app.register_blueprint(library, url_prefix=f'{url_prefix}/{library.name}')
-    app.register_blueprint(control, url_prefix=f'{url_prefix}/instruments')
-    app.register_blueprint(design, url_prefix=f'{url_prefix}')
-    app.register_blueprint(execute, url_prefix=f'{url_prefix}')
-    app.register_blueprint(data, url_prefix=f'{url_prefix}')
-    app.register_blueprint(api, url_prefix=f'{url_prefix}/{api.name}')
-
 
     app.config.from_object(config_class or 'config.get_config()')
     os.makedirs(app.config["OUTPUT_FOLDER"], exist_ok=True)

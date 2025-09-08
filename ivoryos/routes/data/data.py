@@ -44,7 +44,7 @@ def workflow_logs(workflow_id:int):
 
     get workflow data logs by workflow id
 
-    .. http:get:: /executions/<int:workflow_id>
+    .. http:get:: /executions/records/<int:workflow_id>
 
     :param workflow_id: workflow id
     :type workflow_id: int
@@ -109,6 +109,15 @@ def workflow_logs(workflow_id:int):
 
 @data.get("/executions/data/<int:workflow_id>")
 def workflow_phase_data(workflow_id: int):
+    """
+    .. :quickref: Workflow Data Database; get workflow data for plotting
+
+    get workflow data for plotting by workflow id
+
+    .. http:get:: /executions/data/<int: workflow_id>
+
+    :param workflow_id: workflow id
+    """
     workflow = db.session.get(WorkflowRun, workflow_id)
     if not workflow:
         return jsonify({})
@@ -140,7 +149,7 @@ def delete_workflow_record(workflow_id: int):
 
     delete a workflow execution record by workflow id
 
-    .. http:delete:: /executions/records/<int:workflow_id>
+    .. http:delete:: /executions/records/<int: workflow_id>
 
     :param workflow_id: workflow id
     :type workflow_id: int
@@ -163,7 +172,7 @@ def download_results(filename:str):
     :param filename: workflow data filename
     :type filename: str
 
-    # :status 302: load pseudo deck and then redirects to :http:get:`/ivoryos/executions`
+    # :status 302: load pseudo deck and then redirects to :http:get:`/ivoryos/executions/records`
     """
 
     filepath = os.path.join(current_app.config["DATA_FOLDER"], filename)

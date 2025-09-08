@@ -13,25 +13,25 @@ library = Blueprint('library', __name__, template_folder='templates')
 def workflow_script(script_name:str):
     # todo: split this into two routes, one for GET and POST, another for DELETE
     """
-    .. :quickref: Workflow Script Database; get, post, delete workflow script
+    .. :quickref: Workflow Script Database; get, post, delete a workflow script
 
-    .. http:get:: /<string:script_name>
+    .. http:get:: /library/<string: script_name>
 
     :param script_name: script name
     :type script_name: str
-    :status 302: redirect to :http:get:`/ivoryos/design/script/`
+    :status 302: redirect to :http:get:`/ivoryos/draft`
 
-    .. http:post:: /<string:script_name>
+    .. http:post:: /library/<string: script_name>
 
     :param script_name: script name
     :type script_name: str
     :status 200: json response with success status
 
-    .. http:delete:: /<string:script_name>
+    .. http:delete:: /library/<string: script_name>
 
     :param script_name: script name
     :type script_name: str
-    :status 302: redirect to :http:get:`/ivoryos/design/script/`
+    :status 302: redirect to :http:get:`/ivoryos/draft`
 
     """
     row = Script.query.get(script_name)
@@ -89,10 +89,8 @@ def load_from_database():
 
     backend control through http requests
 
-    .. http:get:: /designs/get/<deck_name>
+    .. http:get:: /library
 
-    :param deck_name: filter for deck name
-    :type deck_name: str
 
     """
     session.pop('edit_action', None)  # reset cache
@@ -132,10 +130,10 @@ def save_as():
 
     save the current workflow script as
 
-    .. http:post:: /library/save_as
+    .. http:post:: /library
 
     : form run_name: new workflow name
-    :status 302: redirect to :http:get:`/ivoryos/design/script/`
+    :status 302: redirect to :http:get:`/ivoryos/draft`
 
     """
     if request.method == "POST":

@@ -257,7 +257,7 @@ def submit_script():
     """
     .. :quickref: Workflow Design; convert Python to workflow script
 
-    .. http:post:: /design/submit_python
+    .. http:post:: /draft/submit_python
 
     Convert a Python script to a workflow script and save it in the database.
 
@@ -393,7 +393,7 @@ def get_operation_sidebar(instrument: str = ''):
     """
     .. :quickref: Workflow Design; handle methods of a specific instrument
 
-    .. http:get:: /design/instruments/<string:instrument>
+    .. http:get:: /draft/instruments/<string:instrument>
 
     :param instrument: The name of the instrument to handle methods for.
     :type instrument: str

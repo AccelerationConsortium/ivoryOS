@@ -12,7 +12,7 @@ def get_step(uuid: int):
     """
     .. :quickref: Workflow Design Steps; get an action step editing form
 
-    .. http:get:: /steps/<int:uuid>
+    .. http:get:: /draft/steps/<int:uuid>
 
     get the editing form for an action step
 
@@ -36,7 +36,7 @@ def save_step(uuid: int):
     """
     .. :quickref: Workflow Design Steps; save an action step on canvas
 
-    .. http:post:: /steps/<int:uuid>
+    .. http:post:: /draft/steps/<int:uuid>
 
         save the changes of an action step
 
@@ -69,7 +69,7 @@ def delete_step(uuid: int):
     """
     .. :quickref: Workflow Design Steps; delete an action step on canvas
 
-    .. http:delete:: /steps/<int:uuid>
+    .. http:delete:: /draft/steps/<int:uuid>
 
         delete an action step
 

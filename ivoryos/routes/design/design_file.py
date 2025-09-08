@@ -17,7 +17,7 @@ def load_json():
     .. http:post:: /files/script-json
 
     :form file: workflow design JSON file
-    :status 302: load script json and then redirects to :http:get:`/ivoryos/design/draft`
+    :status 302: load script json and then redirects to :http:get:`/ivoryos/draft`
     """
 
     if request.method == "POST":
@@ -38,7 +38,7 @@ def download_python():
 
     .. http:post:: /files/script-python
 
-    :status 302: redirects to :http:get:`/ivoryos/design/script/`
+    :status 302: redirects to :http:get:`/ivoryos/draft`
     """
     script = utils.get_script_file()
     run_name = script.name if script.name else "untitled"
@@ -53,7 +53,7 @@ def download_json():
 
     .. http:post:: /files/script-json
 
-    :status 302: redirects to :http:get:`/ivoryos/design/script/`
+    :status 302: redirects to :http:get:`/ivoryos/draft`
     """
     script = utils.get_script_file()
     run_name = script.name if script.name else "untitled"

@@ -157,6 +157,7 @@ def experiment_run():
 def run_bo():
     """
     .. :quickref: Workflow Execution; run Bayesian Optimization
+
     Run Bayesian Optimization with the given parameters and objectives.
 
     .. http:post:: /executions/campaign
@@ -166,6 +167,7 @@ def run_bo():
     :form existing_data: existing data to use for optimization
     :form parameters: parameters for optimization
     :form objectives: objectives for optimization
+
     TODO: merge to experiment_run or not, add more details about the form fields and their expected values.
     """
     script = utils.get_script_file()
