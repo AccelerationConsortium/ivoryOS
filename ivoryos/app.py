@@ -38,7 +38,7 @@ def reset_old_schema(engine, db_dir):
 
     # Check if old tables exist (no workflow_phases table)
     has_workflow_phase = 'workflow_phases' in tables
-    old_workflow_run = 'old_workflow_run' in tables
+    old_workflow_run = 'workflow_runs' in tables
     old_workflow_step = 'workflow_steps' in tables
 
     if not has_workflow_phase:
