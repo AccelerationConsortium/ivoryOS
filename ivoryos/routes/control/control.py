@@ -1,3 +1,5 @@
+import copy
+
 from flask import Blueprint, redirect, flash, request, render_template, session, current_app, jsonify
 from flask_login import login_required
 
@@ -95,8 +97,10 @@ def deck_controllers(instrument: str = None):
 
     # GET request → render web form or return snapshot for API
     if request.is_json or request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
-
-        snapshot = global_config.deck_snapshot.copy()
+        # 1.3.2 fix snapshot copy, add building blocks to snapshots
+        snapshot = copy.deepcopy(global_config.deck_snapshot)
+        building_blocks = copy.deepcopy(global_config.building_blocks)
+        snapshot.update(building_blocks)
         for instrument_key, instrument_data in snapshot.items():
             for function_key, function_data in instrument_data.items():
                 function_data["signature"] = str(function_data["signature"])
