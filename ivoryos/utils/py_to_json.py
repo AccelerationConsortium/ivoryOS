@@ -143,11 +143,37 @@ def convert_to_cards(source_code: str):
                 f = f.value
             if isinstance(f, ast.Name):
                 func_parts.insert(0, f.id)
-            if not func_parts or not func_parts[0].startswith("deck"):
+            if not func_parts:
                 return
 
             instrument = ".".join(func_parts[:-1])
             action = func_parts[-1]
+
+
+            # --- special case for time.sleep ---
+            if instrument == "time" and action == "sleep":
+                wait_value = None
+                if node.args:
+                    arg_node = node.args[0]
+                    if isinstance(arg_node, ast.Constant):
+                        wait_value = arg_node.value
+                    elif isinstance(arg_node, ast.Name):
+                        wait_value = f"#{arg_node.id}"
+                    else:
+                        wait_value = ast.unparse(arg_node)
+
+                add_card({
+                    "action": "wait",
+                    "arg_types": {"statement": infer_type(wait_value)},
+                    "args": {"statement": wait_value},
+                    "id": new_id(),
+                    "instrument": "wait",
+                    "return": ret_var,
+                    "uuid": generate_uuid()
+                })
+                return
+            # -----------------------------------
+
 
             args = {}
             arg_types = {}
