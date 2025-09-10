@@ -1,3 +1,9 @@
+v1.3.2 (Sep 10th, 2025)
+- fix old workflow db schema handling, update status too
+- fix time.sleep() python to json convertion
+- allow building block execution in MCP
+- fix doc and sphinx auto doc
+
 v1.3.1
 - fix socketio in demos
 - time sleep execution error in Python 3.7 (credit: Maria Politi)
