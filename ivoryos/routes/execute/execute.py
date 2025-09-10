@@ -9,7 +9,7 @@ from flask_login import login_required
 from ivoryos.routes.execute.execute_file import files
 from ivoryos.utils import utils
 from ivoryos.utils.bo_campaign import parse_optimization_form
-from ivoryos.utils.db_models import SingleStep, WorkflowRun, WorkflowStep
+from ivoryos.utils.db_models import SingleStep, WorkflowRun, WorkflowStep, WorkflowPhase
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.form import create_action_button
 
@@ -227,7 +227,9 @@ def runner_status():
         if task_type == "workflow":
             workflow = WorkflowRun.query.get(task_id)
             if workflow is not None:
-                latest_step = WorkflowStep.query.filter_by(workflow_id=workflow.id).order_by(
+                phases = WorkflowPhase.query.filter_by(run_id=workflow.id).order_by(WorkflowPhase.start_time).all()
+                current_phase = phases[-1]
+                latest_step = WorkflowStep.query.filter_by(phase_id=current_phase.id).order_by(
                     WorkflowStep.start_time.desc()).first()
                 if latest_step is not None:
                     current_step = latest_step.as_dict()
