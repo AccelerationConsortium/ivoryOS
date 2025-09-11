@@ -2,6 +2,20 @@ import ast
 import json
 import uuid
 
+
+from ivoryos.utils.global_config import GlobalConfig
+
+global_config = GlobalConfig()
+
+if global_config.building_blocks:
+    building_blocks = {
+        inner_key: f"{block_key}.{inner_key}"
+        for block_key, block_value in global_config.building_blocks.items()
+        for inner_key in block_value.keys()
+    }
+else:
+    building_blocks = {}
+
 def generate_uuid():
     return int(str(uuid.uuid4().int)[:15])
 
@@ -37,7 +51,7 @@ def convert_to_cards(source_code: str):
     def is_supported_assignment(node):
         return (
             isinstance(node.targets[0], ast.Name) and
-            isinstance(node.value, (ast.Constant, ast.Num, ast.Str, ast.NameConstant))
+            isinstance(node.value, ast.Constant)
         )
 
     class CardVisitor(ast.NodeVisitor):
@@ -143,11 +157,22 @@ def convert_to_cards(source_code: str):
                 f = f.value
             if isinstance(f, ast.Name):
                 func_parts.insert(0, f.id)
-            if not func_parts:
+
+            full_func_name = ".".join(func_parts)
+
+            # Check if this is a deck call or a building block
+            if full_func_name.startswith("deck.") or full_func_name.startswith("blocks."):
+                instrument = ".".join(func_parts[:-1])
+                action = func_parts[-1]
+            # not starting with deck or block, check if it's a decorated function
+            # ["general", "action"] or ["action"]
+            elif func_parts[-1] in building_blocks.keys():
+                instrument = building_blocks.get(func_parts[-1])
+                action = func_parts[-1]
+            else:
+                # ignore other calls
                 return
 
-            instrument = ".".join(func_parts[:-1])
-            action = func_parts[-1]
 
 
             # --- special case for time.sleep ---
@@ -181,7 +206,7 @@ def convert_to_cards(source_code: str):
             for kw in node.keywords:
                 if kw.arg is None and isinstance(kw.value, ast.Dict):
                     for k_node, v_node in zip(kw.value.keys, kw.value.values):
-                        key = k_node.s if isinstance(k_node, ast.Constant) else ast.unparse(k_node)
+                        key = k_node.value if isinstance(k_node, ast.Constant) else ast.unparse(k_node)
                         if isinstance(v_node, ast.Constant):
                             value = v_node.value
                         elif isinstance(v_node, ast.Name):
@@ -242,10 +267,14 @@ if __name__ == "__main__":
     # Step 4: Analyze the sample
     analysis_results = deck.sdl.analyze(param_1=1, param_2=2)
     
+    # test block 
+    result = blocks.general.test(**{'a': 1, 'b': 2})
+    
     # Brief pause for system stability
     time.sleep(1.0)
     
     # Return only analysis results
     return {'analysis_results': analysis_results}
     '''
-    print(json.dumps(convert_to_cards(test)))
+    from pprint import pprint
+    pprint(json.dumps(convert_to_cards(test)))
