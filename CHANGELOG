@@ -1,3 +1,7 @@
+v1.3.3 (Sep 11th, 2025)
+- fix python to json convertion, support more deck and blocks
+
+
 v1.3.2 (Sep 10th, 2025)
 - fix old workflow db schema handling, update status too
 - fix time.sleep() python to json convertion
