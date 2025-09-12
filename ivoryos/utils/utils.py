@@ -141,6 +141,7 @@ def _get_type_from_parameters(arg, parameters):
 def _convert_by_str(args, arg_types):
     """
     Converts a value to type through eval(f'{type}("{args}")')
+    v1.3.4 TODO try str lastly, otherwise it's always converted to str
     """
     if type(arg_types) is not list:
         arg_types = [arg_types]

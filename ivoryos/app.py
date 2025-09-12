@@ -41,7 +41,8 @@ def reset_old_schema(engine, db_dir):
     old_workflow_run = 'workflow_runs' in tables
     old_workflow_step = 'workflow_steps' in tables
 
-    if not has_workflow_phase:
+    # v1.3.4 only delete and backup when there is runs but no phases
+    if not has_workflow_phase and old_workflow_run:
         print("⚠️ Old workflow database detected! All previous workflows have been reset to support the new schema.")
         # Backup old DB
         db_path = os.path.join(db_dir, "ivoryos.db")
