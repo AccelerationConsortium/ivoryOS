@@ -161,7 +161,7 @@ class ScriptRunner:
                 start_time=datetime.now(),
             )
             db.session.add(step)
-            db.session.commit()
+            db.session.flush()
 
             logger.info(f"Executing: {line}")
             socketio.emit('execution', {'section': f"{section_name}-{index}"})
@@ -219,7 +219,7 @@ class ScriptRunner:
                               repeat_mode=repeat_mode
                               )
             db.session.add(run)
-            db.session.commit()
+            db.session.flush()
             run_id = run.id  # Save the ID
             try:
 
@@ -277,7 +277,7 @@ class ScriptRunner:
             start_time=datetime.now()
         )
         db.session.add(phase)
-        db.session.commit()
+        db.session.flush()
         phase_id = phase.id
 
         step_outputs = self.exec_steps(script, section_name, logger, socketio, phase_id=phase_id)
@@ -317,7 +317,7 @@ class ScriptRunner:
                     start_time=datetime.now()
                 )
                 db.session.add(phase)
-                db.session.commit()
+                db.session.flush()
 
                 phase_id = phase.id
                 output = self.exec_steps(script, "script", logger, socketio, phase_id, **kwargs)
@@ -371,7 +371,7 @@ class ScriptRunner:
                 start_time=datetime.now()
             )
             db.session.add(phase)
-            db.session.commit()
+            db.session.flush()
             phase_id = phase.id
 
             logger.info(f'Executing {run_name} experiment: {i_progress + 1}/{int(repeat_count)}')

@@ -71,7 +71,7 @@ class TaskRunner:
         with current_app.app_context():
             step = SingleStep(method_name=method_name, kwargs=kwargs, run_error=None, start_time=datetime.now())
             db.session.add(step)
-            db.session.commit()
+            db.session.flush()
             global_config.runner_status = {"id":step.id, "type": "task"}
             try:
                 output = function_executable(**kwargs)
