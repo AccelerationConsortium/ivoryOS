@@ -29,6 +29,7 @@ class TaskRunner:
         if not self.lock.acquire(blocking=False):
             current_status = global_config.runner_status
             current_status["status"] = "busy"
+            current_status["output"] = "busy"
             return current_status
 
 
