@@ -17,6 +17,8 @@ class GlobalConfig:
             cls._instance._runner_lock = threading.Lock()
             cls._instance._runner_status = None
             cls._instance._optimizers = {}
+            cls._instance._notification_handlers = []
+
         return cls._instance
 
     @property
@@ -27,6 +29,15 @@ class GlobalConfig:
     def deck(self, value):
         if self._deck is None:
             self._deck = value
+
+    def register_notification(self, handler):
+        if not callable(handler):
+            raise ValueError("Handler must be callable")
+        self._notification_handlers.append(handler)
+
+    @property
+    def notification_handlers(self):
+        return self._notification_handlers
 
     @property
     def building_blocks(self):

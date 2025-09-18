@@ -19,6 +19,14 @@ class HumanInterventionRequired(Exception):
     pass
 
 def pause(reason="Human intervention required"):
+    handlers = global_config.notification_handlers
+    if handlers:
+        for handler in handlers:
+            try:
+                handler(reason)
+            except Exception as e:
+                print(f"[notify] handler {handler} failed: {e}")
+    # raise error to pause workflow in gui
     raise HumanInterventionRequired(reason)
 
 class ScriptRunner:

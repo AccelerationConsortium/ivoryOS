@@ -49,6 +49,7 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
         enable_design: bool = True,
         blueprint_plugins: Union[list, Blueprint] = [],
         exclude_names: list = [],
+        notification_handler=None,
         ):
     """
     Start ivoryOS app server.
@@ -65,6 +66,7 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     :param enable_design: enable design canvas, database and workflow execution
     :param blueprint_plugins: Union[list[Blueprint], Blueprint] custom Blueprint pages
     :param exclude_names: list[str] module names to exclude from parsing
+    :param notification_handler: notification handler function
     """
     app = create_app(config_class=config or get_config())  # Create app instance using factory function
 
@@ -113,11 +115,33 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
                                        output_path=app.config["OUTPUT_FOLDER"] if module is not None else None)
     else:
         app.config["ENABLE_LLM"] = False
-    if logger and type(logger) is str:
-        utils.start_logger(socketio, log_filename=logger_path, logger_name=logger)
-    elif type(logger) is list:
-        for log in logger:
-            utils.start_logger(socketio, log_filename=logger_path, logger_name=log)
+
+
+    # --- Logger registration ---
+    if logger:
+        if isinstance(logger, str):
+            logger = [logger]  # convert single logger to list
+        elif not isinstance(logger, list):
+            raise TypeError("logger must be a string or a list of strings.")
+
+        for log_name in logger:
+            utils.start_logger(socketio, log_filename=logger_path, logger_name=log_name)
+
+    # --- Notification handler registration ---
+    if notification_handler:
+
+        # make it a list if a single function is passed
+        if callable(notification_handler):
+            notification_handler = [notification_handler]
+
+        if not isinstance(notification_handler, list):
+            raise ValueError("notification_handlers must be a callable or a list of callables.")
+
+        # validate all items are callable
+        for handler in notification_handler:
+            if not callable(handler):
+                raise TypeError(f"Handler {handler} is not callable.")
+            global_config.register_notification(handler)
 
     # TODO in case Python 3.12 or higher doesn't log URL
     # if sys.version_info >= (3, 12):
@@ -128,23 +152,6 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     socketio.run(app, host=host, port=port, debug=debug, use_reloader=False, allow_unsafe_werkzeug=True)
     # return app
 
-
-# def load_installed_plugins(app, socketio):
-#     """
-#     Dynamically load installed plugins and attach Flask-SocketIO.
-#     """
-#     plugin_names = []
-#     for entry_point in entry_points().get("ivoryos.plugins", []):
-#         plugin = entry_point.load()
-#
-#         # If the plugin has an `init_socketio()` function, pass socketio
-#         if hasattr(plugin, 'init_socketio'):
-#             plugin.init_socketio(socketio)
-#
-#         plugin_names.append(entry_point.name)
-#         app.register_blueprint(getattr(plugin, entry_point.name), url_prefix=f"{url_prefix}/{entry_point.name}")
-#
-#     return plugin_names
 
 
 def load_plugins(blueprints: Union[list, Blueprint], app, socketio):
