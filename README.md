@@ -154,11 +154,10 @@ ivoryos.run(__name__)
 
 ## Roadmap
 
-- [x] Allow plugin pages ✅  
-- [x] pause, resume, abort current and pending workflows ✅
 - [ ] dropdown input 
 - [ ] snapshot version control
 - [ ] optimizer-agnostic
+- [ ] prefect compatibility
 - [ ] check batch-config file compatibility
 
 ---
