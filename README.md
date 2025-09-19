@@ -4,7 +4,8 @@
 [![YouTube](https://img.shields.io/badge/YouTube-tutorial-red?logo=youtube)](https://youtu.be/dFfJv9I2-1g)
 [![YouTube](https://img.shields.io/badge/YouTube-demo-red?logo=youtube)](https://youtu.be/flr5ydiE96s)
 [![Published](https://img.shields.io/badge/Nature_Comm.-paper-blue)](https://www.nature.com/articles/s41467-025-60514-w)
-[![Discord](https://img.shields.io/discord/1313641159356059770?label=Discord&logo=discord&color=5865F2)](https://discord.gg/AX5P9EdGVX)
+
+[//]: # ([![Discord]&#40;https://img.shields.io/discord/1313641159356059770?label=Discord&logo=discord&color=5865F2&#41;]&#40;https://discord.gg/AX5P9EdGVX&#41;)
 
 ![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/ivoryos.png)
 # ivoryOS: interoperable Web UI for self-driving laboratories (SDLs)
@@ -77,11 +78,14 @@ pip install -e .
 ## Quick start
 In your SDL script, 
 ```python
+my_robot = Robot()
+
 import ivoryos
 
 ivoryos.run(__name__)
 ```
-Login: Create an account (local DB, bcrypt password)
+You can now access the web UI at http://127.0.0.1:8000,
+create an account, login, and start designing workflows!
 
 ----
 ## Features
@@ -103,6 +107,28 @@ Add single or multiple loggers:
 ivoryos.run(__name__, logger="logger name")
 ivoryos.run(__name__, logger=["logger 1", "logger 2"])
 ```
+### Human-in-the-loop
+Add single or multiple notification handlers for `pause` feature in flow control:
+```python
+
+def slack_bot(msg: str = "Hi"):
+    """
+    a function that can be used as a notification handler function("msg")
+    :param msg: message to send
+    """
+    from slack_sdk import WebClient
+
+    slack_token = "your slack token"
+    client = WebClient(token=slack_token)
+
+    my_user_id = "your user id"  # replace with your actual Slack user ID
+
+    client.chat_postMessage(channel=my_user_id, text=msg)
+
+import ivoryos
+ivoryos.run(__name__, notification_handler=slack_bot)
+```
+
 ### Directory Structure
 
 Created automatically on first run:
@@ -174,4 +200,4 @@ For an additional perspective related to the development of the tool, please see
 ```
 ---
 ## Acknowledgements
-Authors acknowledge Telescope Innovations Corp., Hein Lab members for their valuable suggestions and contributions.
+Authors acknowledge Telescope Innovations Corp., UBC Hein Lab, and Acceleration Consortium members for their valuable suggestions and contributions.
