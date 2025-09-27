@@ -249,7 +249,7 @@ class ScriptRunner:
                 self._run_actions(script, section_name="cleanup", logger=logger, socketio=socketio,run_id=run_id)
                 # Reset the running flag when done
                 # Save results if necessary
-                if not script.python_script and output_list:
+                if not script.python_script and return_list:
                     filename = self._save_results(run_name, arg_type, return_list, output_list, logger, output_path)
                 self._emit_progress(socketio, 100)
 
