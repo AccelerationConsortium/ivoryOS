@@ -1,3 +1,8 @@
+v1.3.5 (Sep 29th, 2025)
+- fix output list
+- allow async
+
+
 v1.3.4 (Sep 18th, 2025)
 - allow customized notification handler for workflow pause (human intervention)
 - fix redundant db backup when there no workflow record

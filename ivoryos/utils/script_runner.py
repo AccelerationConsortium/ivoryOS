@@ -187,9 +187,14 @@ class ScriptRunner:
                         async_code = f"async def __async_exec_wrapper():\n"
                         # indent all code lines by 4 spaces
                         async_code += "\n".join("    " + line for line in line.splitlines())
+                        async_code += f"\n    return locals()"
                         exec(async_code, exec_globals, exec_locals)
                         func = exec_locals.get("__async_exec_wrapper") or exec_globals.get("__async_exec_wrapper")
-                        asyncio.run(func())
+                        # Capture the return value from asyncio.run
+                        result_locals = asyncio.run(func())
+
+                        # Update exec_locals with the returned locals
+                        exec_locals.update(result_locals)
                         exec_locals.pop("__async_exec_wrapper", None)
 
                     else:
