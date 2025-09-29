@@ -105,7 +105,8 @@ def _inspect_class(class_object=None, debug=False):
             try:
                 annotation = inspect.signature(method)
                 docstring = inspect.getdoc(method)
-                functions[function] = dict(signature=annotation, docstring=docstring)
+                coroutine = inspect.iscoroutinefunction(method)
+                functions[function] = dict(signature=annotation, docstring=docstring, coroutine=coroutine,)
 
             except Exception:
                 pass

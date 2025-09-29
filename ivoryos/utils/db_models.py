@@ -434,14 +434,21 @@ class Script(db.Model):
         :return: A dict containing script types as keys and lists of function body lines as values.
         """
         line_collection = {}
+
         for stype, func_str in exec_str_collection.items():
             if func_str:
                 module = ast.parse(func_str)
-                func_def = next(node for node in module.body if isinstance(node, ast.FunctionDef))
 
-                # Extract function body as source lines
-                line_collection[stype] = [ast_unparse(node) for node in func_def.body if not isinstance(node, ast.Return)]
-                # print(line_collection[stype])
+                # Find the first function (regular or async)
+                func_def = next(
+                    node for node in module.body
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                )
+
+                # Extract function body as source lines, skipping 'return' nodes
+                line_collection[stype] = [
+                    ast_unparse(node) for node in func_def.body if not isinstance(node, ast.Return)
+                ]
         return line_collection
 
     def compile(self, script_path=None):
@@ -459,7 +466,8 @@ class Script(db.Model):
 
         for i in self.stypes:
             if self.script_dict[i]:
-                func_str = self._generate_function_header(run_name, i) + self._generate_function_body(i)
+                is_async = any(a.get("coroutine", False) for a in self.script_dict[i])
+                func_str = self._generate_function_header(run_name, i, is_async) + self._generate_function_body(i)
                 exec_str_collection[i] = func_str
         if script_path:
             self._write_to_file(script_path, run_name, exec_str_collection)
@@ -477,7 +485,7 @@ class Script(db.Model):
             name += '_'
         return name
 
-    def _generate_function_header(self, run_name, stype):
+    def _generate_function_header(self, run_name, stype, is_async):
         """
         Generate the function header.
         """
@@ -487,7 +495,8 @@ class Script(db.Model):
                      config_type.items()]
 
         script_type = f"_{stype}" if stype != "script" else ""
-        function_header = f"def {run_name}{script_type}("
+        async_str = "async " if is_async else ""
+        function_header = f"{async_str}def {run_name}{script_type}("
 
         if stype == "script":
             function_header += ", ".join(configure)
@@ -540,7 +549,8 @@ class Script(db.Model):
         # elif instrument == 'registered_workflows':
         #     return inspect.getsource(my_function)
         else:
-            return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data)
+            is_async = action.get("coroutine", False)
+            return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data, is_async)
 
     def _process_args(self, args):
         """
@@ -600,10 +610,12 @@ class Script(db.Model):
             indent_unit -= 1
         return exec_string, indent_unit
 
-    def _process_instrument_action(self, indent_unit, instrument, action, args, save_data):
+    def _process_instrument_action(self, indent_unit, instrument, action, args, save_data, is_async=False):
         """
         Process actions related to instruments.
         """
+        async_str = "await " if is_async else ""
+
         function_call = f"{instrument}.{action}"
         if instrument.startswith("blocks"):
             self.blocks_included = True
@@ -611,11 +623,11 @@ class Script(db.Model):
 
         if isinstance(args, dict) and args != {}:
             args_str = self._process_dict_args(args)
-            single_line = f"{function_call}(**{args_str})"
+            single_line = f"{async_str}{function_call}(**{args_str})"
         elif isinstance(args, str):
             single_line = f"{function_call} = {args}"
         else:
-            single_line = f"{function_call}()"
+            single_line = f"{async_str}{function_call}()"
 
         if save_data:
             save_data += " = "

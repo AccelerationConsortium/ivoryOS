@@ -1,4 +1,5 @@
 import ast
+import asyncio
 import os
 import csv
 import threading
@@ -182,7 +183,20 @@ class ScriptRunner:
                     duration = float(duration_str)
                     self.safe_sleep(duration)
                 else:
-                    exec(line, exec_globals, exec_locals)
+                    if "await " in line:
+                        async_code = f"async def __async_exec_wrapper():\n"
+                        # indent all code lines by 4 spaces
+                        async_code += "\n".join("    " + line for line in line.splitlines())
+                        exec(async_code, exec_globals, exec_locals)
+                        func = exec_locals.get("__async_exec_wrapper") or exec_globals.get("__async_exec_wrapper")
+                        asyncio.run(func())
+                        exec_locals.pop("__async_exec_wrapper", None)
+
+                    else:
+                        print("just exec synchronously")
+                        exec(line, exec_globals, exec_locals)
+                        # return locals_dict
+                    # exec(line, exec_globals, exec_locals)
                 # step.run_error = False
 
             except HumanInterventionRequired as e:

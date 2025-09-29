@@ -1,3 +1,5 @@
+import inspect
+import asyncio
 import threading
 import time
 from datetime import datetime
@@ -19,8 +21,7 @@ class TaskRunner:
         self.globals_dict = globals_dict
         self.lock = global_config.runner_lock
 
-
-    def run_single_step(self, component, method, kwargs, wait=True, current_app=None):
+    async def run_single_step(self, component, method, kwargs, wait=True, current_app=None):
         global deck
         if deck is None:
             deck = global_config.deck
@@ -32,16 +33,15 @@ class TaskRunner:
             current_status["output"] = "busy"
             return current_status
 
-
         if wait:
-            output = self._run_single_step(component, method, kwargs, current_app)
+            output = await self._run_single_step(component, method, kwargs, current_app)
         else:
-            print("running with thread")
-            thread = threading.Thread(
-                target=self._run_single_step, args=(component, method, kwargs, current_app)
-            )
-            thread.start()
-            time.sleep(0.1)
+            # Create background task properly
+            async def background_runner():
+                await self._run_single_step(component, method, kwargs, current_app)
+
+            asyncio.create_task(background_runner())
+            await asyncio.sleep(0.1)  # Change time.sleep to await asyncio.sleep
             output = {"status": "task started", "task_id": global_config.runner_status.get("id")}
 
         return output
@@ -60,22 +60,32 @@ class TaskRunner:
             function_executable = getattr(instrument, method)
         return function_executable
 
-    def _run_single_step(self, component, method, kwargs, current_app=None):
+    async def _run_single_step(self, component, method, kwargs, current_app=None):
         try:
             function_executable = self._get_executable(component, deck, method)
             method_name = f"{component}.{method}"
         except Exception as e:
             self.lock.release()
-            return {"status": "error", "msg": e.__str__()}
+            return {"status": "error", "msg": str(e)}
 
-        # with self.lock:
+        # Flask context is NOT async → just use normal "with"
         with current_app.app_context():
-            step = SingleStep(method_name=method_name, kwargs=kwargs, run_error=None, start_time=datetime.now())
+            step = SingleStep(
+                method_name=method_name,
+                kwargs=kwargs,
+                run_error=None,
+                start_time=datetime.now()
+            )
             db.session.add(step)
             db.session.flush()
-            global_config.runner_status = {"id":step.id, "type": "task"}
+            global_config.runner_status = {"id": step.id, "type": "task"}
+
             try:
-                output = function_executable(**kwargs)
+                if inspect.iscoroutinefunction(function_executable):
+                    output = await function_executable(**kwargs)
+                else:
+                    output = function_executable(**kwargs)
+
                 step.output = output
                 step.end_time = datetime.now()
                 success = True
@@ -87,4 +97,5 @@ class TaskRunner:
             finally:
                 db.session.commit()
                 self.lock.release()
+
             return dict(success=success, output=output)

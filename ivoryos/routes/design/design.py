@@ -316,6 +316,7 @@ def methods_handler(instrument: str = ''):
     msg = ""
     request.form
     if "hidden_name" in request.form:
+        deck_snapshot = global_config.deck_snapshot
         method_name = request.form.get("hidden_name", None)
         form = forms.get(method_name) if forms else None
         insert_position = request.form.get("drop_target_id", None)
@@ -334,7 +335,9 @@ def methods_handler(instrument: str = ''):
                 action = {"instrument": instrument, "action": function_name,
                           "args": kwargs,
                           "return": save_data,
-                          'arg_types': primitive_arg_types}
+                          'arg_types': primitive_arg_types,
+                          "coroutine": deck_snapshot[instrument][function_name].get("coroutine", False) if deck_snapshot else False,
+                          }
                 script.add_action(action=action, insert_position=insert_position)
             else:
                 msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]

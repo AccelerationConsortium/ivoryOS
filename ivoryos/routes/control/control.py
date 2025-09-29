@@ -23,7 +23,7 @@ control.register_blueprint(control_temp)
 @control.route("/", strict_slashes=False, methods=["GET", "POST"])
 @control.route("/<string:instrument>", strict_slashes=False, methods=["GET", "POST"])
 @login_required
-def deck_controllers(instrument: str = None):
+async def deck_controllers(instrument: str = None):
     """
     .. :quickref: Direct Control; device (instruments) and methods
 
@@ -82,7 +82,7 @@ def deck_controllers(instrument: str = None):
 
         wait = str(payload.get("hidden_wait", "true")).lower() == "true"
 
-        output = runner.run_single_step(
+        output = await runner.run_single_step(
             component=instrument, method=method_name, kwargs=kwargs, wait=wait,
             current_app=current_app._get_current_object()
         )

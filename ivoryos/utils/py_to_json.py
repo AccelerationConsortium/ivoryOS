@@ -55,6 +55,10 @@ def convert_to_cards(source_code: str):
         )
 
     class CardVisitor(ast.NodeVisitor):
+        def __init__(self):
+            self.defined_types = {}  # <-- always exists
+
+
         def visit_FunctionDef(self, node):
             self.defined_types = {
                 arg.arg: ast.unparse(arg.annotation) if arg.annotation else "float"
@@ -142,14 +146,20 @@ def convert_to_cards(source_code: str):
                     "return": "",
                     "uuid": generate_uuid()
                 })
+            elif isinstance(node.value, ast.Await):
+                self.handle_call(node.value.value, ret_var=node.targets[0].id, awaited=True)
+
             elif isinstance(node.value, ast.Call):
                 self.handle_call(node.value, ret_var=node.targets[0].id)
 
         def visit_Expr(self, node):
-            if isinstance(node.value, ast.Call):
+            if isinstance(node.value, ast.Await):
+                # node.value is ast.Await
+                self.handle_call(node.value.value, awaited=True)
+            elif isinstance(node.value, ast.Call):
                 self.handle_call(node.value)
 
-        def handle_call(self, node, ret_var=""):
+        def handle_call(self, node, ret_var="", awaited=False):
             func_parts = []
             f = node.func
             while isinstance(f, ast.Attribute):
@@ -229,7 +239,7 @@ def convert_to_cards(source_code: str):
                         else infer_type(value)
                     )
 
-            add_card({
+            card = {
                 "action": action,
                 "arg_types": arg_types,
                 "args": args,
@@ -237,7 +247,12 @@ def convert_to_cards(source_code: str):
                 "instrument": instrument,
                 "return": ret_var,
                 "uuid": generate_uuid()
-            })
+            }
+
+            if awaited:
+                card["coroutine"] = True  # mark as coroutine if awaited
+
+            add_card(card)
 
     CardVisitor().visit(tree)
     return cards
