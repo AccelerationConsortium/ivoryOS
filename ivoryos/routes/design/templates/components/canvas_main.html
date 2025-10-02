@@ -32,3 +32,8 @@
 <div class="python-code-wrapper" id="python-code-wrapper">
     {% include 'components/python_code_overlay.html' %}
 </div>
+
+
+{% if warning %}
+<div id="warning" style="display:none;">{{ warning }}</div>
+{% endif %}

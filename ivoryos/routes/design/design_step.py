@@ -47,6 +47,7 @@ def save_step(uuid: int):
     """
     script = utils.get_script_file()
     action = script.find_by_uuid(uuid)
+    warning = None
     if action is not None:
         forms = create_form_from_action(action, script=script)
         kwargs = {field.name: field.data for field in forms if field.name != 'csrf_token'}
@@ -55,14 +56,19 @@ def save_step(uuid: int):
             kwargs = script.validate_variables(kwargs)
             script.update_by_uuid(uuid=uuid, args=kwargs, output=save_as)
         else:
-            flash(forms.errors)
+            warning = f"Compilation failed: {str(forms.errors)}"
     utils.post_script_file(script)
-    exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+    try:
+        exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+    except Exception as e:
+        exec_string = {}
+        warning = f"Compilation failed: {str(e)}"
     session['python_code'] = exec_string
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
     return render_template("components/canvas_main.html",
-                               script=script,
-                               buttons_dict=design_buttons)
+                           script=script,
+                           buttons_dict=design_buttons,
+                           warning=warning)
 
 @steps.delete("/draft/steps/<int:uuid>")
 def delete_step(uuid: int):
@@ -82,12 +88,17 @@ def delete_step(uuid: int):
     if request.method == 'DELETE':
         script.delete_action(uuid)
     utils.post_script_file(script)
-    exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+    warning = None
+    try:
+        exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+    except Exception as e:
+        exec_string = {}
+        warning = f"Compilation failed: {str(e)}"
     session['python_code'] = exec_string
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
     return render_template("components/canvas_main.html",
                                script=script,
-                               buttons_dict=design_buttons)
+                               buttons_dict=design_buttons, warning=warning)
 
 
 @steps.route("/draft/steps/<int:uuid>/duplicate", methods=["POST"], strict_slashes=False,)
@@ -107,13 +118,18 @@ def duplicate_action(uuid: int):
     script = utils.get_script_file()
     script.duplicate_action(uuid)
     utils.post_script_file(script)
-    exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+    warning = None
+    try:
+        exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+    except Exception as e:
+        exec_string = {}
+        warning = f"Compilation failed: {str(e)}"
     session['python_code'] = exec_string
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
 
     return render_template("components/canvas_main.html",
                          script=script,
-                         buttons_dict=design_buttons)
+                         buttons_dict=design_buttons, warning=warning)
 
 
 @steps.route("/draft/steps/order", methods=['POST'])
@@ -133,13 +149,18 @@ def update_list():
     script = utils.get_script_file()
     script.currently_editing_order = order.split(",", len(script.currently_editing_script))
     script.sort_actions()
+    warning = None
 
     utils.post_script_file(script)
-    exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+    try:
+        exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+    except Exception as e:
+        exec_string = {}
+        warning = f"Compilation failed: {str(e)}"
     session['python_code'] = exec_string
 
     # Return the updated canvas HTML instead of JSON
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
     return render_template("components/canvas_main.html",
                            script=script,
-                           buttons_dict=design_buttons)
+                           buttons_dict=design_buttons, warning=warning)

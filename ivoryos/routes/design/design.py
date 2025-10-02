@@ -87,8 +87,11 @@ def experiment_builder():
 
     # edit_action_info = session.get("edit_action")
 
-
-    exec_string = script.python_script if script.python_script else script.compile(current_app.config['SCRIPT_FOLDER'])
+    try:
+        exec_string = script.python_script if script.python_script else script.compile(current_app.config['SCRIPT_FOLDER'])
+    except Exception as e:
+        exec_string = {}
+        flash(f"Error in Python script: {e}")
     session['python_code'] = exec_string
 
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}

@@ -103,6 +103,12 @@ function submitEditForm(event) {
                 document.getElementById('instrument-panel').innerHTML = previousHtmlState;
                 previousHtmlState = null;  // Clear the stored state
             }
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const warningDiv = doc.querySelector('#warning');
+            if (warningDiv && warningDiv.textContent.trim()) {
+                alert(warningDiv.textContent.trim()); // or use a nicer toast
+            }
         }
     })
     .catch(error => {
@@ -149,6 +155,13 @@ function duplicateAction(uuid) {
     .then(response => response.text())
     .then(html => {
         updateActionCanvas(html);
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const warningDiv = doc.querySelector('#warning');
+        if (warningDiv && warningDiv.textContent.trim()) {
+            alert(warningDiv.textContent.trim()); // or use a nicer toast
+        }
     })
     .catch(error => console.error('Error:', error));
 }
@@ -202,6 +215,13 @@ function deleteAction(uuid) {
     .then(html => {
         // Find the first list element's content and replace it
         updateActionCanvas(html);
+        // Optionally, check if a warning element exists
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const warningDiv = doc.querySelector('#warning');
+        if (warningDiv && warningDiv.textContent.trim()) {
+            alert(warningDiv.textContent.trim()); // or use a nicer toast
+        }
     })
     .catch(error => console.error('Error:', error));
 }
