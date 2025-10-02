@@ -25,7 +25,18 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-optimizer = ["ax-platform", "baybe"]
+optimizer-ax = ["ax-platform"]
+optimizer-baybe = ["baybe"]
+optimizer = [
+    "ax-platform",
+    "baybe"
+]
+doc = [
+    "sphinx",
+    "sphinx-rtd-theme",
+    "sphinxcontrib-httpdomain"
+]
+dev = ["pytest"]
 
 [project.urls]
 Homepage = "https://gitlab.com/heingroup/ivoryos"

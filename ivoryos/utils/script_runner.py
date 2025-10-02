@@ -195,11 +195,12 @@ class ScriptRunner:
 
                         # Update exec_locals with the returned locals
                         exec_locals.update(result_locals)
-                        exec_locals.pop("__async_exec_wrapper", None)
+
 
                     else:
                         print("just exec synchronously")
                         exec(line, exec_globals, exec_locals)
+                        exec_globals.update(exec_locals)
                         # return locals_dict
                     # exec(line, exec_globals, exec_locals)
                 # step.run_error = False
@@ -217,6 +218,7 @@ class ScriptRunner:
 
                 step.run_error = True
                 self.toggle_pause()
+            exec_locals.pop("__async_exec_wrapper", None)
             step.end_time = datetime.now()
             step.output = exec_locals
             db.session.commit()

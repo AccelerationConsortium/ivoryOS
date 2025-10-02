@@ -1,6 +1,9 @@
 v1.3.5 (Sep 29th, 2025)
 - fix output list
 - allow async
+- variable not found in execution (credit: Jenny Zhou)
+- missing variable alert (credit: Jenny Zhou)
+- minor fix in __init__ and add optional installs
 
 
 v1.3.4 (Sep 18th, 2025)
