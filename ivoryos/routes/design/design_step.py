@@ -23,12 +23,16 @@ def get_step(uuid: int):
     """
     script = utils.get_script_file()
     action = script.find_by_uuid(uuid)
-    if request.method == 'GET':
-        # forms = create_form_from_action(action, script=script)
+    if action is None:
+        return jsonify({"warning": "Step not found, please refresh the page."}), 404
+
+    elif request.method == 'GET':
+        forms = create_form_from_action(action, script=script)
         # session['edit_action'] = action
         return render_template("components/edit_action_form.html",
                                action=action,
-                               forms=create_form_from_action(action, script=script))
+                               forms=forms)
+
 
 
 @steps.post("/draft/steps/<int:uuid>")

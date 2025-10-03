@@ -1,4 +1,8 @@
-v1.3.5 (Sep 29th, 2025)
+v1.3.6 (Oct , 2025)
+- handle editing error on deleted steps (this should happen, but when multiple browsers are open, and inactive ones not refreshed)
+
+
+v1.3.5 (Oct 2nd, 2025)
 - fix output list
 - allow async
 - variable not found in execution (credit: Jenny Zhou)

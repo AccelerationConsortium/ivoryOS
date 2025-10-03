@@ -172,30 +172,47 @@ function editAction(uuid) {
         return;
     }
 
-    // Save current state before fetching new content
     previousHtmlState = document.getElementById('instrument-panel').innerHTML;
 
     fetch(scriptStepUrl.replace('0', uuid), {
-        method: 'GET',
+        method: 'GET',  // no need for Content-Type on GET
         headers: {
             'Content-Type': 'application/json'
         }
     })
-    .then(response => response.text())
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                if (err.warning) {
+                    alert(err.warning);  // <-- should fire now
+                }
+                // restore panel so user isn't stuck
+                if (previousHtmlState) {
+                    document.getElementById('instrument-panel').innerHTML = previousHtmlState;
+                    previousHtmlState = null;
+                }
+                throw new Error("Step fetch failed: " + response.status);
+            });
+        }
+        return response.text();
+    })
     .then(html => {
         document.getElementById('instrument-panel').innerHTML = html;
 
-        // Add click handler for back button
-        document.getElementById('back').addEventListener('click', function(e) {
-            e.preventDefault();
-            if (previousHtmlState) {
-                document.getElementById('instrument-panel').innerHTML = previousHtmlState;
-                previousHtmlState = null;  // Clear the stored state
-            }
-        });
+        const backButton = document.getElementById('back');
+        if (backButton) {
+            backButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (previousHtmlState) {
+                    document.getElementById('instrument-panel').innerHTML = previousHtmlState;
+                    previousHtmlState = null;
+                }
+            });
+        }
     })
     .catch(error => console.error('Error:', error));
 }
+
 
 
 
