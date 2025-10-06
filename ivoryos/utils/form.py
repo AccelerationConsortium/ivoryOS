@@ -405,7 +405,7 @@ def create_form_from_action(action: dict, script=None, design=True):
     for name, param_type in arg_types.items():
         # formatted_param_name = format_name(name)
         value = args.get(name, "")
-        if type(value) is dict:
+        if type(value) is dict and value:
             value = next(iter(value))
         field_kwargs = {
             "label": name,
@@ -556,9 +556,13 @@ def _action_button(action: dict, variables: dict):
                 arg_list = []
                 for k, v in action['args'].items():
                     if isinstance(v, dict):
-                        value = next(iter(v))  # Extract the first key if it's a dict
-                        # show warning color for variable calling when there is no definition
-                        style = "background-color: khaki" if value not in variables.keys() else ""
+                        if not v:
+                            value = v  # Keep the original value if not a dict
+                        else:
+                            value = next(iter(v))  # Extract the first key if it's a dict
+                            # show warning color for variable calling when there is no definition
+
+                            style = "background-color: khaki" if v.get(value) == "function_output" and value not in variables.keys() else ""
                     else:
                         value = v  # Keep the original value if not a dict
                     arg_list.append(f"{k} = {value}")  # Format the key-value pair

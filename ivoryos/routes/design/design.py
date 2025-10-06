@@ -385,7 +385,13 @@ def methods_handler(instrument: str = ''):
                 success = False
                 msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
     utils.post_script_file(script)
-    exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+    #TODO
+    try:
+        exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+    except Exception as e:
+        exec_string = {}
+        msg = f"Compilation failed: {str(e)}"
+    # exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
     session['python_code'] = exec_string
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
     html = render_template("components/canvas_main.html", script=script, buttons_dict=design_buttons)

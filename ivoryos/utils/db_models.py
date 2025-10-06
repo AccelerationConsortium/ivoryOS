@@ -644,12 +644,21 @@ class Script(db.Model):
                 args_str = args_str.replace(f"'#{args[arg][1:]}'", args[arg][1:])
             elif isinstance(args[arg], dict):
                 # print(args[arg])
-                variables = self.get_variables()
+                if not args[arg]:
+                    continue
+                # Extract the variable name (first key in the dict)
                 value = next(iter(args[arg]))
-                if value not in variables:
-                    raise ValueError(f"Variable ({value}) is not defined.")
-                args_str = args_str.replace(f"{args[arg]}", next(iter(args[arg])))
-            # elif self._is_variable(arg):
+                var_type = args[arg].get(value)
+
+                # Only process if it's a function_output variable reference
+                if var_type == "function_output":
+                    variables = self.get_variables()
+                    if value not in variables:
+                        raise ValueError(f"Variable ({value}) is not defined.")
+                    # Replace the dict string representation with just the variable name
+                    args_str = args_str.replace(f"{args[arg]}", value)
+
+        # elif self._is_variable(arg):
             #     print("is variable")
             #     args_str = args_str.replace(f"'{args[arg]}'", args[arg])
         return args_str
