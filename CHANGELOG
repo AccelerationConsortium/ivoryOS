@@ -1,8 +1,9 @@
-v1.3.6 (Oct 9th, 2025)
+v1.3.6 and v1.3.7 (Oct 9th, 2025)
 - handle editing error on deleted steps (this should happen, but when multiple browsers are open, and inactive ones not refreshed)
 - fix ax platform import path, No module named 'ax.modelbridge'
 - add nimo as an optimizer option
 - fix flask async install
+- forgot to add nimo_optimizer.py in the 1.3.6 release, oops
 
 v1.3.5 (Oct 2nd, 2025)
 - fix output list
