@@ -14,6 +14,7 @@ authors = [
 ]
 dependencies = [
     "bcrypt",
+    "Flask[async]",
     "Flask-Login",
     "Flask-Session",
     "Flask-SocketIO",
@@ -27,8 +28,9 @@ dependencies = [
 [project.optional-dependencies]
 optimizer-ax = ["ax-platform"]
 optimizer-baybe = ["baybe"]
+optimizer-nimo = ["nimo"]
 optimizer = [
-    "ax-platform",
+    "ax-platform>=1.1.2",
     "baybe"
 ]
 doc = [
