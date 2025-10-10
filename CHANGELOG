@@ -1,4 +1,4 @@
-v1.3.6 and v1.3.7 (Oct 9th, 2025)
+v1.3.6 - v1.3.8 (Oct 9th, 2025)
 - handle editing error on deleted steps (this should happen, but when multiple browsers are open, and inactive ones not refreshed)
 - fix ax platform import path, No module named 'ax.modelbridge'
 - add nimo as an optimizer option

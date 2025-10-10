@@ -184,7 +184,7 @@ def run_bo():
         if not Optimizer:
             raise ValueError(f"Optimizer {optimizer_type} is not supported or not found.")
         optimizer = Optimizer(experiment_name=run_name, parameter_space=parameters, objective_config=objectives,
-                              optimizer_config=steps)
+                              optimizer_config=steps, datapath=datapath)
         runner.run_script(script=script, run_name=run_name, optimizer=optimizer,
                           logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                           output_path=datapath, compiled=False, history=existing_data,
