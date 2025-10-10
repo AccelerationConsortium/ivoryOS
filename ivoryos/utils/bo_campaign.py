@@ -209,7 +209,7 @@ def parse_optimization_form(form_data: Dict[str, str]):
                         parameter["bounds"] = bounds
 
             elif value == "choice":
-                choices_field = f"{param_name}_choices"
+                choices_field = f"{param_name}_value"
                 if choices_field in form_data and form_data[choices_field]:
                     # Split choices by comma and clean whitespace
                     choices = [choice.strip() for choice in form_data[choices_field].split(',')]
