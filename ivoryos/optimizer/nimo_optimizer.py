@@ -2,8 +2,6 @@
 import itertools
 import os
 
-import nimo
-import pandas as pd
 
 from ivoryos.optimizer.base_optimizer import OptimizerBase
 
@@ -50,6 +48,8 @@ class NIMOOptimizer(OptimizerBase):
 
     def _create_candidates_csv(self):
         # Extract parameter names and their possible values
+        import pandas as pd
+        import nimo
         if os.path.exists(self.candidates) and nimo.history(self.candidates, self.n_objectives):
             return
         param_names = [p["name"] for p in self.parameter_space]
@@ -81,6 +81,8 @@ class NIMOOptimizer(OptimizerBase):
 
 
     def suggest(self, n=1):
+        import pandas as pd
+        import nimo
         method = self.step_1_generator if self.current_step <= self.step_1_batch_num else self.step_2_generator
         nimo.selection(method = method,
                        input_file = self.candidates,
@@ -108,6 +110,7 @@ class NIMOOptimizer(OptimizerBase):
         observe single output, nimo obj input is [1,2,3] or [[1, 2], [1, 2], [1, 2]] for MO
         :param results: {"objective_name": "value"}
         """
+        import nimo
         nimo_objective_values = [self._convert_observation_to_list(results)]
 
         nimo.output_update(input_file=self.proposals,
