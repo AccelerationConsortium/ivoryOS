@@ -30,7 +30,7 @@ class AxOptimizer(OptimizerBase):
     @staticmethod
     def _create_generator_mapping():
         """Create a mapping from string values to Generator enum members."""
-        from ax.modelbridge import Generators
+        from ax.adapter import Generators
         return {member.value: member for member in Generators}
 
     def _convert_parameter_to_ax_format(self, parameter_space):
@@ -96,8 +96,8 @@ class AxOptimizer(OptimizerBase):
         step_2 = optimizer_config.get("step_2", {})
         step_1_generator = step_1.get("model", "Sobol")
         step_2_generator = step_2.get("model", "BOTorch")
-        generator_1 = GenerationStep(model=generators.get(step_1_generator), num_trials=step_1.get("num_samples", 5))
-        generator_2 = GenerationStep(model=generators.get(step_2_generator), num_trials=step_2.get("num_samples", -1))
+        generator_1 = GenerationStep(generator=generators.get(step_1_generator), num_trials=step_1.get("num_samples", 5))
+        generator_2 = GenerationStep(generator=generators.get(step_2_generator), num_trials=step_2.get("num_samples", -1))
         return GenerationStrategy(steps=[generator_1, generator_2])
 
     def suggest(self, n=1):
