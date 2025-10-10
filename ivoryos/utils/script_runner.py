@@ -198,7 +198,7 @@ class ScriptRunner:
 
 
                     else:
-                        print("just exec synchronously")
+                        # print("just exec synchronously")
                         exec(line, exec_globals, exec_locals)
                         exec_globals.update(exec_locals)
                         # return locals_dict

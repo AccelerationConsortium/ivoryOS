@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 
 
 class OptimizerBase(ABC):
-    def __init__(self, experiment_name:str, parameter_space: list, objective_config: dict, optimizer_config: dict):
+    def __init__(self, experiment_name:str, parameter_space: list, objective_config: dict, optimizer_config: dict, datapath:str=None):
         """
         :param experiment_name: arbitrary name
         :param parameter_space: list of parameter names
@@ -29,6 +29,7 @@ class OptimizerBase(ABC):
         self.parameter_space = parameter_space
         self.objective_config = objective_config
         self.optimizer_config = optimizer_config
+        self.datapath = datapath
 
     @abstractmethod
     def suggest(self, n=1):

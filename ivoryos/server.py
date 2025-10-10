@@ -50,6 +50,7 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
         blueprint_plugins: Union[list, Blueprint] = [],
         exclude_names: list = [],
         notification_handler=None,
+        optimizer_registry: dict = None,
         ):
     """
     Start ivoryOS app server.
@@ -91,7 +92,10 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     app.config["LOGGERS_PATH"] = logger_output_name or app.config["LOGGERS_PATH"]  # default.log
     logger_path = os.path.join(app.config["OUTPUT_FOLDER"], app.config["LOGGERS_PATH"])
     dummy_deck_path = os.path.join(app.config["OUTPUT_FOLDER"], app.config["DUMMY_DECK"])
-    global_config.optimizers = OPTIMIZER_REGISTRY
+    if optimizer_registry:
+        global_config.optimizers = optimizer_registry
+    else:
+        global_config.optimizers = OPTIMIZER_REGISTRY
     if module:
         app.config["MODULE"] = module
         app.config["OFF_LINE"] = False
