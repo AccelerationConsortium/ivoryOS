@@ -17,14 +17,14 @@ class NIMOOptimizer(OptimizerBase):
             {"name": "param_3", "type": "range", "bounds": [0 10], "value_type": "int"},
         ]
         :param objective_config: objective configuration
-                [
+        [
             {"name": "obj_1", "minimize": True, "weight": 1},
             {"name": "obj_2", "minimize": False, "weight": 1}
         ]
         :param optimizer_config: optimizer configuration
-        optimizer_config={
-            "step_1": {"model": "Random", "num_samples": 10},
-            "step_2": {"model": "BOTorch"}
+        {
+            "step_1": {"model": "RE", "num_samples": 10},
+            "step_2": {"model": "PDC"}
         }
         """
         self.current_step = 0
@@ -40,8 +40,8 @@ class NIMOOptimizer(OptimizerBase):
         self.step_1_generator = step_1.get("model", "RE")
         self.step_1_batch_num = step_1.get("num_samples", 1)
         self.step_2_generator = step_2.get("model", "PDC")
-        self.candidates = os.path.join(self.datapath, f"{self.experiment_name}_candidates.csv")
-        self.proposals = os.path.join(self.datapath, f"{self.experiment_name}_proposals.csv")
+        self.candidates = os.path.join(self.datapath, "nimo_data", f"{self.experiment_name}_candidates.csv")
+        self.proposals = os.path.join(self.datapath, "nimo_data", f"{self.experiment_name}_proposals.csv")
         self.n_objectives = len(self.objective_config)
         self._create_candidates_csv()
 
@@ -129,8 +129,8 @@ class NIMOOptimizer(OptimizerBase):
             "parameter_types": ["choice"],
             "multiple_objectives": True,
             "optimizer_config": {
-                "step_1": {"model": ["RE", "ES", "PDC"], "num_samples": 5},
-                "step_2": {"model": ["PHYSBO", "BLOX", "PTR", "SLESA", "BOMP", "COMBI"]}
+                "step_1": {"model": ["RE", "ES"], "num_samples": 5},
+                "step_2": {"model": ["PHYSBO", "PDC", "BLOX", "PTR", "SLESA", "BOMP", "COMBI"]}
             },
         }
 
