@@ -79,7 +79,7 @@ def experiment_run():
             line_collection = script.convert_to_lines(exec_string)
         else:
             # Handle string case - you might need to adjust this based on your needs
-            line_collection = []
+            line_collection = {}
     except Exception:
         flash(f"Please check syntax!!")
         return redirect(url_for("design.experiment_builder"))
@@ -176,6 +176,8 @@ def run_bo():
     repeat = payload.pop("repeat", None)
     optimizer_type = payload.pop("optimizer_type", None)
     existing_data = payload.pop("existing_data", None)
+    batch_mode = payload.pop("batch_mode", None)
+    n_suggestions = payload.pop("suggest", None)
     parameters, objectives, steps = parse_optimization_form(payload)
     try:
         datapath = current_app.config["DATA_FOLDER"]
@@ -188,7 +190,7 @@ def run_bo():
         runner.run_script(script=script, run_name=run_name, optimizer=optimizer,
                           logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                           output_path=datapath, compiled=False, history=existing_data,
-                          current_app=current_app._get_current_object()
+                          current_app=current_app._get_current_object(), batch_mode=batch_mode, n_suggestions=n_suggestions
                           )
 
     except Exception as e:
