@@ -323,10 +323,12 @@ def methods_handler(instrument: str = ''):
         method_name = request.form.get("hidden_name", None)
         form = forms.get(method_name) if forms else None
         insert_position = request.form.get("drop_target_id", None)
+
         if form:
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
             if form.validate_on_submit():
                 function_name = kwargs.pop("hidden_name")
+                batch_action = kwargs.pop("batch_action", False)
                 save_data = kwargs.pop('return', '')
                 primitive_arg_types = utils.get_arg_type(kwargs, functions[function_name])
 
@@ -340,6 +342,7 @@ def methods_handler(instrument: str = ''):
                           "return": save_data,
                           'arg_types': primitive_arg_types,
                           "coroutine": deck_snapshot[instrument][function_name].get("coroutine", False) if deck_snapshot else False,
+                          "batch_action": batch_action,
                           }
                 script.add_action(action=action, insert_position=insert_position)
             else:

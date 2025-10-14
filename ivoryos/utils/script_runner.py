@@ -77,7 +77,8 @@ class ScriptRunner:
 
 
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None, bo_args=None,
-                   output_path="", compiled=False, current_app=None, history=None, optimizer=None):
+                   output_path="", compiled=False, current_app=None, history=None, optimizer=None, batch_mode=None,
+                   n_suggestions=None):
         global deck
         if deck is None:
             deck = global_config.deck
@@ -97,10 +98,73 @@ class ScriptRunner:
         thread = threading.Thread(
             target=self._run_with_stop_check,
             args=(script, repeat_count, run_name, logger, socketio, config, bo_args, output_path, current_app, compiled,
-                  history, optimizer)
+                  history, optimizer, batch_mode, n_suggestions)
         )
         thread.start()
         return thread
+
+    def exec_steps_batch(self, script, section_name, logger, socketio, phase_id, batch_mode="step", batch_action=None,
+                         kwargs_list=None, **kwargs):
+        """
+        Run script steps in batch mode.
+        :param batch_mode: 'step' or 'sample'
+        :param batch_action: function name at which to sync in 'sample' mode
+        :param kwargs_list: list of per-sample kwargs, e.g. [{"sample_id":1}, {"sample_id":2}]
+        """
+        # Default: single sample
+        if not kwargs_list:
+            kwargs_list = [kwargs]
+
+        results = {}
+
+        if batch_mode == "step":
+            # Step-synchronized mode
+            for sample_kwargs in kwargs_list:
+                sample_id = sample_kwargs.get("sample_id", len(results))
+                results[sample_id] = {}
+
+            # Iterate over each step and apply to all samples
+            step_list = script.convert_to_lines(script.python_script or script.compile()).get(section_name, [])
+            for index, line in enumerate(step_list):
+                logger.info(f"[Batch Step] Executing step {index}: {line}")
+                for sample_kwargs in kwargs_list:
+                    sample_id = sample_kwargs.get("sample_id")
+                    r = self.exec_single_step(script, section_name, line, logger, socketio, phase_id, **sample_kwargs)
+                    results[sample_id][line] = r
+
+        elif batch_mode == "sample":
+            # Sample-synchronized mode until batch_action
+            step_list = script.convert_to_lines(script.python_script or script.compile()).get(section_name, [])
+            before_action, after_action = [], []
+            seen = False
+            for line in step_list:
+                (after_action if seen else before_action).append(line)
+                if batch_action and line.strip() == batch_action:
+                    seen = True
+
+            # Run all before_batch steps for all samples
+            for sample_kwargs in kwargs_list:
+                sample_id = sample_kwargs.get("sample_id")
+                results[sample_id] = {}
+                for line in before_action:
+                    if line.strip() == batch_action:
+                        break
+                    r = self.exec_single_step(script, section_name, line, logger, socketio, phase_id, **sample_kwargs)
+                    results[sample_id][line] = r
+
+            # Execute the batch_action ONCE
+            if batch_action:
+                logger.info(f"Running batch action once: {batch_action}")
+                self.exec_single_step(script, section_name, batch_action, logger, socketio, phase_id, **kwargs)
+
+            # Continue after batch_action per sample if needed
+            for sample_kwargs in kwargs_list:
+                sample_id = sample_kwargs.get("sample_id")
+                for line in after_action[1:]:
+                    r = self.exec_single_step(script, section_name, line, logger, socketio, phase_id, **sample_kwargs)
+                    results[sample_id][line] = r
+
+        return results
 
     def exec_steps(self, script, section_name, logger, socketio, phase_id, **kwargs):
         """
@@ -234,7 +298,8 @@ class ScriptRunner:
         return exec_locals  # Return the 'results' variable
 
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, logger, socketio, config, bo_args,
-                             output_path, current_app, compiled, history=None, optimizer=None):
+                             output_path, current_app, compiled, history=None, optimizer=None, batch_mode=None,
+                             n_suggestions=None):
         time.sleep(1)
         # _func_str = script.compile()
         # step_list_dict: dict = script.convert_to_lines(_func_str)
@@ -262,7 +327,8 @@ class ScriptRunner:
                 if repeat_count:
                     self._run_repeat_section(repeat_count, arg_type, bo_args, output_list, script,
                                              run_name, return_list, compiled, logger, socketio,
-                                             history, output_path, run_id=run_id, optimizer=optimizer)
+                                             history, output_path, run_id=run_id, optimizer=optimizer,
+                                             batch_mode=batch_mode, n_suggestions=n_suggestions)
                 elif config:
                     self._run_config_section(config, arg_type, output_list, script, run_name, logger,
                                              socketio, run_id=run_id, compiled=compiled)
@@ -358,7 +424,8 @@ class ScriptRunner:
                 db.session.commit()
 
     def _run_repeat_section(self, repeat_count, arg_types, bo_args, output_list, script, run_name, return_list, compiled,
-                            logger, socketio, history, output_path, run_id, optimizer=None):
+                            logger, socketio, history, output_path, run_id, optimizer=None, batch_mode=None,
+                            n_suggestions=None):
         if bo_args:
             logger.info('Initializing optimizer...')
             if compiled:
@@ -422,9 +489,10 @@ class ScriptRunner:
                 except Exception as e:
                     logger.info(f'Optimization error: {e}')
                     break
+            # Optimizer for UI
             elif optimizer:
                 try:
-                    parameters = optimizer.suggest(1)
+                    parameters = optimizer.suggest(n=n_suggestions)
                     logger.info(f'Output value: {parameters}')
                     phase.parameters = parameters
                     output = self.exec_steps(script, "script", logger, socketio, phase_id, **parameters)
