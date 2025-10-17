@@ -286,7 +286,9 @@ class ScriptRunner:
                 self.toggle_pause()
             exec_locals.pop("__async_exec_wrapper", None)
             step.end_time = datetime.now()
-            step.output = exec_locals
+
+            serialized_output = utils.safe_dump(exec_locals)
+            step.output = serialized_output
             db.session.commit()
 
             self.pause_event.wait()

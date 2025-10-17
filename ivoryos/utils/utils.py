@@ -1,6 +1,7 @@
 import ast
 import importlib
 import inspect
+import json
 import logging
 import os
 import pickle
@@ -445,3 +446,11 @@ def get_local_ip():
     finally:
         s.close()
     return ip
+
+
+def safe_dump(obj):
+    try:
+        json.dumps(obj)
+        return obj
+    except (TypeError, OverflowError):
+        return repr(obj)  # store readable representation

@@ -3,7 +3,7 @@ from flask import current_app
 from flask_socketio import SocketIO
 from ivoryos.utils.script_runner import ScriptRunner
 
-socketio = SocketIO()
+socketio = SocketIO(cors_allowed_origins="*")
 runner = ScriptRunner()
 
 def abort_pending():

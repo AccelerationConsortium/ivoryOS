@@ -7,7 +7,7 @@ from ivoryos.optimizer.base_optimizer import OptimizerBase
 from ivoryos.utils.utils import install_and_import
 
 class AxOptimizer(OptimizerBase):
-    def __init__(self, experiment_name, parameter_space, objective_config, optimizer_config=None):
+    def __init__(self, experiment_name, parameter_space, objective_config, optimizer_config=None, datapath=None):
         try:
             from ax.api.client import Client
         except ImportError as e:
