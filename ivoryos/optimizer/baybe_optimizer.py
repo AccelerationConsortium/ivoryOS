@@ -6,7 +6,7 @@ from ivoryos.utils.utils import install_and_import
 from ivoryos.optimizer.base_optimizer import OptimizerBase
 
 class BaybeOptimizer(OptimizerBase):
-    def __init__(self, experiment_name, parameter_space, objective_config, optimizer_config):
+    def __init__(self, experiment_name, parameter_space, objective_config, optimizer_config, datapath=None):
         try:
             from baybe import Campaign
         except ImportError:

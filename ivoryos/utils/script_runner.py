@@ -174,6 +174,8 @@ class ScriptRunner:
         :return: The final result of the function execution
         """
         _func_str = script.python_script or script.compile()
+        _, return_list = script.config_return()
+
         step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
         global deck
         # global deck, registered_workflows
@@ -284,7 +286,9 @@ class ScriptRunner:
                 self.toggle_pause()
             exec_locals.pop("__async_exec_wrapper", None)
             step.end_time = datetime.now()
-            step.output = exec_locals
+
+            serialized_output = utils.safe_dump(exec_locals)
+            step.output = serialized_output
             db.session.commit()
 
             self.pause_event.wait()
@@ -294,8 +298,8 @@ class ScriptRunner:
             # step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
             if not step.run_error or not self.retry:
                 index += 1
-
-        return exec_locals  # Return the 'results' variable
+        output = {key: value for key, value in exec_locals.items() if key in return_list}
+        return output  # Return the 'results' variable
 
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, logger, socketio, config, bo_args,
                              output_path, current_app, compiled, history=None, optimizer=None, batch_mode=None,
