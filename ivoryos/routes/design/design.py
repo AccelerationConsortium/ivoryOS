@@ -100,6 +100,27 @@ def experiment_builder():
                            script=script, defined_variables=deck_variables, buttons_dict=design_buttons,
                            local_variables=global_config.defined_variables, block_variables=global_config.building_blocks)
 
+@design.route("/draft/code_preview", methods=["GET"])
+@login_required
+def compile_preview():
+    # Get mode and batch from query parameters
+    script = utils.get_script_file()
+    mode = request.args.get("mode", "single")   # default to "single"
+    batch = request.args.get("batch", "sample") # default to "sample"
+
+    try:
+        # Example: decide which code to return based on mode/batch
+        if mode == "single":
+            code = script.compile(current_app.config['SCRIPT_FOLDER'])
+        elif mode == "batch" and batch == "step":
+            code = script.compile(current_app.config['SCRIPT_FOLDER'], batch=True, mode="step")
+        elif batch == "step":
+            code = script.compile(current_app.config['SCRIPT_FOLDER'], batch=True, mode="sample")
+    except Exception as e:
+        code = f"# Error compiling: {e}"
+    # print(code)
+    return jsonify(code=code)
+
 
 @design.route("/draft/meta", methods=["PATCH"])
 @login_required

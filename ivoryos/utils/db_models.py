@@ -452,7 +452,7 @@ class Script(db.Model):
                 ]
         return line_collection
 
-    def compile(self, script_path=None):
+    def compile(self, script_path=None, batch=False, mode="sample"):
         """
         Compile the current script to a Python file.
         :return: String to write to a Python file.
@@ -468,7 +468,7 @@ class Script(db.Model):
         for i in self.stypes:
             if self.script_dict[i]:
                 is_async = any(a.get("coroutine", False) for a in self.script_dict[i])
-                func_str = self._generate_function_header(run_name, i, is_async) + self._generate_function_body(i)
+                func_str = self._generate_function_header(run_name, i, is_async, batch) + self._generate_function_body(i, batch, mode)
                 exec_str_collection[i] = func_str
         if script_path:
             self._write_to_file(script_path, run_name, exec_str_collection)
@@ -486,7 +486,7 @@ class Script(db.Model):
             name += '_'
         return name
 
-    def _generate_function_header(self, run_name, stype, is_async):
+    def _generate_function_header(self, run_name, stype, is_async, batch=False):
         """
         Generate the function header.
         """
@@ -500,25 +500,36 @@ class Script(db.Model):
         function_header = f"{async_str}def {run_name}{script_type}("
 
         if stype == "script":
-            function_header += ", ".join(configure)
-
+            if batch:
+                function_header += "param_list"
+            else:
+                function_header += ", ".join(configure)
         function_header += "):"
         # function_header += self.indent(1) + f"global {run_name}_{stype}"
         return function_header
 
-    def _generate_function_body(self, stype):
+    def _generate_function_body(self, stype, batch=False, mode="sample"):
         """
         Generate the function body for each type in stypes.
         """
         body = ''
         indent_unit = 1
-
-        for index, action in enumerate(self.script_dict[stype]):
-            text, indent_unit = self._process_action(indent_unit, action, index, stype)
-            body += text
-        return_str, return_list = self.config_return()
-        if return_list and stype == "script":
-            body += self.indent(indent_unit) + return_str
+        if batch and stype == "script":
+            for index, action in enumerate(self.script_dict[stype]):
+                text, indent_unit = self._process_action(indent_unit, action, index, stype)
+                print((text==''))
+                body += """for param in param_list:
+                """
+            return_str, return_list = self.config_return()
+            if return_list and stype == "script":
+                body += self.indent(indent_unit) + return_str
+        else:
+            for index, action in enumerate(self.script_dict[stype]):
+                text, indent_unit = self._process_action(indent_unit, action, index, stype)
+                body += text
+            return_str, return_list = self.config_return()
+            if return_list and stype == "script":
+                body += self.indent(indent_unit) + return_str
         return body
 
     def _process_action(self, indent_unit, action, index, stype):
