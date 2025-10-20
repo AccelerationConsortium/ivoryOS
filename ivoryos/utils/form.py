@@ -409,12 +409,22 @@ def create_form_from_action(action: dict, script=None, design=True):
         value = args.get(name, "")
         if type(value) is dict and value:
             value = next(iter(value))
+        if not value or value == "None":
+            value = None
+        else:
+            value = f'{value}'
+
         field_kwargs = {
             "label": name,
-            "default": f'{value}',
-            "validators": [InputRequired()],
+            "default": f'{value}' if value else None,
+            # todo get optional/required from snapshot
+            "validators": [Optional()],
             **({"script": script})
         }
+        if type(param_type) is list:
+            none_type = param_type[1]
+            if none_type == "NoneType":
+                param_type = param_type[0]
         param_type = param_type if type(param_type) is str else f"{param_type}"
         field_class, placeholder_text = annotation_mapping.get(
             param_type,
