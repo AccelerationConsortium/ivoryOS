@@ -66,9 +66,59 @@ function updateActionCanvas(html) {
     document.getElementById("canvas-action-wrapper").innerHTML = html;
     initializeCanvas(); // Reinitialize canvas functionality
     document.querySelectorAll('#pythonCodeOverlay pre code').forEach((block) => {
+        const modeButtons = document.querySelectorAll(".mode-toggle");
+        const batchButtons = document.querySelectorAll(".batch-toggle");
+
+
+        modeButtons.forEach(btn => btn.addEventListener("click", () => setMode(btn.dataset.mode)));
+        batchButtons.forEach(btn => btn.addEventListener("click", () => setBatch(btn.dataset.batch)));
+        updateCode();
+
         hljs.highlightElement(block);
     });
 }
+
+
+async function updateCode() {
+
+    const batchOptions = document.getElementById("batch-options");
+    const codeElem = document.getElementById("python-code");
+
+    let currentMode = "single";
+    let currentBatch = "sample";
+
+    try {
+        const params = new URLSearchParams({mode: currentMode, batch: currentBatch});
+        const res = await fetch(scriptCompileUrl + "?" + params.toString());
+        if (!res.ok) return;
+        const data = await res.json();
+
+        codeElem.textContent = data.code['script'] || "# No code found";
+        if (window.hljs) hljs.highlightAll();
+
+    } catch (err) {
+        console.error("Error updating code:", err);
+    }
+
+    modeButtons.forEach(btn => btn.addEventListener("click", () => setMode(btn.dataset.mode)));
+    batchButtons.forEach(btn => btn.addEventListener("click", () => setBatch(btn.dataset.batch)));
+
+}
+
+    // --- Toggle Handlers ---
+function setMode(mode) {
+    currentMode = mode;
+    modeButtons.forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
+    batchOptions.style.display = (mode === "batch") ? "inline-flex" : "none";
+    updateCode();
+}
+
+function setBatch(batch) {
+    currentBatch = batch;
+    batchButtons.forEach(b => b.classList.toggle("active", b.dataset.batch === batch));
+    updateCode();
+}
+
 
 
 let lastFocusedElement = null;

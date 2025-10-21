@@ -112,12 +112,12 @@ def compile_preview():
         # Example: decide which code to return based on mode/batch
         if mode == "single":
             code = script.compile(current_app.config['SCRIPT_FOLDER'])
-        elif mode == "batch" and batch == "step":
-            code = script.compile(current_app.config['SCRIPT_FOLDER'], batch=True, mode="step")
-        elif batch == "step":
-            code = script.compile(current_app.config['SCRIPT_FOLDER'], batch=True, mode="sample")
+        elif mode == "batch":
+            code = script.compile(current_app.config['SCRIPT_FOLDER'], batch=True, mode=batch)
+        else:
+            code = "Invalid mode. Please select 'single' or 'batch'."
     except Exception as e:
-        code = f"# Error compiling: {e}"
+        code = f"Error compiling: {e}"
     # print(code)
     return jsonify(code=code)
 

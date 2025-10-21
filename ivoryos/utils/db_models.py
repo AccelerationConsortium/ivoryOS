@@ -516,10 +516,8 @@ class Script(db.Model):
         indent_unit = 1
         if batch and stype == "script":
             for index, action in enumerate(self.script_dict[stype]):
-                text, indent_unit = self._process_action(indent_unit, action, index, stype)
-                print((text==''))
-                body += """for param in param_list:
-                """
+                text, indent_unit = self._process_action(indent_unit, action, index, stype, batch)
+                body += text
             return_str, return_list = self.config_return()
             if return_list and stype == "script":
                 body += self.indent(indent_unit) + return_str
@@ -532,7 +530,7 @@ class Script(db.Model):
                 body += self.indent(indent_unit) + return_str
         return body
 
-    def _process_action(self, indent_unit, action, index, stype):
+    def _process_action(self, indent_unit, action, index, stype, batch=False, mode="sample"):
         """
         Process each action within the script dictionary.
         """
@@ -542,6 +540,8 @@ class Script(db.Model):
 
         save_data = action['return']
         action_name = action['action']
+        batch_action = action.get("batch_action", False)
+
         next_action = self._get_next_action(stype, index)
         # print(args)
         if instrument == 'if':
@@ -562,7 +562,7 @@ class Script(db.Model):
         #     return inspect.getsource(my_function)
         else:
             is_async = action.get("coroutine", False)
-            return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data, is_async)
+            return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data, is_async, batch, batch_action)
 
     def _process_args(self, args):
         """
@@ -622,7 +622,7 @@ class Script(db.Model):
             indent_unit -= 1
         return exec_string, indent_unit
 
-    def _process_instrument_action(self, indent_unit, instrument, action, args, save_data, is_async=False):
+    def _process_instrument_action(self, indent_unit, instrument, action, args, save_data, is_async=False, batch=False, batch_action=False):
         """
         Process actions related to instruments.
         """
@@ -644,7 +644,15 @@ class Script(db.Model):
         if save_data:
             save_data += " = "
 
-        return self.indent(indent_unit) + save_data + single_line, indent_unit
+        if batch and not batch_action:
+            arg_list = [args[arg][1:] for arg in args if isinstance(args[arg], str) and args[arg].startswith("#")]
+            param_str = [f"param['{arg_list}']" for arg_list in arg_list if arg_list]
+            args_str = self.indent(indent_unit + 1) +  ", ".join(arg_list) + " = " + ", ".join(param_str) if arg_list else ""
+            for_string = self.indent(indent_unit) + "for param in param_list:" + args_str
+            output_code = for_string + self.indent(indent_unit + 1) + save_data + single_line
+        else:
+            output_code = self.indent(indent_unit) + save_data + single_line
+        return output_code, indent_unit
 
     def _process_dict_args(self, args):
         """
