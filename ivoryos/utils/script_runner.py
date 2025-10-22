@@ -285,10 +285,13 @@ class ScriptRunner:
                 self.lock.release()
         with current_app.app_context():
             run = db.session.get(WorkflowRun, run_id)
-            run.end_time = datetime.now()
-            run.data_path = filename
-            run.run_error = error_flag
-            db.session.commit()
+            if run is None:
+                logger.info("Error: Run not found in database.")
+            else:
+                run.end_time = datetime.now()
+                run.data_path = filename
+                run.run_error = error_flag
+                db.session.commit()
 
 
     def _run_actions(self, script, section_name="", logger=None, socketio=None, run_id=None):
