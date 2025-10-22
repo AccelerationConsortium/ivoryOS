@@ -110,6 +110,8 @@ class ScriptRunner:
         :return: The final result of the function execution
         """
         _func_str = script.python_script or script.compile()
+        _, return_list = script.config_return()
+
         step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
         global deck
         # global deck, registered_workflows
@@ -230,8 +232,8 @@ class ScriptRunner:
             # step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
             if not step.run_error or not self.retry:
                 index += 1
-
-        return exec_locals  # Return the 'results' variable
+        output = {key: value for key, value in exec_locals.items() if key in return_list}
+        return output  # Return the 'results' variable
 
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, logger, socketio, config, bo_args,
                              output_path, current_app, compiled, history=None, optimizer=None):
@@ -250,6 +252,8 @@ class ScriptRunner:
             db.session.add(run)
             db.session.flush()
             run_id = run.id  # Save the ID
+            db.session.commit()
+
             try:
 
                 global_config.runner_status = {"id":run_id, "type": "workflow"}
@@ -422,6 +426,7 @@ class ScriptRunner:
                 except Exception as e:
                     logger.info(f'Optimization error: {e}')
                     break
+            # Optimizer for UI
             elif optimizer:
                 try:
                     parameters = optimizer.suggest(1)

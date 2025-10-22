@@ -35,6 +35,8 @@ class NIMOOptimizer(OptimizerBase):
 
         super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, datapath)
 
+        os.makedirs(os.path.join(self.datapath, "nimo_data"), exist_ok=True)
+
         step_1 = optimizer_config.get("step_1", {})
         step_2 = optimizer_config.get("step_2", {})
         self.step_1_generator = step_1.get("model", "RE")
