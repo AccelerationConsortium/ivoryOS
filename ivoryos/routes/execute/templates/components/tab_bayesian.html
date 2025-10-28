@@ -93,12 +93,15 @@
                                         <div class="col-6 parameter-inputs">
                                             <input type="text" class="form-control form-control-sm single-input" id="{{config}}_value" name="{{config}}_value" placeholder="1, 2, 3">
                                             <div class="range-inputs" style="display: none;">
-                                                <div class="row">
-                                                    <div class="col-6">
-                                                        <input type="text" class="form-control form-control-sm" id="{{config}}_min" name="{{config}}_min" placeholder="Min value">
+                                                <div class="row g-2">
+                                                    <div class="col-4">
+                                                        <input type="text" class="form-control form-control-sm" id="{{config}}_min" name="{{config}}_min" placeholder="Min">
                                                     </div>
-                                                    <div class="col-6">
-                                                        <input type="text" class="form-control form-control-sm" id="{{config}}_max" name="{{config}}_max" placeholder="Max value">
+                                                    <div class="col-4">
+                                                        <input type="text" class="form-control form-control-sm" id="{{config}}_max" name="{{config}}_max" placeholder="Max">
+                                                    </div>
+                                                    <div class="col-4">
+                                                        <input type="text" class="form-control form-control-sm" id="{{config}}_step" name="{{config}}_step" placeholder="Step (optional)">
                                                     </div>
                                                 </div>
                                             </div>
@@ -128,7 +131,18 @@
                                     {% endif %}
                                 </div>
                             {% endfor %}
-
+<!-- Constraints -->
+<h6 class="fw-bold mt-3 mb-1">Constraints</h6>
+<div id="constraints_container">
+    <div class="row align-items-center mb-2 constraint-row">
+        <div class="col-10">
+            <input type="text" class="form-control form-control-sm" name="constraint_expr" placeholder="e.g. a + b <= 80">
+        </div>
+        <div class="col-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addConstraintRow()">+</button>
+        </div>
+    </div>
+</div>
                             <!-- Budget -->
                             <h6 class="fw-bold mt-3 mb-1">Budget</h6>
                             <div class="input-group mb-3">
@@ -294,25 +308,24 @@
             const selectedOption = optimizerSelect.selectedOptions[0];
 
             if (!selectedOption || !selectedOption.value) {
-                // Hide optimizer config and reset parameter types
-                document.getElementById('optimizer_config_container').style.display = 'none';
-                document.getElementById('optimizer_config_placeholder').style.display = 'block';
                 resetParameterTypes();
                 return;
             }
 
-            // Update parameter types
-            const parameterTypes = selectedOption.dataset.parameterTypes.split(',');
-            updateParameterTypeOptions(parameterTypes);
-
-            // Update optimizer config - use the stored schema data instead
             const optimizerName = selectedOption.value;
-            if (optimizerSchema[optimizerName] && optimizerSchema[optimizerName].optimizer_config) {
-                updateOptimizerConfig(optimizerSchema[optimizerName].optimizer_config);
-            } else {
-                document.getElementById('optimizer_config_container').style.display = 'none';
-                document.getElementById('optimizer_config_placeholder').style.display = 'block';
-            }
+            const schema = optimizerSchema[optimizerName];
+            const supportsContinuous = schema.supports_continuous;
+
+            updateParameterTypeOptions(schema.parameter_types);
+
+            // ✅ Show hint if step is required
+            document.querySelectorAll('input[name$="_step"]').forEach(stepInput => {
+                stepInput.placeholder = supportsContinuous
+                    ? "Step (optional)"
+                    : "Step (required)";
+            });
+
+            updateOptimizerConfig(schema.optimizer_config);
         }
 
         function updateParameterTypeOptions(availableTypes) {
@@ -433,4 +446,23 @@
                 updateParameterInputs(select);
             });
         });
+
+        function addConstraintRow() {
+            const container = document.getElementById('constraints_container');
+            const newRow = document.createElement('div');
+            newRow.classList.add('row', 'align-items-center', 'mb-2', 'constraint-row');
+            newRow.innerHTML = `
+                <div class="col-10">
+                    <input type="text" class="form-control form-control-sm" name="constraint_expr" placeholder="e.g. a + b <= 80">
+                </div>
+                <div class="col-2">
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeConstraintRow(this)">−</button>
+                </div>
+            `;
+            container.appendChild(newRow);
+        }
+
+        function removeConstraintRow(button) {
+            button.closest('.constraint-row').remove();
+        }
     </script>

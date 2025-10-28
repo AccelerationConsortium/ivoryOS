@@ -65,9 +65,11 @@ class BaybeOptimizer(OptimizerBase):
         :param parameter_space: The parameter space configuration.
         [
             {"name": "param_1", "type": "range", "bounds": [1.0, 2.0], "value_type": "float"},
-            {"name": "param_2", "type": "choice", "bounds": ["a", "b", "c"], "value_type": "str"},
-            {"name": "param_3", "type": "range", "bounds": [0 10], "value_type": "int"},
-            {"name": "param_4", "type": "substance", "bounds": ["methanol", "water", "toluene"], "value_type": "str"} #TODO
+            {"name": "param_2", "type": "range", "bounds": [1.0, 2.0, 0.5], "value_type": "float"},
+
+            {"name": "param_3", "type": "choice", "bounds": ["a", "b", "c"], "value_type": "str"},
+            {"name": "param_4", "type": "range", "bounds": [0 10], "value_type": "int"},
+            {"name": "param_5", "type": "substance", "bounds": ["methanol", "water", "toluene"], "value_type": "str"} #TODO
         ]
         :return: A list of Baybe parameters.
         """
@@ -154,7 +156,7 @@ class BaybeOptimizer(OptimizerBase):
         Returns a template for the optimizer configuration.
         """
         return {
-            "parameter_types": ["range", "choice", "substance"],
+            "parameter_types": ["range", "choice", "substance", "fixed"],
             "multiple_objectives": True,
             "optimizer_config": {
                 "step_1": {"model": ["Random", "FPS"], "num_samples": 10},

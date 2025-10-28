@@ -114,13 +114,15 @@ class AxOptimizer(OptimizerBase):
     @staticmethod
     def get_schema():
         return {
-            "parameter_types": ["range", "choice"],
+            "parameter_types": ["range", "choice", "fixed"],
             "multiple_objectives": True,
             # "objective_weights": True,
+            "supports_continuous": True,
             "optimizer_config": {
                 "step_1": {"model": ["Sobol", "Uniform", "Factorial", "Thompson"], "num_samples": 5},
                 "step_2": {"model": ["BoTorch", "SAASBO", "SAAS_MTGP", "Legacy_GPEI", "EB", "EB_Ashr", "ST_MTGP", "BO_MIXED", "Contextual_SACBO"]}
             },
+
         }
 
     def append_existing_data(self, existing_data):

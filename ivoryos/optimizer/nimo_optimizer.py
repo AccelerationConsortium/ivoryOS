@@ -128,7 +128,7 @@ class NIMOOptimizer(OptimizerBase):
     @staticmethod
     def get_schema():
         return {
-            "parameter_types": ["choice"],
+            "parameter_types": ["choice", "range", "fixed"],
             "multiple_objectives": True,
             "optimizer_config": {
                 "step_1": {"model": ["RE", "ES"], "num_samples": 5},
