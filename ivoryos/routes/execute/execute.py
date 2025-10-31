@@ -115,29 +115,32 @@ def experiment_run():
             elif "parameters" in payload_json:
                 bo_args = payload_json
             repeat = payload_json.pop("repeat", None)
+            batch_size = payload_json.pop('batch_size', 1)
         else:
             if "bo" in request.form:
                 bo_args = request.form.to_dict()
                 existing_data = bo_args.pop("existing_data")
             if "online-config" in request.form:
                 config = utils.web_config_entry_wrapper(request.form.to_dict(), config_list)
+            batch_size = request.form.get('batch_size', 1)
             repeat = request.form.get('repeat', None)
 
-        try:
+        # try:
+        if True:
             datapath = current_app.config["DATA_FOLDER"]
             run_name = script.validate_function_name(run_name)
             runner.run_script(script=script, run_name=run_name, config=config, bo_args=bo_args,
                               logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                               output_path=datapath, compiled=compiled, history=existing_data,
-                              current_app=current_app._get_current_object()
+                              current_app=current_app._get_current_object(), n_suggestions=batch_size
                               )
             if utils.check_config_duplicate(config):
                 flash(f"WARNING: Duplicate in config entries.")
-        except Exception as e:
-            if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
-                return jsonify({"error": e.__str__()})
-            else:
-                flash(e)
+        # except Exception as e:
+        #     if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+        #         return jsonify({"error": e.__str__()})
+        #     else:
+        #         flash(e)
 
     if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
         # wait to get a workflow ID
@@ -179,7 +182,9 @@ def run_bo():
     batch_mode = payload.pop("batch_mode", None)
     n_suggestions = payload.pop("suggest", None)
     parameters, objectives, steps = parse_optimization_form(payload)
-    try:
+    # try:
+
+    if True:
         datapath = current_app.config["DATA_FOLDER"]
         run_name = script.validate_function_name(run_name)
         Optimizer = global_config.optimizers.get(optimizer_type, None)
@@ -190,14 +195,15 @@ def run_bo():
         runner.run_script(script=script, run_name=run_name, optimizer=optimizer,
                           logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                           output_path=datapath, compiled=False, history=existing_data,
-                          current_app=current_app._get_current_object(), batch_mode=batch_mode, n_suggestions=n_suggestions
+                          current_app=current_app._get_current_object(), batch_mode=batch_mode, n_suggestions=n_suggestions,
+
                           )
 
-    except Exception as e:
-        if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
-            return jsonify({"error": e.__str__()})
-        else:
-            flash(e.__str__())
+    # except Exception as e:
+    #     if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+    #         return jsonify({"error": e.__str__()})
+    #     else:
+    #         flash(e.__str__())
     return redirect(url_for("execute.experiment_run"))
 
 

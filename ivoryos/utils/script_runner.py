@@ -864,19 +864,6 @@ class ScriptRunner:
 
         return context
 
-    async def _batch_by_step(self, nested_list: List[Dict], param_sets: List[Dict[str, Any]]):
-        """
-        Execute workflow step-by-step for all samples together.
-        Batch actions are executed once for all samples.
-        Non-batch actions are executed for each sample.
-        """
-        num_samples = len(param_sets)
-        results = param_sets.copy()
-
-        await self._execute_steps_batched(nested_list, results)
-
-        return results
-
 
     async def _execute_steps_batched(self, steps: List[Dict], contexts: List[Dict[str, Any]]):
         """
@@ -1009,7 +996,8 @@ class ScriptRunner:
         print(f"Executing batch action: {step['action']}")
         return await self._execute_action(step, context)
 
-    def _substitute_params(self, args: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+    @staticmethod
+    def _substitute_params(args: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
         """Substitute parameter placeholders like #param_1 with actual values."""
         substituted = {}
 
@@ -1022,7 +1010,8 @@ class ScriptRunner:
 
         return substituted
 
-    def _evaluate_condition(self, condition_str: str, context: Dict[str, Any]) -> bool:
+    @staticmethod
+    def _evaluate_condition(condition_str: str, context: Dict[str, Any]) -> bool:
         """
         Safely evaluate a condition string with context variables.
 

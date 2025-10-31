@@ -1,5 +1,4 @@
-{# Python code overlay component #}
-{#{% if session.get('show_code') %}#}
+{# Python code overlay component - Pure HTML #}
 <style>
 .code-overlay {
     position: fixed;
@@ -16,7 +15,7 @@
     transform: translateX(0);
 }
 </style>
-<script>hljs.highlightAll();</script>
+
 {% if session.get('show_code') %}
 <div id="pythonCodeOverlay" class="code-overlay bg-light border-start show">
 {% else %}
@@ -35,11 +34,11 @@
             <button type="button" class="btn btn-outline-primary mode-toggle" data-mode="batch">Batch</button>
         </div>
 
-        <!-- Secondary toggles (By Sample / By Step) -->
-        <div class="btn-group mb-3" id="batch-options" style="display: none;">
-            <button type="button" class="btn btn-outline-secondary batch-toggle active" data-batch="sample">By Sample</button>
-            <button type="button" class="btn btn-outline-secondary batch-toggle" data-batch="step">By Step</button>
-        </div>
+{#        <!-- Secondary toggles (By Sample / By Step) TODO -->#}
+{#        <div class="btn-group mb-3" id="batch-options" style="display: none;">#}
+{#            <button type="button" class="btn btn-outline-secondary batch-toggle active" data-batch="sample">By Sample</button>#}
+{#            <button type="button" class="btn btn-outline-secondary batch-toggle" data-batch="step">By Step</button>#}
+{#        </div>#}
 
         <!-- Code display -->
         <pre><code id="python-code" class="language-python">Loading...</code></pre>
@@ -54,80 +53,4 @@
             </button>
         </div>
     </div>
-
-</div>
-
-<script>
-const codeElem = document.getElementById("python-code");
-const copyBtn = document.getElementById("copy-code");
-const downloadBtn = document.getElementById("download-code");
-
-// Copy to clipboard
-copyBtn.addEventListener("click", () => {
-    navigator.clipboard.writeText(codeElem.textContent)
-        .then(() => alert("Code copied!"))
-        .catch(err => console.error("Failed to copy", err));
-});
-
-// Download current code
-downloadBtn.addEventListener("click", () => {
-    const blob = new Blob([codeElem.textContent], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "script.py";
-    a.click();
-    URL.revokeObjectURL(url);
-});
-
-document.addEventListener("DOMContentLoaded", function() {
-
-
-    const compileURL = "{{ url_for('design.compile_preview') }}";
-    const modeButtons = document.querySelectorAll(".mode-toggle");
-    const batchButtons = document.querySelectorAll(".batch-toggle");
-    const batchOptions = document.getElementById("batch-options");
-    const codeElem = document.getElementById("python-code");
-
-    let currentMode = "single";
-    let currentBatch = "sample";
-
-    async function updateCode() {
-        const params = new URLSearchParams({ mode: currentMode, batch: currentBatch });
-        const res = await fetch(compileURL + "?" + params.toString());
-        const data = await res.json();
-        const codeContainer = document.getElementById("python-code"); // this is now a <div>
-        codeContainer.innerHTML = ""; // clear previous code
-
-        // create <pre><code> for each stype
-        const pre = document.createElement("pre");
-        const codeElem = document.createElement("code");
-        codeElem.classList.add("language-python");
-        codeElem.textContent = data.code['script']; // or loop if multiple stypes
-        pre.appendChild(codeElem);
-
-        codeContainer.appendChild(pre); // ✅ now safe
-        if (window.Prism) Prism.highlightAll(); // optional syntax highlighting
-    }
-
-    function setMode(mode) {
-        currentMode = mode;
-        modeButtons.forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
-        batchOptions.style.display = (mode === "batch") ? "inline-flex" : "none";
-        updateCode();
-    }
-
-    function setBatch(batch) {
-        currentBatch = batch;
-        batchButtons.forEach(b => b.classList.toggle("active", b.dataset.batch === batch));
-        updateCode();
-    }
-
-    modeButtons.forEach(btn => btn.addEventListener("click", () => setMode(btn.dataset.mode)));
-    batchButtons.forEach(btn => btn.addEventListener("click", () => setBatch(btn.dataset.batch)));
-
-    // Initial load
-    updateCode();
-});
-</script>
 </div>
