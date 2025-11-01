@@ -68,24 +68,35 @@
                         </tbody>
                     </table>
                 </div>
-            <div class="card-footer">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-success" onclick="addRow()">
-                        <i class="bi bi-plus-circle"></i> Add Row
-                    </button>
-                    <button type="button" class="btn btn-warning" onclick="clearAllRows()">
-                        <i class="bi bi-trash"></i> Clear All
-                    </button>
-                    <button type="button" class="btn btn-info" onclick="resetToFile()" id="resetToFileBtn" style="display: none;">
-                        <i class="bi bi-arrow-clockwise"></i> Reset to File
-                    </button>
+
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <!-- Left side: Action buttons -->
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn btn-success" onclick="addRow()">
+                                <i class="bi bi-plus-circle"></i> Add Row
+                            </button>
+                            <button type="button" class="btn btn-warning" onclick="clearAllRows()">
+                                <i class="bi bi-trash"></i> Clear All
+                            </button>
+                            <button type="button" class="btn btn-info" onclick="resetToFile()" id="resetToFileBtn" style="display: none;">
+                                <i class="bi bi-arrow-clockwise"></i> Reset to File
+                            </button>
+                        </div>
+
+                        <!-- Right side: Batch size and Run button -->
+                        <div class="d-flex gap-2 align-items-center flex-wrap">
+                            <div class="input-group" style="width: auto;">
+                                <label class="input-group-text" for="batch_size">Batch size</label>
+                                <input class="form-control" type="number" id="batch_size" name="batch_size" min="1" max="1000" value="1" style="width: 80px;">
+                            </div>
+                            <button type="submit" name="online-config" class="btn btn-primary btn-lg">
+                                <i class="bi bi-play-circle"></i> Run
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <button type="submit" name="online-config" class="btn btn-primary btn-lg">
-                    <i class="bi bi-play-circle"></i> Run
-                </button>
-            </div>
-            </div>
+
             </form>
         </div>
         <!-- Config Preview (if loaded from file) -->

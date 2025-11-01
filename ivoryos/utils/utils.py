@@ -381,6 +381,7 @@ def create_block_snapshot(save: bool = False, output_path: str = ''):
             block_snapshot[key][func_name] = {
                 "signature": meta["signature"],
                 "docstring": meta["docstring"],
+                "coroutine": meta["coroutine"],
                 "path": f"{func.__module__}.{func.__qualname__}"
             }
     if block_snapshot:

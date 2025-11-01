@@ -121,8 +121,10 @@ def experiment_run():
                 bo_args = request.form.to_dict()
                 existing_data = bo_args.pop("existing_data")
             if "online-config" in request.form:
-                config = utils.web_config_entry_wrapper(request.form.to_dict(), config_list)
-            batch_size = request.form.get('batch_size', 1)
+                config_args = request.form.to_dict()
+                config_args.pop("batch_size", None)
+                config = utils.web_config_entry_wrapper(config_args, config_list)
+            batch_size = int(request.form.get('batch_size', 1))
             repeat = request.form.get('repeat', None)
 
         # try:
@@ -132,7 +134,7 @@ def experiment_run():
             runner.run_script(script=script, run_name=run_name, config=config, bo_args=bo_args,
                               logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                               output_path=datapath, compiled=compiled, history=existing_data,
-                              current_app=current_app._get_current_object(), n_suggestions=batch_size
+                              current_app=current_app._get_current_object(), batch_size=batch_size
                               )
             if utils.check_config_duplicate(config):
                 flash(f"WARNING: Duplicate in config entries.")
@@ -195,7 +197,7 @@ def run_bo():
         runner.run_script(script=script, run_name=run_name, optimizer=optimizer,
                           logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                           output_path=datapath, compiled=False, history=existing_data,
-                          current_app=current_app._get_current_object(), batch_mode=batch_mode, n_suggestions=n_suggestions,
+                          current_app=current_app._get_current_object(), batch_mode=batch_mode, batch_size=n_suggestions,
 
                           )
 

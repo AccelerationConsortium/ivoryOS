@@ -341,6 +341,7 @@ def methods_handler(instrument: str = ''):
     request.form
     if "hidden_name" in request.form:
         deck_snapshot = global_config.deck_snapshot
+        block_snapshot = global_config.building_blocks
         method_name = request.form.get("hidden_name", None)
         form = forms.get(method_name) if forms else None
         insert_position = request.form.get("drop_target_id", None)
@@ -358,11 +359,16 @@ def methods_handler(instrument: str = ''):
 
                 script.eval_list(kwargs, primitive_arg_types)
                 kwargs = script.validate_variables(kwargs)
+                coroutine = False
+                if instrument.startswith("deck") and deck_snapshot:
+                    coroutine = deck_snapshot[instrument][function_name].get("coroutine", False)
+                elif instrument.startswith("blocks") and block_snapshot:
+                    coroutine = block_snapshot[instrument][function_name].get("coroutine", False)
                 action = {"instrument": instrument, "action": function_name,
                           "args": kwargs,
                           "return": save_data,
                           'arg_types': primitive_arg_types,
-                          "coroutine": deck_snapshot[instrument][function_name].get("coroutine", False) if deck_snapshot else False,
+                          "coroutine": coroutine,
                           "batch_action": batch_action,
                           }
                 script.add_action(action=action, insert_position=insert_position)

@@ -123,8 +123,6 @@ function updateActionCanvas(html) {
     // Reinitialize code overlay buttons
     initializeCodeOverlay();
 
-    // Update code display
-    updateCode();
 }
 
 function updateInstrumentPanel(link) {
@@ -382,6 +380,4 @@ document.addEventListener("DOMContentLoaded", function() {
     // Initialize code overlay
     initializeCodeOverlay();
 
-    // Load initial code
-    updateCode();
 });

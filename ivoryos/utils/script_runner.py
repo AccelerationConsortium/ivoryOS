@@ -34,6 +34,8 @@ def pause(reason="Human intervention required"):
 
 class ScriptRunner:
     def __init__(self, globals_dict=None):
+        self.logger = None
+        self.socketio = None
         self.retry = False
         if globals_dict is None:
             globals_dict = globals()
@@ -76,14 +78,18 @@ class ScriptRunner:
         """Force stop everything, including ongoing tasks."""
         self.stop_current_event.set()
         self.abort_pending()
+        self.lock.release()
 
 
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None, bo_args=None,
                    output_path="", compiled=False, current_app=None, history=None, optimizer=None, batch_mode=None,
-                   n_suggestions=None):
+                   batch_size=1):
+        self.socketio = socketio
+        self.logger = logger
         global deck
         if deck is None:
             deck = global_config.deck
+
         # print("history", history)
         if self.current_app is None:
             self.current_app = current_app
@@ -100,242 +106,14 @@ class ScriptRunner:
         thread = threading.Thread(
             target=self._run_with_stop_check,
             args=(script, repeat_count, run_name, logger, socketio, config, bo_args, output_path, current_app, compiled,
-                  history, optimizer, batch_mode, n_suggestions),
+                  history, optimizer, batch_mode, batch_size),
         )
         thread.start()
         return thread
 
-    def exec_steps_batch(self, script, section_name, logger, socketio, phase_id,
-                         batch_mode="step", batch_action=None, kwargs_list=None):
-        """
-        Executes a function in batch mode with multiple parameter sets
 
-        :param script: The script object containing the function
-        :param section_name: Name of the section to execute
-        :param logger: Logger instance
-        :param socketio: Socket.io instance for real-time updates
-        :param phase_id: Phase identifier
-        :param batch_mode: Mode of batch execution:
-            - "step": Execute each step once, then repeat for next kwargs
-            - "full": Execute all steps for first kwargs, then all steps for next kwargs
-            - "parallel_step": Execute same step across all kwargs before moving to next step
-        :param batch_action: Optional custom action function(step_index, kwargs_dict) -> modified_kwargs
-        :param kwargs_list: List of dictionaries containing arguments for each batch execution
-        :return: List of outputs from each batch execution
-        """
-        if kwargs_list is None:
-            kwargs_list = [{}]
 
-        _func_str = script.python_script or script.compile()
-        _, return_list = script.config_return()
-
-        step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
-
-        global deck
-        if deck is None:
-            deck = global_config.deck
-
-        # Prepare base execution environment
-        temp_connections = global_config.defined_variables
-        base_exec_globals = {"deck": deck, "time": time, "pause": pause}
-        base_exec_globals.update(temp_connections)
-
-        # Inject all block categories
-        for category, data in BUILDING_BLOCKS.items():
-            for method_name, method in data.items():
-                base_exec_globals[method_name] = method["func"]
-
-        batch_results = []
-
-        if batch_mode == "step":
-            # Execute step 0 for all kwargs, then step 1 for all kwargs, etc.
-            exec_locals_list = [kwargs.copy() for kwargs in kwargs_list]
-
-            for step_index in range(len(step_list)):
-                if self.stop_current_event.is_set():
-                    logger.info(f'Stopping batch execution during {section_name}')
-                    break
-
-                line = step_list[step_index]
-                method_name = line.strip()
-
-                logger.info(f"Executing step {step_index}/{len(step_list)}: {line} for {len(kwargs_list)} batches")
-
-                for batch_idx, kwargs in enumerate(kwargs_list):
-                    if self.stop_current_event.is_set():
-                        break
-
-                    # Apply batch action if provided
-                    current_kwargs = batch_action(step_index, kwargs.copy()) if batch_action else kwargs
-
-                    exec_globals = base_exec_globals.copy()
-                    exec_locals = exec_locals_list[batch_idx].copy()
-                    exec_locals.update(current_kwargs)
-
-                    step = WorkflowStep(
-                        phase_id=phase_id,
-                        step_index=step_index,
-                        method_name=f"{method_name}_batch_{batch_idx}",
-                        start_time=datetime.now(),
-                    )
-                    db.session.add(step)
-                    db.session.flush()
-
-                    socketio.emit('execution', {
-                        'section': f"{section_name}-{step_index}-batch-{batch_idx}"
-                    })
-
-                    try:
-                        self._execute_line(line, exec_globals, exec_locals)
-                        step.run_error = False
-
-                    except HumanInterventionRequired as e:
-                        logger.warning(f"Human intervention required: {e}")
-                        socketio.emit('human_intervention', {'message': str(e)})
-                        step.run_error = False
-                        self.toggle_pause()
-
-                    except Exception as e:
-                        logger.error(f"Error in batch {batch_idx}, step {step_index}: {e}")
-                        socketio.emit('error', {'message': str(e), 'batch': batch_idx})
-                        step.run_error = True
-                        self.toggle_pause()
-
-                    exec_locals.pop("__async_exec_wrapper", None)
-                    step.end_time = datetime.now()
-                    step.output = utils.safe_dump(exec_locals)
-                    db.session.commit()
-
-                    exec_locals_list[batch_idx] = exec_locals
-                    self.pause_event.wait()
-
-            # Extract results
-            for exec_locals in exec_locals_list:
-                output = {key: value for key, value in exec_locals.items() if key in return_list}
-                batch_results.append(output)
-
-        elif batch_mode == "full":
-            # Execute all steps for kwargs[0], then all steps for kwargs[1], etc.
-            for batch_idx, kwargs in enumerate(kwargs_list):
-                if self.stop_current_event.is_set():
-                    logger.info(f'Stopping batch execution at batch {batch_idx}')
-                    break
-
-                logger.info(f"Executing full workflow for batch {batch_idx}/{len(kwargs_list)}")
-
-                # Use modified kwargs if batch_action provided
-                current_kwargs = batch_action(0, kwargs.copy()) if batch_action else kwargs
-
-                # Execute single instance using original logic
-                output = self._exec_steps_single(
-                    script, section_name, logger, socketio, phase_id,
-                    batch_idx=batch_idx, **current_kwargs
-                )
-                batch_results.append(output)
-
-        elif batch_mode == "parallel_step":
-            # Similar to "step" but can be extended for true parallel execution
-            # For now, similar to "step" mode but with parallel-ready structure
-            return self.exec_steps_batch(
-                script, section_name, logger, socketio, phase_id,
-                batch_mode="step", batch_action=batch_action, kwargs_list=kwargs_list
-            )
-
-        return batch_results
-
-    def _execute_line(self, line, exec_globals, exec_locals):
-        """Helper method to execute a single line of code"""
-        if line.startswith("time.sleep("):
-            duration_str = line.strip()[len("time.sleep("):-1]
-            duration = float(duration_str)
-            self.safe_sleep(duration)
-        else:
-            if "await " in line:
-                async_code = f"async def __async_exec_wrapper():\n"
-                async_code += "\n".join("    " + l for l in line.splitlines())
-                async_code += f"\n    return locals()"
-                exec(async_code, exec_globals, exec_locals)
-                func = exec_locals.get("__async_exec_wrapper") or exec_globals.get("__async_exec_wrapper")
-                result_locals = asyncio.run(func())
-                exec_locals.update(result_locals)
-            else:
-                exec(line, exec_globals, exec_locals)
-                exec_globals.update(exec_locals)
-
-    def _exec_steps_single(self, script, section_name, logger, socketio, phase_id,
-                           batch_idx=None, **kwargs):
-        """Helper method to execute all steps for a single set of kwargs"""
-        _func_str = script.python_script or script.compile()
-        _, return_list = script.config_return()
-
-        step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
-
-        global deck
-        if deck is None:
-            deck = global_config.deck
-
-        temp_connections = global_config.defined_variables
-        exec_globals = {"deck": deck, "time": time, "pause": pause}
-        exec_globals.update(temp_connections)
-
-        for category, data in BUILDING_BLOCKS.items():
-            for method_name, method in data.items():
-                exec_globals[method_name] = method["func"]
-
-        exec_locals = {}
-        exec_locals.update(kwargs)
-        index = 0
-
-        while index < len(step_list):
-            if self.stop_current_event.is_set():
-                logger.info(f'Stopping execution during {section_name}')
-                break
-
-            line = step_list[index]
-            method_name = line.strip()
-
-            step_name = f"{method_name}_batch_{batch_idx}" if batch_idx is not None else method_name
-
-            step = WorkflowStep(
-                phase_id=phase_id,
-                step_index=index,
-                method_name=step_name,
-                start_time=datetime.now(),
-            )
-            db.session.add(step)
-            db.session.flush()
-
-            logger.info(f"Executing: {line}")
-            socketio.emit('execution', {'section': f"{section_name}-{index}"})
-
-            try:
-                self._execute_line(line, exec_globals, exec_locals)
-
-            except HumanInterventionRequired as e:
-                logger.warning(f"Human intervention required: {e}")
-                socketio.emit('human_intervention', {'message': str(e)})
-                self.toggle_pause()
-
-            except Exception as e:
-                logger.error(f"Error during script execution: {e}")
-                socketio.emit('error', {'message': str(e)})
-                step.run_error = True
-                self.toggle_pause()
-
-            exec_locals.pop("__async_exec_wrapper", None)
-            step.end_time = datetime.now()
-            step.output = utils.safe_dump(exec_locals)
-            db.session.commit()
-
-            self.pause_event.wait()
-
-            if not step.run_error or not self.retry:
-                index += 1
-
-        output = {key: value for key, value in exec_locals.items() if key in return_list}
-        return output
-
-    async def exec_steps(self, script, section_name, logger, socketio, phase_id, kwargs_list):
+    async def exec_steps(self, script, section_name, phase_id, kwargs_list=None, batch_size=1):
         """
         Executes a function defined in a string line by line
         :param func_str: The function as a string
@@ -364,22 +142,20 @@ class ScriptRunner:
         # exec_globals = {"deck": deck, "time": time, "registered_workflows":registered_workflows}  # Add required global objects
         exec_globals.update(temp_connections)
 
-        # Inject all block categories
-        for category, data in BUILDING_BLOCKS.items():
-            for method_name, method in data.items():
-                exec_globals[method_name] = method["func"]
-
         exec_locals = {}  # Local execution scope
 
         # Define function arguments manually in exec_locals
         # exec_locals.update(kwargs)
         index = 0
-        results = kwargs_list.copy()
+        if kwargs_list:
+            results = kwargs_list.copy()
+        else:
+            results = []
         nest_script = validate_and_nest_control_flow(script.script_dict.get(section_name, []))
 
         for step in nest_script:
             action = step["action"]
-
+            action_id = step["id"]
             if action == "if":
                 await self._execute_if_batched(step, results)
             elif action == "repeat":
@@ -390,18 +166,26 @@ class ScriptRunner:
                 # Regular action - check if batch
                 if step.get("batch_action", False):
                     # Execute once for all samples
-                    await self._execute_action_once(step, results[0])
+                    if results:
+                        await self._execute_action_once(step, results[0], phase_id=phase_id, step_index=action_id)
+                    else:
+                        await self._execute_action_once(step, {}, phase_id=phase_id, step_index=action_id)
                 else:
                     # Execute for each sample
-                    for context in results:
-                        await self._execute_action(step, context)
-                        self.pause_event.wait()
+                    if results:
+                        for context in results:
+                            await self._execute_action(step, context, phase_id=phase_id, step_index=action_id)
+                            self.pause_event.wait()
+                    else:
+                        for _ in range(batch_size):
+                            await self._execute_action(step, {}, phase_id=phase_id, step_index=action_id)
+                            self.pause_event.wait()
 
         return results  # Return the 'results' variable
 
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, logger, socketio, config, bo_args,
                              output_path, current_app, compiled, history=None, optimizer=None, batch_mode=None,
-                             n_suggestions=None):
+                             batch_size=None):
         time.sleep(1)
         # _func_str = script.compile()
         # step_list_dict: dict = script.convert_to_lines(_func_str)
@@ -423,32 +207,34 @@ class ScriptRunner:
             if True:
                 global_config.runner_status = {"id":run_id, "type": "workflow"}
                 # Run "prep" section once
-                self._run_actions(script, section_name="prep", logger=logger, socketio=socketio, run_id=run_id)
+                asyncio.run(self._run_actions(script, section_name="prep", logger=logger, socketio=socketio, run_id=run_id))
                 output_list = []
                 _, arg_type = script.config("script")
                 _, return_list = script.config_return()
                 # Run "script" section multiple times
                 if repeat_count:
-                    self._run_repeat_section(repeat_count, arg_type, bo_args, output_list, script,
+                    asyncio.run(
+                        self._run_repeat_section(repeat_count, arg_type, bo_args, output_list, script,
                                              run_name, return_list, compiled, logger, socketio,
                                              history, output_path, run_id=run_id, optimizer=optimizer,
-                                             batch_mode=batch_mode, n_suggestions=n_suggestions)
+                                             batch_mode=batch_mode, batch_size=batch_size)
+                    )
                 elif config:
                     asyncio.run(
                         self._run_config_section(
                             config, arg_type, output_list, script, run_name, logger,
-                            socketio, run_id=run_id, compiled=compiled
+                            socketio, run_id=run_id, compiled=compiled, batch_mode=batch_mode, batch_size=batch_size
                         )
                     )
                     # self._run_config_section(config, arg_type, output_list, script, run_name, logger,
                     #                          socketio, run_id=run_id, compiled=compiled)
                 # Run "cleanup" section once
-                self._run_actions(script, section_name="cleanup", logger=logger, socketio=socketio,run_id=run_id)
+                asyncio.run(self._run_actions(script, section_name="cleanup", logger=logger, socketio=socketio,run_id=run_id))
                 # Reset the running flag when done
                 # Save results if necessary
                 if not script.python_script and return_list:
-                    # filename = self._save_results(run_name, arg_type, return_list, output_list, logger, output_path)
                     print(output_list)
+                    filename = self._save_results(run_name, arg_type, return_list, output_list, logger, output_path)
                 self._emit_progress(socketio, 100)
 
             # except Exception as e:
@@ -467,7 +253,7 @@ class ScriptRunner:
                 db.session.commit()
 
 
-    def _run_actions(self, script, section_name="", logger=None, socketio=None, run_id=None):
+    async def _run_actions(self, script, section_name="", logger=None, socketio=None, run_id=None):
         _func_str = script.python_script or script.compile()
         step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
         if not step_list:
@@ -489,14 +275,15 @@ class ScriptRunner:
         db.session.flush()
         phase_id = phase.id
 
-        step_outputs = self.exec_steps(script, section_name, logger, socketio, phase_id=phase_id)
+        step_outputs = await self.exec_steps(script, section_name, phase_id=phase_id)
         # Save phase-level output
         phase.outputs = step_outputs
         phase.end_time = datetime.now()
         db.session.commit()
         return step_outputs
 
-    async def _run_config_section(self, config, arg_type, output_list, script, run_name, logger, socketio, run_id, compiled=True):
+    async def _run_config_section(self, config, arg_type, output_list, script, run_name, logger, socketio, run_id,
+                                  compiled=True, batch_mode=False, batch_size=1):
         if not compiled:
             for i in config:
                 try:
@@ -507,13 +294,16 @@ class ScriptRunner:
                     compiled = False
                     break
         if compiled:
-            for i, kwargs in enumerate(config):
-                kwargs = dict(kwargs)
+            batch_size = int(batch_size)
+            nested_list = [config[i:i + batch_size] for i in range(0, len(config), batch_size)]
+
+            for i, kwargs_list in enumerate(nested_list):
+                # kwargs = dict(kwargs)
                 if self.stop_pending_event.is_set():
                     logger.info(f'Stopping execution during {run_name}: {i + 1}/{len(config)}')
                     break
-                logger.info(f'Executing {i + 1} of {len(config)} with kwargs = {kwargs}')
-                progress = ((i + 1) * 100 / len(config)) - 0.1
+                logger.info(f'Executing {i + 1} of {len(nested_list)} with kwargs = {kwargs_list}')
+                progress = ((i + 1) * 100 / len(nested_list)) - 0.1
                 self._emit_progress(socketio, progress)
                 # fname = f"{run_name}_script"
                 # function = self.globals_dict[fname]
@@ -522,27 +312,27 @@ class ScriptRunner:
                     run_id=run_id,
                     name="main",
                     repeat_index=i,
-                    parameters=kwargs,
+                    parameters=kwargs_list,
                     start_time=datetime.now()
                 )
                 db.session.add(phase)
                 db.session.flush()
 
                 phase_id = phase.id
-                parameters = [kwargs]
-                output = await self.exec_steps(script, "script", logger, socketio, phase_id, kwargs_list=parameters)
-
+                output = await self.exec_steps(script, "script", phase_id, kwargs_list=kwargs_list, )
+                # print(output)
                 if output:
                     # kwargs.update(output)
-                    output_list.append(output)
+                    for output_dict in output:
+                        output_list.append(output_dict)
                     phase.outputs = output
                 phase.end_time = datetime.now()
                 db.session.commit()
         return output_list
 
-    def _run_repeat_section(self, repeat_count, arg_types, bo_args, output_list, script, run_name, return_list, compiled,
+    async def _run_repeat_section(self, repeat_count, arg_types, bo_args, output_list, script, run_name, return_list, compiled,
                             logger, socketio, history, output_path, run_id, optimizer=None, batch_mode=None,
-                            n_suggestions=None):
+                            batch_size=None):
         if bo_args:
             logger.info('Initializing optimizer...')
             if compiled:
@@ -597,8 +387,9 @@ class ScriptRunner:
                     # fname = f"{run_name}_script"
                     # function = self.globals_dict[fname]
                     phase.parameters = parameters
-
-                    output = self.exec_steps(script, "script", logger, socketio, phase_id)
+                    if not type(parameters) is list:
+                        parameters = [parameters]
+                    output = await self.exec_steps(script, "script", phase_id, parameters)
 
                     _output = {key: value for key, value in output.items() if key in return_list}
                     ax_client.complete_trial(trial_index=trial_index, raw_data=_output)
@@ -609,32 +400,23 @@ class ScriptRunner:
             # Optimizer for UI
             elif optimizer:
                 try:
-                    parameters = optimizer.suggest(n=n_suggestions)
+                    parameters = optimizer.suggest(n=batch_size)
                     logger.info(f'Output value: {parameters}')
                     phase.parameters = parameters
 
-                    if type(parameters) is list and (parameters) == 1:
-                        parameters = parameters[0]
-
-                    if not type(parameters) is list:
-                        output = self.exec_steps(script, "script", logger, socketio, phase_id)
-                        if output:
-                            optimizer.observe(output)
-                            # output.update(parameters)
-                    else:
+                    output = await self.exec_steps(script, "script",  phase_id, kwargs_list=parameters)
+                    if output:
                         #TODO
-                        output = self.exec_steps(script, "script", logger, socketio, phase_id, kwargs_list=parameters)
-                        if output:
-                            optimizer.observe(output)
-                            # output.update(parameters)
+                        optimizer.observe(output)
+
                 except Exception as e:
                     logger.info(f'Optimization error: {e}')
                     break
             else:
                 # fname = f"{run_name}_script"
                 # function = self.globals_dict[fname]
-                output = self.exec_steps(script, "script", logger, socketio, phase_id)
-
+                output = await self.exec_steps(script, "script", phase_id, batch_size=batch_size)
+            print(output)
             if output:
                 output_list.append(output)
                 logger.info(f'Output value: {output}')
@@ -685,145 +467,7 @@ class ScriptRunner:
             }
 
 
-    async def _execute_steps_by_sample_helper(self, steps: List[Dict], param_sets: List[Dict[str, Any]],
-                                              results: List[Dict], start_idx: int,
-                                              batch_actions_executed: set):
-        """Helper to execute steps for specific samples in by_sample mode."""
-        for step_idx, step in enumerate(steps):
-            action = step["action"]
 
-            if action == "if":
-                await self._execute_if_by_sample_nested(step, param_sets, results, start_idx, batch_actions_executed)
-            elif action == "repeat":
-                await self._execute_repeat_by_sample_nested(step, param_sets, results, start_idx,
-                                                            batch_actions_executed)
-            elif action == "while":
-                await self._execute_while_by_sample_nested(step, param_sets, results, start_idx, batch_actions_executed)
-            else:
-                # Regular action
-                if step.get("batch_action", False):
-                    # Batch action - execute once
-                    batch_key = (id(steps), step_idx, step.get("uuid", id(step)))
-                    if batch_key not in batch_actions_executed:
-                        print(f"Executing batch action: {action}")
-                        context = results[start_idx] if start_idx < len(results) else param_sets[0]
-                        await self._execute_action(step, context)
-                        batch_actions_executed.add(batch_key)
-                else:
-                    # Non-batch action - execute for this sample
-                    for rel_idx, params in enumerate(param_sets):
-                        actual_idx = start_idx + rel_idx
-                        context = results[actual_idx] if actual_idx < len(results) else {**params}
-                        result = await self._execute_action(step, context)
-                        if actual_idx < len(results):
-                            results[actual_idx].update(result)
-
-    async def _execute_if_by_sample_nested(self, step: Dict, param_sets: List[Dict[str, Any]],
-                                           results: List[Dict], start_idx: int,
-                                           batch_actions_executed: set):
-        """Execute nested if/else in by_sample mode."""
-        for rel_idx, params in enumerate(param_sets):
-            actual_idx = start_idx + rel_idx
-            context = results[actual_idx] if actual_idx < len(results) else params
-
-            condition = self._evaluate_condition(step["args"]["statement"], context)
-
-            if condition:
-                await self._execute_steps_by_sample_helper(
-                    step["if_block"], [params], results, actual_idx, batch_actions_executed
-                )
-            else:
-                await self._execute_steps_by_sample_helper(
-                    step["else_block"], [params], results, actual_idx, batch_actions_executed
-                )
-
-    async def _execute_repeat_by_sample_nested(self, step: Dict, param_sets: List[Dict[str, Any]],
-                                               results: List[Dict], start_idx: int,
-                                               batch_actions_executed: set):
-        """Execute nested repeat in by_sample mode."""
-        times = step["args"].get("times", 1)
-
-        for i in range(times):
-            for rel_idx, params in enumerate(param_sets):
-                actual_idx = start_idx + rel_idx
-                if actual_idx < len(results):
-                    results[actual_idx]["repeat_index"] = i
-
-                await self._execute_steps_by_sample_helper(
-                    step["repeat_block"], [params], results, actual_idx, batch_actions_executed
-                )
-
-    async def _execute_while_by_sample_nested(self, step: Dict, param_sets: List[Dict[str, Any]],
-                                              results: List[Dict], start_idx: int,
-                                              batch_actions_executed: set):
-        """Execute nested while in by_sample mode."""
-        max_iterations = step["args"].get("max_iterations", 1000)
-
-        for rel_idx, params in enumerate(param_sets):
-            actual_idx = start_idx + rel_idx
-            iteration = 0
-
-            while iteration < max_iterations:
-                context = results[actual_idx] if actual_idx < len(results) else {**params}
-                context["while_index"] = iteration
-
-                condition = self._evaluate_condition(step["args"]["condition"], context)
-
-                if not condition:
-                    break
-
-                await self._execute_steps_by_sample_helper(
-                    step["while_block"], [params], results, actual_idx, batch_actions_executed
-                )
-
-                iteration += 1
-
-            if iteration >= max_iterations:
-                raise RuntimeError(f"While loop exceeded max iterations ({max_iterations}) for sample {actual_idx}")
-
-
-
-
-    async def _execute_steps(self, steps: List[Dict], context: Dict[str, Any], batch_actions_executed: set = None):
-        """
-        Execute a list of steps for a single sample with its context.
-
-        Args:
-            steps: List of workflow steps
-            context: Context for this sample
-            batch_actions_executed: Set of batch action UUIDs that have already been executed
-        """
-        if batch_actions_executed is None:
-            batch_actions_executed = set()
-
-        result = context.copy()
-
-        for step in steps:
-            action = step["action"]
-
-            if action == "if":
-                result = await self._execute_if(step, result, batch_actions_executed)
-            elif action == "repeat":
-                result = await self._execute_repeat(step, result, batch_actions_executed)
-            elif action == "while":
-                result = await self._execute_while(step, result, batch_actions_executed)
-            else:
-                # Regular action - check if it's a batch action
-                if step.get("batch_action", False):
-                    step_uuid = step.get("uuid", id(step))
-
-                    if step_uuid not in batch_actions_executed:
-                        # Execute batch action only once
-                        print(f"  [BATCH] Executing {step['action']} once for all samples")
-                        result = await self._execute_action(step, result)
-                        batch_actions_executed.add(step_uuid)
-                    else:
-                        print(f"  [BATCH] Skipping {step['action']} (already executed)")
-                else:
-                    # Regular action - execute for this sample
-                    result = await self._execute_action(step, result)
-
-        return result
 
     async def _execute_if(self, step: Dict, context: Dict[str, Any], batch_actions_executed: set):
         """Execute if/else block for single sample."""
@@ -941,7 +585,7 @@ class ScriptRunner:
         if iteration >= max_iterations:
             raise RuntimeError(f"While loop exceeded max iterations ({max_iterations})")
 
-    async def _execute_action(self, step: Dict, context: Dict[str, Any]):
+    async def _execute_action(self, step: Dict, context: Dict[str, Any], phase_id=1, step_index=1):
         """Execute a single action with parameter substitution."""
         # Substitute parameters in args
         substituted_args = self._substitute_params(step["args"], context)
@@ -949,52 +593,87 @@ class ScriptRunner:
         # Get the component and method
         instrument = step.get("instrument", "")
         action = step["action"]
-        if instrument:
-            instrument = instrument[5:]
-            # print(instrument)
+        if instrument and "." in instrument:
+            instrument_type, instrument = instrument.split(".")
+        else:
+            instrument_type = ""
         # Execute the action
         step_db = WorkflowStep(
-            phase_id=1,
-            step_index=1,
+            phase_id=phase_id,
+            step_index=step_index,
             method_name=action,
             start_time=datetime.now(),
         )
         db.session.add(step_db)
         db.session.flush()
+        try:
+            if action == "wait":
+                duration = float(substituted_args["statement"])
+                self.safe_sleep(duration)
 
-        if action == "wait":
-            duration = float(substituted_args["statement"])
-            self.safe_sleep(duration)
+            elif action == "pause":
+                msg = substituted_args.get("statement", "")
+                pause(msg)
 
-        elif action == "pause":
-            # logger.warning(f"Human intervention required: {e}")
-            # socketio.emit('human_intervention', {'message': str(e)})
+            elif instrument_type == "deck" and hasattr(deck, instrument):
+                component = getattr(deck, instrument)
+                if hasattr(component, action):
+                    method = getattr(component, action)
+
+                    # Execute and handle return value
+                    if step.get("coroutine", False):
+                        result = await method(**substituted_args)
+                    else:
+                        result = method(**substituted_args)
+
+                    # Store return value if specified
+                    return_var = step.get("return", "")
+                    if return_var:
+                        context[return_var] = result
+
+            elif instrument_type == "blocks" and instrument in BUILDING_BLOCKS.keys():
+                # Inject all block categories
+                method_collection = BUILDING_BLOCKS[instrument]
+                if action in method_collection.keys():
+                    method = method_collection[action]["func"]
+
+                    # Execute and handle return value
+                    print(step.get("coroutine", False))
+                    if step.get("coroutine", False):
+                        result = await method(**substituted_args)
+                    else:
+                        result = method(**substituted_args)
+
+                    # Store return value if specified
+                    return_var = step.get("return", "")
+                    if return_var:
+                        context[return_var] = result
+        except HumanInterventionRequired as e:
+            self.logger.warning(f"Human intervention required: {e}")
+            self.socketio.emit('human_intervention', {'message': str(e)})
             # Instead of auto-resume, explicitly stay paused until user action
             # step.run_error = False
             self.toggle_pause()
 
-        elif hasattr(deck, instrument):
-            component = getattr(deck, instrument)
-            if hasattr(component, action):
-                method = getattr(component, action)
+        except Exception as e:
+            self.logger.error(f"Error during script execution: {e}")
+            self.socketio.emit('error', {'message': str(e)})
 
-                # Execute and handle return value
-                if step.get("coroutine", False):
-                    result = await method(**substituted_args)
-                else:
-                    result = method(**substituted_args)
+            step_db.run_error = True
+            self.toggle_pause()
+        finally:
+            step_db.end_time = datetime.now()
+            step_db.output = context
+            db.session.commit()
 
-                # Store return value if specified
-                return_var = step.get("return", "")
-                if return_var:
-                    context[return_var] = result
+            self.pause_event.wait()
 
         return context
 
-    async def _execute_action_once(self, step: Dict, context: Dict[str, Any]):
+    async def _execute_action_once(self, step: Dict, context: Dict[str, Any], phase_id, step_index):
         """Execute a batch action once (not per sample)."""
         print(f"Executing batch action: {step['action']}")
-        return await self._execute_action(step, context)
+        return await self._execute_action(step, context, phase_id=phase_id, step_index=step_index)
 
     @staticmethod
     def _substitute_params(args: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:

@@ -4,14 +4,31 @@
             <i class="fas fa-play-circle me-1"></i> Start: {{ phase.start_time.strftime('%H:%M:%S') if phase.start_time else 'N/A' }}
             <i class="fas fa-stop-circle ms-2 me-1"></i> End: {{ phase.end_time.strftime('%H:%M:%S') if phase.end_time else 'N/A' }}
         </small>
-            {% if phase.parameters %}
-            <div class="mt-2">
-                <strong>Parameters: </strong>
-                    {% for key, value in phase.parameters.items() %}
-                    <span class="badge bg-secondary me-1">{{ key }}: {{ value }}</span>
-                    {% endfor %}
-            </div>
+        {% if phase.parameters %}
+        <div class="mt-2">
+            <strong>Parameters: </strong>
+            {% if phase.parameters is mapping %}
+                {% if phase.parameters %}
+                    <div class="mt-2">
+                        <strong>Parameters: </strong>
+                            {% for key, value in phase.parameters.items() %}
+                            <span class="badge bg-secondary me-1">{{ key }}: {{ value }}</span>
+                            {% endfor %}
+                    </div>
+                {% endif %}
+            {% else %}
+                {% for batch in phase.parameters %}
+                    <div class="mt-1">
+                        <span class="badge bg-info text-dark me-1">Batch {{ loop.index }}</span>
+                        {% for key, value in batch.items() %}
+                            <span class="badge bg-secondary me-1">{{ key }}: {{ value }}</span>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
             {% endif %}
+        </div>
+        {% endif %}
+
         {% if phase.steps %}
             <div class="mt-2">
                 <strong>Steps:</strong>
@@ -29,13 +46,32 @@
             </div>
         {% endif %}
         {% if phase.outputs %}
-            <div class="mt-1">
+            <div class="mt-2">
                 <strong>Outputs:</strong>
-                <ul class="mb-0">
+
+                {% if phase.outputs is mapping %}
                     {% for key, value in phase.outputs.items() %}
-                        <li>{{ key }}: {{ value }}</li>
+                        <span class="badge bg-success me-1">{{ key }}: {{ value }}</span>
                     {% endfor %}
-                </ul>
+
+                {% elif phase.outputs is sequence %}
+                    {% for batch in phase.outputs %}
+                        <div class="mt-1">
+                            <span class="badge bg-info text-dark me-1">Batch {{ loop.index }}</span>
+                            {% if batch is mapping %}
+                                {% for key, value in batch.items() %}
+                                    <span class="badge bg-success me-1">{{ key }}: {{ value }}</span>
+                                {% endfor %}
+                            {% elif batch is sequence %}
+                                {% for kwargs in batch %}
+                                    {% for key, value in kwargs.items() %}
+                                        <span class="badge bg-success me-1">{{ key }}: {{ value }}</span>
+                                    {% endfor %}
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                {% endif %}
             </div>
         {% endif %}
     </div>
