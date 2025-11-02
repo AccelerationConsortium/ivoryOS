@@ -498,6 +498,23 @@
         window.loadBO = restoreState;
     });
 
+    function addConstraintRow() {
+        const container = document.getElementById('constraints_container');
+        const newRow = document.createElement('div');
+        newRow.classList.add('row', 'align-items-center', 'mb-2', 'constraint-row');
+        newRow.innerHTML = `
+            <div class="col-10">
+                <input type="text" class="form-control form-control-sm" name="constraint_expr" placeholder="e.g. a + b <= 80">
+            </div>
+            <div class="col-2">
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeConstraintRow(this)">−</button>
+            </div>
+        `;
+        container.appendChild(newRow);
+    }
+    function removeConstraintRow(button) {
+        button.closest('.constraint-row').remove();
+    }
 </script>
 
 </div>

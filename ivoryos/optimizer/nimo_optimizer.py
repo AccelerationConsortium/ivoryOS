@@ -7,7 +7,8 @@ from ivoryos.optimizer.base_optimizer import OptimizerBase
 
 
 class NIMOOptimizer(OptimizerBase):
-    def __init__(self, experiment_name:str, parameter_space: list, objective_config: list, optimizer_config: dict, datapath:str):
+    def __init__(self, experiment_name:str, parameter_space: list, objective_config: list, optimizer_config: dict,
+                 parameter_constraints:list=None, datapath:str=None):
         """
         :param experiment_name: arbitrary name
         :param parameter_space: list of parameter names
@@ -33,7 +34,7 @@ class NIMOOptimizer(OptimizerBase):
         self.objective_config = objective_config
         self.optimizer_config = optimizer_config
 
-        super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, datapath)
+        super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, parameter_constraints, datapath)
 
         os.makedirs(os.path.join(self.datapath, "nimo_data"), exist_ok=True)
 
@@ -62,8 +63,8 @@ class NIMOOptimizer(OptimizerBase):
             if p["type"] == "choice" and isinstance(p["bounds"], list):
                 param_values.append(p["bounds"])
             elif p["type"] == "range" and len(p["bounds"]) == 3:
-                low, high, step = p["bounds"]
-                param_values.append(np.arange(low, high + 1e-9 * step, step).tolist())
+                values = self._create_discrete_search_space(range_with_step=p["bounds"],value_type=p["value_type"])
+                param_values.append(values)
             else:
                 raise ValueError(f"Unsupported parameter format: {p}")
 
@@ -89,7 +90,7 @@ class NIMOOptimizer(OptimizerBase):
                        output_file = self.proposals,
                        num_objectives = self.n_objectives,
                        num_proposals = n)
-        self.current_step += n
+        self.current_step += 1
         # Read proposals from CSV file
         proposals_df = pd.read_csv(self.proposals)
         # Get parameter names
@@ -125,7 +126,7 @@ class NIMOOptimizer(OptimizerBase):
     @staticmethod
     def get_schema():
         return {
-            "parameter_types": ["choice", "range", "fixed"],
+            "parameter_types": ["choice", "range"],
             "multiple_objectives": True,
             "supports_continuous": False,
             "supports_constraints": False,

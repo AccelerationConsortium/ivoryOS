@@ -384,7 +384,7 @@ class ScriptRunner:
             if bo_args:
                 try:
                     parameters, trial_index = ax_client.get_next_trial()
-                    logger.info(f'Output value: {parameters}')
+                    logger.info(f'Params value: {parameters}')
                     # fname = f"{run_name}_script"
                     # function = self.globals_dict[fname]
                     phase.parameters = parameters
@@ -421,7 +421,7 @@ class ScriptRunner:
                 # function = self.globals_dict[fname]
                 output = await self.exec_steps(script, "script", phase_id, batch_size=batch_size)
             if output:
-                print("output: ", output)
+                # print("output: ", output)
                 output_list.extend(output)
                 logger.info(f'Output value: {output}')
                 phase.outputs = output
@@ -727,7 +727,8 @@ class ScriptRunner:
                 threshold = obj.get('early_stop', None)
 
                 if threshold is None:
-                    continue  # Skip if no early stop defined
+                    all_met = False
+                    break# Skip if no early stop defined
 
                 value = row[name]
                 if minimize and value > threshold:

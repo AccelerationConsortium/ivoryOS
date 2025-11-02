@@ -183,16 +183,27 @@ def run_bo():
     existing_data = payload.pop("existing_data", None)
     batch_mode = payload.pop("batch_mode", None)
     batch_size = payload.pop("batch_size", 1)
-    parameters, objectives, steps = parse_optimization_form(payload)
-    # try:
 
-    if True:
+    # Get constraint expressions (new single-line input)
+    constraint_exprs = request.form.getlist("constraint_expr")
+    constraints = [expr.strip() for expr in constraint_exprs if expr.strip()]
+
+    # Remove constraint_expr entries from payload before parsing parameters
+    for key in list(payload.keys()):
+        if key.startswith("constraint_expr"):
+            payload.pop(key, None)
+
+    parameters, objectives, steps = parse_optimization_form(payload)
+    try:
+
+    # if True:
         datapath = current_app.config["DATA_FOLDER"]
         run_name = script.validate_function_name(run_name)
         Optimizer = global_config.optimizers.get(optimizer_type, None)
         if not Optimizer:
             raise ValueError(f"Optimizer {optimizer_type} is not supported or not found.")
         optimizer = Optimizer(experiment_name=run_name, parameter_space=parameters, objective_config=objectives,
+                              parameter_constraints = constraints,
                               optimizer_config=steps, datapath=datapath)
         runner.run_script(script=script, run_name=run_name, optimizer=optimizer,
                           logger=g.logger, socketio=g.socketio, repeat_count=repeat,
@@ -201,11 +212,11 @@ def run_bo():
                           objectives=objectives
                           )
 
-    # except Exception as e:
-    #     if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
-    #         return jsonify({"error": e.__str__()})
-    #     else:
-    #         flash(e.__str__())
+    except Exception as e:
+        if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+            return jsonify({"error": e.__str__()})
+        else:
+            flash(e.__str__())
     return redirect(url_for("execute.experiment_run"))
 
 

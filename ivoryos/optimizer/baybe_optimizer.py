@@ -6,14 +6,15 @@ from ivoryos.utils.utils import install_and_import
 from ivoryos.optimizer.base_optimizer import OptimizerBase
 
 class BaybeOptimizer(OptimizerBase):
-    def __init__(self, experiment_name, parameter_space, objective_config, optimizer_config, datapath=None):
+    def __init__(self, experiment_name, parameter_space, objective_config, optimizer_config,
+                 parameter_constraints:list=None, datapath=None):
         try:
             from baybe import Campaign
         except ImportError:
             install_and_import("baybe")
             print("Please install Baybe with pip install baybe to before register BaybeOptimizer.")
 
-        super().__init__(experiment_name, parameter_space, objective_config, optimizer_config)
+        super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, parameter_constraints, )
         self._trial_id = 0
         self._trials = {}
 
@@ -25,8 +26,8 @@ class BaybeOptimizer(OptimizerBase):
 
 
     def suggest(self, n=1):
-        self.df = self.experiment.recommend(batch_size=n)
-        return self.df.to_dict(orient="records")[0]
+        # self.df = self.experiment.recommend(batch_size=n)
+        return self.experiment.recommend(batch_size=n).to_dict(orient="records")
 
     def observe(self, results, index=None):
         """
@@ -35,9 +36,9 @@ class BaybeOptimizer(OptimizerBase):
         :param index: The index of the trial in the DataFrame, if applicable.
 
         """
-        for name, value in results.items():
-            self.df[name] = [value]
-        self.experiment.add_measurements(self.df)
+        from pandas import DataFrame
+        df = DataFrame(results)
+        self.experiment.add_measurements(df)
 
     def append_existing_data(self, existing_data: Dict):
         """
@@ -79,7 +80,10 @@ class BaybeOptimizer(OptimizerBase):
         parameters = []
         for p in parameter_space:
             if p["type"] == "range":
-                if p["value_type"] == "float":
+                if len(p["bounds"]) == 3:
+                    values = self._create_discrete_search_space(range_with_step=p["bounds"],value_type=p["value_type"])
+                    parameters.append(NumericalDiscreteParameter(name=p["name"], values=values))
+                elif p["value_type"] == "float":
                     parameters.append(NumericalContinuousParameter(name=p["name"], bounds=p["bounds"]))
                 elif p["value_type"] == "int":
                     values = tuple([int(v) for v in range(p["bounds"][0], p["bounds"][1] + 1)])
@@ -108,10 +112,10 @@ class BaybeOptimizer(OptimizerBase):
         weights = []
         for obj in objective_config:
             obj_name = obj.get("name")
-            minimize = obj.get("minimize", False)
+            minimize = obj.get("minimize", True)
             weight = obj.get("weight", 1)
             weights.append(weight)
-            targets.append(NumericalTarget(name=obj_name, mode="MAX" if minimize else "MIN"))
+            targets.append(NumericalTarget(name=obj_name, minimize=minimize))
 
         if len(targets) == 1:
             return SingleTargetObjective(target=targets[0])
@@ -156,8 +160,10 @@ class BaybeOptimizer(OptimizerBase):
         Returns a template for the optimizer configuration.
         """
         return {
-            "parameter_types": ["range", "choice", "substance", "fixed"],
+            "parameter_types": ["range", "choice", "substance"],
             "multiple_objectives": True,
+            "supports_continuous": True,
+            "supports_constraints": False,
             "optimizer_config": {
                 "step_1": {"model": ["Random", "FPS"], "num_samples": 10},
                 "step_2": {"model": ["BOTorch", "Naive Hybrid Space"]}
