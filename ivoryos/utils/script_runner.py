@@ -83,7 +83,7 @@ class ScriptRunner:
 
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None, bo_args=None,
                    output_path="", compiled=False, current_app=None, history=None, optimizer=None, batch_mode=None,
-                   batch_size=1):
+                   batch_size=1, objectives=None):
         self.socketio = socketio
         self.logger = logger
         global deck
@@ -106,7 +106,7 @@ class ScriptRunner:
         thread = threading.Thread(
             target=self._run_with_stop_check,
             args=(script, repeat_count, run_name, logger, socketio, config, bo_args, output_path, current_app, compiled,
-                  history, optimizer, batch_mode, batch_size),
+                  history, optimizer, batch_mode, batch_size, objectives),
         )
         thread.start()
         return thread
@@ -185,7 +185,7 @@ class ScriptRunner:
 
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, logger, socketio, config, bo_args,
                              output_path, current_app, compiled, history=None, optimizer=None, batch_mode=None,
-                             batch_size=None):
+                             batch_size=None, objectives=None):
         time.sleep(1)
         # _func_str = script.compile()
         # step_list_dict: dict = script.convert_to_lines(_func_str)
@@ -217,7 +217,7 @@ class ScriptRunner:
                         self._run_repeat_section(repeat_count, arg_type, bo_args, output_list, script,
                                              run_name, return_list, compiled, logger, socketio,
                                              history, output_path, run_id=run_id, optimizer=optimizer,
-                                             batch_mode=batch_mode, batch_size=batch_size)
+                                             batch_mode=batch_mode, batch_size=batch_size, objectives=objectives)
                     )
                 elif config:
                     asyncio.run(
@@ -234,6 +234,7 @@ class ScriptRunner:
                 # Save results if necessary
                 if not script.python_script and return_list:
                     print(output_list)
+
                     filename = self._save_results(run_name, arg_type, return_list, output_list, logger, output_path)
                 self._emit_progress(socketio, 100)
 
@@ -332,7 +333,7 @@ class ScriptRunner:
 
     async def _run_repeat_section(self, repeat_count, arg_types, bo_args, output_list, script, run_name, return_list, compiled,
                             logger, socketio, history, output_path, run_id, optimizer=None, batch_mode=None,
-                            batch_size=None):
+                            batch_size=None, objectives=None):
         if bo_args:
             logger.info('Initializing optimizer...')
             if compiled:
@@ -406,8 +407,11 @@ class ScriptRunner:
 
                     output = await self.exec_steps(script, "script",  phase_id, kwargs_list=parameters)
                     if output:
-                        #TODO
                         optimizer.observe(output)
+                        
+                    else:
+                        logger.info('No output from script')
+
 
                 except Exception as e:
                     logger.info(f'Optimization error: {e}')
@@ -416,14 +420,19 @@ class ScriptRunner:
                 # fname = f"{run_name}_script"
                 # function = self.globals_dict[fname]
                 output = await self.exec_steps(script, "script", phase_id, batch_size=batch_size)
-            print(output)
             if output:
-                output_list.append(output)
+                print("output: ", output)
+                output_list.extend(output)
                 logger.info(f'Output value: {output}')
                 phase.outputs = output
             phase.end_time = datetime.now()
             db.session.commit()
-
+            
+            early_stop = self._check_early_stop(output, objectives)
+            if early_stop:
+                logger.info('Early stopping')
+                break
+                
         if bo_args:
             ax_client.save_to_json_file(os.path.join(output_path, f"{run_name}_ax_client.json"))
             logger.info(
@@ -638,7 +647,7 @@ class ScriptRunner:
                     method = method_collection[action]["func"]
 
                     # Execute and handle return value
-                    print(step.get("coroutine", False))
+                    # print(step.get("coroutine", False))
                     if step.get("coroutine", False):
                         result = await method(**substituted_args)
                     else:
@@ -672,7 +681,7 @@ class ScriptRunner:
 
     async def _execute_action_once(self, step: Dict, context: Dict[str, Any], phase_id, step_index):
         """Execute a batch action once (not per sample)."""
-        print(f"Executing batch action: {step['action']}")
+        # print(f"Executing batch action: {step['action']}")
         return await self._execute_action(step, context, phase_id=phase_id, step_index=step_index)
 
     @staticmethod
@@ -708,3 +717,27 @@ class ScriptRunner:
         except Exception as e:
             print(f"Error evaluating condition '{condition_str}': {e}")
             return False
+
+    def _check_early_stop(self, output, objectives):
+        for row in output:
+            all_met = True
+            for obj in objectives:
+                name = obj['name']
+                minimize = obj.get('minimize', True)
+                threshold = obj.get('early_stop', None)
+
+                if threshold is None:
+                    continue  # Skip if no early stop defined
+
+                value = row[name]
+                if minimize and value > threshold:
+                    all_met = False
+                    break
+                elif not minimize and value < threshold:
+                    all_met = False
+                    break
+
+            if all_met:
+                return True  # At least one row meets all early stop thresholds
+
+        return False  # No row met all thresholds

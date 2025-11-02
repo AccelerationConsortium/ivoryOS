@@ -95,6 +95,7 @@ function initializeCodeOverlay() {
         a.click();
         URL.revokeObjectURL(url);
     });
+    updateCode();
 }
 
 // ============================================================================

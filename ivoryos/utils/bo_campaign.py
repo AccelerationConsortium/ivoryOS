@@ -134,7 +134,7 @@ def parse_optimization_form(form_data: Dict[str, str]):
     Parse dynamic form data into structured optimization configuration.
 
     Expected form field patterns:
-    - Objectives: {name}_min, {name}_weight
+    - Objectives: {name}_obj_min, {name}_weight
     - Parameters: {name}_type, {name}_min, {name}_max, {name}_choices, {name}_value_type
     - Config: step{n}_model, step{n}_num_samples
     """
@@ -149,25 +149,25 @@ def parse_optimization_form(form_data: Dict[str, str]):
 
     # Parse objectives
     for field_name, value in form_data.items():
-        if field_name.endswith('_min') and value:
+        if field_name.endswith('_obj_min') and value:
             # Extract objective name
-            obj_name = field_name.replace('_min', '')
+            obj_name = field_name.replace('_obj_min', '')
             if obj_name in processed_objectives:
                 continue
 
             # Check if corresponding weight exists
             weight_field = f"{obj_name}_weight"
+            early_stop_field = f"{obj_name}_obj_threshold"
+
+            config = {
+                    "name": obj_name,
+                    "minimize": value == "minimize",
+                }
             if weight_field in form_data and form_data[weight_field]:
-                objectives.append({
-                    "name": obj_name,
-                    "minimize": value == "minimize",
-                    "weight": float(form_data[weight_field])
-                })
-            else:
-                objectives.append({
-                    "name": obj_name,
-                    "minimize": value == "minimize",
-                })
+                config["weight"] = float(form_data[weight_field])
+            if early_stop_field in form_data and form_data[early_stop_field]:
+                config["early_stop"] = float(form_data[early_stop_field])
+            objectives.append(config)
             processed_objectives.add(obj_name)
 
     # Parse parameters
@@ -192,11 +192,11 @@ def parse_optimization_form(form_data: Dict[str, str]):
             if value == "range":
                 min_field = f"{param_name}_min"
                 max_field = f"{param_name}_max"
-
+                step_field = f"{param_name}_step"
                 if min_field in form_data and max_field in form_data:
                     min_val = form_data[min_field]
                     max_val = form_data[max_field]
-
+                    step_val = form_data[step_field] if step_field in form_data else None
                     if min_val and max_val:
                         # Convert based on value_type
                         if value_type == "int":
@@ -204,8 +204,9 @@ def parse_optimization_form(form_data: Dict[str, str]):
                         elif value_type == "float":
                             bounds = [float(min_val), float(max_val)]
                         else:  # string
-                            bounds = [str(min_val), str(max_val)]
-
+                            bounds = [float(min_val), float(max_val)]
+                        if step_val:
+                            bounds.append(float(step_val))
                         parameter["bounds"] = bounds
 
             elif value == "choice":

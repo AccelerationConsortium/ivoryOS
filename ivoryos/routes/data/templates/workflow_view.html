@@ -276,12 +276,17 @@
                     repeatKeys.forEach(repeat_index => {
                         const arr = data[repeat_index][selectedKey];
                         if (arr && arr.length) {
-                            arr.forEach(d => {
+                            const batchCount = arr.length;
+
+                            arr.forEach((d, batchIdx) => {
+                                // Compute fractional x for batch indexing: e.g. 1.1, 1.2, 1.3
+                                const xVal = parseFloat(repeat_index) + (batchIdx + 1) / (batchCount + 1);
+
                                 if (typeof d === 'object' && d.x !== undefined && d.y !== undefined) {
-                                    x.push(d.x);
+                                    x.push(xVal);
                                     y.push(d.y);
                                 } else if (typeof d === 'number') {
-                                    x.push(parseInt(repeat_index));
+                                    x.push(xVal);
                                     y.push(d);
                                 }
                             });
@@ -293,12 +298,16 @@
                         y: y,
                         mode: 'markers',
                         name: selectedKey,
+                        marker: { size: 8 },
+                        line: { shape: 'linear', width: 1 },
                     };
 
                     const layout = {
                         xaxis: {
-                            title: 'Iteration Index',
-                            gridcolor: '#e9ecef'
+                            title: 'Trial (Batch Sub-index)',
+                            gridcolor: '#e9ecef',
+                            tickvals: repeatKeys.map(k => parseFloat(k)),
+                            ticktext: repeatKeys.map(k => `Trial ${k}`),
                         },
                         yaxis: {
                             title: selectedKey,

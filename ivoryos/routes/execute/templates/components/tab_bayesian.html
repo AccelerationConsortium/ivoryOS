@@ -2,467 +2,502 @@
 
 <div class="tab-pane fade" id="tab3" role="tabpanel" aria-labelledby="tab3-tab">
 
+    <h6 class="fw-bold mt-2 mb-1">Load Previous Data</h6>
 
-    {#            <div class="row align-items-center mb-3">#}
-{#                <div class="col-6">#}
-{#                    <form method="POST" id="loadHistory" name="loadHistory" action="{{ url_for('execute.execute_files.upload_history') }}" enctype="multipart/form-data">#}
-{#                        <div class="input-group">#}
-{#                            <input class="form-control" name="historyfile" id="historyfile" type="file" accept=".csv" onchange="var f=document.getElementById('loadHistory'); if(f) f.submit();">                        </div>#}
-{#                    </form>#}
-{#                </div>#}
-{#            </div>#}
-            <h6 class="fw-bold mt-2 mb-1">Load Previous Data</h6>
+    <form method="POST" name="bo" action="{{ url_for('execute.run_bo') }}">
+        <div class="container py-2">
 
-        <form method="POST" name="bo" action="{{ url_for('execute.run_bo') }}">
-            <div class="container py-2">
+            <!-- Data Loading Section -->
+            <div class="input-group mb-3">
+                <label class="input-group-text"><i class="bi bi-folder2-open"></i></label>
+                <select class="form-select" id="existing_data" name="existing_data">
+                    <option value="">Load existing data...</option>
+                    {% for data in data_list %}
+                        <option value="{{ data }}">{{ data }} </option>
+                    {% endfor %}
+                </select>
+            </div>
 
-                <!-- Data Loading Section -->
-                <div class="input-group mb-3">
-                    <label class="input-group-text"><i class="bi bi-folder2-open"></i></label>
-                    <select class="form-select" id="existing_data" name="existing_data">
-                        <option value="">Load existing data...</option>
-                        {% for data in data_list %}
-                            <option value="{{ data }}">{{ data }} </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Data preview section -->
-                <div class="row mb-3" id="data_preview_section" style="display: none;">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header py-2">
-                                <small class="fw-bold">Data Preview</small>
-                            </div>
-                            <div class="card-body py-2">
-                                <div id="data_preview_content">
-                                    <small class="text-muted">Select a data source to preview</small>
-                                </div>
+            <!-- Data preview section -->
+            <div class="row mb-3" id="data_preview_section" style="display: none;">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header py-2">
+                            <small class="fw-bold">Data Preview</small>
+                        </div>
+                        <div class="card-body py-2">
+                            <div id="data_preview_content">
+                                <small class="text-muted">Select a data source to preview</small>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <hr class="my-3">
-                <!-- Optimizer Selection -->
-                <div class="input-group mb-3">
-                    <label class="input-group-text"><i class="bi bi-gear"></i></label>
-                    <select class="form-select" id="optimizer_type" name="optimizer_type" onchange="updateOptimizerInfo()">
-                        <option value="">Select optimizer...</option>
-                        {% for optimizer_name, optimizer_info in optimizer_schema.items() %}
-                            <option value="{{ optimizer_name }}"
-                                    data-multiobjective="{{ optimizer_info.multiple_objectives }}"
-                                    data-parameter-types="{{ optimizer_info.parameter_types|join(',') }}"
-                                    data-optimizer-config="{{ optimizer_info.optimizer_config|tojson|e }}">
-                                {{ optimizer_name }} {% if optimizer_info.multiple_objectives %}(Multi-objective supported){% endif %}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <!-- Tabs Navigation -->
-                <ul class="nav nav-tabs" id="configTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="parameters-tab" data-bs-toggle="tab" data-bs-target="#parameters" type="button" role="tab" aria-controls="parameters" aria-selected="true">
-                            Parameters
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced" type="button" role="tab" aria-controls="advanced" aria-selected="false">
-                            Advanced Settings
-                        </button>
-                    </li>
-                </ul>
+            <hr class="my-3">
+            <!-- Optimizer Selection -->
+            <div class="input-group mb-3">
+                <label class="input-group-text"><i class="bi bi-gear"></i></label>
+                <select class="form-select" id="optimizer_type" name="optimizer_type" >
+                    <option value="">Select optimizer...</option>
+                    {% for optimizer_name, optimizer_info in optimizer_schema.items() %}
+                        <option value="{{ optimizer_name }}"
+                                data-multiobjective="{{ optimizer_info.multiple_objectives }}"
+                                data-parameter-types="{{ optimizer_info.parameter_types|join(',') }}"
+                                data-optimizer-config="{{ optimizer_info.optimizer_config|tojson|e }}">
+                            {{ optimizer_name }} {% if optimizer_info.multiple_objectives %}(Multi-objective supported){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <!-- Tabs Navigation -->
+            <ul class="nav nav-tabs" id="configTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="parameters-tab" data-bs-toggle="tab" data-bs-target="#parameters" type="button" role="tab" aria-controls="parameters" aria-selected="true">
+                        Parameters
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced" type="button" role="tab" aria-controls="advanced" aria-selected="false">
+                        Advanced Settings
+                    </button>
+                </li>
+            </ul>
 
-                <!-- Tab Content -->
-                <div class="tab-content" id="configTabContent">
-                    <!-- Parameters Tab -->
-                    <div class="tab-pane fade show active" id="parameters" role="tabpanel" aria-labelledby="parameters-tab">
-                        <div class="py-3">
-                            <h6 class="fw-bold mt-2 mb-1">Parameters</h6>
-                            <div id="parameters_container">
-                                {% for config in config_list %}
-                                    <div class="row align-items-center mb-2 parameter-row">
-                                        <div class="col-3 col-form-label-sm">
-                                            {{ config }}:
-                                        </div>
-                                        <div class="col-3">
-                                            <select class="form-select form-select-sm parameter-type" id="{{config}}_type" name="{{config}}_type" onchange="updateParameterInputs(this)">
-                                                <!-- Options will be populated by JavaScript -->
-                                            </select>
-                                        </div>
-                                        <div class="col-6 parameter-inputs">
-                                            <input type="text" class="form-control form-control-sm single-input" id="{{config}}_value" name="{{config}}_value" placeholder="1, 2, 3">
-                                            <div class="range-inputs" style="display: none;">
-                                                <div class="row g-2">
-                                                    <div class="col-4">
-                                                        <input type="text" class="form-control form-control-sm" id="{{config}}_min" name="{{config}}_min" placeholder="Min">
-                                                    </div>
-                                                    <div class="col-4">
-                                                        <input type="text" class="form-control form-control-sm" id="{{config}}_max" name="{{config}}_max" placeholder="Max">
-                                                    </div>
-                                                    <div class="col-4">
-                                                        <input type="text" class="form-control form-control-sm" id="{{config}}_step" name="{{config}}_step" placeholder="Step (optional)">
-                                                    </div>
+            <!-- Tab Content -->
+            <div class="tab-content" id="configTabContent">
+                <!-- Parameters Tab -->
+                <div class="tab-pane fade show active" id="parameters" role="tabpanel" aria-labelledby="parameters-tab">
+                    <div class="py-3">
+
+                        <!-- Parameters -->
+                        <h6 class="fw-bold mt-2 mb-1">Parameters</h6>
+                        <div id="parameters_container">
+                            {% for config in config_list %}
+                                <div class="row align-items-center mb-2 parameter-row">
+                                    <div class="col-3 col-form-label-sm">
+                                        {{ config }}:
+                                    </div>
+                                    <div class="col-3">
+                                        <select class="form-select form-select-sm parameter-type" id="{{config}}_type" name="{{config}}_type" onchange="updateParameterInputs(this)">
+                                            <!-- Options will be populated by JavaScript -->
+                                        </select>
+                                    </div>
+                                    <div class="col-6 parameter-inputs">
+                                        <input type="text" class="form-control form-control-sm single-input" id="{{config}}_value" name="{{config}}_value" placeholder="1, 2, 3">
+                                        <div class="range-inputs" style="display: none;">
+                                            <div class="row g-2">
+                                                <div class="col-4">
+                                                    <input type="text" class="form-control form-control-sm" id="{{config}}_min" name="{{config}}_min" placeholder="Min" required>
+                                                </div>
+                                                <div class="col-4">
+                                                    <input type="text" class="form-control form-control-sm" id="{{config}}_max" name="{{config}}_max" placeholder="Max" required>
+                                                </div>
+                                                <div class="col-4">
+                                                    <input type="text" class="form-control form-control-sm" id="{{config}}_step" name="{{config}}_step" placeholder="Step (optional)">
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                {% endfor %}
-                            </div>
-
-                            <!-- Objectives -->
-                            <h6 class="fw-bold mt-3 mb-1">Objectives</h6>
-                            {% for objective in return_list %}
-                                <div class="row align-items-center mb-2">
-                                    <div class="col-3 col-form-label-sm">
-                                        {{ objective }}:
-                                    </div>
-                                    <div class="col-6">
-                                        <select class="form-select form-select-sm" id="{{objective}}_min" name="{{objective}}_min">
-                                            <option selected>minimize</option>
-                                            <option>maximize</option>
-                                            <option>none</option>
-                                        </select>
-                                    </div>
-                                    {% if not return_list|length == 1 %}
-                                    <div class="col-3">
-                                        <input class="form-control" type="number" id="{{objective}}_weight" name="{{objective}}_weight" min="1" max="1000" value="1">
-                                    </div>
-                                    {% endif %}
                                 </div>
                             {% endfor %}
-<!-- Constraints -->
-<h6 class="fw-bold mt-3 mb-1">Constraints</h6>
-<div id="constraints_container">
-    <div class="row align-items-center mb-2 constraint-row">
-        <div class="col-10">
-            <input type="text" class="form-control form-control-sm" name="constraint_expr" placeholder="e.g. a + b <= 80">
-        </div>
-        <div class="col-2">
-            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addConstraintRow()">+</button>
-        </div>
-    </div>
-</div>
-                            <!-- Budget -->
-                            <h6 class="fw-bold mt-3 mb-1">Budget</h6>
-                            <div class="input-group mb-3">
-                                <label class="input-group-text" for="suggest"># of suggestions </label>
-                                <input class="form-control" type="number" id="suggest" name="suggest" min="1" max="100" value="1">
-                                <label class="input-group-text" for="repeat">Max iteration </label>
-                                <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="1000" value="25">
-                            </div>
+                        </div>
 
-                            <!-- Batch Mode Selection -->
-                            <div id="batch_mode_section" style="display: none;">
-                                <h6 class="fw-bold mt-3 mb-2">Batch Mode</h6>
-                                <div class="form-check mb-1">
-                                    <input class="form-check-input" type="radio" name="batchMode" id="stepSync" value="step" checked>
-                                    <label class="form-check-label small text-muted" for="stepSync">
-                                        Batch by step – execute each step for all samples before moving to next
-                                    </label>
+                        <!-- Objectives -->
+                        <h6 class="fw-bold mt-3 mb-1">Objectives</h6>
+                        {% for objective in return_list %}
+                            <div class="row align-items-center mb-2">
+                                <div class="col-3 col-form-label-sm">
+                                    {{ objective }}:
                                 </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="batchMode" id="sampleSync" value="sample">
-                                    <label class="form-check-label small text-muted" for="sampleSync">
-                                        Batch by sample – complete all steps for one sample before moving to next
-                                    </label>
+                                <div class="col-6">
+                                    <select class="form-select form-select-sm" id="{{objective}}_obj_min" name="{{objective}}_obj_min">
+                                        <option selected>minimize</option>
+                                        <option>maximize</option>
+                                        <option>none</option>
+                                    </select>
+                                </div>
+                                <div class="col-3">
+                                    <input class="form-control" type="number" step="any" id="{{objective}}_obj_threshold" name="{{objective}}_obj_threshold" placeholder="Early Stop (optional)">
+                                </div>
+                            </div>
+                        {% endfor %}
+
+                        <!-- Constraints -->
+                        <div id="constraints_section">
+                            <h6 class="fw-bold mt-3 mb-1">Constraints</h6>
+                            <div id="constraints_container">
+                                <div class="row align-items-center mb-2 constraint-row">
+                                    <div class="col-10">
+                                        <input type="text" class="form-control form-control-sm" name="constraint_expr" placeholder="e.g. a + b <= 80">
+                                    </div>
+                                    <div class="col-2">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addConstraintRow()">+</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Advanced Settings Tab -->
-                    <div class="tab-pane fade" id="advanced" role="tabpanel" aria-labelledby="advanced-tab">
-                        <div class="py-3">
-                            <h6 class="fw-bold mt-2 mb-1">Optimizer Configuration</h6>
-                            <div id="optimizer_config_container" style="display: none;">
-
-                                <!-- Step 1 Configuration -->
-                                <div class="card mb-3">
-                                    <div class="card-header py-2">
-                                        <small class="fw-bold">Step 1 Configuration</small>
-                                    </div>
-                                    <div class="card-body py-2">
-                                        <div class="row align-items-center mb-2">
-                                            <div class="col-3 col-form-label-sm">
-                                                Model:
-                                            </div>
-                                            <div class="col-6">
-                                                <select class="form-select form-select-sm" id="step1_model" name="step1_model">
-                                                    <!-- Options will be populated by JavaScript -->
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="row align-items-center mb-2" id="step1_num_samples_row">
-                                            <div class="col-3 col-form-label-sm">
-                                                Num Samples:
-                                            </div>
-                                            <div class="col-6">
-                                                <input type="number" class="form-control form-control-sm" id="step1_num_samples" name="step1_num_samples" min="1" value="">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Step 2 Configuration -->
-                                <div class="card mb-3">
-                                    <div class="card-header py-2">
-                                        <small class="fw-bold">Step 2 Configuration</small>
-                                    </div>
-                                    <div class="card-body py-2">
-                                        <div class="row align-items-center mb-2">
-                                            <div class="col-3 col-form-label-sm">
-                                                Model:
-                                            </div>
-                                            <div class="col-6">
-                                                <select class="form-select form-select-sm" id="step2_model" name="step2_model">
-                                                    <!-- Options will be populated by JavaScript -->
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div id="optimizer_config_placeholder">
-                                <small class="text-muted">Select an optimizer to configure advanced settings</small>
-                            </div>
+                        <!-- Budget -->
+                        <h6 class="fw-bold mt-3 mb-1">Budget</h6>
+                        <div class="input-group mb-3">
+                            <label class="input-group-text" for="batch_size"># of suggestions </label>
+                            <input class="form-control" type="number" id="batch_size" name="batch_size" min="1" max="100" value="1">
+                            <label class="input-group-text" for="repeat">Max iteration </label>
+                            <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="1000" value="25">
                         </div>
                     </div>
                 </div>
 
-                {% if not no_deck_warning%}
-                    <div class="input-group mb-3 mt-3">
-                        <button class="form-control" type="submit" name="bo">Run</button>
+                <!-- Advanced Settings Tab -->
+                <div class="tab-pane fade" id="advanced" role="tabpanel" aria-labelledby="advanced-tab">
+                    <div class="py-3">
+                        <h6 class="fw-bold mt-2 mb-1">Optimizer Configuration</h6>
+                        <div id="optimizer_config_container" style="display: none;">
+
+                            <!-- Step 1 Configuration -->
+                            <div class="card mb-3">
+                                <div class="card-header py-2">
+                                    <small class="fw-bold">Step 1 Configuration</small>
+                                </div>
+                                <div class="card-body py-2">
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-3 col-form-label-sm">
+                                            Model:
+                                        </div>
+                                        <div class="col-6">
+                                            <select class="form-select form-select-sm" id="step1_model" name="step1_model">
+                                                <!-- Options will be populated by JavaScript -->
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row align-items-center mb-2" id="step1_num_samples_row">
+                                        <div class="col-3 col-form-label-sm">
+                                            Num Samples:
+                                        </div>
+                                        <div class="col-6">
+                                            <input type="number" class="form-control form-control-sm" id="step1_num_samples" name="step1_num_samples" min="1" value="">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 2 Configuration -->
+                            <div class="card mb-3">
+                                <div class="card-header py-2">
+                                    <small class="fw-bold">Step 2 Configuration</small>
+                                </div>
+                                <div class="card-body py-2">
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-3 col-form-label-sm">
+                                            Model:
+                                        </div>
+                                        <div class="col-6">
+                                            <select class="form-select form-select-sm" id="step2_model" name="step2_model">
+                                                <!-- Options will be populated by JavaScript -->
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="optimizer_config_placeholder">
+                            <small class="text-muted">Select an optimizer to configure advanced settings</small>
+                        </div>
                     </div>
-                {% endif %}
+                </div>
             </div>
-        </form>
-</div>
-    <script>
-        const suggestInput = document.getElementById('suggest');
-        const batchModeSection = document.getElementById('batch_mode_section');
 
-        function toggleBatchMode() {
-            const suggestValue = parseInt(suggestInput.value, 10);
-            batchModeSection.style.display = suggestValue > 1 ? 'block' : 'none';
-        }
+            {% if not no_deck_warning%}
+                <div class="input-group mb-3 mt-3">
+                    <button class="form-control" type="submit" name="bo">Run</button>
+                </div>
+            {% endif %}
+        </div>
+    </form>
 
-        // Initial check and event listener
-        toggleBatchMode();
-        suggestInput.addEventListener('input', toggleBatchMode);
+<script>
+    const optimizerSchema = {{ optimizer_schema|tojson }};
 
+    document.addEventListener('DOMContentLoaded', function() {
+        const dataSelect = document.getElementById('existing_data');
+        const previewSection = document.getElementById('data_preview_section');
+        const previewContent = document.getElementById('data_preview_content');
 
-        const optimizerSchema = {{ optimizer_schema|tojson }};
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const dataSelect = document.getElementById('existing_data');
-            const suggestInput = document.getElementById('suggest');
-            const batchModeSection = document.getElementById('batch_mode_section');
-
-            // Show/hide batch mode section based on number of suggestions
-            suggestInput.addEventListener('input', function () {
-                batchModeSection.style.display = parseInt(this.value) > 1 ? 'block' : 'none';
-            });
-            const previewSection = document.getElementById('data_preview_section');
-            const previewContent = document.getElementById('data_preview_content');
-
-            // Data preview functionality
-            dataSelect.addEventListener('change', function() {
-                const filename = dataSelect.value;
-                if (!filename) {
-                    previewSection.style.display = 'none';
-                    previewContent.innerHTML = '<small class="text-muted">Select a data source to preview</small>';
-                    return;
-                }
-                fetch('{{ url_for("execute.data_preview", filename="FILENAME") }}'.replace('FILENAME', encodeURIComponent(filename)))
-                    .then(response => {
-                        if (!response.ok) throw new Error('Network response was not ok');
-                        return response.json();
-                    })
-                    .then(data => {
-                        previewSection.style.display = '';
-                        if (!data.rows || data.rows.length === 0) {
-                            previewContent.innerHTML = '<small class="text-muted">No data found in file.</small>';
-                            return;
-                        }
-                        let html = '<table class="table table-sm table-bordered mb-0"><thead><tr>';
-                        data.columns.forEach(col => html += `<th>${col}</th>`);
-                        html += '</tr></thead><tbody>';
-                        data.rows.forEach(row => {
-                            html += '<tr>';
-                            data.columns.forEach(col => html += `<td>${row[col] || ''}</td>`);
-                            html += '</tr>';
-                        });
-                        html += '</tbody></table>';
-                        previewContent.innerHTML = html;
-                    })
-                    .catch(() => {
-                        previewSection.style.display = '';
-                        previewContent.innerHTML = '<small class="text-danger">Failed to load preview.</small>';
+        // Data preview functionality
+        dataSelect.addEventListener('change', function() {
+            const filename = dataSelect.value;
+            if (!filename) {
+                previewSection.style.display = 'none';
+                previewContent.innerHTML = '<small class="text-muted">Select a data source to preview</small>';
+                return;
+            }
+            fetch('{{ url_for("execute.data_preview", filename="FILENAME") }}'.replace('FILENAME', encodeURIComponent(filename)))
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    previewSection.style.display = '';
+                    if (!data.rows || data.rows.length === 0) {
+                        previewContent.innerHTML = '<small class="text-muted">No data found in file.</small>';
+                        return;
+                    }
+                    let html = '<table class="table table-sm table-bordered mb-0"><thead><tr>';
+                    data.columns.forEach(col => html += `<th>${col}</th>`);
+                    html += '</tr></thead><tbody>';
+                    data.rows.forEach(row => {
+                        html += '<tr>';
+                        data.columns.forEach(col => html += `<td>${row[col] || ''}</td>`);
+                        html += '</tr>';
                     });
-            });
+                    html += '</tbody></table>';
+                    previewContent.innerHTML = html;
+                })
+                .catch(() => {
+                    previewSection.style.display = '';
+                    previewContent.innerHTML = '<small class="text-danger">Failed to load preview.</small>';
+                });
         });
+    });
 
-        function updateOptimizerInfo() {
-            const optimizerSelect = document.getElementById('optimizer_type');
-            const selectedOption = optimizerSelect.selectedOptions[0];
 
-            if (!selectedOption || !selectedOption.value) {
-                resetParameterTypes();
-                return;
-            }
+    function updateOptimizerConfig(config) {
+        const container = document.getElementById('optimizer_config_container');
+        const placeholder = document.getElementById('optimizer_config_placeholder');
 
-            const optimizerName = selectedOption.value;
-            const schema = optimizerSchema[optimizerName];
-            const supportsContinuous = schema.supports_continuous;
+        console.log('Updating optimizer config:', config);
 
-            updateParameterTypeOptions(schema.parameter_types);
-
-            // ✅ Show hint if step is required
-            document.querySelectorAll('input[name$="_step"]').forEach(stepInput => {
-                stepInput.placeholder = supportsContinuous
-                    ? "Step (optional)"
-                    : "Step (required)";
-            });
-
-            updateOptimizerConfig(schema.optimizer_config);
+        if (!config || !config.step_1) {
+            console.error('Invalid optimizer config:', config);
+            container.style.display = 'none';
+            placeholder.style.display = 'block';
+            return;
         }
 
-        function updateParameterTypeOptions(availableTypes) {
-            const parameterTypeSelects = document.querySelectorAll('.parameter-type');
+        placeholder.style.display = 'none';
+        container.style.display = 'block';
 
-            parameterTypeSelects.forEach(select => {
-                // Clear existing options
-                select.innerHTML = '';
-
-                // Add available options based on optimizer
-                availableTypes.forEach(type => {
-                    const option = document.createElement('option');
-                    option.value = type;
-                    option.textContent = type;
-                    if (type === 'range') {
-                        option.selected = true;
-                    }
-                    select.appendChild(option);
-                });
-
-                // Update inputs for the current selection
-                updateParameterInputs(select);
+        // Update Step 1
+        const step1ModelSelect = document.getElementById('step1_model');
+        if (step1ModelSelect && config.step_1.model) {
+            step1ModelSelect.innerHTML = '';
+            config.step_1.model.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model;
+                option.textContent = model;
+                step1ModelSelect.appendChild(option);
             });
         }
 
-        function resetParameterTypes() {
-            const parameterTypeSelects = document.querySelectorAll('.parameter-type');
-
-            parameterTypeSelects.forEach(select => {
-                select.innerHTML = '';
-                const defaultTypes = ['range', 'choice', 'fixed'];
-                defaultTypes.forEach(type => {
-                    const option = document.createElement('option');
-                    option.value = type;
-                    option.textContent = type;
-                    if (type === 'range') {
-                        option.selected = true;
-                    }
-                    select.appendChild(option);
-                });
-
-                updateParameterInputs(select);
-            });
-        }
-
-        function updateParameterInputs(selectElement) {
-            const parameterRow = selectElement.closest('.parameter-row');
-            const singleInput = parameterRow.querySelector('.single-input');
-            const rangeInputs = parameterRow.querySelector('.range-inputs');
-
-            if (selectElement.value === 'range') {
-                singleInput.style.display = 'none';
-                rangeInputs.style.display = 'block';
+        // Update Step 1 num_samples if exists
+        const step1NumSamplesRow = document.getElementById('step1_num_samples_row');
+        const step1NumSamplesInput = document.getElementById('step1_num_samples');
+        if (step1NumSamplesRow && step1NumSamplesInput) {
+            if (config.step_1.num_samples !== undefined) {
+                step1NumSamplesRow.style.display = '';
+                step1NumSamplesInput.value = config.step_1.num_samples;
             } else {
-                singleInput.style.display = 'block';
-                rangeInputs.style.display = 'none';
+                step1NumSamplesRow.style.display = 'none';
             }
         }
 
-        function updateOptimizerConfig(config) {
-            const container = document.getElementById('optimizer_config_container');
-            const placeholder = document.getElementById('optimizer_config_placeholder');
-
-            console.log('Updating optimizer config:', config); // Debug log
-
-            if (!config || !config.step_1) {
-                container.style.display = 'none';
-                placeholder.style.display = 'block';
-                return;
-            }
-
-            placeholder.style.display = 'none';
-            container.style.display = 'block';
-
-            // Update Step 1
-            const step1ModelSelect = document.getElementById('step1_model');
-            if (step1ModelSelect && config.step_1.model) {
-                step1ModelSelect.innerHTML = '';
-                config.step_1.model.forEach(model => {
+        // Update Step 2
+        if (config.step_2) {
+            const step2ModelSelect = document.getElementById('step2_model');
+            if (step2ModelSelect && config.step_2.model) {
+                step2ModelSelect.innerHTML = '';
+                config.step_2.model.forEach(model => {
                     const option = document.createElement('option');
                     option.value = model;
                     option.textContent = model;
-                    step1ModelSelect.appendChild(option);
+                    step2ModelSelect.appendChild(option);
                 });
             }
+        }
+    }
 
-            // Update Step 1 num_samples if exists
-            const step1NumSamplesRow = document.getElementById('step1_num_samples_row');
-            const step1NumSamplesInput = document.getElementById('step1_num_samples');
-            if (step1NumSamplesRow && step1NumSamplesInput) {
-                if (config.step_1.num_samples !== undefined) {
-                    step1NumSamplesRow.style.display = '';
-                    step1NumSamplesInput.value = config.step_1.num_samples;
+    document.addEventListener("DOMContentLoaded", () => {
+        console.log("Tab3: Init");
+
+        const FORM_STATE_KEY = "bo_form_state";
+        const form = document.querySelector('form[name="bo"]');
+        const optimizerSelect = document.getElementById("optimizer_type");
+        let saveTimeout = null;
+
+        const saveFormData = () => {
+            if (!form) return;
+
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                const formData = new FormData(form);
+                const data = {};
+
+                // Convert FormData to object
+                for (let [key, value] of formData.entries()) {
+                    data[key] = value;
+                }
+
+                try {
+                    sessionStorage.setItem(FORM_STATE_KEY, JSON.stringify(data));
+                    console.log('Tab3: Saved form data', Object.keys(data).length, 'fields');
+                } catch (e) {
+                    console.warn('Tab3: Could not save form data:', e);
+                }
+            }, 500); // Debounce save
+        };
+
+        const loadSavedData = () => {
+            try {
+                const saved = sessionStorage.getItem(FORM_STATE_KEY);
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    console.log('Tab3: Found saved data', Object.keys(data).length, 'fields');
+                    return data;
+                }
+            } catch (e) {
+                console.warn('Tab3: Could not load saved data:', e);
+            }
+            return null;
+        };
+
+        const restoreState = () => {
+            const data = loadSavedData();
+            if (!data) {
+                console.log('Tab3: No saved data to restore');
+                return;
+            }
+
+            console.log('Tab3: Restoring form state');
+
+            // First restore the optimizer selection
+            if (data.optimizer_type && optimizerSelect) {
+                optimizerSelect.value = data.optimizer_type;
+                console.log('Tab3: Restored optimizer:', data.optimizer_type);
+            }
+
+            // Trigger optimizer update to populate step dropdowns
+            if (optimizerSelect && optimizerSelect.value) {
+                updateOptimizerInfo();
+            }
+
+            // Small delay to ensure dropdowns are populated
+            setTimeout(() => {
+                // Then restore all other form values (including step selections)
+                Object.entries(data).forEach(([key, value]) => {
+                    const el = form.querySelector(`[name="${key}"]`);
+                    if (el) {
+                        el.value = value;
+                        console.log('Tab3: Restored', key, '=', value);
+                    }
+                });
+            }, 100);
+        };
+
+        const updateOptimizerInfo = () => {
+            const opt = optimizerSelect.value;
+            if (!opt) {
+                // Hide optimizer config when no optimizer selected
+                document.getElementById('optimizer_config_container').style.display = 'none';
+                document.getElementById('optimizer_config_placeholder').style.display = 'block';
+                return;
+            }
+
+            const schema = optimizerSchema[opt];
+            if (!schema) return;
+
+            console.log('Tab3: Updating optimizer info for', opt);
+
+            // Update optimizer config (step 1 and step 2)
+            if (schema.optimizer_config) {
+                updateOptimizerConfig(schema.optimizer_config);
+            }
+
+            const supportsContinuous = schema.supports_continuous !== false;
+            const available = schema.parameter_types || ["range", "choice", "fixed"];
+
+            document.querySelectorAll(".parameter-type").forEach(sel => {
+                const currentValue = sel.value; // Preserve current value if valid
+                sel.innerHTML = available.map(t => `<option value="${t}">${t}</option>`).join("");
+
+                // Restore previous value if it's still valid, otherwise use default
+                if (available.includes(currentValue)) {
+                    sel.value = currentValue;
                 } else {
-                    step1NumSamplesRow.style.display = 'none';
+                    sel.value = available.includes("range") ? "range" : available[0];
                 }
-            }
 
-            // Update Step 2
-            if (config.step_2) {
-                const step2ModelSelect = document.getElementById('step2_model');
-                if (step2ModelSelect && config.step_2.model) {
-                    step2ModelSelect.innerHTML = '';
-                    config.step_2.model.forEach(model => {
-                        const option = document.createElement('option');
-                        option.value = model;
-                        option.textContent = model;
-                        step2ModelSelect.appendChild(option);
-                    });
-                }
-            }
-        }
-
-        // Initialize parameter inputs on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            const parameterTypeSelects = document.querySelectorAll('.parameter-type');
-            parameterTypeSelects.forEach(select => {
-                updateParameterInputs(select);
+                updateParameterInputs(sel, supportsContinuous);
             });
-        });
 
-        function addConstraintRow() {
-            const container = document.getElementById('constraints_container');
-            const newRow = document.createElement('div');
-            newRow.classList.add('row', 'align-items-center', 'mb-2', 'constraint-row');
-            newRow.innerHTML = `
-                <div class="col-10">
-                    <input type="text" class="form-control form-control-sm" name="constraint_expr" placeholder="e.g. a + b <= 80">
-                </div>
-                <div class="col-2">
-                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeConstraintRow(this)">−</button>
-                </div>
-            `;
-            container.appendChild(newRow);
+            document.getElementById("constraints_section").style.display =
+                schema.supports_constraints === false ? "none" : "block";
+
+            saveFormData();
+        };
+
+        const updateParameterInputs = (selectElement, supportsContinuous = true) => {
+            const row = selectElement.closest(".parameter-row");
+            const single = row.querySelector(".single-input");
+            const range = row.querySelector(".range-inputs");
+            const isRange = selectElement.value === "range";
+
+            // Toggle visibility
+            single.style.display = isRange ? "none" : "block";
+            range.style.display = isRange ? "block" : "none";
+
+            // Handle "step" input rule
+            const stepInput = range?.querySelector('input[name$="_step"]');
+            if (stepInput) {
+                if (!supportsContinuous) {
+                    stepInput.required = true;
+                    stepInput.placeholder = "Step (required)";
+                } else {
+                    stepInput.required = false;
+                    stepInput.placeholder = "Step (optional)";
+                }
+            }
+        };
+
+        // Bind events
+        if (optimizerSelect) {
+            optimizerSelect.addEventListener("change", () => {
+                updateOptimizerInfo();
+                saveFormData();
+            });
         }
 
-        function removeConstraintRow(button) {
-            button.closest('.constraint-row').remove();
+        if (form) {
+            // Save on any input change
+            form.addEventListener("input", saveFormData);
+            form.addEventListener("change", saveFormData);
         }
-    </script>
+
+        document.querySelectorAll(".parameter-type").forEach(sel =>
+            sel.addEventListener("change", e => {
+                const opt = optimizerSelect.value;
+                const schema = opt ? optimizerSchema[opt] : null;
+                const supportsContinuous = schema ? (schema.supports_continuous !== false) : true;
+                updateParameterInputs(e.target, supportsContinuous);
+                saveFormData();
+            })
+        );
+
+        // Handle page unload
+        window.addEventListener('beforeunload', saveFormData);
+
+        console.log("Tab3: Init Done");
+
+        // Restore state after all event listeners are set up
+        restoreState();
+
+        // ============================================
+        // EXPOSE FUNCTIONS GLOBALLY FOR COORDINATION
+        // ============================================
+        window.saveBO = saveFormData;
+        window.loadBO = restoreState;
+    });
+
+</script>
+
+</div>

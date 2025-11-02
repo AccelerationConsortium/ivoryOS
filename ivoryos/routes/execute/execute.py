@@ -182,7 +182,7 @@ def run_bo():
     optimizer_type = payload.pop("optimizer_type", None)
     existing_data = payload.pop("existing_data", None)
     batch_mode = payload.pop("batch_mode", None)
-    n_suggestions = payload.pop("suggest", None)
+    batch_size = payload.pop("batch_size", 1)
     parameters, objectives, steps = parse_optimization_form(payload)
     # try:
 
@@ -197,8 +197,8 @@ def run_bo():
         runner.run_script(script=script, run_name=run_name, optimizer=optimizer,
                           logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                           output_path=datapath, compiled=False, history=existing_data,
-                          current_app=current_app._get_current_object(), batch_mode=batch_mode, batch_size=n_suggestions,
-
+                          current_app=current_app._get_current_object(), batch_mode=batch_mode, batch_size=int(batch_size),
+                          objectives=objectives
                           )
 
     # except Exception as e:
