@@ -10,3 +10,4 @@ Flask-SQLAlchemy
 SQLAlchemy-Utils~=0.41
 flask-wtf
 python-dotenv
+pandas
