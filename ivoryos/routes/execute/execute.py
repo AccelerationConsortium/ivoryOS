@@ -76,13 +76,16 @@ def experiment_run():
         if isinstance(exec_string, dict):
             for key, func_str in exec_string.items():
                 exec(func_str)
-            line_collection = script.convert_to_lines(exec_string)
+
         else:
             # Handle string case - you might need to adjust this based on your needs
             line_collection = {}
     except Exception:
         flash(f"Please check syntax!!")
         return redirect(url_for("design.experiment_builder"))
+
+
+    line_collection = script.render_script_lines(script.script_dict)
 
     run_name = script.name if script.name else "untitled"
 
@@ -92,8 +95,13 @@ def experiment_run():
 
     _, return_list = script.config_return()
     config_list, config_type_list = script.config("script")
-    data_list = os.listdir(current_app.config['DATA_FOLDER'])
-    data_list.remove(".gitkeep") if ".gitkeep" in data_list else data_list
+    data_list = [f for f in os.listdir(current_app.config['DATA_FOLDER']) if f.endswith('.csv')]
+    # Remove .gitkeep if present
+    if ".gitkeep" in data_list:
+        data_list.remove(".gitkeep")
+
+    # Sort by creation time, newest first
+    data_list.sort(key=lambda f: os.path.getctime(os.path.join(current_app.config['DATA_FOLDER'], f)), reverse=True)
 
     if deck is None:
         no_deck_warning = True
@@ -127,8 +135,8 @@ def experiment_run():
             batch_size = int(request.form.get('batch_size', 1))
             repeat = request.form.get('repeat', None)
 
-        # try:
-        if True:
+        try:
+        # if True:
             datapath = current_app.config["DATA_FOLDER"]
             run_name = script.validate_function_name(run_name)
             runner.run_script(script=script, run_name=run_name, config=config, bo_args=bo_args,
@@ -138,11 +146,11 @@ def experiment_run():
                               )
             if utils.check_config_duplicate(config):
                 flash(f"WARNING: Duplicate in config entries.")
-        # except Exception as e:
-        #     if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
-        #         return jsonify({"error": e.__str__()})
-        #     else:
-        #         flash(e)
+        except Exception as e:
+            if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+                return jsonify({"error": e.__str__()})
+            else:
+                flash(e)
 
     if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
         # wait to get a workflow ID

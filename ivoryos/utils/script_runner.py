@@ -1,11 +1,12 @@
 import ast
 import asyncio
 import os
-import csv
 import threading
 import time
 from datetime import datetime
 from typing import List, Dict, Any
+
+import pandas as pd
 
 from ivoryos.utils import utils, bo_campaign
 from ivoryos.utils.db_models import Script, WorkflowRun, WorkflowStep, db, WorkflowPhase
@@ -78,7 +79,8 @@ class ScriptRunner:
         """Force stop everything, including ongoing tasks."""
         self.stop_current_event.set()
         self.abort_pending()
-        self.lock.release()
+        if self.lock.locked():
+            self.lock.release()
 
 
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None, bo_args=None,
@@ -155,30 +157,34 @@ class ScriptRunner:
 
         for step in nest_script:
             action = step["action"]
+            instrument = step["instrument"]
             action_id = step["id"]
             if action == "if":
-                await self._execute_if_batched(step, results)
+                await self._execute_if_batched(step, results, phase_id=phase_id, step_index=action_id, section_name=section_name)
             elif action == "repeat":
-                await self._execute_repeat_batched(step, results)
+                await self._execute_repeat_batched(step, results, phase_id=phase_id, step_index=action_id, section_name=section_name)
             elif action == "while":
-                await self._execute_while_batched(step, results)
+                await self._execute_while_batched(step, results, phase_id=phase_id, step_index=action_id, section_name=section_name)
+            elif instrument == "variable":
+                await self._execute_variable_batched(step, results, phase_id=phase_id, step_index=action_id, section_name=section_name)
+                print("Variable executed", "current context", context)
             else:
                 # Regular action - check if batch
                 if step.get("batch_action", False):
                     # Execute once for all samples
                     if results:
-                        await self._execute_action_once(step, results[0], phase_id=phase_id, step_index=action_id)
+                        await self._execute_action_once(step, results[0], phase_id=phase_id, step_index=action_id, section_name=section_name)
                     else:
-                        await self._execute_action_once(step, {}, phase_id=phase_id, step_index=action_id)
+                        await self._execute_action_once(step, {}, phase_id=phase_id, step_index=action_id, section_name=section_name)
                 else:
                     # Execute for each sample
                     if results:
                         for context in results:
-                            await self._execute_action(step, context, phase_id=phase_id, step_index=action_id)
+                            await self._execute_action(step, context, phase_id=phase_id, step_index=action_id, section_name=section_name)
                             self.pause_event.wait()
                     else:
                         for _ in range(batch_size):
-                            await self._execute_action(step, {}, phase_id=phase_id, step_index=action_id)
+                            await self._execute_action(step, {}, phase_id=phase_id, step_index=action_id, section_name=section_name)
                             self.pause_event.wait()
 
         return results  # Return the 'results' variable
@@ -203,8 +209,8 @@ class ScriptRunner:
             run_id = run.id  # Save the ID
             db.session.commit()
 
-            # try:
-            if True:
+            try:
+            # if True:
                 global_config.runner_status = {"id":run_id, "type": "workflow"}
                 # Run "prep" section once
                 asyncio.run(self._run_actions(script, section_name="prep", logger=logger, socketio=socketio, run_id=run_id))
@@ -233,16 +239,17 @@ class ScriptRunner:
                 # Reset the running flag when done
                 # Save results if necessary
                 if not script.python_script and return_list:
-                    print(output_list)
+                    # print(output_list)
 
                     filename = self._save_results(run_name, arg_type, return_list, output_list, logger, output_path)
                 self._emit_progress(socketio, 100)
 
-            # except Exception as e:
-            #     logger.error(f"Error during script execution: {e.__str__()}")
-            #     error_flag = True
-            # finally:
-                self.lock.release()
+            except Exception as e:
+                logger.error(f"Error during script execution: {e.__str__()}")
+                error_flag = True
+            finally:
+                if self.lock.locked():
+                    self.lock.release()
         with current_app.app_context():
             run = db.session.get(WorkflowRun, run_id)
             if run is None:
@@ -340,7 +347,6 @@ class ScriptRunner:
                 ax_client = bo_campaign.ax_init_opc(bo_args)
             else:
                 if history:
-                    import pandas as pd
                     file_path = os.path.join(output_path, history)
                     previous_runs = pd.read_csv(file_path).to_dict(orient='records')
                     ax_client = bo_campaign.ax_init_form(bo_args, arg_types, len(previous_runs))
@@ -353,12 +359,26 @@ class ScriptRunner:
                 else:
                     ax_client = bo_campaign.ax_init_form(bo_args, arg_types)
         elif optimizer and history:
-            import pandas as pd
             file_path = os.path.join(output_path, history)
 
             previous_runs = pd.read_csv(file_path)
+
+            expected_cols = list(arg_types.keys()) + list(return_list)
+
+            actual_cols = previous_runs.columns.tolist()
+
+            # NOT okay if it misses columns
+            if set(expected_cols) - set(actual_cols):
+                logger.warning(f"Missing columns from history .csv file. Expecting {expected_cols} but got {actual_cols}")
+                raise ValueError("Missing columns from history .csv file.")
+
+            # okay if there is extra columns
+            if set(actual_cols) - set(expected_cols):
+                logger.warning(f"Extra columns from history .csv file. Expecting {expected_cols} but got {actual_cols}")
+
             optimizer.append_existing_data(previous_runs)
-            for row in previous_runs:
+
+            for row in previous_runs.to_dict(orient='records'):
                 output_list.append(row)
 
 
@@ -402,7 +422,7 @@ class ScriptRunner:
             elif optimizer:
                 try:
                     parameters = optimizer.suggest(n=batch_size)
-                    logger.info(f'Output value: {parameters}')
+                    logger.info(f'Parameters: {parameters}')
                     phase.parameters = parameters
 
                     output = await self.exec_steps(script, "script",  phase_id, kwargs_list=parameters)
@@ -442,14 +462,14 @@ class ScriptRunner:
 
     @staticmethod
     def _save_results(run_name, arg_type, return_list, output_list, logger, output_path):
-        args = list(arg_type.keys()) if arg_type else []
-        args.extend(return_list)
+        output_columns = list(arg_type.keys()) + list(return_list)
+
         filename = run_name + "_" + datetime.now().strftime("%Y-%m-%d %H-%M") + ".csv"
         file_path = os.path.join(output_path, filename)
-        with open(file_path, "w", newline='') as file:
-            writer = csv.DictWriter(file, fieldnames=args)
-            writer.writeheader()
-            writer.writerows(output_list)
+        df = pd.DataFrame(output_list)
+        df = df.loc[:, [c for c in output_columns if c in df.columns]]
+
+        df. to_csv(file_path, index=False)
         logger.info(f'Results saved to {file_path}')
         return filename
 
@@ -476,49 +496,7 @@ class ScriptRunner:
             }
 
 
-
-
-    async def _execute_if(self, step: Dict, context: Dict[str, Any], batch_actions_executed: set):
-        """Execute if/else block for single sample."""
-        condition = self._evaluate_condition(step["args"]["statement"], context)
-
-        if condition:
-            return await self._execute_steps(step["if_block"], context, batch_actions_executed)
-        else:
-            return await self._execute_steps(step["else_block"], context, batch_actions_executed)
-
-    async def _execute_repeat(self, step: Dict, context: Dict[str, Any], batch_actions_executed: set):
-        """Execute repeat block for single sample."""
-        times = step["args"].get("times", 1)
-
-        for i in range(times):
-            context["repeat_index"] = i
-            context = await self._execute_steps(step["repeat_block"], context, batch_actions_executed)
-
-        return context
-
-    async def _execute_while(self, step: Dict, context: Dict[str, Any], batch_actions_executed: set):
-        """Execute while block for single sample."""
-        max_iterations = step["args"].get("max_iterations", 1000)
-        iteration = 0
-
-        while iteration < max_iterations:
-            condition = self._evaluate_condition(step["args"]["statement"], context)
-
-            if not condition:
-                break
-
-            context["while_index"] = iteration
-            context = await self._execute_steps(step["while_block"], context, batch_actions_executed)
-            iteration += 1
-
-        if iteration >= max_iterations:
-            raise RuntimeError(f"While loop exceeded max iterations ({max_iterations})")
-
-        return context
-
-
-    async def _execute_steps_batched(self, steps: List[Dict], contexts: List[Dict[str, Any]]):
+    async def _execute_steps_batched(self, steps: List[Dict], contexts: List[Dict[str, Any]], phase_id, step_index, section_name):
         """
         Execute a list of steps for multiple samples, batching where appropriate.
         """
@@ -526,35 +504,35 @@ class ScriptRunner:
             action = step["action"]
 
             if action == "if":
-                await self._execute_if_batched(step, contexts)
+                await self._execute_if_batched(step, contexts, phase_id, step_index, section_name)
             elif action == "repeat":
-                await self._execute_repeat_batched(step, contexts)
+                await self._execute_repeat_batched(step, contexts, phase_id, step_index, section_name)
             elif action == "while":
-                await self._execute_while_batched(step, contexts)
+                await self._execute_while_batched(step, contexts, phase_id, step_index, section_name)
             else:
                 # Regular action - check if batch
                 if step.get("batch_action", False):
                     # Execute once for all samples
-                    await self._execute_action_once(step, contexts[0])
+                    await self._execute_action_once(step, contexts[0], phase_id=phase_id, step_index=step_index, section_name=section_name)
                 else:
                     # Execute for each sample
                     for context in contexts:
-                        await self._execute_action(step, context)
+                        await self._execute_action(step, context, phase_id=phase_id, step_index=step_index, section_name=section_name)
 
 
-    async def _execute_if_batched(self, step: Dict, contexts: List[Dict[str, Any]]):
+    async def _execute_if_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index, section_name):
         """Execute if/else block for multiple samples."""
         # Evaluate condition for each sample
         for context in contexts:
             condition = self._evaluate_condition(step["args"]["statement"], context)
 
             if condition:
-                await self._execute_steps_batched(step["if_block"], [context])
+                await self._execute_steps_batched(step["if_block"], [context], phase_id=phase_id, step_index=step_index, section_name=section_name)
             else:
-                await self._execute_steps_batched(step["else_block"], [context])
+                await self._execute_steps_batched(step["else_block"], [context], phase_id=phase_id, step_index=step_index, section_name=section_name)
 
 
-    async def _execute_repeat_batched(self, step: Dict, contexts: List[Dict[str, Any]]):
+    async def _execute_repeat_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index, section_name):
         """Execute repeat block for multiple samples."""
         times = step["args"].get("times", 1)
 
@@ -563,10 +541,10 @@ class ScriptRunner:
             for context in contexts:
                 context["repeat_index"] = i
 
-            await self._execute_steps_batched(step["repeat_block"], contexts)
+            await self._execute_steps_batched(step["repeat_block"], contexts, phase_id=phase_id, step_index=step_index, section_name=section_name)
 
 
-    async def _execute_while_batched(self, step: Dict, contexts: List[Dict[str, Any]]):
+    async def _execute_while_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index, section_name):
         """Execute while block for multiple samples."""
         max_iterations = step["args"].get("max_iterations", 1000)
         active_contexts = contexts.copy()
@@ -587,14 +565,14 @@ class ScriptRunner:
                 break
 
             # Execute for contexts that are still active
-            await self._execute_steps_batched(step["while_block"], still_active)
+            await self._execute_steps_batched(step["while_block"], still_active, phase_id=phase_id, step_index=step_index, section_name=section_name)
             active_contexts = still_active
             iteration += 1
 
         if iteration >= max_iterations:
             raise RuntimeError(f"While loop exceeded max iterations ({max_iterations})")
 
-    async def _execute_action(self, step: Dict, context: Dict[str, Any], phase_id=1, step_index=1):
+    async def _execute_action(self, step: Dict, context: Dict[str, Any], phase_id=1, step_index=1, section_name=None):
         """Execute a single action with parameter substitution."""
         # Substitute parameters in args
         substituted_args = self._substitute_params(step["args"], context)
@@ -616,6 +594,7 @@ class ScriptRunner:
         db.session.add(step_db)
         db.session.flush()
         try:
+            self.socketio.emit('execution', {'section': f"{section_name}-{step_index}"})
             if action == "wait":
                 duration = float(substituted_args["statement"])
                 self.safe_sleep(duration)
@@ -679,10 +658,10 @@ class ScriptRunner:
 
         return context
 
-    async def _execute_action_once(self, step: Dict, context: Dict[str, Any], phase_id, step_index):
+    async def _execute_action_once(self, step: Dict, context: Dict[str, Any], phase_id, step_index, section_name):
         """Execute a batch action once (not per sample)."""
         # print(f"Executing batch action: {step['action']}")
-        return await self._execute_action(step, context, phase_id=phase_id, step_index=step_index)
+        return await self._execute_action(step, context, phase_id=phase_id, step_index=step_index, section_name=section_name)
 
     @staticmethod
     def _substitute_params(args: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
@@ -702,21 +681,24 @@ class ScriptRunner:
     def _evaluate_condition(condition_str: str, context: Dict[str, Any]) -> bool:
         """
         Safely evaluate a condition string with context variables.
-
-        WARNING: This uses eval() which can be dangerous.
-        In production, use a proper expression parser.
         """
-        # Substitute variables
+        # Create evaluation context with all variables
+        eval_context = {}
+
+        # Substitute variables in the condition string
+        substituted = condition_str
         for key, value in context.items():
-            # Replace variable names in condition
-            condition_str = condition_str.replace(f"#{key}", str(value))
+            # Replace #variable with actual variable name for eval
+            substituted = substituted.replace(f"#{key}", key)
+            # Add variable to eval context
+            eval_context[key] = value
 
         try:
-            # Safe evaluation with limited scope
-            return bool(eval(condition_str, {"__builtins__": {}}, context))
+            # Safe evaluation with variables in scope
+            result = eval(substituted, {"__builtins__": {}}, eval_context)
+            return bool(result)
         except Exception as e:
-            print(f"Error evaluating condition '{condition_str}': {e}")
-            return False
+            raise ValueError(f"Error evaluating condition '{condition_str}': {e}")
 
     def _check_early_stop(self, output, objectives):
         for row in output:
@@ -742,3 +724,66 @@ class ScriptRunner:
                 return True  # At least one row meets all early stop thresholds
 
         return False  # No row met all thresholds
+
+    async def _execute_variable_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index,
+                                        section_name):
+        """Execute variable assignment for multiple samples."""
+        var_name = step["action"]  # "vial" in your example
+        var_value = step["args"]["statement"]
+        arg_type = step["arg_types"]["statement"]
+
+        for context in contexts:
+            # Substitute any variable references in the value
+            if isinstance(var_value, str):
+                substituted_value = var_value
+
+                # Replace all variable references (with or without #) with their values
+                for key, val in context.items():
+                    # Handle both #variable and variable (without #)
+                    substituted_value = substituted_value.replace(f"#{key}", str(val))
+                    # For expressions like "vial+10", replace variable name directly
+                    # Use word boundaries to avoid partial matches
+                    import re
+                    substituted_value = re.sub(r'\b' + re.escape(key) + r'\b', str(val), substituted_value)
+
+                # Handle based on type
+                if arg_type == "float":
+                    try:
+                        # Evaluate as expression (e.g., "10.0+10" becomes 20.0)
+                        result = eval(substituted_value, {"__builtins__": {}}, {})
+                        context[var_name] = float(result)
+                    except:
+                        # If eval fails, try direct conversion
+                        context[var_name] = float(substituted_value)
+
+                elif arg_type == "int":
+                    try:
+                        result = eval(substituted_value, {"__builtins__": {}}, {})
+                        context[var_name] = int(result)
+                    except:
+                        context[var_name] = int(substituted_value)
+
+                elif arg_type == "bool":
+                    try:
+                        # Evaluate boolean expressions
+                        result = eval(substituted_value, {"__builtins__": {}}, {})
+                        context[var_name] = bool(result)
+                    except:
+                        context[var_name] = substituted_value.lower() in ['true', '1', 'yes']
+
+                else:  # "str"
+                    # For strings, check if it looks like an expression
+                    if any(char in substituted_value for char in ['+', '-', '*', '/', '>', '<', '=', '(', ')']):
+                        try:
+                            # Try to evaluate as expression
+                            result = eval(substituted_value, {"__builtins__": {}}, {})
+                            context[var_name] = result
+                        except:
+                            # If eval fails, store as string
+                            context[var_name] = substituted_value
+                    else:
+                        context[var_name] = substituted_value
+            else:
+                # Direct numeric or boolean value
+                context[var_name] = var_value
+

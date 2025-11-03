@@ -452,6 +452,79 @@ class Script(db.Model):
                 ]
         return line_collection
 
+    def render_script_lines(self, script_dict):
+        """
+        Convert the script_dict structure into a dict of displayable Python-like lines,
+        keeping ID consistency for highlighting.
+        """
+
+        def render_args(args):
+            if not args:
+                return ""
+            return ", ".join(f"{k}={v}" for k, v in args.items())
+
+        def parse_block(block):
+            lines = []
+            indent = 0
+            stack = []
+
+            for action in block:
+                act = action["action"]
+                _id = action["id"]
+
+                # Handle control structures
+                if act == "if":
+                    stmt = action["args"].get("statement", "")
+                    lines.append("    " * indent + f"if {stmt}:   # id:{_id}")
+                    indent += 1
+                    stack.append("if")
+
+                elif act == "else":
+                    indent -= 1
+                    lines.append("    " * indent + f"else:   # id:{_id}")
+                    indent += 1
+
+                elif act in ("endif", "endwhile"):
+                    if stack:
+                        stack.pop()
+                    indent = max(indent - 1, 0)
+                    lines.append("    " * indent + f"# {act}   # id:{_id}")
+
+                elif act == "while":
+                    stmt = action["args"].get("statement", "")
+                    lines.append("    " * indent + f"while {stmt}:   # id:{_id}")
+                    indent += 1
+                    stack.append("while")
+
+                else:
+                    # Regular function call
+                    instr = action["instrument"]
+                    args = render_args(action.get("args", {}))
+                    ret = action.get("return")
+                    line = "    " * indent
+                    if ret:
+                        line += f"{ret} = {instr}.{act}({args})   # id:{_id}"
+                    else:
+                        line += f"{instr}.{act}({args})   # id:{_id}"
+                    lines.append(line)
+
+            # Ensure empty control blocks get "pass"
+            final_lines = []
+            for i, line in enumerate(lines):
+                final_lines.append(line)
+                # if line.strip().startswith("else") and (
+                #         i == len(lines) - 1 or lines[i + 1].startswith("#") or "endif" in lines[i + 1]
+                # ):
+                    # final_lines.append("    " * (indent) + "pass")
+
+            return final_lines
+
+        return {
+            "prep": parse_block(script_dict.get("prep", [])),
+            "script": parse_block(script_dict.get("script", [])),
+            "cleanup": parse_block(script_dict.get("cleanup", []))
+        }
+
     def compile(self, script_path=None, batch=False, mode="sample"):
         """
         Compile the current script to a Python file.
