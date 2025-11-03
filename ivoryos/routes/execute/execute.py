@@ -76,13 +76,16 @@ def experiment_run():
         if isinstance(exec_string, dict):
             for key, func_str in exec_string.items():
                 exec(func_str)
-            line_collection = script.convert_to_lines(exec_string)
+
         else:
             # Handle string case - you might need to adjust this based on your needs
-            line_collection = []
+            line_collection = {}
     except Exception:
         flash(f"Please check syntax!!")
         return redirect(url_for("design.experiment_builder"))
+
+
+    line_collection = script.render_script_lines(script.script_dict)
 
     run_name = script.name if script.name else "untitled"
 
@@ -92,8 +95,13 @@ def experiment_run():
 
     _, return_list = script.config_return()
     config_list, config_type_list = script.config("script")
-    data_list = os.listdir(current_app.config['DATA_FOLDER'])
-    data_list.remove(".gitkeep") if ".gitkeep" in data_list else data_list
+    data_list = [f for f in os.listdir(current_app.config['DATA_FOLDER']) if f.endswith('.csv')]
+    # Remove .gitkeep if present
+    if ".gitkeep" in data_list:
+        data_list.remove(".gitkeep")
+
+    # Sort by creation time, newest first
+    data_list.sort(key=lambda f: os.path.getctime(os.path.join(current_app.config['DATA_FOLDER'], f)), reverse=True)
 
     if deck is None:
         no_deck_warning = True
@@ -115,21 +123,26 @@ def experiment_run():
             elif "parameters" in payload_json:
                 bo_args = payload_json
             repeat = payload_json.pop("repeat", None)
+            batch_size = payload_json.pop('batch_size', 1)
         else:
             if "bo" in request.form:
                 bo_args = request.form.to_dict()
                 existing_data = bo_args.pop("existing_data")
             if "online-config" in request.form:
-                config = utils.web_config_entry_wrapper(request.form.to_dict(), config_list)
+                config_args = request.form.to_dict()
+                config_args.pop("batch_size", None)
+                config = utils.web_config_entry_wrapper(config_args, config_list)
+            batch_size = int(request.form.get('batch_size', 1))
             repeat = request.form.get('repeat', None)
 
         try:
+        # if True:
             datapath = current_app.config["DATA_FOLDER"]
             run_name = script.validate_function_name(run_name)
             runner.run_script(script=script, run_name=run_name, config=config, bo_args=bo_args,
                               logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                               output_path=datapath, compiled=compiled, history=existing_data,
-                              current_app=current_app._get_current_object()
+                              current_app=current_app._get_current_object(), batch_size=batch_size
                               )
             if utils.check_config_duplicate(config):
                 flash(f"WARNING: Duplicate in config entries.")
@@ -176,19 +189,35 @@ def run_bo():
     repeat = payload.pop("repeat", None)
     optimizer_type = payload.pop("optimizer_type", None)
     existing_data = payload.pop("existing_data", None)
+    batch_mode = payload.pop("batch_mode", None)
+    batch_size = payload.pop("batch_size", 1)
+
+    # Get constraint expressions (new single-line input)
+    constraint_exprs = request.form.getlist("constraint_expr")
+    constraints = [expr.strip() for expr in constraint_exprs if expr.strip()]
+
+    # Remove constraint_expr entries from payload before parsing parameters
+    for key in list(payload.keys()):
+        if key.startswith("constraint_expr"):
+            payload.pop(key, None)
+
     parameters, objectives, steps = parse_optimization_form(payload)
     try:
+
+    # if True:
         datapath = current_app.config["DATA_FOLDER"]
         run_name = script.validate_function_name(run_name)
         Optimizer = global_config.optimizers.get(optimizer_type, None)
         if not Optimizer:
             raise ValueError(f"Optimizer {optimizer_type} is not supported or not found.")
         optimizer = Optimizer(experiment_name=run_name, parameter_space=parameters, objective_config=objectives,
+                              parameter_constraints = constraints,
                               optimizer_config=steps, datapath=datapath)
         runner.run_script(script=script, run_name=run_name, optimizer=optimizer,
                           logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                           output_path=datapath, compiled=False, history=existing_data,
-                          current_app=current_app._get_current_object()
+                          current_app=current_app._get_current_object(), batch_mode=batch_mode, batch_size=int(batch_size),
+                          objectives=objectives
                           )
 
     except Exception as e:

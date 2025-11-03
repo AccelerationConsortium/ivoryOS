@@ -332,7 +332,9 @@ def create_add_form(attr, attr_name, autofill: bool, script=None, design: bool =
     dynamic_form = create_form_for_method(signature, autofill, script, design)
     if design:
         return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
+        batch_action = BooleanField(label='Batch Action', render_kw={"placeholder": "Optional"})
         setattr(dynamic_form, 'return', return_value)
+        setattr(dynamic_form, 'batch_action', batch_action)
     hidden_method_name = HiddenField(name=f'hidden_name', description=docstring, render_kw={"value": f'{attr_name}'})
     setattr(dynamic_form, 'hidden_name', hidden_method_name)
     return dynamic_form
@@ -407,12 +409,22 @@ def create_form_from_action(action: dict, script=None, design=True):
         value = args.get(name, "")
         if type(value) is dict and value:
             value = next(iter(value))
+        if not value or value == "None":
+            value = None
+        else:
+            value = f'{value}'
+
         field_kwargs = {
             "label": name,
-            "default": f'{value}',
-            "validators": [InputRequired()],
+            "default": f'{value}' if value else None,
+            # todo get optional/required from snapshot
+            "validators": [Optional()],
             **({"script": script})
         }
+        if type(param_type) is list:
+            none_type = param_type[1]
+            if none_type == "NoneType":
+                param_type = param_type[0]
         param_type = param_type if type(param_type) is str else f"{param_type}"
         field_class, placeholder_text = annotation_mapping.get(
             param_type,
@@ -425,6 +437,9 @@ def create_form_from_action(action: dict, script=None, design=True):
         setattr(DynamicForm, name, field)
 
     if design:
+        if "batch_action" in action:
+            batch_action = BooleanField(label='Batch Action', default=bool(action["batch_action"]))
+            setattr(DynamicForm, 'batch_action', batch_action)
         return_value = StringField(label='Save value as', default=f"{save_as}", render_kw={"placeholder": "Optional"})
         setattr(DynamicForm, 'return', return_value)
     return DynamicForm()
@@ -537,10 +552,12 @@ def _action_button(action: dict, variables: dict):
     """
     style = {
         "repeat": "background-color: lightsteelblue",
-        "if": "background-color: salmon",
-        "while": "background-color: salmon",
-        "pause": "background-color: goldenrod",
+        "if": "background-color: mistyrose",
+        "while": "background-color: #a8b5a2",
+        "pause": "background-color: palegoldenrod",
     }.get(action['instrument'], "")
+    if not style:
+        style = "background-color: thistle" if 'batch_action' in action and action["batch_action"] else ""
 
     if action['instrument'] in ['if', 'while', 'repeat']:
         text = f"{action['action']} {action['args'].get('statement', '')}"

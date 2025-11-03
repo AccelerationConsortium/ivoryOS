@@ -1,5 +1,4 @@
-{# Python code overlay component #}
-{#{% if session.get('show_code') %}#}
+{# Python code overlay component - Pure HTML #}
 <style>
 .code-overlay {
     position: fixed;
@@ -16,7 +15,7 @@
     transform: translateX(0);
 }
 </style>
-<script>hljs.highlightAll();</script>
+
 {% if session.get('show_code') %}
 <div id="pythonCodeOverlay" class="code-overlay bg-light border-start show">
 {% else %}
@@ -29,11 +28,29 @@
         </button>
     </div>
     <div class="overlay-content p-3">
-        {% for stype, script in session.get('python_code', {}).items() %}
-            <pre><code class="language-python">{{ script }}</code></pre>
-        {% endfor %}
-        <a href="{{ url_for('design.design_files.download_python', filetype='python') }}">
-            Download <i class="bi bi-download"></i>
-        </a>
+        <!-- Top toggles (Single / Batch) -->
+        <div class="btn-group mb-3">
+            <button type="button" class="btn btn-outline-primary mode-toggle active" data-mode="single">Single</button>
+            <button type="button" class="btn btn-outline-primary mode-toggle" data-mode="batch">Batch</button>
+        </div>
+
+{#        <!-- Secondary toggles (By Sample / By Step) TODO -->#}
+{#        <div class="btn-group mb-3" id="batch-options" style="display: none;">#}
+{#            <button type="button" class="btn btn-outline-secondary batch-toggle active" data-batch="sample">By Sample</button>#}
+{#            <button type="button" class="btn btn-outline-secondary batch-toggle" data-batch="step">By Step</button>#}
+{#        </div>#}
+
+        <!-- Code display -->
+        <pre><code id="python-code" class="language-python">Loading...</code></pre>
+
+        <!-- Action buttons -->
+        <div class="mt-2">
+            <button type="button" id="copy-code" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-clipboard"></i> Copy
+            </button>
+            <button type="button" id="download-code" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-download"></i> Download
+            </button>
+        </div>
     </div>
 </div>

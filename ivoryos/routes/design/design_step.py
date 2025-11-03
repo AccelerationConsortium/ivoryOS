@@ -57,8 +57,9 @@ def save_step(uuid: int):
         kwargs = {field.name: field.data for field in forms if field.name != 'csrf_token'}
         if forms and forms.validate_on_submit():
             save_as = kwargs.pop('return', '')
+            batch_action = kwargs.pop('batch_action', False)
             kwargs = script.validate_variables(kwargs)
-            script.update_by_uuid(uuid=uuid, args=kwargs, output=save_as)
+            script.update_by_uuid(uuid=uuid, args=kwargs, output=save_as, batch_action=batch_action)
         else:
             warning = f"Compilation failed: {str(forms.errors)}"
     utils.post_script_file(script)

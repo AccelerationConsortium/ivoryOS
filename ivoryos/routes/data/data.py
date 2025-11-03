@@ -118,25 +118,43 @@ def workflow_phase_data(workflow_id: int):
 
     :param workflow_id: workflow id
     """
+
     workflow = db.session.get(WorkflowRun, workflow_id)
     if not workflow:
         return jsonify({})
 
     phase_data = {}
-    # Only plot 'main' phases
-    main_phases = WorkflowPhase.query.filter_by(run_id=workflow_id, name='main').order_by(
-        WorkflowPhase.repeat_index).all()
+    main_phases = WorkflowPhase.query.filter_by(run_id=workflow_id, name='main') \
+        .order_by(WorkflowPhase.repeat_index).all()
 
     for phase in main_phases:
         outputs = phase.outputs or {}
         phase_index = phase.repeat_index
-        # Convert each key to list of dicts for x (phase_index) and y (value)
         phase_data[phase_index] = {}
-        for k, v in outputs.items():
-            if isinstance(v, (int, float)):
-                phase_data[phase_index][k] = [{"x": phase_index, "y": v}]
-            elif isinstance(v, list) and all(isinstance(i, (int, float)) for i in v):
-                phase_data[phase_index][k] = v.map(lambda val, idx=0: {"x": phase_index, "y": val})
+
+        # Normalize everything to a list of dicts
+        if isinstance(outputs, dict):
+            outputs = [outputs]
+        elif isinstance(outputs, list):
+            # flatten if it’s nested like [[{...}, {...}]]
+            outputs = [
+                item for sublist in outputs
+                for item in (sublist if isinstance(sublist, list) else [sublist])
+            ]
+
+        # convert each output entry to plotting format
+        for out in outputs:
+            if not isinstance(out, dict):
+                continue
+            for k, v in out.items():
+                if isinstance(v, (int, float)):
+                    phase_data[phase_index].setdefault(k, []).append(
+                        {"x": phase_index, "y": v}
+                    )
+                elif isinstance(v, list) and all(isinstance(i, (int, float)) for i in v):
+                    phase_data[phase_index].setdefault(k, []).extend(
+                        {"x": phase_index, "y": val} for val in v
+                    )
 
     return jsonify(phase_data)
 

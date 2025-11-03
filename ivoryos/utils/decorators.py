@@ -16,6 +16,7 @@ def block(_func=None, *, category="general"):
             "func": func,
             "signature": inspect.signature(func),
             "docstring": inspect.getdoc(func),
+            "coroutine": inspect.iscoroutinefunction(func),
             "path": module
         }
         return func

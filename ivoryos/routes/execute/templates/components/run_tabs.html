@@ -1,4 +1,4 @@
-{# Run tabs component for experiment run #}
+<!-- Main template structure -->
 <ul class="nav nav-tabs" id="myTabs" role="tablist">
     <li class="nav-item" role="presentation">
         <a class="nav-link {{ 'disabled' if config_list else '' }} {{ 'active' if not config_list else '' }}" id="tab1-tab" data-bs-toggle="tab" href="#tab1" role="tab" aria-controls="tab1" aria-selected="false">Repeat</a>
@@ -14,4 +14,47 @@
     {% include 'components/tab_repeat.html' %}
     {% include 'components/tab_configuration.html' %}
     {% include 'components/tab_bayesian.html' %}
-</div> 
+</div>
+
+<!-- ============================================ -->
+<!-- SWITCH TO THE LAST ACTIVE TAB ON PAGE LOAD   -->
+<!-- ============================================ -->
+<script>
+(function() {
+   'use strict';
+
+   // Store active tab when changed
+   document.addEventListener('shown.bs.tab', function(e) {
+       const tabId = e.target.id.replace('-tab', '');
+       if (tabId === 'tab2' || tabId === 'tab3') {
+            localStorage.setItem('ivoryosLastTab', tabId);
+            console.log('Saved last active tab:', tabId);
+        }
+
+       // Optional: run specific load logic per tab
+       if (tabId === 'tab2' && typeof window.loadConfigData === 'function') {
+           window.loadConfigData();
+       } else if (tabId === 'tab3' && typeof window.saveBO === 'function') {
+           window.saveBO();
+       }
+   });
+
+   // Restore tab from last session
+   document.addEventListener('DOMContentLoaded', function() {
+       const lastTab = localStorage.getItem('ivoryosLastTab');
+       const tabElement = lastTab ? document.getElementById(lastTab + '-tab') : null;
+
+       if (tabElement && !tabElement.classList.contains('disabled')) {
+           new bootstrap.Tab(tabElement).show();
+           console.log('Restored last active tab:', lastTab);
+       } else {
+           // Default to first non-disabled tab
+           const firstTab = document.querySelector('#myTabs .nav-link:not(.disabled)');
+           if (firstTab) {
+               new bootstrap.Tab(firstTab).show();
+               console.log('Defaulted to first available tab.');
+           }
+       }
+   });
+})();
+</script>

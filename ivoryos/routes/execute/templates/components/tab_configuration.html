@@ -68,24 +68,35 @@
                         </tbody>
                     </table>
                 </div>
-            <div class="card-footer">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-success" onclick="addRow()">
-                        <i class="bi bi-plus-circle"></i> Add Row
-                    </button>
-                    <button type="button" class="btn btn-warning" onclick="clearAllRows()">
-                        <i class="bi bi-trash"></i> Clear All
-                    </button>
-                    <button type="button" class="btn btn-info" onclick="resetToFile()" id="resetToFileBtn" style="display: none;">
-                        <i class="bi bi-arrow-clockwise"></i> Reset to File
-                    </button>
+
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <!-- Left side: Action buttons -->
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn btn-success" onclick="addRow()">
+                                <i class="bi bi-plus-circle"></i> Add Row
+                            </button>
+                            <button type="button" class="btn btn-warning" onclick="clearAllRows()">
+                                <i class="bi bi-trash"></i> Clear All
+                            </button>
+                            <button type="button" class="btn btn-info" onclick="resetToFile()" id="resetToFileBtn" style="display: none;">
+                                <i class="bi bi-arrow-clockwise"></i> Reset to File
+                            </button>
+                        </div>
+
+                        <!-- Right side: Batch size and Run button -->
+                        <div class="d-flex gap-2 align-items-center flex-wrap">
+                            <div class="input-group" style="width: auto;">
+                                <label class="input-group-text" for="batch_size">Batch size</label>
+                                <input class="form-control" type="number" id="batch_size" name="batch_size" min="1" max="1000" value="1" style="width: 80px;">
+                            </div>
+                            <button type="submit" name="online-config" class="btn btn-primary btn-lg">
+                                <i class="bi bi-play-circle"></i> Run
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <button type="submit" name="online-config" class="btn btn-primary btn-lg">
-                    <i class="bi bi-play-circle"></i> Run
-                </button>
-            </div>
-            </div>
+
             </form>
         </div>
         <!-- Config Preview (if loaded from file) -->
@@ -95,4 +106,278 @@
             </div>
         {% endif %}
     </div>
-</div> 
+</div>
+<script>
+    var rowCount = 0;
+    var configColumns = [
+        {% for column in config_list %}
+            '{{ column }}'{{ ',' if not loop.last else '' }}
+        {% endfor %}
+    ];
+    var configTypes = {
+        {% for column, type in config_type_list.items() %}
+            '{{ column }}': '{{ type }}'{{ ',' if not loop.last else '' }}
+        {% endfor %}
+    };
+
+    // State management
+    var originalFileData = null;
+    var isModifiedFromFile = false;
+    var saveTimeout = null;
+    var lastSavedData = null;
+
+    function addRow(data = null, skipSave = false) {
+        rowCount++;
+        var tableBody = document.getElementById("tableBody");
+        var newRow = tableBody.insertRow(-1);
+
+        // Row number cell
+        var rowNumCell = newRow.insertCell(-1);
+        rowNumCell.innerHTML = '<span class="badge bg-secondary">' + rowCount + '</span>';
+
+        // Data cells
+        configColumns.forEach(function(column, index) {
+            var cell = newRow.insertCell(-1);
+            var value = data && data[column] ? data[column] : '';
+            var placeholder = configTypes[column] || 'value';
+            cell.innerHTML = '<input type="text" class="form-control form-control-sm" name="' +
+                column + '[' + rowCount + ']" value="' + value + '" placeholder="' + placeholder +
+                '" oninput="onInputChange()" onchange="onInputChange()">';
+        });
+
+        // Action cell
+        var actionCell = newRow.insertCell(-1);
+        actionCell.innerHTML = '<button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(this)" title="Remove row">' +
+            '<i class="bi bi-trash"></i></button>';
+
+        if (!skipSave) {
+            markAsModified();
+            debouncedSave();
+        }
+    }
+
+    function removeRow(button) {
+        var row = button.closest('tr');
+        row.remove();
+        updateRowNumbers();
+        markAsModified();
+        debouncedSave();
+    }
+
+    function updateRowNumbers() {
+        var tableBody = document.getElementById("tableBody");
+        var rows = tableBody.getElementsByTagName('tr');
+        for (var i = 0; i < rows.length; i++) {
+            var badge = rows[i].querySelector('.badge');
+            if (badge) {
+                badge.textContent = i + 1;
+            }
+        }
+    }
+
+    function clearAllRows() {
+        if (confirm('Are you sure you want to clear all rows?')) {
+            var tableBody = document.getElementById("tableBody");
+            tableBody.innerHTML = '';
+            rowCount = 0;
+            markAsModified();
+            clearSavedData();
+            // Add 5 empty rows by default
+            for (let i = 0; i < 5; i++) {
+                addRow(null, true);
+            }
+            debouncedSave();
+        }
+    }
+
+    function resetToFile() {
+        if (originalFileData && confirm('Reset to original file data? This will lose all manual changes.')) {
+            loadDataFromSource(originalFileData, false);
+            isModifiedFromFile = false;
+            updateStatusIndicators();
+            debouncedSave();
+        }
+    }
+
+    function onInputChange() {
+        markAsModified();
+        debouncedSave();
+    }
+
+    function markAsModified() {
+        if (originalFileData) {
+            isModifiedFromFile = true;
+            updateStatusIndicators();
+        }
+    }
+
+    function updateStatusIndicators() {
+        var modifiedStatus = document.getElementById('modifiedStatus');
+        var resetBtn = document.getElementById('resetToFileBtn');
+
+        if (isModifiedFromFile && originalFileData) {
+            modifiedStatus.style.display = 'inline-block';
+            resetBtn.style.display = 'inline-block';
+        } else {
+            modifiedStatus.style.display = 'none';
+            resetBtn.style.display = 'none';
+        }
+    }
+
+    function showSaveStatus() {
+        var saveStatus = document.getElementById('saveStatus');
+        saveStatus.style.display = 'inline-block';
+        setTimeout(function() {
+            saveStatus.style.display = 'none';
+        }, 2000);
+    }
+
+    function debouncedSave() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(function() {
+            saveFormData();
+            showSaveStatus();
+        }, 1000); // Save 1 second after user stops typing
+    }
+
+    function saveFormData() {
+        var formData = getCurrentFormData();
+        try {
+            sessionStorage.setItem('configFormData', JSON.stringify(formData));
+            sessionStorage.setItem('configModified', isModifiedFromFile.toString());
+            lastSavedData = formData;
+            console.log('Tab2: Saved form data', formData.length, 'rows');
+        } catch (e) {
+            console.warn('Could not save form data to sessionStorage:', e);
+        }
+    }
+
+    function getCurrentFormData() {
+        var tableBody = document.getElementById("tableBody");
+        var rows = tableBody.getElementsByTagName('tr');
+        var data = [];
+
+        for (var i = 0; i < rows.length; i++) {
+            var inputs = rows[i].getElementsByTagName('input');
+            var rowData = {};
+            var hasData = false;
+
+            for (var j = 0; j < inputs.length; j++) {
+                var input = inputs[j];
+                var name = input.name;
+                if (name) {
+                    var columnName = name.substring(0, name.indexOf('['));
+                    rowData[columnName] = input.value;
+                    if (input.value.trim() !== '') {
+                        hasData = true;
+                    }
+                }
+            }
+
+            if (hasData) {
+                data.push(rowData);
+            }
+        }
+
+        return data;
+    }
+
+    function loadSavedData() {
+        try {
+            var savedData = sessionStorage.getItem('configFormData');
+            var savedModified = sessionStorage.getItem('configModified');
+
+            if (savedData) {
+                var parsedData = JSON.parse(savedData);
+                isModifiedFromFile = savedModified === 'true';
+                console.log('Tab2: Loaded saved data', parsedData.length, 'rows');
+                return parsedData;
+            }
+        } catch (e) {
+            console.warn('Could not load saved form data:', e);
+        }
+        return null;
+    }
+
+    function clearSavedData() {
+        try {
+            sessionStorage.removeItem('configFormData');
+            sessionStorage.removeItem('configModified');
+            console.log('Tab2: Cleared saved data');
+        } catch (e) {
+            console.warn('Could not clear saved data:', e);
+        }
+    }
+
+    function loadDataFromSource(data, isFromFile = false) {
+        // Clear existing rows
+        var tableBody = document.getElementById("tableBody");
+        tableBody.innerHTML = '';
+        rowCount = 0;
+
+        // Add rows with data
+        data.forEach(function(rowData) {
+            addRow(rowData, true);
+        });
+
+        // Add a few empty rows for additional input
+        for (let i = 0; i < 3; i++) {
+            addRow(null, true);
+        }
+
+        if (isFromFile) {
+            originalFileData = JSON.parse(JSON.stringify(data)); // Deep copy
+            isModifiedFromFile = false;
+            clearSavedData(); // Clear saved data when loading from file
+        }
+
+        updateStatusIndicators();
+    }
+
+    function loadConfigData() {
+        // Check for saved form data first
+        var savedData = loadSavedData();
+
+        {% if config_preview %}
+            var fileData = {{ config_preview | tojson | safe }};
+            originalFileData = JSON.parse(JSON.stringify(fileData)); // Deep copy
+
+            if (savedData && savedData.length > 0) {
+                // Load saved data if available
+                loadDataFromSource(savedData, false);
+                console.log('Tab2: Loaded saved form data');
+            } else {
+                // Load from file
+                loadDataFromSource(fileData, true);
+                console.log('Tab2: Loaded file data');
+            }
+        {% else %}
+            if (savedData && savedData.length > 0) {
+                // Load saved data
+                loadDataFromSource(savedData, false);
+                console.log('Tab2: Loaded saved form data');
+            } else {
+                // Add default empty rows
+                for (let i = 0; i < 5; i++) {
+                    addRow(null, true);
+                }
+            }
+        {% endif %}
+    }
+
+    // Handle page unload
+    window.addEventListener('beforeunload', function() {
+        saveFormData();
+    });
+
+    // Initialize table when page loads
+    document.addEventListener("DOMContentLoaded", function() {
+        loadConfigData();
+    });
+
+    // ============================================
+    // EXPOSE FUNCTIONS GLOBALLY FOR COORDINATION
+    // ============================================
+    window.saveFormData = saveFormData;
+    window.loadConfigData = loadConfigData;
+</script>

@@ -7,7 +7,8 @@ from ivoryos.optimizer.base_optimizer import OptimizerBase
 
 
 class NIMOOptimizer(OptimizerBase):
-    def __init__(self, experiment_name:str, parameter_space: list, objective_config: list, optimizer_config: dict, datapath:str):
+    def __init__(self, experiment_name:str, parameter_space: list, objective_config: list, optimizer_config: dict,
+                 parameter_constraints:list=None, datapath:str=None):
         """
         :param experiment_name: arbitrary name
         :param parameter_space: list of parameter names
@@ -33,7 +34,7 @@ class NIMOOptimizer(OptimizerBase):
         self.objective_config = objective_config
         self.optimizer_config = optimizer_config
 
-        super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, datapath)
+        super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, parameter_constraints, datapath)
 
         os.makedirs(os.path.join(self.datapath, "nimo_data"), exist_ok=True)
 
@@ -52,6 +53,7 @@ class NIMOOptimizer(OptimizerBase):
         # Extract parameter names and their possible values
         import pandas as pd
         import nimo
+        import numpy as np
         if os.path.exists(self.candidates) and nimo.history(self.candidates, self.n_objectives):
             return
         param_names = [p["name"] for p in self.parameter_space]
@@ -60,11 +62,9 @@ class NIMOOptimizer(OptimizerBase):
         for p in self.parameter_space:
             if p["type"] == "choice" and isinstance(p["bounds"], list):
                 param_values.append(p["bounds"])
-            elif p["type"] == "range" and len(p["bounds"]) == 2:
-                low, high = p["bounds"]
-                num_points = 10  # you can customize this granularity
-                step = (high - low) / (num_points - 1)
-                param_values.append([round(low + i * step, 4) for i in range(num_points)])
+            elif p["type"] == "range" and len(p["bounds"]) == 3:
+                values = self._create_discrete_search_space(range_with_step=p["bounds"],value_type=p["value_type"])
+                param_values.append(values)
             else:
                 raise ValueError(f"Unsupported parameter format: {p}")
 
@@ -73,7 +73,6 @@ class NIMOOptimizer(OptimizerBase):
 
         # Create a DataFrame with parameter columns
         df = pd.DataFrame(combos, columns=param_names)
-
         # Add empty objective columns
         for obj in self.objective_config:
             df[obj["name"]] = ""
@@ -101,20 +100,19 @@ class NIMOOptimizer(OptimizerBase):
         for _, row in proposals_df.iterrows():
             proposal = {name: row[name] for name in param_names}
             proposals.append(proposal)
-        return proposals[0] if n == 1 else proposals
+        return proposals
 
     def _convert_observation_to_list(self, obs: dict) -> list:
         obj_names = [o["name"] for o in self.objective_config]
         return [obs.get(name, None) for name in obj_names]
 
-    def observe(self, results: dict):
+    def observe(self, results: list):
         """
         observe single output, nimo obj input is [1,2,3] or [[1, 2], [1, 2], [1, 2]] for MO
-        :param results: {"objective_name": "value"}
+        :param results: [{"objective_name": "value"}, {"objective_name": "value"}]]
         """
         import nimo
-        nimo_objective_values = [self._convert_observation_to_list(results)]
-
+        nimo_objective_values = [self._convert_observation_to_list(result) for result in results]
         nimo.output_update(input_file=self.proposals,
                            output_file=self.candidates,
                            num_objectives=self.n_objectives,
@@ -128,8 +126,10 @@ class NIMOOptimizer(OptimizerBase):
     @staticmethod
     def get_schema():
         return {
-            "parameter_types": ["choice"],
+            "parameter_types": ["choice", "range"],
             "multiple_objectives": True,
+            "supports_continuous": False,
+            "supports_constraints": False,
             "optimizer_config": {
                 "step_1": {"model": ["RE", "ES"], "num_samples": 5},
                 "step_2": {"model": ["PHYSBO", "PDC", "BLOX", "PTR", "SLESA", "BOMP", "COMBI"]}
@@ -142,7 +142,7 @@ class NIMOOptimizer(OptimizerBase):
 if __name__ == "__main__":
     parameter_space = [
         {"name": "silica", "type": "choice", "bounds": [100], "value_type": "float"},
-        {"name": "water", "type": "choice", "bounds": [900, 800, 750, 700, 650, 600, 550, 500], "value_type": "float"},
+        {"name": "water", "type": "range", "bounds": [500, 900, 50], "value_type": "float"},
         {"name": "PVA", "type": "choice", "bounds": [0, 0.005, 0.0075, 0.01, 0.05, 0.075, 0.1], "value_type": "float"},
         {"name": "SDS", "type": "choice", "bounds": [0], "value_type": "float"},
         {"name": "DTAB", "type": "choice", "bounds": [0, 0.005, 0.0075, 0.01, 0.05, 0.075, 0.1], "value_type": "float"},
@@ -160,5 +160,5 @@ if __name__ == "__main__":
     nimo_optimizer = NIMOOptimizer(experiment_name="example_experiment", optimizer_config=optimizer_config, parameter_space=parameter_space, objective_config=objective_config)
     nimo_optimizer.suggest(n=1)
     nimo_optimizer.observe(
-        results={"objective": 1.0}
+        results=[{"objective": 1.0}]
     )

@@ -1,25 +1,28 @@
 # optimizers/ax_optimizer.py
 from typing import Dict
 
-
+from pandas import DataFrame
 
 from ivoryos.optimizer.base_optimizer import OptimizerBase
 from ivoryos.utils.utils import install_and_import
 
 class AxOptimizer(OptimizerBase):
-    def __init__(self, experiment_name, parameter_space, objective_config, optimizer_config=None):
+    def __init__(self, experiment_name, parameter_space, objective_config, optimizer_config=None,
+                 parameter_constraints:list=None, datapath=None):
+        self.trial_index_list = None
         try:
             from ax.api.client import Client
         except ImportError as e:
             install_and_import("ax", "ax-platform")
             raise ImportError("Please install Ax with pip install ax-platform to use AxOptimizer. Attempting to install Ax...")
-        super().__init__(experiment_name, parameter_space, objective_config, optimizer_config)
+        super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, parameter_constraints, )
 
         self.client = Client()
         # 2. Configure where Ax will search.
         self.client.configure_experiment(
             name=experiment_name,
-            parameters=self._convert_parameter_to_ax_format(parameter_space)
+            parameters=self._convert_parameter_to_ax_format(parameter_space),
+            parameter_constraints=parameter_constraints
         )
         # 3. Configure the objective function.
         self.client.configure_optimization(objective=self._convert_objective_to_ax_format(objective_config))
@@ -48,12 +51,17 @@ class AxOptimizer(OptimizerBase):
         ax_params = []
         for p in parameter_space:
             if p["type"] == "range":
-                ax_params.append(
-                    RangeParameterConfig(
-                        name=p["name"],
-                        bounds=tuple(p["bounds"]),
-                        parameter_type=p["value_type"]
-                    ))
+                # if step is used here, convert to ChoiceParameterConfig
+                if  len(p["bounds"]) == 3:
+                    values = self._create_discrete_search_space(range_with_step=p["bounds"],value_type=p["value_type"])
+                    ax_params.append(ChoiceParameterConfig(name=p["name"], values=values, parameter_type="int", is_ordered=True))
+                else:
+                    ax_params.append(
+                        RangeParameterConfig(
+                            name=p["name"],
+                            bounds=tuple(p["bounds"]),
+                            parameter_type=p["value_type"]
+                        ))
             elif p["type"] == "choice":
                 ax_params.append(
                     ChoiceParameterConfig(
@@ -101,15 +109,22 @@ class AxOptimizer(OptimizerBase):
         return GenerationStrategy(steps=[generator_1, generator_2])
 
     def suggest(self, n=1):
-        trial_index, params = self.client.get_next_trials(1).popitem()
-        self.trial_index = trial_index
-        return params
+        trials = self.client.get_next_trials(n)
+        trial_index_list = []
+        param_list = []
+        for trial_index, params in trials.items():
+            trial_index_list.append(trial_index)
+            param_list.append(params)
+        self.trial_index_list = trial_index_list
+        return param_list
 
     def observe(self, results):
-        self.client.complete_trial(
-            trial_index=self.trial_index,
-            raw_data=results
-        )
+        for trial_index, result in zip(self.trial_index_list, results):
+            obj_only_result = {k: v for k, v in result.items() if k in [obj["name"] for obj in self.objective_config]}
+            self.client.complete_trial(
+                trial_index=trial_index,
+                raw_data=obj_only_result
+            )
 
     @staticmethod
     def get_schema():
@@ -117,29 +132,33 @@ class AxOptimizer(OptimizerBase):
             "parameter_types": ["range", "choice"],
             "multiple_objectives": True,
             # "objective_weights": True,
+            "supports_continuous": True,
+            "supports_constraints": True,
             "optimizer_config": {
                 "step_1": {"model": ["Sobol", "Uniform", "Factorial", "Thompson"], "num_samples": 5},
                 "step_2": {"model": ["BoTorch", "SAASBO", "SAAS_MTGP", "Legacy_GPEI", "EB", "EB_Ashr", "ST_MTGP", "BO_MIXED", "Contextual_SACBO"]}
             },
+
         }
 
-    def append_existing_data(self, existing_data):
+    def append_existing_data(self, existing_data:DataFrame):
         """
         Append existing data to the Ax experiment.
         :param existing_data: A dictionary containing existing data.
         """
-        from pandas import DataFrame
-        if not existing_data:
-            return
+
         if isinstance(existing_data, DataFrame):
+            if existing_data.empty:
+                return
             existing_data = existing_data.to_dict(orient="records")
         parameter_names = [i.get("name") for i in self.parameter_space]
         objective_names = [i.get("name") for i in self.objective_config]
-        for name, value in existing_data.items():
-            # First attach the trial and note the trial index
-            parameters = {name: value for name in existing_data if name in parameter_names}
+        for entry in existing_data:
+            # for name, value in entry.items():
+                # First attach the trial and note the trial index
+            parameters = {name: value for name, value in entry.items() if name in parameter_names}
             trial_index = self.client.attach_trial(parameters=parameters)
-            raw_data = {name: value for name in existing_data if name in objective_names}
+            raw_data = {name: value for name, value in entry.items() if name in objective_names}
             # Then complete the trial with the existing data
             self.client.complete_trial(trial_index=trial_index, raw_data=raw_data)
 

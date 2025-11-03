@@ -32,6 +32,7 @@
         const scriptStepUrl = `{{ url_for('design.design_steps.get_step', uuid=0) }}`;
         const scriptStepDupUrl = `{{ url_for('design.design_steps.duplicate_action', uuid=0) }}`;
         const scriptDeleteUrl = "{{ url_for('design.clear_draft') }}";
+        const scriptCompileUrl = "{{ url_for('design.compile_preview') }}";
     </script>
     <script src="{{ url_for('static', filename='js/sortable_design.js') }}"></script>
     <script src="{{ url_for('static', filename='js/action_handlers.js') }}"></script>

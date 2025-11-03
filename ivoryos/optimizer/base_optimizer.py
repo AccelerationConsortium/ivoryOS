@@ -5,7 +5,8 @@ from abc import ABC, abstractmethod
 
 
 class OptimizerBase(ABC):
-    def __init__(self, experiment_name:str, parameter_space: list, objective_config: dict, optimizer_config: dict, datapath:str=None):
+    def __init__(self, experiment_name:str, parameter_space: list, objective_config: dict, optimizer_config: dict,
+                 parameter_constraints:list=None, datapath:str=None):
         """
         :param experiment_name: arbitrary name
         :param parameter_space: list of parameter names
@@ -46,6 +47,19 @@ class OptimizerBase(ABC):
     @abstractmethod
     def append_existing_data(self, existing_data):
         pass
+
+    @staticmethod
+    def _create_discrete_search_space(range_with_step=None, value_type ="float"):
+        if range_with_step is None:
+            range_with_step = []
+        import numpy as np
+        low, high, step = range_with_step
+        values = np.arange(low, high + 1e-9 * step, step).tolist()
+        if value_type == "float":
+            values = [float(v) for v in values]
+        if value_type == "int":
+            values = [int(v) for v in values]
+        return values
 
     @staticmethod
     def get_schema():

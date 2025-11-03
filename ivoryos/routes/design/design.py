@@ -100,6 +100,27 @@ def experiment_builder():
                            script=script, defined_variables=deck_variables, buttons_dict=design_buttons,
                            local_variables=global_config.defined_variables, block_variables=global_config.building_blocks)
 
+@design.route("/draft/code_preview", methods=["GET"])
+@login_required
+def compile_preview():
+    # Get mode and batch from query parameters
+    script = utils.get_script_file()
+    mode = request.args.get("mode", "single")   # default to "single"
+    batch = request.args.get("batch", "sample") # default to "sample"
+
+    try:
+        # Example: decide which code to return based on mode/batch
+        if mode == "single":
+            code = script.compile(current_app.config['SCRIPT_FOLDER'])
+        elif mode == "batch":
+            code = script.compile(current_app.config['SCRIPT_FOLDER'], batch=True, mode=batch)
+        else:
+            code = "Invalid mode. Please select 'single' or 'batch'."
+    except Exception as e:
+        code = f"Error compiling: {e}"
+    # print(code)
+    return jsonify(code=code)
+
 
 @design.route("/draft/meta", methods=["PATCH"])
 @login_required
@@ -320,13 +341,16 @@ def methods_handler(instrument: str = ''):
     request.form
     if "hidden_name" in request.form:
         deck_snapshot = global_config.deck_snapshot
+        block_snapshot = global_config.building_blocks
         method_name = request.form.get("hidden_name", None)
         form = forms.get(method_name) if forms else None
         insert_position = request.form.get("drop_target_id", None)
+
         if form:
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
             if form.validate_on_submit():
                 function_name = kwargs.pop("hidden_name")
+                batch_action = kwargs.pop("batch_action", False)
                 save_data = kwargs.pop('return', '')
                 primitive_arg_types = utils.get_arg_type(kwargs, functions[function_name])
 
@@ -335,11 +359,17 @@ def methods_handler(instrument: str = ''):
 
                 script.eval_list(kwargs, primitive_arg_types)
                 kwargs = script.validate_variables(kwargs)
+                coroutine = False
+                if instrument.startswith("deck") and deck_snapshot:
+                    coroutine = deck_snapshot[instrument][function_name].get("coroutine", False)
+                elif instrument.startswith("blocks") and block_snapshot:
+                    coroutine = block_snapshot[instrument][function_name].get("coroutine", False)
                 action = {"instrument": instrument, "action": function_name,
                           "args": kwargs,
                           "return": save_data,
                           'arg_types': primitive_arg_types,
-                          "coroutine": deck_snapshot[instrument][function_name].get("coroutine", False) if deck_snapshot else False,
+                          "coroutine": coroutine,
+                          "batch_action": batch_action,
                           }
                 script.add_action(action=action, insert_position=insert_position)
             else:
