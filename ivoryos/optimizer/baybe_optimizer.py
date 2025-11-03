@@ -1,6 +1,7 @@
 ### Directory: ivoryos/optimizers/baybe_optimizer.py
 from typing import Dict
 
+from pandas import DataFrame
 
 from ivoryos.utils.utils import install_and_import
 from ivoryos.optimizer.base_optimizer import OptimizerBase
@@ -36,21 +37,19 @@ class BaybeOptimizer(OptimizerBase):
         :param index: The index of the trial in the DataFrame, if applicable.
 
         """
-        from pandas import DataFrame
         df = DataFrame(results)
         self.experiment.add_measurements(df)
 
-    def append_existing_data(self, existing_data: Dict):
+    def append_existing_data(self, existing_data: DataFrame):
         """
         Append existing data to the Ax experiment.
         :param existing_data: A dictionary containing existing data.
         """
-        import pandas as pd
-        if not existing_data:
+        if existing_data.empty:
             return
         # parameter_names = [i.get("name") for i in self.parameter_space]
         # objective_names = [i.get("name") for i in self.objective_config]
-        self.experiment.add_measurements(pd.DataFrame(existing_data))
+        self.experiment.add_measurements(existing_data)
         # for name, value in existing_data.items():
         #     # First attach the trial and note the trial index
         #     parameters = {name: value for name in existing_data if name in parameter_names}

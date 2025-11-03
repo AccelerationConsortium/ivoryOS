@@ -1,7 +1,7 @@
 # optimizers/ax_optimizer.py
 from typing import Dict
 
-
+from pandas import DataFrame
 
 from ivoryos.optimizer.base_optimizer import OptimizerBase
 from ivoryos.utils.utils import install_and_import
@@ -120,9 +120,10 @@ class AxOptimizer(OptimizerBase):
 
     def observe(self, results):
         for trial_index, result in zip(self.trial_index_list, results):
+            obj_only_result = {k: v for k, v in result.items() if k in [obj["name"] for obj in self.objective_config]}
             self.client.complete_trial(
                 trial_index=trial_index,
-                raw_data=result
+                raw_data=obj_only_result
             )
 
     @staticmethod
@@ -140,23 +141,24 @@ class AxOptimizer(OptimizerBase):
 
         }
 
-    def append_existing_data(self, existing_data):
+    def append_existing_data(self, existing_data:DataFrame):
         """
         Append existing data to the Ax experiment.
         :param existing_data: A dictionary containing existing data.
         """
-        from pandas import DataFrame
-        if not existing_data:
-            return
+
         if isinstance(existing_data, DataFrame):
+            if existing_data.empty:
+                return
             existing_data = existing_data.to_dict(orient="records")
         parameter_names = [i.get("name") for i in self.parameter_space]
         objective_names = [i.get("name") for i in self.objective_config]
-        for name, value in existing_data.items():
-            # First attach the trial and note the trial index
-            parameters = {name: value for name in existing_data if name in parameter_names}
+        for entry in existing_data:
+            # for name, value in entry.items():
+                # First attach the trial and note the trial index
+            parameters = {name: value for name, value in entry.items() if name in parameter_names}
             trial_index = self.client.attach_trial(parameters=parameters)
-            raw_data = {name: value for name in existing_data if name in objective_names}
+            raw_data = {name: value for name, value in entry.items() if name in objective_names}
             # Then complete the trial with the existing data
             self.client.complete_trial(trial_index=trial_index, raw_data=raw_data)
 
