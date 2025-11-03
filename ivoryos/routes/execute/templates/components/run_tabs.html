@@ -26,8 +26,10 @@
    // Store active tab when changed
    document.addEventListener('shown.bs.tab', function(e) {
        const tabId = e.target.id.replace('-tab', '');
-       localStorage.setItem('ivoryosLastTab', tabId);
-       console.log('Saved last active tab:', tabId);
+       if (tabId === 'tab2' || tabId === 'tab3') {
+            localStorage.setItem('ivoryosLastTab', tabId);
+            console.log('Saved last active tab:', tabId);
+        }
 
        // Optional: run specific load logic per tab
        if (tabId === 'tab2' && typeof window.loadConfigData === 'function') {
