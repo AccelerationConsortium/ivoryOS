@@ -22,6 +22,7 @@ dependencies = [
     "Flask-WTF",
     "SQLAlchemy-Utils",
     "python-dotenv",
+    "pandas",
     "astor; python_version < '3.9'"
 ]
 
@@ -31,7 +32,7 @@ optimizer-baybe = ["baybe"]
 optimizer-nimo = ["nimo"]
 optimizer = [
     "ax-platform>=1.1.2",
-    "baybe"
+    "baybe>=0.14.0"
 ]
 doc = [
     "sphinx",
