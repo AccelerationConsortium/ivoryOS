@@ -244,14 +244,17 @@ def run_bo():
 @execute.route("/executions/latest_plot")
 @login_required
 def get_optimizer_plot():
+
     optimizer = current_app.config.get("LAST_OPTIMIZER")
-    # the placeholder is for showing different plots
-    latest_file = optimizer.get_plots('placeholder')
-    # print(latest_file)
-    if not files:
-        # print("No plots found")
-        return jsonify({"error": "No plots found"}), 404
-    return send_file(latest_file, mimetype="image/png")
+    if optimizer is not None:
+        # the placeholder is for showing different plots
+        latest_file = optimizer.get_plots('placeholder')
+        # print(latest_file)
+        if files:
+            return send_file(latest_file, mimetype="image/png")
+    # print("No plots found")
+    return jsonify({"error": "No plots found"}), 404
+
 
 
 

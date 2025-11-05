@@ -153,6 +153,9 @@ class BaybeOptimizer(OptimizerBase):
             recommender=step_2_recommender
         )
 
+    def get_plots(self, plot_type):
+        return None
+
     @staticmethod
     def get_schema():
         """

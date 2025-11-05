@@ -126,6 +126,9 @@ class AxOptimizer(OptimizerBase):
                 raw_data=obj_only_result
             )
 
+    def get_plots(self, plot_type):
+        return None
+
     @staticmethod
     def get_schema():
         return {
