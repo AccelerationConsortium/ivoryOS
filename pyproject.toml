@@ -30,9 +30,10 @@ dependencies = [
 optimizer-ax = ["ax-platform"]
 optimizer-baybe = ["baybe"]
 optimizer-nimo = ["nimo"]
-optimizer = [
+optimizers = [
     "ax-platform>=1.1.2",
-    "baybe>=0.14.0"
+    "baybe>=0.14.0",
+    "nimo"
 ]
 doc = [
     "sphinx",
