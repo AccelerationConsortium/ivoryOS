@@ -217,6 +217,7 @@ def run_bo():
         parameters, objectives, steps = parse_optimization_form(payload)
 
     # if True:
+    try:
         datapath = current_app.config["DATA_FOLDER"]
         run_name = script.validate_function_name(run_name)
         Optimizer = global_config.optimizers.get(optimizer_type, None)
