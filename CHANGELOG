@@ -1,3 +1,15 @@
+v1.4.1 (Nov 5th, 2025)
+- Update optimizer API call
+- poc plot for NIMO optimizer
+- minor bugs (device tab display error credit to @Finn Bork)
+
+v1.4.0 (Nov 2nd, 2025)
+- Introduce batch execution, step-wise repeat per batch
+- Introduce batch action (light purple), repeat only once per batch
+- Redesign script runner, granular action control in if, for, while
+- fix ax, bayes error to be compatible to the newest version
+- QOL: BO tab and input will restore when reload.
+
 v1.3.6 - v1.3.8 (Oct 9th, 2025)
 - handle editing error on deleted steps (this should happen, but when multiple browsers are open, and inactive ones not refreshed)
 - fix ax platform import path, No module named 'ax.modelbridge'
