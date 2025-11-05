@@ -3,7 +3,7 @@ import os
 import time
 
 from flask import Blueprint, redirect, url_for, flash, jsonify, request, render_template, session, \
-    current_app, g
+    current_app, g, send_file
 from flask_login import login_required
 
 from ivoryos.routes.execute.execute_file import files
@@ -226,6 +226,7 @@ def run_bo():
         optimizer = Optimizer(experiment_name=run_name, parameter_space=parameters, objective_config=objectives,
                               parameter_constraints = constraints,
                               optimizer_config=steps, datapath=datapath)
+        current_app.config["LAST_OPTIMIZER"] = optimizer
         runner.run_script(script=script, run_name=run_name, optimizer=optimizer,
                           logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                           output_path=datapath, compiled=False, history=existing_data,
@@ -239,6 +240,18 @@ def run_bo():
         else:
             flash(e.__str__())
     return redirect(url_for("execute.experiment_run"))
+
+@execute.route("/executions/latest_plot")
+@login_required
+def get_optimizer_plot():
+    optimizer = current_app.config.get("LAST_OPTIMIZER")
+    # the placeholder is for showing different plots
+    latest_file = optimizer.get_plots('placeholder')
+    # print(latest_file)
+    if not files:
+        # print("No plots found")
+        return jsonify({"error": "No plots found"}), 404
+    return send_file(latest_file, mimetype="image/png")
 
 
 

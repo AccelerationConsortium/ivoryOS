@@ -48,6 +48,10 @@ class OptimizerBase(ABC):
     def append_existing_data(self, existing_data):
         pass
 
+    @abstractmethod
+    def get_plots(self, plot_type):
+        pass
+
     @staticmethod
     def _create_discrete_search_space(range_with_step=None, value_type ="float"):
         if range_with_step is None:

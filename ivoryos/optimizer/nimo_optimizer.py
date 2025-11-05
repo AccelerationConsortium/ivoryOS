@@ -1,4 +1,5 @@
 ### ivoryos/optimizers/nimo_optimizer.py
+import glob
 import itertools
 import os
 
@@ -122,6 +123,14 @@ class NIMOOptimizer(OptimizerBase):
         # TODO, history is part of the candidate file, we probably won't need this
         pass
 
+    def get_plots(self, plot_type):
+        import nimo
+        nimo.visualization.plot_phase_diagram.plot(input_file=self.candidates,
+                                                   fig_folder=os.path.join(self.datapath, "nimo_data"))
+        files = sorted(glob.glob(os.path.join(os.path.join(self.datapath, "nimo_data"), "phase_diagram_*.png")))
+        if not files:
+            return None
+        return files[-1]
 
     @staticmethod
     def get_schema():
