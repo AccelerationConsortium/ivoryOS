@@ -594,7 +594,8 @@ class ScriptRunner:
         db.session.add(step_db)
         db.session.flush()
         try:
-            self.socketio.emit('execution', {'section': f"{section_name}-{step_index}"})
+            # print(f"step {section_name}-{step_index}")
+            self.socketio.emit('execution', {'section': f"{section_name}-{step_index-1}"})
             if action == "wait":
                 duration = float(substituted_args["statement"])
                 self.safe_sleep(duration)
