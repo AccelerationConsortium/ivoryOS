@@ -350,13 +350,16 @@ def create_form_from_module(sdl_module, autofill: bool = False, script=None, des
     """
     method_forms = {}
     for attr_name in dir(sdl_module):
-        method = getattr(sdl_module, attr_name)
-        if inspect.ismethod(method) and not attr_name.startswith('_'):
-            signature = inspect.signature(method)
-            docstring = inspect.getdoc(method)
-            attr = dict(signature=signature, docstring=docstring)
-            form_class = create_add_form(attr, attr_name, autofill, script, design)
-            method_forms[attr_name] = form_class()
+        try:
+            method = getattr(sdl_module, attr_name)
+            if inspect.ismethod(method) and not attr_name.startswith('_'):
+                signature = inspect.signature(method)
+                docstring = inspect.getdoc(method)
+                attr = dict(signature=signature, docstring=docstring)
+                form_class = create_add_form(attr, attr_name, autofill, script, design)
+                method_forms[attr_name] = form_class()
+        except Exception as e:
+            print(f"Error creating form for {attr_name}: {e}")
     return method_forms
 
 
