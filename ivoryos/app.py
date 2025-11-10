@@ -29,7 +29,7 @@ app.register_blueprint(control, url_prefix=f'{url_prefix}/instruments')
 app.register_blueprint(design, url_prefix=f'{url_prefix}')
 app.register_blueprint(execute, url_prefix=f'{url_prefix}')
 app.register_blueprint(data, url_prefix=f'{url_prefix}')
-app.register_blueprint(api, url_prefix=f'{url_prefix}/{api.name}')
+# app.register_blueprint(api, url_prefix=f'{url_prefix}/{api.name}')
 
 def reset_old_schema(engine, db_dir):
     inspector = inspect(engine)

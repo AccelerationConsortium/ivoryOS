@@ -1,0 +1,318 @@
+{# Tips Button - Fixed Position #}
+<button id="tipsButton" class="btn btn-info tips-button" data-bs-toggle="modal" data-bs-target="#tipsModal" title="View Workflow Tips">
+<i class="bi bi-question-circle"></i>
+</button>
+{# Tips Modal #}
+<div class="modal fade" id="tipsModal" tabindex="-1" aria-labelledby="tipsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="tipsModalLabel">
+                    <i class="bi bi-lightbulb"></i> Workflow Building Tips
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="accordion" id="tipsAccordion">
+                    {# Tip 1: Dynamic Variables #}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingOne">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                            <i class="bi bi-hash me-2"></i> Dynamic Variables
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#tipsAccordion">
+                            <div class="accordion-body">
+                                <p><strong>Use <code>#name</code> to make variables dynamic</strong></p>
+                                <p>When you want a parameter to be adjustable across multiple workflow runs, use <code>#</code> followed by the parameter name in place of the actual value.</p>
+                                <div class="alert alert-success mb-0">
+                                    <strong>Example:</strong><br>
+                                    Instead of: <code>temperature = 300</code><br>
+                                    Use: <code>temperature = #temperature</code><br>
+                                    <small class="text-muted">This makes "temperature" a dynamic parameter that can be varied in parameter sweeps or optimization runs.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {# Tip 2: Repeat vs Dynamic #}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingTwo">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                            <i class="bi bi-arrow-repeat me-2"></i> Repeat vs Dynamic Parameters
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#tipsAccordion">
+                            <div class="accordion-body">
+                                <p><strong>Repeat is for static workflows only</strong></p>
+                                <ul>
+                                    <li><strong>Static (Repeat):</strong> Runs the exact same workflow multiple times with identical parameters</li>
+                                    <li><strong>Dynamic (#name):</strong> Automatically triggers the <span class="badge bg-primary">Parameter Sweep</span> option, allowing you to vary parameters across runs</li>
+                                </ul>
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle"></i> Use repeat when you want statistical averaging of identical runs. Use dynamic parameters (e.g., <code>#temperature</code>) when you want to explore different parameter values.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {# Tip 3: Parameter Sweep #}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingThree">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                            <i class="bi bi-sliders me-2"></i> Parameter Sweep Mode
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#tipsAccordion">
+                            <div class="accordion-body">
+                                <p><strong>Automatically enabled when using dynamic parameters</strong></p>
+                                <p>Parameter sweep allows you to systematically explore different combinations of parameter values.</p>
+                                <div class="alert alert-warning">
+                                    <strong>Triggered by:</strong> Using <code>#name</code> syntax (e.g., <code>#temperature</code>) in your workflow
+                                </div>
+                                <p class="mb-0"><strong>Use cases:</strong> Sensitivity analysis, parameter optimization, design space exploration</p>
+                            </div>
+                        </div>
+                    </div>
+                    {# Tip 4: Optimizer #}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingFour">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                            <i class="bi bi-bullseye me-2"></i> Optimizer Mode
+                            </button>
+                        </h2>
+                        <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#tipsAccordion">
+                            <div class="accordion-body">
+                                <p><strong>Enabled when you have both dynamic parameters AND output values</strong></p>
+                                <p>The optimizer automatically finds the best parameter values to optimize your output metric.</p>
+                                <div class="alert alert-success">
+                                    <strong>Requirements:</strong>
+                                    <ul class="mb-0">
+                                        <li>At least one dynamic parameter using <code>#name</code> syntax (input)</li>
+                                        <li>At least one output value with "Save value as" name (objective function)</li>
+                                    </ul>
+                                </div>
+                                <p class="mt-2 mb-0"><small class="text-muted"><i class="bi bi-info-circle"></i> Note: Parameter sweep option remains available even in optimizer mode</small></p>
+                            </div>
+                        </div>
+                    </div>
+                    {# Tip 5: Output Values #}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingFive">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
+                            <i class="bi bi-save me-2"></i> Saving Output Values
+                            </button>
+                        </h2>
+                        <div id="collapseFive" class="accordion-collapse collapse" aria-labelledby="headingFive" data-bs-parent="#tipsAccordion">
+                            <div class="accordion-body">
+                                <p><strong>Use "Save value as" to capture important results</strong></p>
+                                <p>When you want to track or optimize a result from your workflow, give it a meaningful name in the "Save value as" field.</p>
+                                <div class="alert alert-info">
+                                    <strong>Naming conventions:</strong><br>
+                                    • Use descriptive names: <code>final_stress</code>, <code>total_energy</code>, <code>efficiency</code><br>
+                                    • Use underscores instead of spaces: <code>max_temperature</code> not <code>max temperature</code><br>
+                                    • Keep names concise but clear
+                                </div>
+                                <p class="mb-0"><small class="text-muted">Saved values become available for optimization and can be tracked across parameter sweeps.</small></p>
+                            </div>
+                        </div>
+                    </div>
+                    {# Tip 6: Batch Mode #}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingSix">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSix" aria-expanded="false" aria-controls="collapseSix">
+                            <i class="bi bi-collection me-2"></i> Batch Mode Actions
+                            </button>
+                        </h2>
+                        <div id="collapseSix" class="accordion-collapse collapse" aria-labelledby="headingSix" data-bs-parent="#tipsAccordion">
+                            <div class="accordion-body">
+                                <p><strong>Mark steps as "Once per batch" to run them only once for multiple samples</strong></p>
+                                <p>Some actions apply to all samples at once (batch actions), while others must run for each individual sample (per-sample actions).</p>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100">
+                                            <div class="card-header bg-light">
+                                                <strong>Workflow Steps</strong>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="workflow-left">
+                                                    <div class="step-box regular">Add Liquid<br><small>per-sample</small></div>
+                                                    <div class="arrow-down">↓</div>
+                                                    <div class="step-box regular">Add Solid<br><small>per-sample</small></div>
+                                                    <div class="arrow-down">↓</div>
+                                                    <div class="step-box batch">Heat Sample<br><small>batch action</small></div>
+                                                    <div class="arrow-down">↓</div>
+                                                    <div class="step-box regular">Analyze Sample<br><small>per-sample</small></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100">
+                                            <div class="card-header bg-light">
+                                                <strong>Execution (n=3 samples)</strong>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="workflow-right">
+                                                    <div class="sample-group">
+                                                        <div class="step-box-small regular">Add Liquid S1</div>
+                                                        <div class="step-box-small regular">Add Liquid S2</div>
+                                                        <div class="step-box-small regular">Add Liquid S3</div>
+                                                    </div>
+                                                    <div class="arrow-down">↓</div>
+                                                    <div class="sample-group">
+                                                        <div class="step-box-small regular">Add Solid S1</div>
+                                                        <div class="step-box-small regular">Add Solid S2</div>
+                                                        <div class="step-box-small regular">Add Solid S3</div>
+                                                    </div>
+                                                    <div class="arrow-down">↓</div>
+                                                    <div class="step-box batch">Heat All Samples</div>
+                                                    <div class="arrow-down">↓</div>
+                                                    <div class="sample-group">
+                                                        <div class="step-box-small regular">Analyze S1</div>
+                                                        <div class="step-box-small regular">Analyze S2</div>
+                                                        <div class="step-box-small regular">Analyze S3</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="alert alert-warning mb-0">
+                                    <strong>Per-sample actions:</strong> Run individually for each sample (Add Liquid, Add Solid, Analyze)<br>
+                                    <strong>Batch actions:</strong> Run once for all samples together (Heat Sample)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {# Tip 7: Best Practices #}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingSeven">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSeven" aria-expanded="false" aria-controls="collapseSeven">
+                            <i class="bi bi-star me-2"></i> Best Practices
+                            </button>
+                        </h2>
+                        <div id="collapseSeven" class="accordion-collapse collapse" aria-labelledby="headingSeven" data-bs-parent="#tipsAccordion">
+                            <div class="accordion-body">
+                                <ul>
+                                    <li><strong>Name parameters clearly:</strong> Use descriptive names like <code>#mesh_size</code> instead of <code>#x</code></li>
+                                    <li><strong>Set reasonable ranges:</strong> Define min/max values that make physical sense for your problem</li>
+                                    <li><strong>Start simple:</strong> Begin with 1-2 parameters before adding more complexity</li>
+                                    <li><strong>Document outputs:</strong> Clearly label which outputs are optimization objectives</li>
+                                    <li><strong>Test first:</strong> Run a single workflow before launching sweeps or optimizations</li>
+                                    <li><strong>Use batch mode wisely:</strong> Mark setup steps as "once per batch" to avoid unnecessary repetition</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+    <style>
+        /* Tips button styling */
+        .tips-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .tips-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+
+        .tips-button i {
+            line-height: 1;
+        }
+
+
+        .accordion-body code {
+            background-color: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #d63384;
+        }
+        /* Batch mode visual styling */
+        .workflow-left {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .workflow-right {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sample-group {
+            display: flex;
+            gap: 8px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px dashed #dee2e6;
+        }
+
+        .step-box {
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .step-box.regular {
+            background: white;
+            border: 2px solid #dee2e6;
+            color: #495057;
+        }
+
+        .step-box.batch {
+            background: #e7f3ff;
+            border: 2px solid #0d6efd;
+            color: #0d6efd;
+            font-weight: 600;
+        }
+
+        .step-box-small {
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            text-align: center;
+            background: white;
+            border: 1px solid #dee2e6;
+            color: #495057;
+        }
+
+        .step-box-small.regular {
+            background: white;
+            border: 1px solid #dee2e6;
+        }
+
+        .arrow-down {
+            font-size: 1.5em;
+            color: #6c757d;
+            line-height: 1;
+        }
+
+        .arrow {
+            font-size: 1.2em;
+            color: #6c757d;
+        }
+    </style>
+</div>
