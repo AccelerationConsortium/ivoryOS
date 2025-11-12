@@ -1,3 +1,7 @@
+v1.4.2 (Nov 12th, 2025)
+- add floating help icon (credit to @Veronica Lai)
+- fix type convertion for args with no type hint (credit to @Maria Politi)
+
 v1.4.1 (Nov 5th, 2025)
 - Update optimizer API call
 - poc plot for NIMO optimizer

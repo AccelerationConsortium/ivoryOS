@@ -81,6 +81,8 @@ class TaskRunner:
             global_config.runner_status = {"id": step.id, "type": "task"}
 
             try:
+                kwargs = self._convert_kwargs_type(kwargs, function_executable)
+
                 if inspect.iscoroutinefunction(function_executable):
                     output = await function_executable(**kwargs)
                 else:
@@ -99,3 +101,31 @@ class TaskRunner:
                 self.lock.release()
 
             return dict(success=success, output=output)
+
+    @staticmethod
+    def _convert_kwargs_type(kwargs, function_executable):
+        def convert_guess(str_value):
+            str_value = str_value.strip()
+            if str_value.isdigit() or (str_value.startswith('-') and str_value[1:].isdigit()):
+                return int(str_value)
+            try:
+                return float(str_value)
+            except ValueError:
+                return str_value
+
+        sig = inspect.signature(function_executable)
+        converted = {}
+
+        for name, value in kwargs.items():
+            if name in sig.parameters:
+                param = sig.parameters[name]
+                if param.annotation != inspect.Parameter.empty:
+                    # convert using type hint
+                    try:
+                        converted[name] = param.annotation(value)
+                    except Exception:
+                        converted[name] = value
+                else:
+                    # no type hint → guess
+                    converted[name] = convert_guess(value)
+        return converted
