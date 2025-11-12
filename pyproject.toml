@@ -54,6 +54,8 @@ ivoryos = [
     "templates/**/*",
     "routes/**/*"
 ]
+[tool.setuptools.packages.find]
+exclude = ["community*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "ivoryos.version.__version__"}
