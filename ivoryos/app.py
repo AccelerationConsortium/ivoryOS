@@ -1,11 +1,12 @@
 import os
 import uuid
 
+import bcrypt
 from flask import Flask, session, g, redirect, url_for
 from flask_login import AnonymousUserMixin
 
 from ivoryos.utils import utils
-from ivoryos.utils.db_models import db
+from ivoryos.utils.db_models import db, User
 from ivoryos.config import Config, get_config
 from ivoryos.routes.auth.auth import auth, login_manager
 from ivoryos.routes.control.control import control
@@ -63,6 +64,24 @@ def reset_old_schema(engine, db_dir):
 
     # Recreate new schema
     db.create_all()  # creates workflow_runs, workflow_phases, workflow_steps
+    create_admin()
+
+def create_admin():
+    """
+    Create an admin user with username 'admin' and password 'admin' if it doesn't exist.
+    """
+    with app.app_context():
+        admin_user = User.query.filter_by(username='admin').first()
+        if not admin_user:
+            print("Creating default admin user...")
+            admin_user = User(
+                username='admin',
+                password=bcrypt.hashpw("admin".encode('utf-8'), bcrypt.gensalt()),
+            )
+            db.session.add(admin_user)
+            db.session.commit()
+        else:
+            print("Admin user already exists.")
 
 
 def create_app(config_class=None):
