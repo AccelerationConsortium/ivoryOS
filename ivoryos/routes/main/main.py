@@ -1,5 +1,9 @@
-from flask import Blueprint, render_template, current_app
-from flask_login import login_required
+import os
+
+from flask import Blueprint, render_template, current_app, request, url_for
+from flask_login import login_required, current_user
+from werkzeug.utils import secure_filename, redirect
+from ivoryos.utils.db_models import db
 from ivoryos.version import __version__ as ivoryos_version
 
 main = Blueprint('main', __name__, template_folder='templates')
@@ -40,3 +44,27 @@ def help_info():
     ivoryos(__name__)
     """
     return render_template('help.html', sample_deck=sample_deck)
+
+
+@main.route('/customize-logo', methods=['POST'])
+@login_required
+def customize_logo():
+    if request.method == 'POST':
+        file = request.files.get('logo')
+        mode = request.form.get('mode')
+
+        if file and file.filename != '':
+            filename = secure_filename(file.filename)
+
+            USER_LOGO_DIR = os.path.join(current_app.static_folder, "user_logos")
+            os.makedirs(USER_LOGO_DIR, exist_ok=True)
+            filepath = os.path.join(USER_LOGO_DIR, filename)
+            file.save(filepath)
+
+            # Save to database
+            current_user.settings = {"logo_filename": filename, "logo_mode": mode}
+            # current_user.logo_mode = mode
+            db.session.commit()
+
+        return redirect(url_for('main.index'))
+

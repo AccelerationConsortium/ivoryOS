@@ -27,6 +27,9 @@ class User(db.Model, UserMixin):
     # email = db.Column(db.String)
     hashPassword = db.Column(db.String(255))
 
+    # New columns for logo customization
+    settings = db.Column(JSONType, nullable=True)
+
     # password = db.Column()
     def __init__(self, username, password):
         # self.id = id

@@ -24,9 +24,25 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
         <div class= "container">
 {#            {{ module_config }}#}
+
             <a class="navbar-brand" href="{{ url_for('main.index') }}">
-                <img src="{{url_for('static', filename='logo.webp')}}" alt="Logo" height="60" class="d-inline-block align-text-bottom">
+                {% if current_user.is_authenticated %}
+                    {% if current_user.settings.logo_mode == 'replace' and current_user.settings.logo_filename %}
+                        <img src="{{ url_for('static', filename='user_logos/' ~ current_user.settings.logo_filename) }}" alt="User Logo" height="50">
+                    {% else %}
+
+                        {% if current_user.settings.logo_mode == 'add' and current_user.settings.logo_filename %}
+                            <img src="{{ url_for('static', filename='user_logos/' ~ current_user.settings.logo_filename) }}" alt="User Logo" height="50" class="ms-2">
+                        {% endif %}
+                        <img src="{{ url_for('static', filename='ivoryos_logo.png') }}" alt="IvoryOS" height="50">
+                    {% endif %}
+                {% else %}
+                    <img src="{{ url_for('static', filename='ivoryos_logo.png') }}" alt="IvoryOS" height="50">
+                {% endif %}
             </a>
+
+
+
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -69,11 +85,12 @@
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav ms-auto">
-{#                    {{ current_user }}#}
                     {% if current_user.is_authenticated %}
                         <div class="dropdown">
                             <li class="nav-item " aria-expanded="false"><i class="bi bi-person-circle"></i> {{ current_user.get_id() }}</li>
                             <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for("auth.change_password") }}" role="button" aria-expanded="false">Change Password</a></li>
+                                <li><a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#logoModal" role="button" aria-expanded="false">Customize Logo</a></li>
                                 <li><a class="dropdown-item" href="{{ url_for("auth.logout") }}" role="button" aria-expanded="false">Logout</a></li>
                             </ul>
 
@@ -153,5 +170,47 @@
             </div>
         </div>
     </div>
+
+    <!-- Logo Customization Modal -->
+    <div class="modal fade" id="logoModal" tabindex="-1" aria-labelledby="logoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="logoModalLabel">Customize Navbar Logo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST"
+                    action="{{ url_for('main.customize_logo') }}"
+                    enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Upload your logo</label>
+                            <input type="file" name="logo" accept="image/*" class="form-control" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label fw-semibold">Display mode</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="mode" id="add" value="add" checked>
+                                <label class="form-check-label" for="add">
+                                Add next to IvoryOS logo
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="mode" id="replace" value="replace">
+                                <label class="form-check-label" for="replace">
+                                Replace IvoryOS logo
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Apply</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
