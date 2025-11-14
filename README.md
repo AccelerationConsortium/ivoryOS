@@ -155,6 +155,7 @@ Created automatically in the same working directory on the first run:
   - **`default.log`**: Application logs
   - **`ivoryos.db`**: Local database
 </details>
+
 ---
 
 ## Demo
@@ -172,8 +173,10 @@ Local version in [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/m
 ---
 
 ## Contributing
+
 We welcome all contributions — from core improvements to new drivers, plugins, and real-world use cases.
 See `CONTRIBUTING.md` for details and let us know you're interested: https://forms.gle/fPSvw5LEGrweUQUH8
+
 ---
 
 ## Citing
