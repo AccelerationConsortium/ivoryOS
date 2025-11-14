@@ -1,3 +1,10 @@
+v1.4.3 (Nov 14th, 2025)
+[minor user interface change]
+- create default admin user, allow change password when clicking on user name
+- add option to change logo, (replace or add before ivoryos logo)
+- auto create module list from imported modules, further import will override existing modules
+- remove unused api endpoint
+
 v1.4.2 (Nov 12th, 2025)
 - add floating help icon (credit to @Veronica Lai)
 - fix type convertion for args with no type hint (credit to @Maria Politi)
