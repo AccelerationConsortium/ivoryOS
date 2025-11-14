@@ -7,19 +7,16 @@ from flask_login import AnonymousUserMixin
 
 from ivoryos.utils import utils
 from ivoryos.utils.db_models import db, User
-from ivoryos.config import Config, get_config
 from ivoryos.routes.auth.auth import auth, login_manager
 from ivoryos.routes.control.control import control
 from ivoryos.routes.data.data import data
 from ivoryos.routes.library.library import library
 from ivoryos.routes.design.design import design
 from ivoryos.routes.execute.execute import execute
-from ivoryos.routes.api.api import api
 from ivoryos.socket_handlers import socketio
 from ivoryos.routes.main.main import main
 from ivoryos.version import __version__ as ivoryos_version
 from sqlalchemy import inspect, text
-from flask import current_app
 
 url_prefix = os.getenv('URL_PREFIX', "/ivoryos")
 app = Flask(__name__, static_url_path=f'{url_prefix}/static', static_folder='static')
@@ -61,10 +58,17 @@ def reset_old_schema(engine, db_dir):
                 conn.execute(text("DROP TABLE IF EXISTS workflow_steps"))
             if old_workflow_run:
                 conn.execute(text("DROP TABLE IF EXISTS workflow_runs"))
+    with engine.begin() as conn:
+        try:
+            conn.execute(
+                text("ALTER TABLE user ADD COLUMN settings TEXT")
+            )
+        except Exception:
+            pass
 
     # Recreate new schema
     db.create_all()  # creates workflow_runs, workflow_phases, workflow_steps
-    create_admin()
+
 
 def create_admin():
     """
@@ -101,6 +105,7 @@ def create_app(config_class=None):
     with app.app_context():
         # db.create_all()
         reset_old_schema(db.engine, app.config['OUTPUT_FOLDER'])
+        create_admin()
 
     # Additional setup
     utils.create_gui_dir(app.config['OUTPUT_FOLDER'])

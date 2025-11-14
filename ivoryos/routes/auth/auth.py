@@ -1,6 +1,7 @@
 from flask import Blueprint, redirect, url_for, flash, request, render_template, session
-from flask_login import login_required, login_user, logout_user, LoginManager
+from flask_login import login_required, login_user, logout_user, LoginManager, current_user
 import bcrypt
+from sqlalchemy_utils.types import password
 
 from ivoryos.utils.db_models import Script, User, db
 from ivoryos.utils.utils import post_script_file
@@ -85,6 +86,30 @@ def signup():
         return redirect(url_for('auth.login'))
     return render_template('signup.html')
 
+@auth.route("/change-password", methods=['GET', 'POST'])
+@login_required
+def change_password():
+    """
+    .. :quickref: User; change password
+
+    .. http:get:: /auth/change-password
+
+    .. http:post:: /auth/change-password
+
+    change password
+    """
+    if request.method == "POST":
+        old_password = request.form.get("old_password")
+        new_password = request.form.get("new_password")
+        # confirm_password = request.form.get("confirm_password")
+        user = User.query.filter_by(username=current_user.get_id()).first()
+        if not bcrypt.checkpw(old_password.encode('utf-8'), user.hashPassword):
+            flash("Incorrect password")
+            return redirect(url_for("auth.change_password"))
+        user.hashPassword = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+        db.session.commit()
+        return redirect(url_for("main.index"))
+    return render_template("change_password.html")
 
 @auth.route("/logout")
 @login_required
