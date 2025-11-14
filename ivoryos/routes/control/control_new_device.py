@@ -1,9 +1,10 @@
+import importlib
 import os
 from flask import Blueprint, request, current_app, send_file, flash, redirect, url_for, session, render_template
 from flask_login import login_required
 
 from ivoryos.utils import utils
-from ivoryos.routes.control.utils import find_instrument_by_name
+# from ivoryos.routes.control.utils import find_instrument_by_name
 from ivoryos.utils.global_config import GlobalConfig
 
 global_config = GlobalConfig()
@@ -28,16 +29,25 @@ def import_api():
     # filepath.replace('\\', '/')
     name = os.path.split(filepath)[-1].split('.')[0]
     try:
-        spec = utils.importlib.util.spec_from_file_location(name, filepath)
-        module = utils.importlib.util.module_from_spec(spec)
+        spec = importlib.util.spec_from_file_location(name, filepath)
+        module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        classes = utils.inspect.getmembers(module, utils.inspect.isclass)
-        if len(classes) == 0:
-            flash("Invalid import: no class found in the path")
-            return redirect(url_for("control.controllers_home"))
-        for i in classes:
-            globals()[i[0]] = i[1]
-            global_config.api_variables.add(i[0])
+        cls_dict = utils.create_module_snapshot(module=module)
+
+        def merge_to_global(old: dict, new: dict):
+            overwritten = []
+
+            for key, value in new.items():
+                if key in old:
+                    overwritten.append(key)  # record duplicates
+                old[key] = value  # overwrite or insert
+
+            return overwritten
+
+        duplicates = merge_to_global(global_config.api_variables, cls_dict)
+        if duplicates:
+            # optionally, you can log duplicates
+            flash(f"Overwritten classes: {', '.join(duplicates)}")
     # should handle path error and file type error
     except Exception as e:
         flash(e.__str__())
@@ -107,7 +117,7 @@ def new_controller(instrument:str=None):
     args = None
     if instrument:
 
-        device = globals()[instrument]
+        device = global_config.api_variables[instrument]
         args = utils.inspect.signature(device.__init__)
 
         if request.method == 'POST':

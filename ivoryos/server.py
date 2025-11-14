@@ -106,6 +106,7 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
                                                                  save=True,
                                                                  exclude_names=exclude_names
                                                                  )
+        global_config.api_variables = utils.create_module_snapshot(global_config.deck)
 
     else:
         app.config["OFF_LINE"] = True

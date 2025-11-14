@@ -455,3 +455,12 @@ def safe_dump(obj):
         return obj
     except (TypeError, OverflowError):
         return repr(obj)  # store readable representation
+
+
+def create_module_snapshot(module):
+    classes = inspect.getmembers(module, inspect.isclass)
+    api_variables = {}
+    for i in classes:
+        # globals()[i[0]] = i[1]
+        api_variables[i[0]] = i[1]
+    return api_variables
