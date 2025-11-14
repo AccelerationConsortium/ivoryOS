@@ -7,12 +7,15 @@
 
 [//]: # ([![Discord]&#40;https://img.shields.io/discord/1313641159356059770?label=Discord&logo=discord&color=5865F2&#41;]&#40;https://discord.gg/AX5P9EdGVX&#41;)
 
-![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/ivoryos.png)
-# [IvoryOS](https://ivoryos.ai): interoperable orchestrator for self-driving laboratories (SDLs)
+![ivoryos_logo.png](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/ivoryos_logo.png)
+
+# [IvoryOS](https://ivoryos.ai): interoperable orchestrator for self-driving laboratories (SDLs) 
 
 A **plug-and-play** web interface for flexible, modular SDLs —
 you focus on developing protocols, IvoryOS handles the rest.
+
 ![code_launch_design.png](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/code_launch_design.png)
+
 ---
 
 ## Table of Contents
