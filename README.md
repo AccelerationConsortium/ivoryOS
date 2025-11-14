@@ -8,30 +8,28 @@
 [//]: # ([![Discord]&#40;https://img.shields.io/discord/1313641159356059770?label=Discord&logo=discord&color=5865F2&#41;]&#40;https://discord.gg/AX5P9EdGVX&#41;)
 
 ![](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/ivoryos.png)
-# ivoryOS: interoperable Web UI for self-driving laboratories (SDLs)
-A **plug-and-play** web interface for flexible SDLs 
-
+# [IvoryOS](https://ivoryos.ai): interoperable orchestrator for self-driving laboratories (SDLs)
+A **plug-and-play** web interface for flexible, modular SDLs —
+you focus on developing protocols, IvoryOS handles the rest.
+![code_launch_design.png](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/code_launch_design.png)
 ---
 
 ## Table of Contents
-- [Description](#description)
+- [What IvoryOS does](#what-ivoryos-does)
 - [System requirements](#system-requirements)
 - [Installation](#installation)
-- [Quick Start](#quick-start)
 - [Features](#features)
 - [Demo](#demo)
 - [Roadmap](#roadmap)
+- [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
 
 ---
-## Description
-Building UIs for SDLs is challenging because flexibility and modularity make them unpredictable — yet accessibility is essential for **democratisation** of AI-driven scientific discovery.
-
-**IvoryOS** bridges the gap by:
-- Dynamically inspecting initialized Python modules (hardware APIs, high-level functions, or workflows)
-- Automatically displaying functions and parameters in a web UI
-- Allowing users to **design**, **manage**, and **execute** experimental workflows with minimal changes to existing scripts
-- Providing natural language support for workflow design and execution, check [IvoryOS MCP](https://gitlab.com/heingroup/ivoryos-suite/ivoryos-mcp) for more details.
+## What IvoryOS Does
+- Turns Python modules into UIs by dynamically inspecting your hardware APIs, functions, and workflows.
+- Standardizes optimization inputs/outputs, making any optimizer plug-and-play.
+- Provides a visual workflow builder for designing and running experiments.
+- Adds natural-language control for creating and executing workflows, see [IvoryOS MCP](https://gitlab.com/heingroup/ivoryos-suite/ivoryos-mcp) for more details.
 
 ----
 ## System Requirements
@@ -53,10 +51,13 @@ Building UIs for SDLs is challenging because flexibility and modularity make the
 - SQLAlchemy-Utils~=0.41  
 - Flask-WTF~=1.2  
 - python-dotenv==1.0.1  
+- pandas
 
 **Optional:**
-- ax-platform (≥1.0, Python≥3.10)
-- baybe
+- ax-platform==1.1.2
+- baybe==0.14.0
+- nimo
+- slack-sdk
 </details>
 
 ---
@@ -67,16 +68,22 @@ From PyPI:
 ```bash
 pip install ivoryos
 ```
-From source:
-```bash
-git clone https://gitlab.com/heingroup/ivoryos.git
-cd ivoryos
-pip install -e .
-```
+
+[//]: # (From source:)
+
+[//]: # (```bash)
+
+[//]: # (git clone https://gitlab.com/heingroup/ivoryos.git)
+
+[//]: # (cd ivoryos)
+
+[//]: # (pip install -e .)
+
+[//]: # (```)
 
 
 ## Quick start
-In your SDL script, 
+In your script, where you initialize or import your robot:
 ```python
 my_robot = Robot()
 
@@ -84,8 +91,8 @@ import ivoryos
 
 ivoryos.run(__name__)
 ```
-You can now access the web UI at http://127.0.0.1:8000,
-create an account, login, and start designing workflows!
+Then run the script and visit `http://localhost:8000` in your browser.
+Use `admin` for both username and password, and start building workflows!
 
 ----
 ## Features
@@ -108,7 +115,8 @@ ivoryos.run(__name__, logger="logger name")
 ivoryos.run(__name__, logger=["logger 1", "logger 2"])
 ```
 ### Human-in-the-loop
-Add single or multiple notification handlers for `pause` feature in flow control:
+Use `pause` in flow control to pause the workflow and send a notification with custom message handler(s). 
+When run into `pause`, it will pause, send a message, and wait for human's response. Example of a Slack bot:
 ```python
 
 def slack_bot(msg: str = "Hi"):
@@ -131,24 +139,23 @@ ivoryos.run(__name__, notification_handler=slack_bot)
 
 ### Directory Structure
 
-Created automatically on first run:
-- **`ivoryos_data/`**: 
-  - **`ivoryos_data/config_csv/`**: Batch configuration `csv`
-  - **`ivoryos_data/pseudo_deck/`**: Offline deck `.pkl`
-  - **`ivoryos_data/results/`**: Execution results
-  - **`ivoryos_data/scripts/`**: Compiled workflows Python scripts
-- **`default.log`**: Application logs
-- **`ivoryos.db`**: Local database
----
-## Demo
-In the [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/main/example/abstract_sdl_example/abstract_sdl.py)
-```Python
-ivoryos.run(__name__)
-```
+Created automatically in the same working directory on the first run:
+<details>
+<summary>click to see the data folder structure</summary>
 
- * Running on all addresses (0.0.0.0)
- * Running on http://127.0.0.1:8000
- * Running on http://0.0.0.0:8000
+- **`ivoryos_data/`**: 
+  - **`config_csv/`**: Batch configuration `csv`
+  - **`pseudo_deck/`**: Offline deck `.pkl`
+  - **`results/`**: Execution results
+  - **`scripts/`**: Compiled workflows Python scripts
+  - **`default.log`**: Application logs
+  - **`ivoryos.db`**: Local database
+</details>
+---
+
+## Demo
+Online demo at [demo.ivoryos.ai](https://demo.ivoryos.ai). 
+Local version in [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/main/community/examples/abstract_sdl_example/abstract_sdl.py)
 
 ---
 
@@ -156,13 +163,19 @@ ivoryos.run(__name__)
 
 - [ ] dropdown input 
 - [ ] snapshot version control
-- [ ] optimizer-agnostic
-- [ ] prefect compatibility
 - [ ] check batch-config file compatibility
 
 ---
 
+## Contributing
+We welcome all contributions — from core improvements to new drivers, plugins, and real-world use cases.
+See `CONTRIBUTING.md` for details and let us know you're interested: https://forms.gle/fPSvw5LEGrweUQUH8
+---
+
 ## Citing
+
+<details>
+<summary>Click to see citations</summary>
 
 If you find this project useful, please consider citing the following manuscript:
 
@@ -197,6 +210,8 @@ For an additional perspective related to the development of the tool, please see
   url          = {https://communities.springernature.com/posts/behind-ivoryos-empowering-scientists-to-harness-self-driving-labs-for-accelerated-discovery}
 }
 ```
+</details>
+
 ---
 ## Acknowledgements
 Authors acknowledge Telescope Innovations Corp., UBC Hein Lab, and Acceleration Consortium members for their valuable suggestions and contributions.
