@@ -575,6 +575,8 @@ class ScriptRunner:
     async def _execute_action(self, step: Dict, context: Dict[str, Any], phase_id=1, step_index=1, section_name=None):
         """Execute a single action with parameter substitution."""
         # Substitute parameters in args
+        if self.stop_current_event.is_set():
+            return context
         substituted_args = self._substitute_params(step["args"], context)
 
         # Get the component and method
@@ -594,6 +596,7 @@ class ScriptRunner:
         db.session.add(step_db)
         db.session.flush()
         try:
+
             # print(f"step {section_name}-{step_index}")
             self.socketio.emit('execution', {'section': f"{section_name}-{step_index-1}"})
             if action == "wait":
