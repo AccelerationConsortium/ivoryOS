@@ -85,6 +85,11 @@ class AxOptimizer(OptimizerBase):
         objectives = []
         for obj in objective_config:
             obj_name = obj.get("name")
+
+            # # fixing unknown Ax "unsupported operand type(s) for *: 'One' and 'LazyFunction'" in v1.1.2, test is not allowed as objective name
+            if obj_name == "test":
+                raise ValueError("test is not allowed as objective name")
+
             minimize = obj.get("minimize", True)
             weight = obj.get("weight", 1)
             sign = "-" if minimize else ""
