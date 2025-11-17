@@ -272,7 +272,7 @@ class Script(db.Model):
             if isinstance(value, str):
                 if value in output_variables:
                     var_type = output_variables[value]
-                    kwargs[key] = {value: var_type}
+                    kwargs[key] = f"#{value}"
                 elif value.startswith("#"):
                     kwargs[key] = f"#{self.validate_function_name(value[1:])}"
                 else:
@@ -374,28 +374,32 @@ class Script(db.Model):
         :return: list of variable that require input
         """
         configure = []
+        variables = self.get_variables()
+        # print(variables)
         config_type_dict = {}
         for action in self.script_dict[stype]:
             args = action['args']
             if args is not None:
                 if type(args) is not dict:
-                    if type(args) is str and args.startswith("#") and not args[1:] in configure:
-                        configure.append(args[1:])
-                        config_type_dict[args[1:]] = action['arg_types']
+                    if type(args) is str and args.startswith("#"):
+                        key = args[1:]
+                        if key not in (*variables, *configure):
+                            configure.append(key)
+                            config_type_dict[key] = action['arg_types']
 
                 else:
                     for arg in args:
-                        if type(args[arg]) is str \
-                                and args[arg].startswith("#") \
-                                and not args[arg][1:] in configure:
-                            configure.append(args[arg][1:])
-                            if arg in action['arg_types']:
-                                if action['arg_types'][arg] == '':
-                                    config_type_dict[args[arg][1:]] = "any"
+                        if type(args[arg]) is str and args[arg].startswith("#"):
+                            key = args[arg][1:]
+                            if key not in (*variables, *configure):
+                                configure.append(key)
+                                if arg in action['arg_types']:
+                                    if action['arg_types'][arg] == '':
+                                        config_type_dict[key] = "any"
+                                    else:
+                                        config_type_dict[key] = action['arg_types'][arg]
                                 else:
-                                    config_type_dict[args[arg][1:]] = action['arg_types'][arg]
-                            else:
-                                config_type_dict[args[arg][1:]] = "any"
+                                    config_type_dict[key] = "any"
         # todo
         return configure, config_type_dict
 
@@ -474,30 +478,40 @@ class Script(db.Model):
             for action in block:
                 act = action["action"]
                 _id = action["id"]
+                instrument = action["instrument"]
 
                 # Handle control structures
                 if act == "if":
                     stmt = action["args"].get("statement", "")
-                    lines.append("    " * indent + f"if {stmt}:   # id:{_id}")
+                    lines.append("    " * indent + f"if {stmt}:")
                     indent += 1
                     stack.append("if")
 
                 elif act == "else":
                     indent -= 1
-                    lines.append("    " * indent + f"else:   # id:{_id}")
+                    lines.append("    " * indent + f"else:")
                     indent += 1
 
                 elif act in ("endif", "endwhile"):
                     if stack:
                         stack.pop()
                     indent = max(indent - 1, 0)
-                    lines.append("    " * indent + f"# {act}   # id:{_id}")
+                    lines.append("    " * indent + f"# {act}")
 
                 elif act == "while":
                     stmt = action["args"].get("statement", "")
-                    lines.append("    " * indent + f"while {stmt}:   # id:{_id}")
+                    lines.append("    " * indent + f"while {stmt}:")
                     indent += 1
                     stack.append("while")
+
+                elif act == "wait":
+                    stmt = action["args"].get("statement", "")
+                    lines.append("    " * indent + f"time.sleep({stmt})")
+
+                elif instrument == "variable":
+                    stmt = action["args"].get("statement", "")
+                    lines.append("    " * indent + f"{act} = {stmt}")
+
 
                 else:
                     # Regular function call
@@ -506,9 +520,9 @@ class Script(db.Model):
                     ret = action.get("return")
                     line = "    " * indent
                     if ret:
-                        line += f"{ret} = {instr}.{act}({args})   # id:{_id}"
+                        line += f"{ret} = {instr}.{act}({args})"
                     else:
-                        line += f"{instr}.{act}({args})   # id:{_id}"
+                        line += f"{instr}.{act}({args})"
                     lines.append(line)
 
             # Ensure empty control blocks get "pass"
@@ -567,7 +581,6 @@ class Script(db.Model):
         Generate the function header.
         """
         configure, config_type = self.config(stype)
-
         configure = [param + f":{param_type}" if not param_type == "any" else param for param, param_type in
                      config_type.items()]
 
@@ -581,7 +594,9 @@ class Script(db.Model):
             else:
                 function_header += ", ".join(configure)
         function_header += "):"
-        # function_header += self.indent(1) + f"global {run_name}_{stype}"
+
+        if stype == "script" and batch:
+            function_header += self.indent(1) + f'"""Batch mode is experimental and may have bugs."""'
         return function_header
 
     def _generate_function_body(self, stype, batch=False, mode="sample"):
@@ -592,14 +607,15 @@ class Script(db.Model):
         indent_unit = 1
         if batch and stype == "script":
             return_str, return_list = self.config_return()
-            if return_list and stype == "script":
-                body += self.indent(indent_unit) + "result_list = []"
+            configure, config_type = self.config(stype)
+            if not configure:
+                body += self.indent(indent_unit) + "param_list = [{} for _ in range(n)]"
             for index, action in enumerate(self.script_dict[stype]):
                 text, indent_unit = self._process_action(indent_unit, action, index, stype, batch)
                 body += text
-            if return_list and stype == "script":
-                body += self.indent(indent_unit) + f"result_list.append({return_str})"
-                body += self.indent(indent_unit) + "return result_list"
+            if return_list:
+                # body += self.indent(indent_unit) + f"result_list.append({return_str})"
+                body += self.indent(indent_unit) + "return param_list"
 
         else:
             for index, action in enumerate(self.script_dict[stype]):
@@ -631,20 +647,28 @@ class Script(db.Model):
         elif instrument == 'while':
             return self._process_while(indent_unit, action_name, statement, next_action)
         elif instrument == 'variable':
+            if batch:
+                return self.indent(indent_unit) + "for param in param_list:" + self.indent(indent_unit + 1) + f"param['{action_name}'] = {statement}", indent_unit
+
             return self.indent(indent_unit) + f"{action_name} = {statement}", indent_unit
         elif instrument == 'wait':
+            if batch:
+                return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit+1)}time.sleep({statement})", indent_unit
             return f"{self.indent(indent_unit)}time.sleep({statement})", indent_unit
         elif instrument == 'repeat':
+
             return self._process_repeat(indent_unit, action_name, statement, next_action)
         elif instrument == 'pause':
             self.needs_call_human = True
+            if batch:
+                return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit+1)}pause('{statement}')", indent_unit
             return f"{self.indent(indent_unit)}pause('{statement}')", indent_unit
-        #todo
+        # todo
         # elif instrument == 'registered_workflows':
         #     return inspect.getsource(my_function)
         else:
             is_async = action.get("coroutine", False)
-            dynamic_arg = len(configure) > 0
+            dynamic_arg = len(self.get_variables()) > 0
             return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data, is_async, dynamic_arg, batch, batch_action)
 
     def _process_args(self, args):
@@ -725,8 +749,8 @@ class Script(db.Model):
         else:
             single_line = f"{async_str}{function_call}()"
 
-        if save_data:
-            save_data += " = "
+
+        save_data_str = save_data + " = " if save_data else ''
 
         if batch and not batch_action:
             arg_list = [args[arg][1:] for arg in args if isinstance(args[arg], str) and args[arg].startswith("#")]
@@ -735,10 +759,13 @@ class Script(db.Model):
             if dynamic_arg:
                 for_string = self.indent(indent_unit) + "for param in param_list:" + args_str
             else:
-                for_string = self.indent(indent_unit) + "for _ in range(n):"
-            output_code = for_string + self.indent(indent_unit + 1) + save_data + single_line
+                for_string = self.indent(indent_unit) + "for i in range(n):"
+            output_code = for_string + self.indent(indent_unit + 1) + save_data_str + single_line
+            if save_data:
+                output_code = output_code + self.indent(indent_unit + 1) + f"param['{save_data}'] = {save_data}"
         else:
-            output_code = self.indent(indent_unit) + save_data + single_line
+            output_code = self.indent(indent_unit) + save_data_str + single_line
+
         return output_code, indent_unit
 
     def _process_dict_args(self, args):
