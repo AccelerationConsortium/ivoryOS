@@ -113,15 +113,15 @@ def experiment_run():
             flash(f"This script is not compatible with current deck, import {script.deck}")
 
     if request.method == "POST":
-        bo_args = None
+        # bo_args = None
         compiled = False
         if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
             payload_json = request.get_json()
             compiled = True
             if "kwargs" in payload_json:
                 config = payload_json["kwargs"]
-            elif "parameters" in payload_json:
-                bo_args = payload_json
+            # elif "parameters" in payload_json:
+            #     bo_args = payload_json
             repeat = payload_json.pop("repeat", None)
             batch_size = payload_json.pop('batch_size', 1)
         else:
@@ -139,7 +139,7 @@ def experiment_run():
         # if True:
             datapath = current_app.config["DATA_FOLDER"]
             run_name = script.validate_function_name(run_name)
-            runner.run_script(script=script, run_name=run_name, config=config, bo_args=bo_args,
+            runner.run_script(script=script, run_name=run_name, config=config,
                               logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                               output_path=datapath, compiled=compiled, history=existing_data,
                               current_app=current_app._get_current_object(), batch_size=batch_size
