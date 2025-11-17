@@ -87,7 +87,9 @@ class ScriptRunner:
 
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None,
                    output_path="", compiled=False, current_app=None, history=None, optimizer=None, batch_mode=None,
-                   batch_size=1, objectives=None):
+                   batch_size=1, objectives=None, parameters=None, constraints=None, steps=None, optimizer_cls=None):
+
+
         self.socketio = socketio
         self.logger = logger
         global deck
@@ -110,7 +112,7 @@ class ScriptRunner:
         thread = threading.Thread(
             target=self._run_with_stop_check,
             args=(script, repeat_count, run_name, config, output_path, current_app, compiled,
-                  history, optimizer, batch_mode, batch_size, objectives),
+                  history, optimizer, batch_mode, batch_size, objectives, parameters, constraints, steps, optimizer_cls),
         )
         thread.start()
         return thread
@@ -163,7 +165,7 @@ class ScriptRunner:
 
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, config,
                              output_path, current_app, compiled, history=None, optimizer=None, batch_mode=None,
-                             batch_size=None, objectives=None):
+                             batch_size=None, objectives=None, parameters=None, constraints=None, steps=None, optimizer_cls=None):
         time.sleep(1)
         # _func_str = script.compile()
         # step_list_dict: dict = script.convert_to_lines(_func_str)
@@ -172,6 +174,18 @@ class ScriptRunner:
         error_flag = False
         # create a new run entry in the database
         repeat_mode = "batch" if config else "optimizer" if optimizer else "repeat"
+        if optimizer_cls is not None:
+            # try:
+            if self.logger:
+                self.logger.info(f"Initializing optimizer {optimizer_cls.__name__}")
+            optimizer = optimizer_cls(experiment_name=run_name, parameter_space=parameters, objective_config=objectives,
+                                  parameter_constraints=constraints,
+                                  optimizer_config=steps, datapath=output_path)
+            current_app.config["LAST_OPTIMIZER"] = optimizer
+            # except Exception as e:
+            #     if self.logger:
+            #         self.logger.error(f"Error during optimizer initialization: {e.__str__()}")
+
         with current_app.app_context():
             run = WorkflowRun(name=script.name or "untitled", platform=script.deck or "deck", start_time=datetime.now(),
                               repeat_mode=repeat_mode

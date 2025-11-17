@@ -1,3 +1,10 @@
+v1.4.4 (Nov 16th, 2025)
+- variable and function return bug, thanks @Veronica Lai
+- handle ax not taking "test" as objective name
+- move optimizer init to thread
+- minor bug fix
+
+
 v1.4.3 (Nov 14th, 2025)
 [minor user interface change]
 - create default admin user, allow change password when clicking on user name

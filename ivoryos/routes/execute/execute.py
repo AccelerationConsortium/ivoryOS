@@ -223,15 +223,13 @@ def run_bo():
         Optimizer = global_config.optimizers.get(optimizer_type, None)
         if not Optimizer:
             raise ValueError(f"Optimizer {optimizer_type} is not supported or not found.")
-        optimizer = Optimizer(experiment_name=run_name, parameter_space=parameters, objective_config=objectives,
-                              parameter_constraints = constraints,
-                              optimizer_config=steps, datapath=datapath)
-        current_app.config["LAST_OPTIMIZER"] = optimizer
-        runner.run_script(script=script, run_name=run_name, optimizer=optimizer,
+
+        runner.run_script(script=script, run_name=run_name, optimizer=None,
                           logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                           output_path=datapath, compiled=False, history=existing_data,
                           current_app=current_app._get_current_object(), batch_size=int(batch_size),
-                          objectives=objectives
+                          objectives=objectives, parameters=parameters, constraints=constraints, steps=steps,
+                          optimizer_cls=Optimizer
                           )
 
     except Exception as e:
