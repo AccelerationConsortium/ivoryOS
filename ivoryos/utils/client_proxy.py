@@ -278,11 +278,16 @@ class ProxyGenerator:
         return f"""    def _auth(self):
         username = self.username or 'admin'
         password = self.password or 'admin'
-        res = session.post(
-            '{self.base_url}/ivoryos/auth/login',
-            data={{"username": username, "password": password}}
-        )
-        if res.status_code != 200:
-            raise Exception("Authentication failed")
+        res = session.get('{self.base_url}/ivoryos/', allow_redirects=False)
+        if res.status_code == 200:
+            return
+        else:
+            session.post(
+                '{self.base_url}/ivoryos/auth/login',
+                data={{"username": username, "password": password}}
+            )
+            res = session.get('{self.base_url}/ivoryos/', allow_redirects=False)
+            if res.status_code != 200:
+                raise Exception("Authentication failed")
                     
 """
