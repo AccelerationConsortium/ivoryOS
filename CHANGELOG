@@ -1,3 +1,8 @@
+v1.4.5 (Nov 19th, 2025)
+proxy authentication failing message fixe (@Maria Politi)
+- proxy class won't initialize if username and password combination is wrong
+
+
 v1.4.4 (Nov 16th, 2025)
 - variable and function return bug, thanks @Veronica Lai
 - handle ax not taking "test" as objective name
