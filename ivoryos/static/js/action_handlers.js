@@ -54,12 +54,26 @@ async function updateCode() {
         const data = await res.json();
         const codeElem = document.getElementById("python-code");
 
-        codeElem.removeAttribute("data-highlighted"); // Reset highlight.js flag
-        codeElem.textContent = data.code['script'] || "# No code found";
+        const script = data.code?.script || "";
+        const prep = data.code?.prep || "";
+        const cleanup = data.code?.cleanup || "";
 
-        if (window.hljs) {
-            hljs.highlightElement(codeElem);
+        let finalCode = "";
+
+        if (prep.trim()) {
+            finalCode += "# --- PREP CODE ---\n" + prep.trim() + "\n\n";
         }
+        if (script.trim()) {
+            finalCode += "# --- MAIN SCRIPT ---\n" + script.trim() + "\n\n";
+        }
+        if (cleanup.trim()) {
+            finalCode += "# --- CLEANUP CODE ---\n" + cleanup.trim() + "\n";
+        }
+
+        codeElem.removeAttribute("data-highlighted");
+        codeElem.textContent = finalCode || "# No code found";
+
+        if (window.hljs) hljs.highlightElement(codeElem);
     } catch (err) {
         console.error("Error updating code:", err);
     }
