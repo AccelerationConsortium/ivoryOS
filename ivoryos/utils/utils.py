@@ -193,7 +193,7 @@ def convert_config_type(args, arg_types, is_class: bool = False):
                 arg_type = arg_types[arg]
                 try:
                     args[arg] = ast.literal_eval(args[arg])
-                except ValueError:
+                except Exception:
                     pass
                 if type(args[arg]) is not arg_type and not type(args[arg]).__name__ == arg_type:
                     if is_class:

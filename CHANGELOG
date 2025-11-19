@@ -1,3 +1,6 @@
+1.4.6 (Nov 19th, 2025)
+- fixing error when leading number in str input (@Irene, Maria, Ekaterina)
+
 v1.4.5 (Nov 19th, 2025)
 - proxy authentication failing message fixe (@Maria Politi)
 - [fix] proxy class won't initialize if username and password combination is wrong
