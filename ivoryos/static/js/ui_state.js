@@ -36,6 +36,7 @@ function toggleCodeOverlay(state = null) {
 
 
 function setScriptPhase(stype) {
+    // console.log("Setting editing type to", stype);
     fetch(scriptUIStateUrl, {
         method: "PATCH",
         headers: {
@@ -48,9 +49,6 @@ function setScriptPhase(stype) {
         if (data.html) {
             document.getElementById("canvas-wrapper").innerHTML = data.html;
             initializeCanvas(); // Reinitialize the canvas functionality
-            document.querySelectorAll('#pythonCodeOverlay pre code').forEach((block) => {
-                hljs.highlightElement(block);
-            });
         }
     })
     .catch(error => console.error("Failed to update editing type", error));

@@ -106,7 +106,7 @@ function initializeCanvas() {
         document.activeElement?.blur();
         triggerModal(formHtml, actionName, actionId, state.dropTargetId);
     });
-    initializeCodeOverlay();
+    getCodePreview();
 }
 
 function insertDropPlaceholder($target) {

@@ -101,14 +101,13 @@ function initializeCodeOverlay() {
 // ============================================================================
 // UI UPDATE FUNCTIONS
 // ============================================================================
-
-function updateActionCanvas(html) {
-    document.getElementById("canvas-action-wrapper").innerHTML = html;
-    initializeCanvas();
+function getCodePreview(){
 
     const mode = getMode();
     const batch = getBatch();
-
+        // Restore toggle UI state (without triggering updates)
+    setMode(mode, false);
+    setBatch(batch, false);
     // Rebind event handlers for mode/batch toggles
     document.querySelectorAll(".mode-toggle").forEach(btn => {
         btn.addEventListener("click", () => setMode(btn.dataset.mode));
@@ -116,14 +115,13 @@ function updateActionCanvas(html) {
     document.querySelectorAll(".batch-toggle").forEach(btn => {
         btn.addEventListener("click", () => setBatch(btn.dataset.batch));
     });
-
-    // Restore toggle UI state (without triggering updates)
-    setMode(mode, false);
-    setBatch(batch, false);
-
     // Reinitialize code overlay buttons
     initializeCodeOverlay();
+}
 
+function updateActionCanvas(html) {
+    document.getElementById("canvas-action-wrapper").innerHTML = html;
+    initializeCanvas();
 }
 
 function updateInstrumentPanel(link) {
@@ -362,23 +360,5 @@ function showWarningIfExists(html) {
 // ============================================================================
 
 document.addEventListener("DOMContentLoaded", function() {
-    const mode = getMode();
-    const batch = getBatch();
-
-    // Set up mode/batch toggle listeners
-    document.querySelectorAll(".mode-toggle").forEach(btn => {
-        btn.addEventListener("click", () => setMode(btn.dataset.mode));
-    });
-
-    document.querySelectorAll(".batch-toggle").forEach(btn => {
-        btn.addEventListener("click", () => setBatch(btn.dataset.batch));
-    });
-
-    // Restore UI state (without triggering updates)
-    setMode(mode, false);
-    setBatch(batch, false);
-
-    // Initialize code overlay
-    initializeCodeOverlay();
-
+    getCodePreview();
 });
