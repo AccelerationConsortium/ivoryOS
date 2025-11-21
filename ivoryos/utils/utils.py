@@ -116,13 +116,17 @@ def _inspect_class(class_object=None, debug=False):
 
 def _get_type_from_parameters(arg, parameters):
     """get argument types from inspection"""
+    # TODO
     arg_type = ''
-    if type(parameters) is inspect.Signature:
+    if isinstance(parameters, inspect.Signature):
         annotation = parameters.parameters[arg].annotation
-    elif type(parameters) is dict:
+    elif isinstance(parameters, dict):
         annotation = parameters[arg]
-    if annotation is not inspect._empty:
-        # print(p[arg].annotation)
+    else:
+        annotation = ''
+    if isinstance(annotation, str):
+        arg_type = annotation
+    elif annotation is not inspect._empty:
         if annotation.__module__ == 'typing':
 
             if hasattr(annotation, '__origin__'):
