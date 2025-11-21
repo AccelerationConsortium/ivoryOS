@@ -4,7 +4,7 @@
 [![YouTube](https://img.shields.io/badge/YouTube-tutorial-red?logo=youtube)](https://youtu.be/dFfJv9I2-1g)
 [![YouTube](https://img.shields.io/badge/YouTube-demo-red?logo=youtube)](https://youtu.be/flr5ydiE96s)
 [![Published](https://img.shields.io/badge/Nature_Comm.-paper-blue)](https://www.nature.com/articles/s41467-025-60514-w)
-[![Community](https://img.shields.io/discord/1313641159356059770?label=Discord&logo=discord&color=5865F2)](https://discord.gg/AX5P9EdGVX)
+[![Community](https://img.shields.io/discord/1313641159356059770?label=Discord&logo=discord&color=5865F2)](https://discord.gg/3KdjhUmsYA)
 
 ![ivoryos_logo.png](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/ivoryos_logo.png)
 
