@@ -58,7 +58,11 @@ def save_step(uuid: int):
         if forms and forms.validate_on_submit():
             save_as = kwargs.pop('return', '')
             batch_action = kwargs.pop('batch_action', False)
-            kwargs = script.validate_variables(kwargs)
+
+            # literal for args with no typehint
+            arg_types = action.get('arg_types', {})
+            kwargs = script.validate_variables(kwargs, arg_types)
+
             script.update_by_uuid(uuid=uuid, args=kwargs, output=save_as, batch_action=batch_action)
         else:
             warning = f"Compilation failed: {str(forms.errors)}"
