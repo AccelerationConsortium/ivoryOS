@@ -129,10 +129,15 @@ class AxOptimizer(OptimizerBase):
     def observe(self, results):
         for trial_index, result in zip(self.trial_index_list, results):
             obj_only_result = {k: v for k, v in result.items() if k in [obj["name"] for obj in self.objective_config]}
-            self.client.complete_trial(
-                trial_index=trial_index,
-                raw_data=obj_only_result
-            )
+            if not obj_only_result:
+                self.client.mark_trial_failed(trial_index=trial_index, failed_reason="No objective values returned.")
+            elif len(obj_only_result.keys()) != len(self.objective_config):
+                self.client.mark_trial_failed(trial_index=trial_index, failed_reason="Missing one or more objective values.")
+            else:
+                self.client.complete_trial(
+                    trial_index=trial_index,
+                    raw_data=obj_only_result
+                )
 
     def get_plots(self, plot_type):
         return None
