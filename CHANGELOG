@@ -1,3 +1,11 @@
+1.4.7 (Nov 23th, 2025)
+- reorder parameter sweep entries (@Irene, Maria, Ekaterina)
+- feature change: gracefully stop pending iterations, move one to cleanup steps (@Veronica)
+- Ax optimizer: fix bug when using "test" "yield" "product" etc. as objective name
+- Ax optimizer: allow failed trials - marked as Failed when missing objective(s) (@SDL2)
+- fix bugs in handling None values, Empty string is now treated as None (@Veronica)
+- fix type hint extraction when using from __future__ import annotations (@SDL2)
+
 1.4.6 (Nov 19th, 2025)
 - fixing error when leading number in str input (@Irene, Maria, Ekaterina)
 
