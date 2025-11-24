@@ -221,15 +221,21 @@ class Script(db.Model):
         self._insert_action(insert_position, current_len)
         self.update_time_stamp()
 
-    def add_variable(self, statement, variable, type, insert_position=None):
+    def add_variable(self, statement, variable, variable_type, insert_position=None):
         variable = self.validate_function_name(variable)
-        convert_type = getattr(builtins, type)
-        statement = convert_type(statement)
+        convert_type = getattr(builtins, variable_type)
+        if isinstance(statement, str) and statement.startswith("#"):
+            pass
+        # boolean values
+        elif variable_type == "bool":
+            statement = True if statement.lower() in ["true", "y", "t", "yes"] else False
+        else:
+            statement = convert_type(statement)
         current_len = len(self.currently_editing_script)
         uid = uuid.uuid4().fields[-1]
         action = {"id": current_len + 1, "instrument": 'variable', "action": variable,
                         "args": {"statement": 'None' if statement == '' else statement}, "return": '', "uuid": uid,
-                        "arg_types": {"statement": type}}
+                        "arg_types": {"statement": variable_type}}
         self.currently_editing_script.append(action)
         self._insert_action(insert_position, current_len)
         self.update_time_stamp()
@@ -262,7 +268,7 @@ class Script(db.Model):
 
         return output_variables
 
-    def validate_variables(self, kwargs):
+    def validate_variables(self, kwargs, arg_types: dict = None):
         """
         Validates the kwargs passed to the Script
         """
@@ -277,12 +283,14 @@ class Script(db.Model):
                     kwargs[key] = f"#{self.validate_function_name(value[1:])}"
                 else:
                     # attempt to convert to numerical or bool value for args with no type hint
-                    try:
-                        converted = ast.literal_eval(value)
-                        if isinstance(converted, (int, float, bool)):
-                            kwargs[key] = converted
-                    except (ValueError, SyntaxError):
-                        pass
+                    type_hint = arg_types.get(key, "") if arg_types else ""
+                    if not type_hint:
+                        try:
+                            converted = ast.literal_eval(value)
+                            if isinstance(converted, (int, float, bool)):
+                                kwargs[key] = converted
+                        except (ValueError, SyntaxError):
+                            pass
         return kwargs
 
     def add_logic_action(self, logic_type: str, statement, insert_position=None):
@@ -506,10 +514,14 @@ class Script(db.Model):
 
                 elif act == "wait":
                     stmt = action["args"].get("statement", "")
+                    if isinstance(stmt, str) and stmt.startswith("#"):
+                        stmt = stmt[1:]
                     lines.append("    " * indent + f"time.sleep({stmt})")
 
                 elif instrument == "variable":
                     stmt = action["args"].get("statement", "")
+                    if isinstance(stmt, str) and stmt.startswith("#"):
+                        stmt = stmt[1:]
                     lines.append("    " * indent + f"{act} = {stmt}")
 
 
@@ -648,21 +660,32 @@ class Script(db.Model):
             return self._process_while(indent_unit, action_name, statement, next_action)
         elif instrument == 'variable':
             if batch:
-                return self.indent(indent_unit) + "for param in param_list:" + self.indent(indent_unit + 1) + f"param['{action_name}'] = {statement}", indent_unit
-
-            return self.indent(indent_unit) + f"{action_name} = {statement}", indent_unit
+                if isinstance(statement, str) and statement.startswith("#"):
+                    return '', indent_unit
+                return self.indent(indent_unit) + "for param in param_list:" + self.indent(
+                    indent_unit + 1) + f"param['{action_name}'] = {statement}", indent_unit
+            else:
+                if isinstance(statement, str) and statement.startswith("#"):
+                    statement = statement[1:]
+                return self.indent(indent_unit) + f"{action_name} = {statement}", indent_unit
         elif instrument == 'wait':
+            if isinstance(statement, str) and statement.startswith("#"):
+                statement = statement[1:]
             if batch:
                 return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit+1)}time.sleep({statement})", indent_unit
             return f"{self.indent(indent_unit)}time.sleep({statement})", indent_unit
         elif instrument == 'repeat':
-
             return self._process_repeat(indent_unit, action_name, statement, next_action)
         elif instrument == 'pause':
             self.needs_call_human = True
+            if isinstance(statement, str) and statement.startswith("#"):
+                statement = f"str({statement[1:]})"
+            else:
+                # cases like "text with a backslash \"
+                statement = f"'''{re.sub(r"[\x00-\x1F\x7F\u200B\u200C\u200D\u2060\uFEFF]", "", statement)}'''"
             if batch:
-                return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit+1)}pause('{statement}')", indent_unit
-            return f"{self.indent(indent_unit)}pause('{statement}')", indent_unit
+                return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit+1)}pause({statement})", indent_unit
+            return f"{self.indent(indent_unit)}pause({statement})", indent_unit
         # todo
         # elif instrument == 'registered_workflows':
         #     return inspect.getsource(my_function)
@@ -685,6 +708,8 @@ class Script(db.Model):
         """
         exec_string = ""
         if action == 'if':
+            if isinstance(args, str) and args.startswith("#"):
+                args = args[1:]
             exec_string += self.indent(indent_unit) + f"if {args}:"
             indent_unit += 1
             if next_action and next_action['instrument'] == 'if' and next_action['action'] == 'else':
@@ -707,6 +732,8 @@ class Script(db.Model):
         """
         exec_string = ""
         if action == 'while':
+            if isinstance(args, str) and args.startswith("#"):
+                args = args[1:]
             exec_string += self.indent(indent_unit) + f"while {args}:"
             indent_unit += 1
             if next_action and next_action['instrument'] == 'while':
@@ -720,6 +747,8 @@ class Script(db.Model):
         Process 'while' and 'endwhile' actions.
         """
         exec_string = ""
+        if isinstance(args, str) and args.startswith("#"):
+            args = args[1:]
         if action == 'repeat':
             exec_string += self.indent(indent_unit) + f"for _ in range({args}):"
             indent_unit += 1

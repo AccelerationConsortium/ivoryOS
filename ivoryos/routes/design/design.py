@@ -348,6 +348,7 @@ def methods_handler(instrument: str = ''):
 
         if form:
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
+            print(kwargs)
             if form.validate_on_submit():
                 function_name = kwargs.pop("hidden_name")
                 batch_action = kwargs.pop("batch_action", False)
@@ -358,12 +359,13 @@ def methods_handler(instrument: str = ''):
                 # print(primitive_arg_types)
 
                 script.eval_list(kwargs, primitive_arg_types)
-                kwargs = script.validate_variables(kwargs)
+                kwargs = script.validate_variables(kwargs, primitive_arg_types)
                 coroutine = False
                 if instrument.startswith("deck") and deck_snapshot:
                     coroutine = deck_snapshot[instrument][function_name].get("coroutine", False)
                 elif instrument.startswith("blocks") and block_snapshot:
                     coroutine = block_snapshot[instrument][function_name].get("coroutine", False)
+                print(kwargs)
                 action = {"instrument": instrument, "action": function_name,
                           "args": kwargs,
                           "return": save_data,
@@ -386,9 +388,9 @@ def methods_handler(instrument: str = ''):
                 if 'variable' in kwargs:
                     try:
                         script.add_variable(insert_position=insert_position, **kwargs)
-                    except ValueError:
+                    except ValueError as e:
                         success = False
-                        msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
+                        msg = e.__str__()
                 else:
                     script.add_logic_action(logic_type=logic_type, insert_position=insert_position, **kwargs)
             else:
@@ -404,7 +406,7 @@ def methods_handler(instrument: str = ''):
                 save_data = kwargs.pop('return', '')
                 primitive_arg_types = utils.get_arg_type(kwargs, functions[workflow_name])
                 script.eval_list(kwargs, primitive_arg_types)
-                kwargs = script.validate_variables(kwargs)
+                kwargs = script.validate_variables(kwargs, primitive_arg_types)
                 action = {"instrument": instrument, "action": workflow_name,
                           "args": kwargs,
                           "return": save_data,

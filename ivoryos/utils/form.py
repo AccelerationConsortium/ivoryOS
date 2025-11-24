@@ -51,8 +51,8 @@ class VariableOrStringField(Field):
             variable, variable_type = find_variable(self.data, self.script)
             if variable:
                 return variable
-
-        return str(self.data) if self.data is not None else ""
+        # print("_value", self.data, type(self.data))
+        return str(self.data) if self.data else ''
 
 
 class VariableOrFloatField(Field):
@@ -141,6 +141,10 @@ class VariableOrIntField(Field):
                 raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
             self.data = valuelist[0]
             return
+        if valuelist[0] == "":
+            # print("empty input", valuelist)
+            self.data = None
+            return
         try:
             self.data = int(valuelist[0])
         except ValueError as exc:
@@ -148,9 +152,9 @@ class VariableOrIntField(Field):
             raise ValueError(self.gettext("Not a valid integer value.")) from exc
 
 
-class VariableOrBoolField(BooleanField):
+class VariableOrBoolField(Field):
     widget = TextInput()
-    false_values = (False, "false", "", "False", "f", "F")
+    false_values = (False, "false", "", "False", "f", "F", "n")
 
     def __init__(self, label='', validators=None, script=None, **kwargs):
         super(VariableOrBoolField, self).__init__(label, validators, **kwargs)
@@ -164,8 +168,14 @@ class VariableOrBoolField(BooleanField):
                 if not variable_type == "function_output":
                     raise ValueError("Not accepting boolean variables")
                 return variable
-
-        self.data = bool(value)
+        if isinstance(value, str) and value.startswith("#"):
+            self.data = value
+            return value
+        if value in self.false_values:
+            self.data = False
+        else:
+            self.data = True
+        return None
 
     def process_formdata(self, valuelist):
         # todo
@@ -192,7 +202,7 @@ class VariableOrBoolField(BooleanField):
 
         if self.raw_data:
             return str(self.raw_data[0])
-        return "y"
+        return str(self.data)
 
 
 class FlexibleEnumField(StringField):
@@ -412,16 +422,15 @@ def create_form_from_action(action: dict, script=None, design=True):
         value = args.get(name, "")
         if type(value) is dict and value:
             value = next(iter(value))
-        if not value or value == "None":
+        if value in (None, "", "None"):
             value = None
-        else:
-            value = f'{value}'
 
         field_kwargs = {
             "label": name,
-            "default": f'{value}' if value else None,
+            "default": value,
             # todo get optional/required from snapshot
-            "validators": [Optional()],
+            "validators": [],
+            "filters": [lambda x: x if x != '' else None],
             **({"script": script})
         }
         if type(param_type) is list:
@@ -484,16 +493,16 @@ def create_builtin_form(logic_type, script):
     field = field_class(**field_kwargs, render_kw=render_kwargs)
     setattr(BuiltinFunctionForm, "statement", field)
     if logic_type == 'variable':
-        variable_field = StringField(label=f'variable', validators=[InputRequired()],
+        variable_field = VariableOrStringField(label=f'variable', validators=[InputRequired()],
                                      description="Your variable name cannot include space",
-                                     render_kw=render_kwargs)
+                                     render_kw=render_kwargs, script=script)
         type_field = SelectField(
             'Select Input Type',
             choices=[('int', 'Integer'), ('float', 'Float'), ('str', 'String'), ('bool', 'Boolean')],
             default='str'  # Optional default value
         )
         setattr(BuiltinFunctionForm, "variable", variable_field)
-        setattr(BuiltinFunctionForm, "type", type_field)
+        setattr(BuiltinFunctionForm, "variable_type", type_field)
     hidden_field = HiddenField(name=f'builtin_name', render_kw={"value": f'{logic_type}'})
     setattr(BuiltinFunctionForm, "builtin_name", hidden_field)
     return BuiltinFunctionForm
