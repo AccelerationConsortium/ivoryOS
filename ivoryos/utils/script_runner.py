@@ -533,7 +533,7 @@ class ScriptRunner:
         active_contexts = contexts.copy()
         iteration = 0
 
-        while iteration < max_iterations and active_contexts:
+        while active_contexts and self.stop_current_event.is_set() is False:
             # Filter contexts that still meet the condition
             still_active = []
 
@@ -552,8 +552,8 @@ class ScriptRunner:
             active_contexts = still_active
             iteration += 1
 
-        if iteration >= max_iterations:
-            raise RuntimeError(f"While loop exceeded max iterations ({max_iterations})")
+        # if iteration >= max_iterations:
+        #     raise RuntimeError(f"While loop exceeded max iterations ({max_iterations})")
 
     async def _execute_action(self, step: Dict, context: Dict[str, Any], phase_id=1, step_index=1, section_name=None):
         """Execute a single action with parameter substitution."""
@@ -673,19 +673,24 @@ class ScriptRunner:
         eval_context = {}
 
         # Substitute variables in the condition string
-        substituted = condition_str
-        for key, value in context.items():
-            # Replace #variable with actual variable name for eval
-            substituted = substituted.replace(f"#{key}", key)
-            # Add variable to eval context
-            eval_context[key] = value
+        if isinstance(condition_str, str):
+            substituted = condition_str
+            for key, value in context.items():
+                # Replace #variable with actual variable name for eval
+                substituted = substituted.replace(f"#{key}", key)
+                # Add variable to eval context
+                eval_context[key] = value
 
-        try:
-            # Safe evaluation with variables in scope
-            result = eval(substituted, {"__builtins__": {}}, eval_context)
-            return bool(result)
-        except Exception as e:
-            raise ValueError(f"Error evaluating condition '{condition_str}': {e}")
+            try:
+                # Safe evaluation with variables in scope
+                result = eval(substituted, {"__builtins__": {}}, eval_context)
+                return bool(result)
+            except Exception as e:
+                raise ValueError(f"Error evaluating condition '{condition_str}': {e}")
+        elif isinstance(condition_str, bool):
+            return condition_str
+        else:
+            raise condition_str
 
     def _check_early_stop(self, output, objectives):
         for row in output:
