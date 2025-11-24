@@ -682,10 +682,10 @@ class Script(db.Model):
                 statement = f"str({statement[1:]})"
             else:
                 # cases like "text with a backslash \"
-                statement = f"'''{re.sub(r"[\x00-\x1F\x7F\u200B\u200C\u200D\u2060\uFEFF]", "", statement)}'''"
+                statement = statement.encode('unicode_escape').decode()
             if batch:
-                return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit+1)}pause({statement})", indent_unit
-            return f"{self.indent(indent_unit)}pause({statement})", indent_unit
+                return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit+1)}pause('''{statement}''')", indent_unit
+            return f"{self.indent(indent_unit)}pause('''{statement}''')", indent_unit
         # todo
         # elif instrument == 'registered_workflows':
         #     return inspect.getsource(my_function)

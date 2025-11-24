@@ -348,11 +348,15 @@ def methods_handler(instrument: str = ''):
 
         if form:
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
-            print(kwargs)
+            # print(kwargs)
             if form.validate_on_submit():
                 function_name = kwargs.pop("hidden_name")
                 batch_action = kwargs.pop("batch_action", False)
                 save_data = kwargs.pop('return', '')
+
+                # validate return variable name
+                save_data = script.validate_function_name(save_data)
+
                 primitive_arg_types = utils.get_arg_type(kwargs, functions[function_name])
 
                 # todo
@@ -365,7 +369,7 @@ def methods_handler(instrument: str = ''):
                     coroutine = deck_snapshot[instrument][function_name].get("coroutine", False)
                 elif instrument.startswith("blocks") and block_snapshot:
                     coroutine = block_snapshot[instrument][function_name].get("coroutine", False)
-                print(kwargs)
+                # print(kwargs)
                 action = {"instrument": instrument, "action": function_name,
                           "args": kwargs,
                           "return": save_data,
@@ -404,6 +408,10 @@ def methods_handler(instrument: str = ''):
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
             if form.validate_on_submit():
                 save_data = kwargs.pop('return', '')
+
+                # validate return variable name
+                save_data = script.validate_function_name(save_data)
+
                 primitive_arg_types = utils.get_arg_type(kwargs, functions[workflow_name])
                 script.eval_list(kwargs, primitive_arg_types)
                 kwargs = script.validate_variables(kwargs, primitive_arg_types)
