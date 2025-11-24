@@ -131,7 +131,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     document.getElementById('abort-pending').addEventListener('click', function() {
-        var confirmation = confirm("Are you sure you want to stop after this iteration?");
+        var confirmation = confirm("Are you sure you want to stop after this iteration and move on to the cleanup steps?");
         if (confirmation) {
             socket.emit('abort_pending');
             console.log('Abort action sent to server.');

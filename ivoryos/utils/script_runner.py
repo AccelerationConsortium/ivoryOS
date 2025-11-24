@@ -260,10 +260,12 @@ class ScriptRunner:
             return None
         if self.logger:
             self.logger.info(f'Executing {section_name} steps')
-        if self.stop_pending_event.is_set():
-            if self.logger:
-                self.logger.info(f"Stopping execution during {section_name} section.")
-            return None
+
+        # V1.4.7 stop pending will not affect cleanup and prep steps credit @Veronica
+        # if self.stop_pending_event.is_set():
+        #     if self.logger:
+        #         self.logger.info(f"Stopping execution during {section_name} section.")
+        #     return None
 
         phase = WorkflowPhase(
             run_id=run_id,
