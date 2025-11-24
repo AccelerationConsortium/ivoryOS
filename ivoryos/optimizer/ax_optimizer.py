@@ -6,6 +6,9 @@ from pandas import DataFrame
 from ivoryos.optimizer.base_optimizer import OptimizerBase
 from ivoryos.utils.utils import install_and_import
 
+# hardcoded blacklist for Ax objective names from SymPy
+AX_OBJ_BLACKLIST = ["test", "factor", "range", "product", "sum", "type", "yield"]
+
 class AxOptimizer(OptimizerBase):
     def __init__(self, experiment_name, parameter_space, objective_config, optimizer_config=None,
                  parameter_constraints:list=None, datapath=None):
@@ -87,8 +90,8 @@ class AxOptimizer(OptimizerBase):
             obj_name = obj.get("name")
 
             # # fixing unknown Ax "unsupported operand type(s) for *: 'One' and 'LazyFunction'" in v1.1.2, test is not allowed as objective name
-            if obj_name == "test":
-                raise ValueError("test is not allowed as objective name")
+            if obj_name in AX_OBJ_BLACKLIST:
+                raise ValueError(f"{obj_name} is not allowed as objective name")
 
             minimize = obj.get("minimize", True)
             weight = obj.get("weight", 1)
@@ -126,10 +129,15 @@ class AxOptimizer(OptimizerBase):
     def observe(self, results):
         for trial_index, result in zip(self.trial_index_list, results):
             obj_only_result = {k: v for k, v in result.items() if k in [obj["name"] for obj in self.objective_config]}
-            self.client.complete_trial(
-                trial_index=trial_index,
-                raw_data=obj_only_result
-            )
+            if not obj_only_result:
+                self.client.mark_trial_failed(trial_index=trial_index, failed_reason="No objective values returned.")
+            elif len(obj_only_result.keys()) != len(self.objective_config):
+                self.client.mark_trial_failed(trial_index=trial_index, failed_reason="Missing one or more objective values.")
+            else:
+                self.client.complete_trial(
+                    trial_index=trial_index,
+                    raw_data=obj_only_result
+                )
 
     def get_plots(self, plot_type):
         return None

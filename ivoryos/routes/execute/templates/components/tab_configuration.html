@@ -57,6 +57,7 @@
                     <table id="dataInputTable" class="table table-striped table-hover mb-0">
                         <thead class="table-dark">
                         <tr>
+                            <th style="width: 30px;"></th>
                             <th style="width: 40px;">#</th>
                             {% for column in config_list %}
                                 <th>{{ column }}</th>
@@ -107,6 +108,32 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Add SortableJS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+<style>
+    .drag-handle {
+        cursor: move;
+        color: #999;
+        padding: 0 8px;
+        user-select: none;
+    }
+    
+    .drag-handle:hover {
+        color: #333;
+    }
+    
+    .sortable-ghost {
+        opacity: 0.4;
+        background-color: #f8f9fa;
+    }
+    
+    .sortable-drag {
+        opacity: 0.8;
+    }
+</style>
+
 <script>
     var rowCount = 0;
     var configColumns = [
@@ -125,11 +152,17 @@
     var isModifiedFromFile = false;
     var saveTimeout = null;
     var lastSavedData = null;
+    var sortable = null;
 
     function addRow(data = null, skipSave = false) {
         rowCount++;
         var tableBody = document.getElementById("tableBody");
         var newRow = tableBody.insertRow(-1);
+
+        // Drag handle cell
+        var dragCell = newRow.insertCell(-1);
+        dragCell.innerHTML = '<span class="drag-handle"><i class="bi bi-grip-vertical"></i></span>';
+        dragCell.style.textAlign = 'center';
 
         // Row number cell
         var rowNumCell = newRow.insertCell(-1);
@@ -334,6 +367,27 @@
         updateStatusIndicators();
     }
 
+    function initializeSortable() {
+        var tableBody = document.getElementById('tableBody');
+        
+        if (sortable) {
+            sortable.destroy();
+        }
+        
+        sortable = new Sortable(tableBody, {
+            handle: '.drag-handle',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+            onEnd: function(evt) {
+                updateRowNumbers();
+                markAsModified();
+                debouncedSave();
+                console.log('Row moved from index', evt.oldIndex, 'to', evt.newIndex);
+            }
+        });
+    }
+
     function loadConfigData() {
         // Check for saved form data first
         var savedData = loadSavedData();
@@ -363,6 +417,9 @@
                 }
             }
         {% endif %}
+        
+        // Initialize sortable after loading data
+        initializeSortable();
     }
 
     // Handle page unload
