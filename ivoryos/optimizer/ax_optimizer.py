@@ -6,6 +6,9 @@ from pandas import DataFrame
 from ivoryos.optimizer.base_optimizer import OptimizerBase
 from ivoryos.utils.utils import install_and_import
 
+# hardcoded blacklist for Ax objective names from SymPy
+AX_OBJ_BLACKLIST = ["test", "factor", "range", "product", "sum", "type", "yield"]
+
 class AxOptimizer(OptimizerBase):
     def __init__(self, experiment_name, parameter_space, objective_config, optimizer_config=None,
                  parameter_constraints:list=None, datapath=None):
@@ -87,8 +90,8 @@ class AxOptimizer(OptimizerBase):
             obj_name = obj.get("name")
 
             # # fixing unknown Ax "unsupported operand type(s) for *: 'One' and 'LazyFunction'" in v1.1.2, test is not allowed as objective name
-            if obj_name == "test":
-                raise ValueError("test is not allowed as objective name")
+            if obj_name in AX_OBJ_BLACKLIST:
+                raise ValueError(f"{obj_name} is not allowed as objective name")
 
             minimize = obj.get("minimize", True)
             weight = obj.get("weight", 1)
