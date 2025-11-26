@@ -29,6 +29,7 @@
             <tr>
                 <th scope="col">Workflow name</th>
                 <th scope="col">Deck </th>
+                <th scope="col">Description</th>
                 <th scope="col">Editing</th>
                 <th scope="col">Time created</th>
                 <th scope="col">Last modified</th>
@@ -42,6 +43,7 @@
                 <tr>
                     <td><a href="{{ url_for('library.workflow_script', script_name=script.name) }}">{{ script.name }}</a></td>
                     <td>{{ script.deck }}</td>
+                    <td>{{ script.description }}</td>
                     <td>{{ script.status }}</td>
                     <td>{{ script.time_created }}</td>
                     <td>{{ script.last_modified }}</td>

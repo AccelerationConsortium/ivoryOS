@@ -65,7 +65,10 @@ def reset_old_schema(engine, db_dir):
             )
         except Exception:
             pass
-
+        try:
+            conn.execute(text("ALTER TABLE script ADD COLUMN description TEXT"))
+        except Exception:
+            pass
     # Recreate new schema
     db.create_all()  # creates workflow_runs, workflow_phases, workflow_steps
 

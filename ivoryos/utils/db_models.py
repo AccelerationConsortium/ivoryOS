@@ -53,11 +53,13 @@ class Script(db.Model):
     id_order = db.Column(JSONType, nullable=True)
     editing_type = db.Column(db.String(50), nullable=True)
     author = db.Column(db.String(50), nullable=False)
+    description = db.Column(db.String(255), nullable=True)
     # registered = db.Column(db.Boolean, nullable=True, default=False)
 
     def __init__(self, name=None, deck=None, status=None, script_dict: dict = None, id_order: dict = None,
                  time_created=None, last_modified=None, editing_type=None, author: str = None,
                  # registered:bool=False,
+                 description: str = None,
                  python_script: str = None
                  ):
         if script_dict is None:
@@ -76,7 +78,8 @@ class Script(db.Model):
             last_modified = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if editing_type is None:
             editing_type = "script"
-
+        if description is None:
+            description = ""
         self.name = name
         self.deck = deck
         self.status = status
@@ -87,6 +90,7 @@ class Script(db.Model):
         self.editing_type = editing_type
         self.author = author
         self.python_script = python_script
+        self.description = description
         # self.r = registered
 
     def as_dict(self):

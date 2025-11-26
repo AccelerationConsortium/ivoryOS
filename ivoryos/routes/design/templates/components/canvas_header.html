@@ -4,6 +4,10 @@
     <div>
         <span class="fw-bold">{{ script.name or "Untitled Script" }}</span>
         <span class="badge bg-secondary">{{ script.status }}</span>
+        <div class="text-muted small description-truncate"
+             title="{{ script.description }}">
+            {{ script.description }}
+        </div>
     </div>
 
     <!-- Center: Main Actions -->

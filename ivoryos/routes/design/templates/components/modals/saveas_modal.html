@@ -8,9 +8,19 @@
             </div>
             <form method="POST" name="save-as" action="{{ url_for('library.save_as') }}">
                 <div class="modal-body">
-                    <div class="input-group mb-3">
-                        <label class="input-group-text" for="run_name">Run Name</label>
+                    <div class="mb-3">
+                        <label class="form-label" for="run_name">Run Name</label>
                         <input class="form-control" type="text" name="run_name" id="run_name" placeholder="{{script['name']}}" required="required">
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control"
+                                  name="description"
+                                  id="description"
+                                  maxlength="255"
+                                  rows="2"
+                                  placeholder="Describe your workflow here.">{{ script["description"] }}</textarea>
+                        <div class="form-text text-end">Max 250 characters</div>
                     </div>
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" name="register_workflow" id="register_workflow">

@@ -138,12 +138,14 @@ def save_as():
     """
     if request.method == "POST":
         run_name = request.form.get("run_name")
+        description = request.form.get("description")
         ## TODO: check if run_name is valid
         register_workflow = request.form.get("register_workflow")
         script = get_script_file()
         script.save_as(run_name)
         script.registered = register_workflow == "on"
         script.author = current_user.get_id()
+        script.description = description
         post_script_file(script)
         status = publish()
         if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
