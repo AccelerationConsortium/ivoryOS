@@ -10,7 +10,9 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label" for="run_name">Run Name</label>
-                        <input class="form-control" type="text" name="run_name" id="run_name" placeholder="{{script['name']}}" required="required">
+                        <input class="form-control" type="text" name="run_name" id="run_name"
+                               value="{{script.name if script.name else ''}}"
+                               required="required">
                     </div>
                     <div class="mb-3">
                         <label for="description" class="form-label">Description</label>
@@ -19,7 +21,7 @@
                                   id="description"
                                   maxlength="255"
                                   rows="2"
-                                  placeholder="Describe your workflow here.">{{ script["description"] }}</textarea>
+                                  placeholder="Describe your workflow here.">{{ script.description }}</textarea>
                         <div class="form-text text-end">Max 250 characters</div>
                     </div>
                     <div class="form-check form-switch">
