@@ -209,3 +209,9 @@ hr.vertical {
     border-radius: 2px;
     list-style: none; /* Remove any default list styling */
 }
+.description-truncate {
+    max-width: 600px;      /* adjust for your layout */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
