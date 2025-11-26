@@ -131,12 +131,21 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     document.getElementById('abort-pending').addEventListener('click', function() {
-        var confirmation = confirm("Are you sure you want to stop after this iteration and move on to the cleanup steps?");
-        if (confirmation) {
-            socket.emit('abort_pending');
-            console.log('Abort action sent to server.');
-        }
+        var modal = new bootstrap.Modal(document.getElementById('abortPendingModal'));
+        modal.show();
     });
+
+    // When user presses confirm
+    document.getElementById('abortPendingConfirm').addEventListener('click', function() {
+        const doCleanup = document.getElementById('cleanup-checkbox').checked;
+
+        socket.emit('abort_pending', { cleanup: doCleanup });
+        console.log("Abort pending sent. Cleanup:", doCleanup);
+
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('abortPendingModal')).hide();
+    });
+
     document.getElementById('abort-current').addEventListener('click', function() {
         var confirmation = confirm("Are you sure you want to stop after this step?");
         if (confirmation) {

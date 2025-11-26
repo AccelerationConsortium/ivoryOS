@@ -45,6 +45,7 @@ class ScriptRunner:
         self.pause_event.set()
         self.stop_pending_event = threading.Event()
         self.stop_current_event = threading.Event()
+        self.stop_cleanup_event = threading.Event()
         self.is_running = False
         self.lock = global_config.runner_lock
         self.paused = False
@@ -68,12 +69,17 @@ class ScriptRunner:
         """Resets the stop event"""
         self.stop_pending_event.clear()
         self.stop_current_event.clear()
+        self.stop_cleanup_event.clear()
         self.pause_event.set()
 
     def abort_pending(self):
         """Abort the pending iteration after the current is finished"""
         self.stop_pending_event.set()
         # print("Stop pending tasks")
+
+    def abort_cleanup(self):
+        """Abort the pending iteration after the current is finished"""
+        self.stop_cleanup_event.set()
 
     def stop_execution(self):
         """Force stop everything, including ongoing tasks."""
@@ -261,11 +267,11 @@ class ScriptRunner:
         if self.logger:
             self.logger.info(f'Executing {section_name} steps')
 
-        # V1.4.7 stop pending will not affect cleanup and prep steps credit @Veronica
-        # if self.stop_pending_event.is_set():
-        #     if self.logger:
-        #         self.logger.info(f"Stopping execution during {section_name} section.")
-        #     return None
+        # V1.4.8 stop cleanup is optional, credit @Veronica
+        if self.stop_cleanup_event.is_set():
+            if self.logger:
+                self.logger.info(f"Stopping execution during {section_name} section.")
+            return None
 
         phase = WorkflowPhase(
             run_id=run_id,

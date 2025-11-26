@@ -8,7 +8,12 @@ runner = ScriptRunner()
 
 def abort_pending():
     runner.abort_pending()
-    socketio.emit('log', {'message': "aborted pending iterations"})
+    socketio.emit('log', {'message': "aborted pending iterations, move on to cleanup"})
+
+def abort_cleanup():
+    runner.abort_cleanup()
+    socketio.emit('log', {'message': "aborted cleanup"})
+
 
 def abort_current():
     runner.stop_execution()
@@ -27,8 +32,12 @@ def retry():
 
 # Socket.IO Event Handlers
 @socketio.on('abort_pending')
-def handle_abort_pending():
+def handle_abort_pending(data):
+    cleanup = data.get("cleanup", True)
     abort_pending()
+    if not cleanup:
+        abort_cleanup()
+
 
 @socketio.on('abort_current')
 def handle_abort_current():
