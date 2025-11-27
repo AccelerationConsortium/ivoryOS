@@ -203,11 +203,11 @@ class Script(db.Model):
                         # print(i+1)
                         action['id'] = i + 1
                         break
-            self.id_order[script_type].sort()
+            self.id_order[script_type].sort(key=int)
             if not int(self.id_order[script_type][-1]) == len(self.script_dict[script_type]):
                 new_order = list(range(1, len(self.script_dict[script_type]) + 1))
                 self.id_order[script_type] = [str(i) for i in new_order]
-            self.script_dict[script_type].sort(key=lambda x: x['id'])
+            self.script_dict[script_type].sort(key=lambda x: int(x['id']))
 
     def sort_actions(self, script_type=None):
         if script_type:

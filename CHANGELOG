@@ -1,3 +1,6 @@
+1.4.9 (Nov 27th, 2025)
+- step order sorting bug (@everyone)
+
 1.4.8 (Nov 25th, 2025)
 - Feature: stop pending is not prompting for continue cleanup (@Veronica)
 - Description in script, add a description when saving (@Veronica)
