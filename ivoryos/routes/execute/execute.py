@@ -202,6 +202,16 @@ def run_bo():
         repeat = payload.pop("repeat", None)
         optimizer_type = payload.pop("optimizer_type", None)
         existing_data = payload.pop("existing_data", None)
+
+        # Handle file upload if present
+        if 'uploaded_data' in request.files:
+            file = request.files['uploaded_data']
+            if file and file.filename and file.filename.endswith('.csv'):
+                filename = secure_filename(file.filename)
+                filepath = os.path.join(current_app.config['DATA_FOLDER'], filename)
+                file.save(filepath)
+                existing_data = filename
+                
         batch_mode = payload.pop("batch_mode", None)
         batch_size = payload.pop("batch_size", 1)
 
