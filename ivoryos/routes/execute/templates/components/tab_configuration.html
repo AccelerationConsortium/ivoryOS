@@ -119,16 +119,16 @@
         padding: 0 8px;
         user-select: none;
     }
-    
+
     .drag-handle:hover {
         color: #333;
     }
-    
+
     .sortable-ghost {
         opacity: 0.4;
         background-color: #f8f9fa;
     }
-    
+
     .sortable-drag {
         opacity: 0.8;
     }
@@ -369,11 +369,11 @@
 
     function initializeSortable() {
         var tableBody = document.getElementById('tableBody');
-        
+
         if (sortable) {
             sortable.destroy();
         }
-        
+
         sortable = new Sortable(tableBody, {
             handle: '.drag-handle',
             animation: 150,
@@ -412,12 +412,16 @@
                 console.log('Tab2: Loaded saved form data');
             } else {
                 // Add default empty rows
-                for (let i = 0; i < 5; i++) {
-                    addRow(null, true);
+                var tableBody = document.getElementById("tableBody");
+                var currentRows = tableBody.rows.length;
+                if (currentRows < 5) {
+                    for (let i = 0; i < 5; i++) {
+                        addRow(null, true);
+                    }
                 }
             }
         {% endif %}
-        
+
         // Initialize sortable after loading data
         initializeSortable();
     }
