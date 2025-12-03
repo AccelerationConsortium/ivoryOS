@@ -1,3 +1,8 @@
+1.4.10 (Dec 3rd, 2025)
+- bug fix, row addition when switch config tabs
+- add upload historical data
+- fix Ax num_trials=0 error
+
 1.4.9 (Nov 27th, 2025)
 - step order sorting bug (@everyone)
 

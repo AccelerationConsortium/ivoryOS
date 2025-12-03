@@ -108,13 +108,15 @@ class AxOptimizer(OptimizerBase):
         from ax.generation_strategy.generation_node import GenerationStep
         from ax.generation_strategy.generation_strategy import GenerationStrategy
         generators = self._create_generator_mapping()
-        step_1 = optimizer_config.get("step_1", {})
-        step_2 = optimizer_config.get("step_2", {})
-        step_1_generator = step_1.get("model", "Sobol")
-        step_2_generator = step_2.get("model", "BOTorch")
-        generator_1 = GenerationStep(generator=generators.get(step_1_generator), num_trials=step_1.get("num_samples", 5))
-        generator_2 = GenerationStep(generator=generators.get(step_2_generator), num_trials=step_2.get("num_samples", -1))
-        return GenerationStrategy(steps=[generator_1, generator_2])
+        steps = []
+        for i in range(1, len(optimizer_config) + 1):
+            step = optimizer_config.get(f"step_{i}", {})
+            generator = step.get("model")
+            num_trials = step.get("num_samples", -1)
+            if not num_trials == 0:
+                steps.append(GenerationStep(generator=generators.get(generator), num_trials=num_trials))
+
+        return GenerationStrategy(steps=steps)
 
     def suggest(self, n=1):
         trials = self.client.get_next_trials(n)
