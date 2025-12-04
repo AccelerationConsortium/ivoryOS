@@ -1,3 +1,6 @@
+1.4.11 (Dec 3rd, 2025)
+- add get optimizer schema route
+
 1.4.10 (Dec 3rd, 2025)
 - bug fix, row addition when switch config tabs
 - add upload historical data

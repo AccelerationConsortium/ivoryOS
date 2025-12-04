@@ -165,6 +165,22 @@ def experiment_run():
                                no_deck_warning=no_deck_warning, dismiss=dismiss, design_buttons=design_buttons,
                                history=deck_list, pause_status=runner.pause_status(), optimizer_schema=optimizers_schema)
 
+@execute.route("/executions/optimizer_schema", methods=["POST"])
+def optimizer_schema():
+    if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+        payload_json = request.get_json()
+        optimizer_type = payload_json.pop("optimizer_type", None)
+        if optimizer_type:
+            _schema = global_config.optimizers.get(optimizer_type, None)
+            if _schema is None:
+                return jsonify({"error": f"Optimizer {optimizer_type} is not supported or not found."})
+            return jsonify(_schema.get_schema())
+        else:
+            optimizers_schema = {k: v.get_schema() for k, v in global_config.optimizers.items()}
+            return jsonify(optimizers_schema)
+    return None
+
+
 @execute.route("/executions/campaign", methods=["POST"])
 @login_required
 def run_bo():
