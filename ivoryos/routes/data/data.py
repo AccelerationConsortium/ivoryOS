@@ -102,6 +102,7 @@ def workflow_logs(workflow_id:int):
         return jsonify({
             "workflow_info": workflow.as_dict(),
             "phases": grouped_json,
+            "csv_file_name": f"{workflow.data_path}"
         })
     else:
         return render_template("workflow_view.html", workflow=workflow, grouped=grouped)
