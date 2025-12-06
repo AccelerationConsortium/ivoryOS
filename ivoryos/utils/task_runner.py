@@ -4,6 +4,7 @@ import threading
 import time
 from datetime import datetime
 
+from ivoryos.utils import utils
 from ivoryos.utils.decorators import BUILDING_BLOCKS
 from ivoryos.utils.db_models import db, SingleStep
 from ivoryos.utils.global_config import GlobalConfig
@@ -87,7 +88,7 @@ class TaskRunner:
                     output = await function_executable(**kwargs)
                 else:
                     output = function_executable(**kwargs)
-
+                output = utils.safe_dump(output)
                 step.output = output
                 step.end_time = datetime.now()
                 success = True
