@@ -564,6 +564,7 @@ class ScriptRunner:
     async def _execute_action(self, step: Dict, context: Dict[str, Any], phase_id=1, step_index=1, section_name=None):
         """Execute a single action with parameter substitution."""
         # Substitute parameters in args
+        result = None
         if self.stop_current_event.is_set():
             return context
         substituted_args = self._substitute_params(step["args"], context)
@@ -608,9 +609,9 @@ class ScriptRunner:
                         result = method(**substituted_args)
 
                     # Store return value if specified
-                    return_var = step.get("return", "")
-                    if return_var:
-                        context[return_var] = result
+                    # return_var = step.get("return", "")
+                    # if return_var:
+                    #     context[return_var] = result
 
             elif instrument_type == "blocks" and instrument in BUILDING_BLOCKS.keys():
                 # Inject all block categories
@@ -625,10 +626,25 @@ class ScriptRunner:
                     else:
                         result = method(**substituted_args)
 
+                    # # Store return value if specified
+                    # return_var = step.get("return", "")
+                    # if return_var:
+                    #     context[return_var] = result
+            else:
+                module = global_config.defined_variables.get(instrument, None)
+                if module is None:
+                    raise ValueError(f"Unknown instrument '{instrument}'")
+                method = getattr(module, action)
+                if step.get("coroutine", False):
+                    result = await method(**substituted_args)
+                else:
+                    result = method(**substituted_args)
                     # Store return value if specified
-                    return_var = step.get("return", "")
-                    if return_var:
-                        context[return_var] = result
+            return_var = step.get("return", "")
+            if return_var and result is not None:
+                result = utils.safe_dump(result)
+                context[return_var] = result
+
         except HumanInterventionRequired as e:
             self.logger.warning(f"Human intervention required: {e}")
             self.socketio.emit('human_intervention', {'message': str(e)})
