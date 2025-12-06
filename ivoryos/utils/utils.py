@@ -9,6 +9,7 @@ import socket
 import subprocess
 import sys
 from collections import Counter
+from enum import Enum
 
 import flask
 from flask import session
@@ -458,6 +459,8 @@ def safe_dump(obj):
         json.dumps(obj)
         return obj
     except (TypeError, OverflowError):
+        if isinstance(obj, Enum):
+            return obj.value
         return repr(obj)  # store readable representation
 
 
