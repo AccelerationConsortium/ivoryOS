@@ -1,3 +1,8 @@
+1.4.12 (Dec 5th, 2025)
+- temp fix for property in form loading (@Ryan, @Yusuke)
+- json safe data check (@Yusuke)
+- fix temp connection method call in script
+
 1.4.11 (Dec 3rd, 2025)
 - add get optimizer schema route
 
