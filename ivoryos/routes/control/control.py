@@ -52,7 +52,10 @@ async def deck_controllers(instrument: str = None):
         inst_object = find_instrument_by_name(instrument)
         if instrument.startswith("blocks"):
             forms = create_form_from_pseudo(pseudo=inst_object, autofill=False, design=False)
+        elif instrument.startswith("deck"):
+            forms = create_form_from_pseudo(pseudo=global_config.deck_snapshot[instrument], autofill=False, design=False)
         else:
+            #TODO
             forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
         order = get_session_by_instrument('card_order', instrument)
         hidden_functions = get_session_by_instrument('hidden_functions', instrument)
