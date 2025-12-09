@@ -338,12 +338,14 @@ def create_add_form(attr, attr_name, autofill: bool, script=None, design: bool =
     """
     signature = attr.get('signature', {})
     docstring = attr.get('docstring', "")
+    return_type = signature.return_annotation
     # print(signature, docstring)
     dynamic_form = create_form_for_method(signature, autofill, script, design)
     if design:
-        return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
+        if return_type is not None:
+            return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
+            setattr(dynamic_form, 'return', return_value)
         batch_action = BooleanField(label='Batch Action', render_kw={"placeholder": "Optional"})
-        setattr(dynamic_form, 'return', return_value)
         setattr(dynamic_form, 'batch_action', batch_action)
     hidden_method_name = HiddenField(name=f'hidden_name', description=docstring, render_kw={"value": f'{attr_name}'})
     setattr(dynamic_form, 'hidden_name', hidden_method_name)
