@@ -14,7 +14,7 @@ import time
 from abc import ABC
 import random
 from enum import Enum
-from typing import List, Union
+from typing import List, Union, Optional
 
 # from ivoryos.config import get_config
 import sys
@@ -60,11 +60,15 @@ class AbstractSDL(ABC):
 
     # @prefect.task
     def dose_solvent(self,
-                     solvent_name: str = "Methanol",
+                     solvent_name: Optional[Solvent] = None,
                      amount_in_ml: float = 5,
                      rate_ml_per_minute: float = 1
                      ):
         print("dosing liquid")
+        if solvent_name is None:
+            solvent_name = Solvent.Methanol
+        else:
+            solvent_name = Solvent(solvent_name)
         self.pump.dose_liquid(amount_in_ml=amount_in_ml, rate_ml_per_minute=rate_ml_per_minute)
         self.balance.weigh_sample()
         self.logger.info(f"dosing {solvent_name} solvent")

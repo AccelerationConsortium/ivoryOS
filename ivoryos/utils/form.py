@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, EnumMeta
 from typing import Union, Any
 try:
     from typing import get_origin, get_args
@@ -209,14 +209,34 @@ class FlexibleEnumField(StringField):
     def __init__(self, label=None, validators=None, choices=None, script=None, **kwargs):
         super().__init__(label, validators, **kwargs)
         self.script = script
-        self.enum_class = choices
+        self.enum_class = self._resolve_enum(choices)
         self.choices = [e.name for e in self.enum_class]
         # self.value_list = [e.name for e in self.enum_class]
 
+    def _resolve_enum(self, annotation):
+        """Extract Enum from Enum or Optional[Enum]"""
+        # Case: direct Enum
+        if isinstance(annotation, EnumMeta):
+            return annotation
+
+        # Case: Optional / Union
+        origin = get_origin(annotation)
+        if origin is Union:
+            for arg in get_args(annotation):
+                if isinstance(arg, EnumMeta):
+                    return arg
+
+        raise TypeError(f"FlexibleEnumField expected Enum or Optional[Enum], got {annotation!r}")
 
     def process_formdata(self, valuelist):
+        # todo right now enum types will be processed to methods as a str, so the method must convert to the enum type
         if valuelist:
             key = valuelist[0]
+            # Treat empty string or "None" as null value
+            if key in ("", None, "None"):
+                self.data = None
+                return
+
             if key in self.choices:
                 # Convert the string key to Enum instance
                 self.data = self.enum_class[key].value
@@ -292,10 +312,10 @@ def create_form_for_method(method, autofill, script=None, design=True):
             "validators": [InputRequired()] if param.default is param.empty else [Optional()],
             **({"script": script} if (autofill or design) else {})
         }
-        if isinstance(param.annotation, type) and issubclass(param.annotation, Enum):
-            # enum_class = [(e.name, e.value) for e in param.annotation]
+        if _is_enum_type(param.annotation):
+            enum_class = _unwrap_enum_type(param.annotation)
             field_class = FlexibleEnumField
-            placeholder_text = f"Choose or type a value for {param.annotation.__name__} (start with # for custom)"
+            placeholder_text = f"Choose or type a value for {enum_class.__name__} (start with # for custom)"
 
             extra_kwargs = {"choices": param.annotation}
 
@@ -326,6 +346,41 @@ def create_form_for_method(method, autofill, script=None, design=True):
     # setattr(DynamicForm, f'add', fname)
     return DynamicForm
 
+
+def _is_enum_type(tp):
+    # Optional[Enum] comes through as Union[Enum, NoneType]
+    origin = get_origin(tp)
+
+    # Non-Optional direct enum
+    if isinstance(tp, type) and issubclass(tp, Enum):
+        return True
+
+    # Optional/Union case → unwrap inner types
+    if origin is Union:
+        return any(
+            isinstance(arg, type) and issubclass(arg, Enum)
+            for arg in get_args(tp)
+            if arg is not type(None)
+        )
+
+    return False
+
+def _unwrap_enum_type(tp):
+    from typing import get_origin, get_args, Union
+    from enum import Enum
+
+    # Bare Enum
+    if isinstance(tp, type) and issubclass(tp, Enum):
+        return tp
+
+    # Optional/Union conversion
+    origin = get_origin(tp)
+    if origin is Union:
+        for arg in get_args(tp):
+            if arg is not type(None) and isinstance(arg, type) and issubclass(arg, Enum):
+                return arg
+
+    return None
 
 def create_add_form(attr, attr_name, autofill: bool, script=None, design: bool = True):
     """
