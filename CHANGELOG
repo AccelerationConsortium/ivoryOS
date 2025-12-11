@@ -1,3 +1,7 @@
+1.4.13 (Dec 11th, 2025)
+- remove action return value save as if none return type hinted (@Veronica)
+- support optional[enum] type hinting  (@Veronica)
+
 1.4.12 (Dec 5th, 2025)
 - temp fix for property in form loading (@Ryan, @Yusuke)
 - json safe data check (@Yusuke)
