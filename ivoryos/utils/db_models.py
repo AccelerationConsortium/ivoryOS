@@ -244,6 +244,18 @@ class Script(db.Model):
         self._insert_action(insert_position, current_len)
         self.update_time_stamp()
 
+    def add_math_variable(self, statement, math_variable, insert_position=None):
+        math_variable = self.validate_function_name(math_variable)
+
+        current_len = len(self.currently_editing_script)
+        uid = uuid.uuid4().fields[-1]
+        action = {"id": current_len + 1, "instrument": 'math_variable', "action": math_variable,
+                        "args": {"statement": 'None' if statement == '' else statement}, "return": '', "uuid": uid,
+                        "arg_types": {"statement": 'float'}}
+        self.currently_editing_script.append(action)
+        self._insert_action(insert_position, current_len)
+        self.update_time_stamp()
+
     def _insert_action(self, insert_position, current_len, action_len:int=1):
 
         if insert_position is None:
@@ -256,8 +268,10 @@ class Script(db.Model):
     def get_added_variables(self):
         added_variables: Dict[str, str] = {action["action"]: action["arg_types"]["statement"] for action in
                                            self.currently_editing_script if action["instrument"] == "variable"}
-
-        return added_variables
+        added_math_variables: Dict[str, str] = {action["action"]: action["arg_types"]["statement"] for action in
+                                                self.currently_editing_script if action["instrument"] == "math_variable"}
+        all_added_variables = {**added_variables, **added_math_variables}
+        return all_added_variables
 
     def get_output_variables(self):
         output_variables: Dict[str, str] = {action["return"]: "function_output" for action in
@@ -400,18 +414,27 @@ class Script(db.Model):
                             config_type_dict[key] = action['arg_types']
 
                 else:
-                    for arg in args:
-                        if type(args[arg]) is str and args[arg].startswith("#"):
-                            key = args[arg][1:]
+                    if action['instrument'] == "math_variable":
+                        # assume any kind of math variable will be evaluated to float even if it might be an int
+                        pattern = r"#([A-Za-z_][A-Za-z0-9_]*)"
+                        vars_found = re.findall(pattern, args['statement'])
+                        for key in vars_found:
                             if key not in (*variables, *configure):
                                 configure.append(key)
-                                if arg in action['arg_types']:
-                                    if action['arg_types'][arg] == '':
-                                        config_type_dict[key] = "any"
+                                config_type_dict[key] = action['arg_types']['statement']
+                    else:
+                        for arg in args:
+                            if type(args[arg]) is str and args[arg].startswith("#"):
+                                key = args[arg][1:]
+                                if key not in (*variables, *configure):
+                                    configure.append(key)
+                                    if arg in action['arg_types']:
+                                        if action['arg_types'][arg] == '':
+                                            config_type_dict[key] = "any"
+                                        else:
+                                            config_type_dict[key] = action['arg_types'][arg]
                                     else:
-                                        config_type_dict[key] = action['arg_types'][arg]
-                                else:
-                                    config_type_dict[key] = "any"
+                                        config_type_dict[key] = "any"
         # todo
         return configure, config_type_dict
 
@@ -526,6 +549,10 @@ class Script(db.Model):
                     stmt = action["args"].get("statement", "")
                     if isinstance(stmt, str) and stmt.startswith("#"):
                         stmt = stmt[1:]
+                    lines.append("    " * indent + f"{act} = {stmt}")
+
+                elif instrument == "math_variable":
+                    stmt = action["args"].get("statement", "")
                     lines.append("    " * indent + f"{act} = {stmt}")
 
 
@@ -690,6 +717,12 @@ class Script(db.Model):
             if batch:
                 return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit+1)}pause('''{statement}''')", indent_unit
             return f"{self.indent(indent_unit)}pause('''{statement}''')", indent_unit
+        elif instrument == "math_variable":
+            math_expression = self._process_math(statement)
+            if batch:
+                return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit + 1)}param['{action_name}'] = {math_expression}", indent_unit
+            else:
+                return f"{self.indent(indent_unit)}{action_name} = {math_expression}", indent_unit
         # todo
         # elif instrument == 'registered_workflows':
         #     return inspect.getsource(my_function)
@@ -761,6 +794,14 @@ class Script(db.Model):
         elif action == 'endrepeat':
             indent_unit -= 1
         return exec_string, indent_unit
+
+    def _process_math(self, expr: str) -> str:
+        """
+        Return the math expression as a string but remove '#' prefix from variable names
+        """
+        # remove leading "#" for variable tokens
+        cleaned = re.sub(r"#([A-Za-z_]\w*)", r"\1", expr)
+        return cleaned
 
     def _process_instrument_action(self, indent_unit, instrument, action, args, save_data, is_async=False, dynamic_arg=False,
                                    batch=False, batch_action=False):
@@ -842,7 +883,7 @@ class Script(db.Model):
         """
         Check if the argument is of type 'variable'.
         """
-        return arg in self.script_dict and self.script_dict[arg].get("arg_types") == "variable"
+        return arg in self.script_dict and self.script_dict[arg].get("arg_types") in ("variable", 'math_variable')
 
     def _write_to_file(self, script_path, run_name, exec_string, call_human=False):
         """

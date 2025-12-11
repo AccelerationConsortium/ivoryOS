@@ -1,4 +1,3 @@
-import ast
 import asyncio
 import os
 import threading
@@ -489,6 +488,9 @@ class ScriptRunner:
                 await self._execute_variable_batched(step, contexts, phase_id=phase_id, step_index=action_id,
                                                      section_name=section_name)
                 # print("Variable executed", "current context", contexts)
+            elif instrument == "math_variable":
+                await self._execute_variable_batched(step, contexts, phase_id=phase_id, step_index=action_id,
+                                                     section_name=section_name)
             else:
                 # Regular action - check if batch
                 if step.get("batch_action", False):

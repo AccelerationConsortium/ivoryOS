@@ -395,6 +395,12 @@ def methods_handler(instrument: str = ''):
                     except ValueError as e:
                         success = False
                         msg = e.__str__()
+                elif 'math_variable' in kwargs:
+                    try:
+                        script.add_math_variable(insert_position=insert_position, **kwargs)
+                    except ValueError as e:
+                        success = False
+                        msg = e.__str__()
                 else:
                     script.add_logic_action(logic_type=logic_type, insert_position=insert_position, **kwargs)
             else:
