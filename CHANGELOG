@@ -1,3 +1,8 @@
+1.4.14 (Dec 12th, 2025)
+- list input type conversion fix (@Ryan @Leo)
+- add NIMO 2.0.5 append historical data
+- adding additional param for NIMO
+
 1.4.13 (Dec 11th, 2025)
 - remove action return value save as if none return type hinted (@Veronica)
 - support optional[enum] type hinting  (@Veronica)
