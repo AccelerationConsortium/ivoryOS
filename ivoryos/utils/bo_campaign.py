@@ -1,132 +1,54 @@
-from typing import Dict, Any
+import ast
+from typing import Dict
 import re
-from ivoryos.utils.utils import install_and_import
 
 
-def ax_init_form(data, arg_types, previous_data_len=0):
+def normalize_value(v: str):
     """
-    create Ax campaign from the web form input
-    :param data:
+    TODO centralize type conversion
+    Convert HTML form string values to Python types.
     """
-    install_and_import("ax", "ax-platform")
-    parameter, objectives = ax_wrapper(data, arg_types)
-    from ax.service.ax_client import AxClient
-    if previous_data_len > 0:
-        gs = exisitng_data_gs(previous_data_len)
-        ax_client = AxClient(generation_strategy=gs)
-    else:
-        ax_client = AxClient()
-    ax_client.create_experiment(parameter, objectives=objectives)
-    return ax_client
 
+    if v in ("", None, "Default"):
+        return None
 
-def ax_wrapper(data: dict, arg_types: list):
-    """
-    Ax platform wrapper function for creating optimization campaign parameters and objective from the web form input
-    :param data: e.g.,
-    {
-        "param_1_type": "range", "param_1_value": [1,2],
-        "param_2_type": "range", "param_2_value": [1,2],
-        "obj_1_min": True,
-        "obj_2_min": True
-    }
-    :return: the optimization campaign parameters
-    parameter=[
-        {"name": "param_1", "type": "range", "bounds": [1,2]},
-        {"name": "param_1", "type": "range", "bounds": [1,2]}
-    ]
-    objectives=[
-        {"name": "obj_1", "min": True, "threshold": None},
-        {"name": "obj_2", "min": True, "threshold": None},
-    ]
-    """
-    from ax.service.utils.instantiation import ObjectiveProperties
-    parameter = []
-    objectives = {}
-    # Iterate through the webui_data dictionary
-    for key, value in data.items():
-        # Check if the key corresponds to a parameter type
-        if "_type" in key:
-            param_name = key.split("_type")[0]
-            param_type = value
-            param_value = data[f"{param_name}_value"].split(",")
-            try:
-                values = [float(v) for v in param_value]
-            except Exception:
-                values = param_value
-            if param_type == "range":
-                param = {"name": param_name, "type": param_type, "bounds": values}
-            if param_type == "choice":
-                param = {"name": param_name, "type": param_type, "values": values}
-            if param_type == "fixed":
-                param = {"name": param_name, "type": param_type, "value": values[0]}
-            _type = arg_types[param_name] if arg_types[param_name] in ["str", "bool", "int"] else "float"
-            param.update({"value_type": _type})
-            parameter.append(param)
-        elif key.endswith("_min"):
-            if not value == 'none':
-                obj_name = key.split("_min")[0]
-                is_min = True if value == "minimize" else False
+    # -------- Boolean --------
+    if v == "True":
+        return True
+    if v == "False":
+        return False
 
-                threshold = None if f"{obj_name}_threshold" not in data else data[f"{obj_name}_threshold"]
-                properties = ObjectiveProperties(minimize=is_min)
-                objectives[obj_name] = properties
+    # -------- List detection --------
+    # Case 1: looks like a Python literal list, e.g., "[1,2,3]"
+    if isinstance(v, str) and v.strip().startswith("[") and v.strip().endswith("]"):
+        try:
+            parsed = ast.literal_eval(v)
+            if isinstance(parsed, list):
+                return parsed
+        except Exception:
+            pass
 
-    return parameter, objectives
+    # Case 2: comma-separated values "1,2,3" or "a,b,c"
+    if "," in v:
+        parts = [p.strip() for p in v.split(",") if p.strip()]
+        normalized_list = [normalize_value(p) for p in parts]
+        return normalized_list
 
+    # -------- Int --------
+    try:
+        return int(v)
+    except ValueError:
+        pass
 
-def ax_init_opc(bo_args):
-    install_and_import("ax", "ax-platform")
-    from ax.service.ax_client import AxClient
-    from ax.service.utils.instantiation import ObjectiveProperties
+    # -------- Float --------
+    try:
+        return float(v)
+    except ValueError:
+        pass
 
-    ax_client = AxClient()
-    objectives = bo_args.get("objectives")
-    objectives_formatted = {}
-    for obj in objectives:
-        obj_name = obj.get("name")
-        minimize = obj.get("minimize")
-        objectives_formatted[obj_name] = ObjectiveProperties(minimize=minimize)
-    bo_args["objectives"] = objectives_formatted
-    ax_client.create_experiment(**bo_args)
+    # -------- Fallback: string --------
+    return v
 
-    return ax_client
-
-
-def exisitng_data_gs(data_len):
-    """
-    temporal generation strategy for existing data
-    """
-    from ax.generation_strategy.generation_node import GenerationStep
-    from ax.generation_strategy.generation_strategy import GenerationStrategy
-    from ax.modelbridge.registry import Generators
-    if data_len > 4:
-        gs = GenerationStrategy(
-            steps=[
-                GenerationStep(
-                    model=Generators.BOTORCH_MODULAR,
-                    num_trials=-1,
-                    max_parallelism=3,
-                ),
-            ]
-        )
-    else:
-        gs = GenerationStrategy(
-            steps=[
-                GenerationStep(
-                    model=Generators.SOBOL,
-                    num_trials=5-data_len,  # how many sobol trials to perform (rule of thumb: 2 * number of params)
-                    max_parallelism=5,
-                    model_kwargs={"seed": 999},
-                ),
-                GenerationStep(
-                    model=Generators.BOTORCH_MODULAR,
-                    num_trials=-1,
-                    max_parallelism=3,
-                ),
-            ]
-        )
-    return gs
 
 
 def parse_optimization_form(form_data: Dict[str, str]):
@@ -141,7 +63,6 @@ def parse_optimization_form(form_data: Dict[str, str]):
 
     objectives = []
     parameters = []
-    config = {}
 
     # Track processed field names to avoid duplicates
     processed_objectives = set()
@@ -261,4 +182,12 @@ def parse_optimization_form(form_data: Dict[str, str]):
             else:
                 steps[step_key][step_attr] = value
 
-    return parameters, objectives, steps
+    # Parse additional parameters
+    additional_params = {}
+    for key, value in form_data.items():
+        if key.startswith("adv_") and value not in ("Default", "", None):
+            cleaned_key = key.replace("adv_", "")
+            normalized = normalize_value(value)
+            if normalized is not None:  # Still skip "Default", empty, None
+                additional_params[cleaned_key] = normalized
+    return parameters, objectives, steps, additional_params

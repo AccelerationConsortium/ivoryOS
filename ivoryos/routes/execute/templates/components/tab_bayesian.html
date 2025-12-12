@@ -82,6 +82,12 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="strategy-tab" data-bs-toggle="tab" data-bs-target="#strategy"
+                        type="button" role="tab" aria-controls="advanced" aria-selected="false">
+                        Strategy Settings
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
                     <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced"
                         type="button" role="tab" aria-controls="advanced" aria-selected="false">
                         Advanced Settings
@@ -189,7 +195,7 @@
                 </div>
 
                 <!-- Advanced Settings Tab -->
-                <div class="tab-pane fade" id="advanced" role="tabpanel" aria-labelledby="advanced-tab">
+                <div class="tab-pane fade" id="strategy" role="tabpanel" aria-labelledby="strategy">
                     <div class="py-3">
                         <div id="optimizer_config_container" style="display: none;">
 
@@ -242,8 +248,19 @@
                                 </div>
                             </div>
                         </div>
+
+
                         <div id="optimizer_config_placeholder">
                             <small class="text-muted">Select an optimizer to configure advanced settings</small>
+                        </div>
+                    </div>
+                </div>
+                <!-- Advanced Settings Tab -->
+                <div class="tab-pane fade" id="advanced" role="tabpanel" aria-labelledby="advanced">
+                    <div class="py-3">
+                        <div id="advanced_settings_container" class="border rounded p-3 bg-light" >
+                            <!-- JS will inject fields here -->
+                            <small class="text-muted">Select an optimizer to configure advanced parameters.</small>
                         </div>
                     </div>
                 </div>
@@ -358,6 +375,52 @@
             }
         }
 
+        function renderAdvancedSettings(fields) {
+            const container = document.getElementById("advanced_settings_container");
+
+            container.innerHTML = ""; // clear previous content
+            console.log("Rendering advanced settings:", fields);
+            Object.entries(fields).forEach(([name, spec]) => {
+                let html = "";
+
+                if (spec.type === "choice") {
+                    html = `
+                        <label class="form-label mt-2">${name}</label>
+                        <select name="adv_${name}" class="form-select form-select-sm">
+                            ${spec.options.map(o => `<option value="${o}">${o}</option>`).join("")}
+                        </select>
+                    `;
+                }
+                else if (spec.type === "int" || spec.type === "float") {
+                    html = `
+                        <label class="form-label mt-2">${name}</label>
+                        <input
+                            type="number"
+                            step="${spec.type === 'float' ? 'any' : '1'}"
+                            name="adv_${name}"
+                            class="form-control form-control-sm"
+                            placeholder="Optional"
+                        >
+                    `;
+                }
+                else if (spec.type.startsWith("list")) {
+                    html = `
+                        <label class="form-label mt-2">${name} (comma-separated)</label>
+                        <input
+                            type="text"
+                            name="adv_${name}"
+                            class="form-control form-control-sm"
+                            placeholder="e.g. 1, 2, 3"
+                        >
+                    `;
+                }
+
+                container.innerHTML += `<div>${html}</div>`;
+            });
+        }
+        // document.addEventListener("DOMContentLoaded", renderAdvancedSettings);
+
+
         document.addEventListener("DOMContentLoaded", () => {
             console.log("Tab3: Init");
 
@@ -462,7 +525,9 @@
                 if (schema.optimizer_config) {
                     updateOptimizerConfig(schema.optimizer_config);
                 }
-
+                if (schema.additional_field){
+                    renderAdvancedSettings(schema.additional_field);
+                }
                 const supportsContinuous = schema.supports_continuous !== false;
                 const available = schema.parameter_types || ["range", "choice", "fixed"];
 

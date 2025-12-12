@@ -8,14 +8,14 @@ from ivoryos.optimizer.base_optimizer import OptimizerBase
 
 class BaybeOptimizer(OptimizerBase):
     def __init__(self, experiment_name, parameter_space, objective_config, optimizer_config,
-                 parameter_constraints:list=None, datapath=None):
+                 parameter_constraints:list=None, datapath=None, additional_params:dict=None):
         try:
             from baybe import Campaign
         except ImportError:
             install_and_import("baybe")
             print("Please install Baybe with pip install baybe to before register BaybeOptimizer.")
 
-        super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, parameter_constraints, )
+        super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, parameter_constraints, additional_params)
         self._trial_id = 0
         self._trials = {}
 
@@ -170,6 +170,7 @@ class BaybeOptimizer(OptimizerBase):
                 "step_1": {"model": ["Random", "FPS"], "num_samples": 10},
                 "step_2": {"model": ["BOTorch", "Naive Hybrid Space"]}
             },
+            "additional_field": {}
         }
 
 if __name__ == "__main__":

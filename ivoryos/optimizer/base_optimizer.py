@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 
 class OptimizerBase(ABC):
     def __init__(self, experiment_name:str, parameter_space: list, objective_config: dict, optimizer_config: dict,
-                 parameter_constraints:list=None, datapath:str=None):
+                 parameter_constraints:list=None, datapath:str=None, additional_params:dict=None):
         """
         :param experiment_name: arbitrary name
         :param parameter_space: list of parameter names
@@ -30,6 +30,8 @@ class OptimizerBase(ABC):
         self.parameter_space = parameter_space
         self.objective_config = objective_config
         self.optimizer_config = optimizer_config
+        self.parameter_constraints = parameter_constraints
+        self.additional_params = additional_params
         self.datapath = datapath
 
     @abstractmethod
@@ -78,6 +80,7 @@ class OptimizerBase(ABC):
                 "step_1": {"model": [], "num_samples": 10},
                 "step_2": {"model": []}
             },
+            "additional_field": {}
         }
 
 

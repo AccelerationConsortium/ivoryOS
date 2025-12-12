@@ -93,7 +93,8 @@ class ScriptRunner:
 
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None,
                    output_path="", compiled=False, current_app=None, history=None, optimizer=None, batch_mode=None,
-                   batch_size=1, objectives=None, parameters=None, constraints=None, steps=None, optimizer_cls=None):
+                   batch_size=1, objectives=None, parameters=None, constraints=None, steps=None, optimizer_cls=None,
+                   additional_params=None):
 
 
         self.socketio = socketio
@@ -118,7 +119,8 @@ class ScriptRunner:
         thread = threading.Thread(
             target=self._run_with_stop_check,
             args=(script, repeat_count, run_name, config, output_path, current_app, compiled,
-                  history, optimizer, batch_mode, batch_size, objectives, parameters, constraints, steps, optimizer_cls),
+                  history, optimizer, batch_mode, batch_size, objectives, parameters, constraints, steps, optimizer_cls,
+                  additional_params),
         )
         thread.start()
         return thread
@@ -171,7 +173,8 @@ class ScriptRunner:
 
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, config,
                              output_path, current_app, compiled, history=None, optimizer=None, batch_mode=None,
-                             batch_size=None, objectives=None, parameters=None, constraints=None, steps=None, optimizer_cls=None):
+                             batch_size=None, objectives=None, parameters=None, constraints=None, steps=None,
+                             optimizer_cls=None, additional_params=None):
         time.sleep(1)
         # _func_str = script.compile()
         # step_list_dict: dict = script.convert_to_lines(_func_str)
@@ -185,7 +188,7 @@ class ScriptRunner:
             if self.logger:
                 self.logger.info(f"Initializing optimizer {optimizer_cls.__name__}")
             optimizer = optimizer_cls(experiment_name=run_name, parameter_space=parameters, objective_config=objectives,
-                                  parameter_constraints=constraints,
+                                  parameter_constraints=constraints, additional_params=additional_params,
                                   optimizer_config=steps, datapath=output_path)
             current_app.config["LAST_OPTIMIZER"] = optimizer
             # except Exception as e:
@@ -394,6 +397,11 @@ class ScriptRunner:
             if optimizer:
                 try:
                     parameters = optimizer.suggest(n=batch_size)
+
+                    if parameters is None or len(parameters) == 0:
+                        self.logger.info("No parameters suggested by optimizer.")
+                        raise ValueError("No parameters suggested by optimizer.")
+
                     if self.logger:
                         self.logger.info(f'Parameters: {parameters}')
                     phase.parameters = parameters

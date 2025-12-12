@@ -3,13 +3,15 @@ import glob
 import itertools
 import os
 
+import pandas as pd
+from pandas import DataFrame
 
 from ivoryos.optimizer.base_optimizer import OptimizerBase
 
 
 class NIMOOptimizer(OptimizerBase):
     def __init__(self, experiment_name:str, parameter_space: list, objective_config: list, optimizer_config: dict,
-                 parameter_constraints:list=None, datapath:str=None):
+                 parameter_constraints:list=None, datapath:str=None, additional_params:dict=None):
         """
         :param experiment_name: arbitrary name
         :param parameter_space: list of parameter names
@@ -35,7 +37,7 @@ class NIMOOptimizer(OptimizerBase):
         self.objective_config = objective_config
         self.optimizer_config = optimizer_config
 
-        super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, parameter_constraints, datapath)
+        super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, parameter_constraints, datapath, additional_params)
 
         os.makedirs(os.path.join(self.datapath, "nimo_data"), exist_ok=True)
 
@@ -51,12 +53,7 @@ class NIMOOptimizer(OptimizerBase):
 
 
     def _create_candidates_csv(self):
-        # Extract parameter names and their possible values
-        import pandas as pd
-        import nimo
-        import numpy as np
-        if os.path.exists(self.candidates) and nimo.history(self.candidates, self.n_objectives):
-            return
+        """create candidates csv file for nimo input"""
         param_names = [p["name"] for p in self.parameter_space]
 
         param_values = []
@@ -83,14 +80,18 @@ class NIMOOptimizer(OptimizerBase):
 
 
     def suggest(self, n=1):
-        import pandas as pd
+        """suggest n candidates for next batch of trials"""
         import nimo
-        method = self.step_1_generator if self.current_step <= self.step_1_batch_num else self.step_2_generator
+
+        method = self.step_1_generator if self.current_step < self.step_1_batch_num else self.step_2_generator
+
         nimo.selection(method = method,
                        input_file = self.candidates,
                        output_file = self.proposals,
                        num_objectives = self.n_objectives,
-                       num_proposals = n)
+                       num_proposals = n,
+                       **self.additional_params
+                       )
         self.current_step += 1
         # Read proposals from CSV file
         proposals_df = pd.read_csv(self.proposals)
@@ -133,6 +134,7 @@ class NIMOOptimizer(OptimizerBase):
                                ndigits=2)
 
     def get_plots(self, plot_type):
+        """requests phase diagram plot from nimo"""
         import nimo
         nimo.visualization.plot_phase_diagram.plot(input_file=self.candidates,
                                                    fig_folder=os.path.join(self.datapath, "nimo_data"))
@@ -152,6 +154,26 @@ class NIMOOptimizer(OptimizerBase):
                 "step_1": {"model": ["RE", "ES"], "num_samples": 5},
                 "step_2": {"model": ["PHYSBO", "PDC", "BLOX", "PTR", "SLESA", "BOMP", "COMBI"]}
             },
+            "additional_field":{
+                "re_seed": {"type": "int", "required": False},
+                "ptr_ranges": {"type": "list[float]", "required": False},
+
+                "slesa_beta_max": {"type": "float", "required": False},
+                "slesa_beta_num": {"type": "int", "required": False},
+
+                "physbo_score": {"type": "choice", "options": ["Default", "EI", "PI", "TS", "HVPI", "EHVI", "TS"]},
+
+                "pdc_estimation": {"type": "choice", "options": ["Default", "LP", "LS"]},
+                "pdc_sampling": {"type": "choice", "options": ["Default", "LC", "MS", "EA"]},
+
+                "process_X": {"type": "list[float]", "required": False},
+
+                "combi_ranges": {"type": "list[float]", "required": False},
+                "spread_elements": {"type": "list[int]", "required": False},
+
+                "output_res": {"type": "choice", "options": ["Default", "True", "False"]},
+                "training_res": {"type": "choice", "options": ["Default", "True", "False"]},
+            }
         }
 
 

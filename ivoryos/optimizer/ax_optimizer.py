@@ -1,5 +1,4 @@
 # optimizers/ax_optimizer.py
-from typing import Dict
 
 from pandas import DataFrame
 
@@ -11,14 +10,15 @@ AX_OBJ_BLACKLIST = ["test", "factor", "range", "product", "sum", "type", "yield"
 
 class AxOptimizer(OptimizerBase):
     def __init__(self, experiment_name, parameter_space, objective_config, optimizer_config=None,
-                 parameter_constraints:list=None, datapath=None):
+                 parameter_constraints:list=None, datapath=None, additional_params:dict=None):
         self.trial_index_list = None
         try:
             from ax.api.client import Client
         except ImportError as e:
             install_and_import("ax", "ax-platform")
             raise ImportError("Please install Ax with pip install ax-platform to use AxOptimizer. Attempting to install Ax...")
-        super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, parameter_constraints, )
+        super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, parameter_constraints,
+                         additional_params)
 
         self.client = Client()
         # 2. Configure where Ax will search.
@@ -156,7 +156,7 @@ class AxOptimizer(OptimizerBase):
                 "step_1": {"model": ["Sobol", "Uniform", "Factorial", "Thompson"], "num_samples": 5},
                 "step_2": {"model": ["BoTorch", "SAASBO", "SAAS_MTGP", "Legacy_GPEI", "EB", "EB_Ashr", "ST_MTGP", "BO_MIXED", "Contextual_SACBO"]}
             },
-
+            "additional_field": {}
         }
 
     def append_existing_data(self, existing_data:DataFrame, file_path: str = None):

@@ -212,7 +212,7 @@ def run_bo():
         batch_size = payload_json.pop("batch_size", None)
         optimizer_type = payload_json.pop("optimizer_type", None)
         existing_data = payload_json.pop("existing_data", None)
-
+        additional_params = payload_json.pop("additional_params", None)
     else:
         payload = request.form.to_dict()
         repeat = payload.pop("repeat", None)
@@ -240,8 +240,8 @@ def run_bo():
             if key.startswith("constraint_expr"):
                 payload.pop(key, None)
 
-        parameters, objectives, steps = parse_optimization_form(payload)
-
+        parameters, objectives, steps, additional_params = parse_optimization_form(payload)
+        # print(additional_params)
     # if True:
     try:
         datapath = current_app.config["DATA_FOLDER"]
@@ -255,7 +255,7 @@ def run_bo():
                           output_path=datapath, compiled=False, history=existing_data,
                           current_app=current_app._get_current_object(), batch_size=int(batch_size),
                           objectives=objectives, parameters=parameters, constraints=constraints, steps=steps,
-                          optimizer_cls=Optimizer
+                          optimizer_cls=Optimizer, additional_params=additional_params
                           )
 
     except Exception as e:
