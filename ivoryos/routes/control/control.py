@@ -81,7 +81,19 @@ async def deck_controllers(instrument: str = None):
         if request.is_json:
             kwargs = {k: v for k, v in payload.items() if k not in ["csrf_token", "hidden_wait"]}
         else:
-            kwargs = {field.name: field.data for field in form if field.name not in ["csrf_token", "hidden_name"]}
+            if not form.validate_on_submit():
+                flash(f"Run Error! {form.errors}", "error")
+                return render_template(
+                    "controllers.html",
+                    defined_variables=global_config.deck_snapshot.keys(),
+                    block_variables=global_config.building_blocks.keys(),
+                    temp_variables=global_config.defined_variables.keys(),
+                    instrument=instrument,
+                    forms=forms,
+                    session=session
+                )
+            else:
+                kwargs = {field.name: field.data for field in form if field.name not in ["csrf_token", "hidden_name"]}
 
         wait = str(payload.get("hidden_wait", "true")).lower() == "true"
 

@@ -2,6 +2,7 @@ import inspect
 import asyncio
 import threading
 import time
+import ast
 from datetime import datetime
 
 from ivoryos.utils import utils
@@ -106,13 +107,25 @@ class TaskRunner:
     @staticmethod
     def _convert_kwargs_type(kwargs, function_executable):
         def convert_guess(str_value):
-            str_value = str_value.strip()
-            if str_value.isdigit() or (str_value.startswith('-') and str_value[1:].isdigit()):
-                return int(str_value)
-            try:
-                return float(str_value)
-            except ValueError:
+            if not isinstance(str_value, str):
                 return str_value
+                
+            str_value = str_value.strip()
+            
+            # Try python evaluation first (handles ints, floats, lists, dicts, sets, tuples, booleans, None)
+            try:
+                return ast.literal_eval(str_value)
+            except (ValueError, SyntaxError):
+                pass
+            
+            # Fallback for unquoted strings lists: "a, b, c" -> ["a", "b", "c"]
+            # We only split if it clearly looks like a list (has comma) and literal_eval failed
+            if "," in str_value:
+                 # Check if it might be a malformed structure vs just comma separated strings
+                 # For safety, if literal_eval failed, we treat it as comma separated strings.
+                 return [convert_guess(i) for i in str_value.split(",")]
+
+            return str_value
 
         sig = inspect.signature(function_executable)
         converted = {}
@@ -120,13 +133,41 @@ class TaskRunner:
         for name, value in kwargs.items():
             if name in sig.parameters:
                 param = sig.parameters[name]
+                # Check for explicit typing
                 if param.annotation != inspect.Parameter.empty:
-                    # convert using type hint
-                    try:
-                        converted[name] = param.annotation(value)
-                    except Exception:
-                        converted[name] = value
+                    # If explicitly typed, we still want to try smart conversion if the value is a string
+                    
+                    if isinstance(value, str):
+                       val = convert_guess(value)
+                       
+                       # Helper to check if target is a list type
+                       target_type = param.annotation
+                       is_list_target = target_type is list
+                       if not is_list_target:
+                           # Check for typing.List (e.g. List[int])
+                           origin = getattr(target_type, "__origin__", None)
+                           if origin is list:
+                               is_list_target = True
+
+                       # If we have a tuple (likely from "1,2,3") but want a list, cast it
+                       if is_list_target and isinstance(val, tuple):
+                           val = list(val)
+                       
+                       # Try to cast to target type if possible (e.g. valid for int, float, str, but fails for typing.List)
+                       try:
+                           converted[name] = target_type(val)
+                       except Exception:
+                           # Casting failed (common for typing generics), just use the guessed/casts val
+                           converted[name] = val
+                    else:
+                        try:
+                            converted[name] = param.annotation(value)
+                        except Exception:
+                            converted[name] = value
                 else:
                     # no type hint → guess
                     converted[name] = convert_guess(value)
+            else:
+                 pass
+                 
         return converted
