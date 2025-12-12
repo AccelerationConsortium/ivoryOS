@@ -463,6 +463,7 @@ def create_form_from_action(action: dict, script=None, design=True):
     arg_types = action.get("arg_types", {})
     args = action.get("args", {})
     save_as = action.get("return")
+    instrument = action.get("instrument")
 
     class DynamicForm(FlaskForm):
         pass
@@ -499,6 +500,13 @@ def create_form_from_action(action: dict, script=None, design=True):
             param_type,
             (VariableOrStringField if design else StringField, f'Enter {param_type} value')
         )
+
+        if instrument == "math_variable":
+            field_class = VariableOrStringField
+            placeholder_text = "Enter math expression"
+            field_kwargs["validators"] = [InputRequired()]
+
+
         render_kwargs = {"placeholder": placeholder_text}
 
         # Create the field with additional rendering kwargs for placeholder text
@@ -515,7 +523,7 @@ def create_form_from_action(action: dict, script=None, design=True):
 
 def create_all_builtin_forms(script):
     all_builtin_forms = {}
-    for logic_name in ['if', 'while', 'variable', 'wait', 'repeat', 'pause']:
+    for logic_name in ['if', 'while', 'variable', 'wait', 'repeat', 'pause', 'math']:
         # signature = info.get('signature', {})
         form_class = create_builtin_form(logic_name, script)
         all_builtin_forms[logic_name] = form_class()
@@ -531,18 +539,20 @@ def create_builtin_form(logic_type, script):
     placeholder_text = {
         'wait': 'Enter second',
         'repeat': 'Enter an integer',
-        'pause': 'Human Intervention Message'
+        'pause': 'Human Intervention Message',
+        'math': 'Enter math expression, e.g. #x + 5 * (#y - 2)'
     }.get(logic_type, 'Enter statement')
     description_text = {
         'variable': 'Your variable can be numbers, boolean (True or False) or text ("text")',
+        'math': "Enter a math expression using #variables, numbers, or returned variables",
     }.get(logic_type, '')
     field_class = {
         'wait': VariableOrFloatField,
-        'repeat': VariableOrIntField
+        'repeat': VariableOrIntField,
     }.get(logic_type, VariableOrStringField)  # Default to StringField as a fallback
     field_kwargs = {
         "label": f'statement',
-        "validators": [InputRequired()] if logic_type in ['wait', "variable"] else [],
+        "validators": [InputRequired()] if logic_type in ['wait', "variable", "math"] else [],
         "description": description_text,
         "script": script
     }
@@ -556,10 +566,21 @@ def create_builtin_form(logic_type, script):
         type_field = SelectField(
             'Select Input Type',
             choices=[('int', 'Integer'), ('float', 'Float'), ('str', 'String'), ('bool', 'Boolean')],
-            default='str'  # Optional default value
+            default='str',  # Optional default value
+            # coerce = lambda x: None if x == "None" else x
         )
         setattr(BuiltinFunctionForm, "variable", variable_field)
         setattr(BuiltinFunctionForm, "variable_type", type_field)
+    elif logic_type == "math":
+        math_variable_field = VariableOrStringField(
+            label="save_to",
+            validators=[InputRequired()],
+            description="Variable name to save the result into",
+            render_kw={"placeholder": "Result variable name"},
+            script=script
+        )
+        setattr(BuiltinFunctionForm, "math_variable", math_variable_field)
+
     hidden_field = HiddenField(name=f'builtin_name', render_kw={"value": f'{logic_type}'})
     setattr(BuiltinFunctionForm, "builtin_name", hidden_field)
     return BuiltinFunctionForm
@@ -630,7 +651,7 @@ def _action_button(action: dict, variables: dict):
 
     if action['instrument'] in ['if', 'while', 'repeat']:
         text = f"{action['action']} {action['args'].get('statement', '')}"
-    elif action['instrument'] == 'variable':
+    elif action['instrument'] in ('variable', 'math_variable'):
         text = f"{action['action']} = {action['args'].get('statement')}"
     else:
         # regular action button
