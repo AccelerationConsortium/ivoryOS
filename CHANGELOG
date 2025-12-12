@@ -1,5 +1,8 @@
-1.4.14 (Dec 12th, 2025)
+1.4.15 (Dec 12th, 2025)
 - list input type conversion fix (@Ryan @Leo)
+- introduce math variable credit: @Veronica
+
+1.4.14 (Dec 12th, 2025)
 - add NIMO 2.0.5 append historical data
 - adding additional param for NIMO
 
