@@ -187,6 +187,7 @@ def convert_config_type(args, arg_types, is_class: bool = False):
     Converts an argument from str to an arg type
     """
     if args:
+        Script.eval_list(args, arg_types)
         for arg in args:
             if arg not in arg_types.keys():
                 raise ValueError("config file format not supported.")
