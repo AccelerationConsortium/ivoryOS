@@ -463,6 +463,7 @@ def create_form_from_action(action: dict, script=None, design=True):
     arg_types = action.get("arg_types", {})
     args = action.get("args", {})
     save_as = action.get("return")
+    instrument = action.get("instrument")
 
     class DynamicForm(FlaskForm):
         pass
@@ -499,6 +500,13 @@ def create_form_from_action(action: dict, script=None, design=True):
             param_type,
             (VariableOrStringField if design else StringField, f'Enter {param_type} value')
         )
+
+        if instrument == "math_variable":
+            field_class = VariableOrStringField
+            placeholder_text = "Enter math expression"
+            field_kwargs["validators"] = [InputRequired()]
+
+
         render_kwargs = {"placeholder": placeholder_text}
 
         # Create the field with additional rendering kwargs for placeholder text
