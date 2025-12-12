@@ -45,7 +45,7 @@ class OptimizerBase(ABC):
         pass
 
     @abstractmethod
-    def append_existing_data(self, existing_data):
+    def append_existing_data(self, existing_data, file_path: str = None):
         pass
 
     @abstractmethod

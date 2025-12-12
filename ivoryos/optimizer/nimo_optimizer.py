@@ -119,9 +119,18 @@ class NIMOOptimizer(OptimizerBase):
                            num_objectives=self.n_objectives,
                            objective_values=nimo_objective_values)
 
-    def append_existing_data(self, existing_data):
-        # TODO, history is part of the candidate file, we probably won't need this
-        pass
+    def append_existing_data(self, existing_data: DataFrame, file_path: str = None):
+        """
+        append existing data to the candidates csv file for nimo input
+        """
+        import nimo
+        num_objectives = len(self.objective_config)
+        if file_path is None:
+            return
+        nimo.insert_objectives(input_file=file_path,
+                               output_file=self.candidates,
+                               num_objectives=num_objectives,
+                               ndigits=2)
 
     def get_plots(self, plot_type):
         import nimo

@@ -40,7 +40,7 @@ class BaybeOptimizer(OptimizerBase):
         df = DataFrame(results)
         self.experiment.add_measurements(df)
 
-    def append_existing_data(self, existing_data: DataFrame):
+    def append_existing_data(self, existing_data: DataFrame, file_path: str = None):
         """
         Append existing data to the Ax experiment.
         :param existing_data: A dictionary containing existing data.

@@ -363,7 +363,7 @@ class ScriptRunner:
                 if self.logger:
                     self.logger.warning(f"Extra columns from history .csv file. Expecting {expected_cols} but got {actual_cols}")
 
-            optimizer.append_existing_data(previous_runs)
+            optimizer.append_existing_data(previous_runs, file_path)
 
             for row in previous_runs.to_dict(orient='records'):
                 output_list.append(row)

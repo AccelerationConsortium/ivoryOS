@@ -33,7 +33,7 @@ optimizer-nimo = ["nimo"]
 optimizers = [
     "ax-platform>=1.1.2",
     "baybe>=0.14.0",
-    "nimo"
+    "nimo>=2.0.5"
 ]
 doc = [
     "sphinx",
