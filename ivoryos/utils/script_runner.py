@@ -520,7 +520,8 @@ class ScriptRunner:
         # Evaluate condition for each sample
         for context in contexts:
             condition = self._evaluate_condition(step["args"]["statement"], context)
-
+            if self.logger:
+                self.logger.info(f"Evaluating if {step['args']['statement']}: {condition}")
             if condition:
                 await self._execute_steps_batched(step["if_block"], [context], phase_id=phase_id, section_name=section_name)
             else:
@@ -555,7 +556,8 @@ class ScriptRunner:
 
             for context in active_contexts:
                 condition = self._evaluate_condition(step["args"]["statement"], context)
-
+                if self.logger:
+                    self.logger.info(f"Evaluating while {step['args']['statement']}: {condition}")
                 if condition:
                     context["while_index"] = iteration
                     still_active.append(context)
@@ -597,7 +599,9 @@ class ScriptRunner:
         db.session.flush()
         try:
 
-            # print(f"step {section_name}-{step_index}")
+            if self.logger:
+                self.logger.info(f"Executing '{instrument}.{action}' with args {substituted_args}")
+
             self.socketio.emit('execution', {'section': f"{section_name}-{step_index-1}"})
             if action == "wait":
                 duration = float(substituted_args["statement"])
