@@ -115,11 +115,11 @@ function initializeCodeOverlay() {
 // ============================================================================
 // UI UPDATE FUNCTIONS
 // ============================================================================
-function getCodePreview(){
+function getCodePreview() {
 
     const mode = getMode();
     const batch = getBatch();
-        // Restore toggle UI state (without triggering updates)
+    // Restore toggle UI state (without triggering updates)
     setMode(mode, false);
     setBatch(batch, false);
     // Rebind event handlers for mode/batch toggles
@@ -165,18 +165,18 @@ function saveWorkflow(link) {
             'Content-Type': 'application/json'
         }
     })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            window.location.reload();
-        } else {
-            alert("Failed to save workflow: " + data.error);
-        }
-    })
-    .catch(err => {
-        console.error("Save error:", err);
-        alert("Something went wrong.");
-    });
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert("Failed to save workflow: " + data.error);
+            }
+        })
+        .catch(err => {
+            console.error("Save error:", err);
+            alert("Something went wrong.");
+        });
 }
 
 function clearDraft() {
@@ -186,15 +186,15 @@ function clearDraft() {
             "Content-Type": "application/json",
         },
     })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            window.location.reload();
-        } else {
-            alert("Failed to clear draft");
-        }
-    })
-    .catch(error => console.error("Failed to clear draft", error));
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert("Failed to clear draft");
+            }
+        })
+        .catch(error => console.error("Failed to clear draft", error));
 }
 
 // ============================================================================
@@ -210,16 +210,16 @@ function addMethodToDesign(event, form) {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            updateActionCanvas(data.html);
-            hideModal();
-        } else {
-            alert("Failed to add method: " + data.error);
-        }
-    })
-    .catch(error => console.error('Error:', error));
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateActionCanvas(data.html);
+                hideModal();
+            } else {
+                alert("Failed to add method: " + data.error);
+            }
+        })
+        .catch(error => console.error('Error:', error));
 }
 
 function editAction(uuid) {
@@ -237,38 +237,38 @@ function editAction(uuid) {
             'Content-Type': 'application/json'
         }
     })
-    .then(response => {
-        if (!response.ok) {
-            return response.json().then(err => {
-                if (err.warning) {
-                    alert(err.warning);
-                }
-                // Restore panel so user isn't stuck
-                if (previousHtmlState) {
-                    document.getElementById('instrument-panel').innerHTML = previousHtmlState;
-                    previousHtmlState = null;
-                }
-                throw new Error("Step fetch failed: " + response.status);
-            });
-        }
-        return response.text();
-    })
-    .then(html => {
-        document.getElementById('instrument-panel').innerHTML = html;
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    if (err.warning) {
+                        alert(err.warning);
+                    }
+                    // Restore panel so user isn't stuck
+                    if (previousHtmlState) {
+                        document.getElementById('instrument-panel').innerHTML = previousHtmlState;
+                        previousHtmlState = null;
+                    }
+                    throw new Error("Step fetch failed: " + response.status);
+                });
+            }
+            return response.text();
+        })
+        .then(html => {
+            document.getElementById('instrument-panel').innerHTML = html;
 
-        // Set up back button
-        const backButton = document.getElementById('back');
-        if (backButton) {
-            backButton.addEventListener('click', function(e) {
-                e.preventDefault();
-                if (previousHtmlState) {
-                    document.getElementById('instrument-panel').innerHTML = previousHtmlState;
-                    previousHtmlState = null;
-                }
-            });
-        }
-    })
-    .catch(error => console.error('Error:', error));
+            // Set up back button
+            const backButton = document.getElementById('back');
+            if (backButton) {
+                backButton.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    if (previousHtmlState) {
+                        document.getElementById('instrument-panel').innerHTML = previousHtmlState;
+                        previousHtmlState = null;
+                    }
+                });
+            }
+        })
+        .catch(error => console.error('Error:', error));
 }
 
 function submitEditForm(event) {
@@ -281,22 +281,22 @@ function submitEditForm(event) {
         method: 'POST',
         body: formData
     })
-    .then(response => response.text())
-    .then(html => {
-        if (html) {
-            updateActionCanvas(html);
+        .then(response => response.text())
+        .then(html => {
+            if (html) {
+                updateActionCanvas(html);
 
-            // Restore previous instrument panel state
-            if (previousHtmlState) {
-                document.getElementById('instrument-panel').innerHTML = previousHtmlState;
-                previousHtmlState = null;
+                // Restore previous instrument panel state
+                if (previousHtmlState) {
+                    document.getElementById('instrument-panel').innerHTML = previousHtmlState;
+                    previousHtmlState = null;
+                }
+
+                // Check for warnings
+                showWarningIfExists(html);
             }
-
-            // Check for warnings
-            showWarningIfExists(html);
-        }
-    })
-    .catch(error => console.error('Error:', error));
+        })
+        .catch(error => console.error('Error:', error));
 }
 
 function duplicateAction(uuid) {
@@ -311,12 +311,12 @@ function duplicateAction(uuid) {
             'Content-Type': 'application/json'
         }
     })
-    .then(response => response.text())
-    .then(html => {
-        updateActionCanvas(html);
-        showWarningIfExists(html);
-    })
-    .catch(error => console.error('Error:', error));
+        .then(response => response.text())
+        .then(html => {
+            updateActionCanvas(html);
+            showWarningIfExists(html);
+        })
+        .catch(error => console.error('Error:', error));
 }
 
 function deleteAction(uuid) {
@@ -331,12 +331,12 @@ function deleteAction(uuid) {
             'Content-Type': 'application/json'
         }
     })
-    .then(response => response.text())
-    .then(html => {
-        updateActionCanvas(html);
-        showWarningIfExists(html);
-    })
-    .catch(error => console.error('Error:', error));
+        .then(response => response.text())
+        .then(html => {
+            updateActionCanvas(html);
+            showWarningIfExists(html);
+        })
+        .catch(error => console.error('Error:', error));
 }
 
 // ============================================================================
@@ -373,6 +373,6 @@ function showWarningIfExists(html) {
 // INITIALIZATION
 // ============================================================================
 
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
     getCodePreview();
 });
