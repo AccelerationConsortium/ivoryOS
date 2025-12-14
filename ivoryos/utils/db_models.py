@@ -585,6 +585,112 @@ class Script(db.Model):
             "cleanup": parse_block(script_dict.get("cleanup", []))
         }
 
+    def render_nested_script_lines(self, script_dict):
+        """
+        Convert script_dict into a nested structure for collapsible UI.
+        Returns check dict: { 'script': [ {type: 'line', code: '...', id: 'script-0'}, ... ] }
+        """
+        def render_args(args):
+            if not args:
+                return ""
+            return ", ".join(f"{k}={v}" for k, v in args.items())
+
+        def parse_block(block, parent_id_prefix, indent=0):
+            nodes = []
+            
+            for i, action in enumerate(block):
+                act = action["action"]
+                instrument = action["instrument"]
+                current_id = f"{parent_id_prefix}-{i}"
+                
+                # Handle nested workflows
+                if instrument == 'workflows':
+                    args = render_args(action.get("args", {}))
+                    ret = action.get("return")
+                    line_code = "    " * indent
+                    if ret:
+                        line_code += f"{ret} = "
+                    line_code += f"{act}({args})"
+                    
+                    category = "workflow" # collapsible
+                    
+                    # Recursively parse children
+                    # Prioritize embedded workflow steps
+                    children_steps = action.get("workflow", [])
+                    if not children_steps:
+                        # Fallback to DB lookup if needed, though likely compilation ensures it's there
+                        # but safe to check
+                        wf_script = Script.query.filter_by(name=act).first()
+                        if wf_script:
+                            children_steps = wf_script.script_dict.get('script', [])
+
+                    children_nodes = parse_block(children_steps, current_id, indent + 1)
+                    
+                    nodes.append({
+                        "type": "workflow",
+                        "code": line_code,
+                        "id": current_id,
+                        "children": children_nodes
+                    })
+                    
+                # Handle control structures (simplified for now, treated as lines or blocks if we want collapse)
+                # For now, let's treat control structures as flat or just lines, 
+                # unless we want to collapse 'if' blocks too. 
+                # User specifically asked for workflow collapse. Let's stick to that for now to avoid complexity.
+                else: 
+                     # Re-use the existing logic to generate the line string
+                    line_code = ""
+                    # ... [Logic to generate line string similar to render_script_lines] ...
+                    # To avoid code duplication, I'll copy the logic briefly or helper
+                    
+                    if act == "if":
+                        stmt = action["args"].get("statement", "")
+                        line_code = "    " * indent + f"if {stmt}:"
+                    elif act == "else":
+                        # else is tricky because it belongs to previous if, but structurally it's a sibling in the list? 
+                        # actually in the JSON list, else is likely a sibling.
+                         line_code = "    " * (indent -1) + f"else:" if indent > 0 else "else:"
+                    elif act in ("endif", "endwhile"):
+                         line_code = "    " * (indent -1) + f"# {act}" if indent > 0 else f"# {act}"
+                    elif act == "while":
+                        stmt = action["args"].get("statement", "")
+                        line_code = "    " * indent + f"while {stmt}:"
+                    elif act == "wait":
+                        stmt = action["args"].get("statement", "")
+                        if isinstance(stmt, str) and stmt.startswith("#"):
+                            stmt = stmt[1:]
+                        line_code = "    " * indent + f"time.sleep({stmt})"
+                    elif instrument == "variable":
+                        stmt = action["args"].get("statement", "")
+                        if isinstance(stmt, str) and stmt.startswith("#"):
+                             stmt = stmt[1:]
+                        line_code = "    " * indent + f"{act} = {stmt}"
+                    elif instrument == "math_variable":
+                        stmt = action["args"].get("statement", "")
+                        line_code = "    " * indent + f"{act} = {stmt}"
+                    else:
+                        args = render_args(action.get("args", {}))
+                        ret = action.get("return")
+                        line_code = "    " * indent
+                        if ret:
+                            line_code += f"{ret} = {instrument}.{act}({args})"
+                        else:
+                            line_code += f"{instrument}.{act}({args})"
+                    
+                    nodes.append({
+                        "type": "line",
+                        "code": line_code,
+                        "id": current_id
+                    })
+                    
+            return nodes
+
+        return {
+            "prep": parse_block(script_dict.get("prep", []), "prep"),
+            "script": parse_block(script_dict.get("script", []), "script"),
+            "cleanup": parse_block(script_dict.get("cleanup", []), "cleanup")
+        }
+
     def compile(self, script_path=None, batch=False, mode="sample"):
         """
         Compile the current script to a Python file.
@@ -729,7 +835,8 @@ class Script(db.Model):
         else:
             is_async = action.get("coroutine", False)
             dynamic_arg = len(self.get_variables()) > 0
-            return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data, is_async, dynamic_arg, batch, batch_action)
+            workflow_steps = action.get("workflow", None)
+        return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data, is_async, dynamic_arg, batch, batch_action, workflow_steps)
 
     def _process_args(self, args):
         """
@@ -804,11 +911,63 @@ class Script(db.Model):
         return cleaned
 
     def _process_instrument_action(self, indent_unit, instrument, action, args, save_data, is_async=False, dynamic_arg=False,
-                                   batch=False, batch_action=False):
+                                   batch=False, batch_action=False, workflow_steps=None):
         """
         Process actions related to instruments.
         """
         async_str = "await " if is_async else ""
+
+        if instrument == 'workflows':
+            # This is a call to another registered workflow
+            # Check for embedded steps first, otherwise fetch
+            if workflow_steps is not None:
+                # Use embedded steps (already a list of dicts)
+                script_actions = workflow_steps
+                # Create a temporary Script object just to use its context/methods if needed? 
+                # Actually we can use 'self' but we need to ensure the methods called inside are generic.
+                # _process_action uses self.script_dict etc. 
+                # Wait, if we recurse, we need to be careful.
+                # Let's inspect logic below.
+                
+                # We need a context for the inner workflow?
+                # Using 'self' is fine for _process_action as long as it doesn't depend on self.script_dict for the *current* action being processed (it's passed in).
+                # But _process_action requires 'stype' which is usually 'script'.
+                pass # placeholder for logic logic
+            else:
+                 workflow_script = Script.query.get(action)
+                 if workflow_script:
+                     script_actions = workflow_script.script_dict.get('script', [])
+                 else:
+                     script_actions = []
+
+            if script_actions:
+                output_code = self.indent(indent_unit) + f"# Begin Workflow: {action}"
+                
+                # Inject argument assignments
+                if args and isinstance(args, dict):
+                     for key, value in args.items():
+                         if isinstance(value, str) and value.startswith("#"):
+                             # Passing a variable: inner_var = outer_var
+                             assignment = f"{key} = {value[1:]}"
+                         elif isinstance(value, str):
+                             # String literal
+                             assignment = f"{key} = '{value}'"
+                         else:
+                             # Other literals (int, float, bool)
+                             assignment = f"{key} = {value}"
+                         output_code += self.indent(indent_unit) + assignment
+
+                expanded_body = ""
+                # Use 'self' to process the inner actions. 
+                # Prerequisite: _process_action is stateless regarding the script content list.
+                # It seems so.
+                for i, inner_action in enumerate(script_actions):
+                     text, _ = self._process_action(indent_unit, inner_action, i, 'script', batch, mode="sample") 
+                     expanded_body += text
+                
+                output_code += expanded_body
+                output_code += self.indent(indent_unit) + f"# End Workflow: {action}"
+                return output_code, indent_unit
 
         function_call = f"{instrument}.{action}"
         if instrument.startswith("blocks"):
@@ -902,6 +1061,127 @@ class Script(db.Model):
 
             for i in exec_string.values():
                 s.write(f"\n\n\n{i}")
+
+    def add_workflow(self, workflow_name, insert_position=None, **kwargs):
+        current_len = len(self.currently_editing_script)
+        uid = uuid.uuid4().fields[-1]
+        action = {"id": current_len + 1, "instrument": "deck_name", "action": workflow_name,
+                  "args": kwargs, "return": '', "uuid": uid,
+                  "arg_types": {}}
+        self.currently_editing_script.append(action)
+        self._insert_action(insert_position, current_len)
+        self.update_time_stamp()
+
+    def group_actions(self, ids: list, name: str, author: str):
+        """
+        Group selected actions into a new registered workflow script.
+
+        :param ids: List of action IDs (step numbers) to group.
+        :param name: Name of the new workflow.
+        :param author: Author of the new workflow.
+        """
+        # 1. Validate inputs
+        if not ids:
+            return
+        
+        # Sort ids to ensure we process them in order
+        ids = sorted([int(id) for id in ids])
+        
+        # 2. Extract actions to be grouped
+        actions_to_group = []
+        for action in self.currently_editing_script:
+            if action['id'] in ids:
+                actions_to_group.append(action)
+        
+        # Sort actions by their ID to maintain order
+        actions_to_group.sort(key=lambda x: x['id'])
+
+        if not actions_to_group:
+            return
+
+        # 3. Create new Script for the grouped workflow
+        # We assume the new script should have the same deck as the current one
+        new_script_dict = {"prep": [], "cleanup": [], "script": []}
+        
+        # Deep copy actions to avoid reference issues, and reset their IDs
+        import copy
+        new_actions = copy.deepcopy(actions_to_group)
+        for i, action in enumerate(new_actions):
+            action['id'] = i + 1
+            # Keep UUIDs or generate new ones? 
+            # Generating new ones is safer to avoid duplicates across scripts if that matters
+            action['uuid'] = uuid.uuid4().fields[-1] 
+        
+        new_script_dict["script"] = new_actions
+        
+        new_script = Script(
+            name=name,
+            deck=self.deck,
+            status="finalized", # Or "editing"? Maybe finalized so it's immediately usable?
+            script_dict=new_script_dict,
+            author=author,
+            # registered=True,
+            description=f"Grouped from {len(ids)} steps"
+        )
+        
+        # Save the new script to DB - THIS NEEDS DB SESSION ACCESS usually.
+        # But Script object methods here seem to only modify self state usually.
+        # We need to return this new script object so the caller can save it to DB.
+        
+        # 4. Remove original actions from current script
+        # We need to insert the new workflow action at the position of the *first* removed action
+        first_id = ids[0]
+        insert_index = -1
+        
+        # Find index in currently_editing_script
+        for i, action in enumerate(self.currently_editing_script):
+            if action['id'] == first_id:
+                insert_index = i
+                break
+        
+        # Filter out grouped actions
+        self.currently_editing_script = [a for a in self.currently_editing_script if a['id'] not in ids]
+        
+        # 5. Insert new workflow call
+        # We need to construct arguments for the workflow if any internal variables are used?
+        # For now, let's assume no arguments or let user configure later.
+        # But wait, if the grouped steps used variables, those variables might need to be passed in.
+        # Complex variable analysis is hard. For v1, let's assume empty args.
+        
+        # uuid for the new action
+        uid = uuid.uuid4().fields[-1]
+        
+        workflow_action = {
+            "id": 0, # Will be fixed by sort/insert logic or we set it now? self.add_workflow handles appending.
+            "instrument": "deck_name", # This seems to be the convention for workflows?
+            "action": name,
+            "args": {},
+            "return": "",
+            "uuid": uid,
+            "arg_types": {}
+        }
+        
+        # We can't use self.add_workflow directly easily because we want to insert at specific index 
+        # NOT just append and then invalidly insert. 
+        # Actually `add_workflow` logic: append then `_insert_action`.
+        # `_insert_action` logic: manipulation of `currently_editing_order`.
+        
+        # Let's direct modify `currently_editing_script` and `currently_editing_order`.
+        
+        self.currently_editing_script.insert(insert_index, workflow_action)
+        
+        # 6. Fix IDs
+        # We simply re-assign IDs based on position
+        for i, action in enumerate(self.currently_editing_script):
+            action['id'] = i + 1
+            
+        # 7. Update Order
+        # Reset order to match current script list
+        self.currently_editing_order = [str(a['id']) for a in self.currently_editing_script]
+        
+        self.update_time_stamp()
+        
+        return new_script
 
     def _create_block_import(self):
         imports = {}

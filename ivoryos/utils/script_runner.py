@@ -499,6 +499,26 @@ class ScriptRunner:
             elif instrument == "math_variable":
                 await self._execute_variable_batched(step, contexts, phase_id=phase_id, step_index=action_id,
                                                      section_name=section_name)
+            elif instrument == "workflows":
+                # Recursively logic for nested workflows
+                # print(step.get("workflow", []))
+                workflow_steps = step.get("workflow", [])
+                if workflow_steps:
+                    if self.socketio:
+                        self.socketio.emit('log', {'message': f"Entering workflow: {action} with args: {step.get('args', {})}"})
+                    
+                    # Inject parameters into context
+                    
+                    # For batched contexts:
+                    for context in contexts:
+                        args = step.get("args", {})
+                        for key, value in args.items():
+                             if isinstance(value, str) and value.startswith("#"):
+                                 context[key] = context.get(value[1:])
+                             else:
+                                 context[key] = value
+
+                    await self._execute_steps_batched(workflow_steps, contexts, phase_id=phase_id, section_name=f"{section_name}-{action_id-1}")
             else:
                 # Regular action - check if batch
                 if step.get("batch_action", False):

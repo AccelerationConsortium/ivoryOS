@@ -119,12 +119,18 @@ def _get_type_from_parameters(arg, parameters):
     """get argument types from inspection"""
     # TODO
     arg_type = ''
-    if isinstance(parameters, inspect.Signature):
-        annotation = parameters.parameters[arg].annotation
-    elif isinstance(parameters, dict):
-        annotation = parameters[arg]
-    else:
-        annotation = ''
+    try:
+        if isinstance(parameters, inspect.Signature):
+            if arg not in parameters.parameters:
+                return arg_type
+            annotation = parameters.parameters[arg].annotation
+        elif isinstance(parameters, dict):
+            annotation = parameters.get(arg, '')
+        else:
+            annotation = ''
+    except Exception:
+        return arg_type
+
     if isinstance(annotation, str):
         arg_type = annotation
     elif annotation is not inspect._empty:

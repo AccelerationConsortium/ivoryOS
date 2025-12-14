@@ -164,7 +164,7 @@ Local version in [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/m
 ---
 
 ## Roadmap
-
+- [ ] Python property support (setter/getter)
 - [ ] dropdown input 
 - [ ] snapshot version control
 - [ ] check batch-config file compatibility

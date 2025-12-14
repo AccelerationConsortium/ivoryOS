@@ -1,9 +1,9 @@
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
     var socket = io();
-    socket.on('connect', function() {
+    socket.on('connect', function () {
         console.log('Connected');
     });
-    socket.on('progress', function(data) {
+    socket.on('progress', function (data) {
         var progress = data.progress;
         console.log(progress);
         // Update the progress bar's width and appearance
@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    socket.on('error', function(errorData) {
+    socket.on('error', function (errorData) {
         console.error("Error received:", errorData);
         var progressBar = document.getElementById('progress-bar-inner');
 
@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
 
-    socket.on('human_intervention', function(data) {
+    socket.on('human_intervention', function (data) {
         console.warn("Human intervention required:", data);
         var progressBar = document.getElementById('progress-bar-inner');
 
@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     // Handle Pause/Resume Button
-    document.getElementById('pause-resume').addEventListener('click', function() {
+    document.getElementById('pause-resume').addEventListener('click', function () {
         socket.emit('pause');
         console.log('Pause/Resume is toggled.');
         var button = this;
@@ -98,7 +98,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     // Handle Modal Buttons
-    document.getElementById('continue-btn').addEventListener('click', function() {
+    document.getElementById('continue-btn').addEventListener('click', function () {
         socket.emit('pause');  // Resume execution
         console.log("Execution resumed.");
 
@@ -108,12 +108,12 @@ document.addEventListener("DOMContentLoaded", function() {
         progressBar.classList.add('bg-primary');
     });
 
-    document.getElementById('retry-btn').addEventListener('click', function() {
+    document.getElementById('retry-btn').addEventListener('click', function () {
         socket.emit('retry');  // Resume execution
         console.log("Execution resumed, retrying.");
     });
 
-    document.getElementById('stop-btn').addEventListener('click', function() {
+    document.getElementById('stop-btn').addEventListener('click', function () {
         socket.emit('pause');  // Resume execution
         socket.emit('abort_current');  // Stop execution
         console.log("Execution stopped.");
@@ -123,20 +123,20 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById("run-panel").style.display = "block";
     });
 
-    socket.on('log', function(data) {
+    socket.on('log', function (data) {
         var logMessage = data.message;
         console.log(logMessage);
         $('#logging-panel').append(logMessage + "<br>");
         $('#logging-panel').scrollTop($('#logging-panel')[0].scrollHeight);
     });
 
-    document.getElementById('abort-pending').addEventListener('click', function() {
+    document.getElementById('abort-pending').addEventListener('click', function () {
         var modal = new bootstrap.Modal(document.getElementById('abortPendingModal'));
         modal.show();
     });
 
     // When user presses confirm
-    document.getElementById('abortPendingConfirm').addEventListener('click', function() {
+    document.getElementById('abortPendingConfirm').addEventListener('click', function () {
         const doCleanup = document.getElementById('cleanup-checkbox').checked;
 
         socket.emit('abort_pending', { cleanup: doCleanup });
@@ -146,24 +146,31 @@ document.addEventListener("DOMContentLoaded", function() {
         bootstrap.Modal.getInstance(document.getElementById('abortPendingModal')).hide();
     });
 
-    document.getElementById('abort-current').addEventListener('click', function() {
+    document.getElementById('abort-current').addEventListener('click', function () {
         var confirmation = confirm("Are you sure you want to stop after this step?");
         if (confirmation) {
             socket.emit('abort_current');
             console.log('Stop action sent to server.');
-    }
+        }
     });
 
     socket.on('execution', function(data) {
         // Remove highlighting from all lines
         document.querySelectorAll('pre code').forEach(el => el.style.backgroundColor = '');
 
-        // Get the currently executing line and highlight it
-        let executingLine = document.getElementById(data.section);
-        if (executingLine) {
-            executingLine.style.backgroundColor = '#cce5ff'; // Highlight
-            executingLine.style.transition = 'background-color 0.3s ease-in-out';
+        // Highlight current step and all parent workflows
+        let currentId = data.section;
+        while (currentId.includes('-')) {
+            let executingLine = document.getElementById(currentId);
+            if (executingLine) {
+                executingLine.style.backgroundColor = '#cce5ff'; // Highlight
+                executingLine.style.transition = 'background-color 0.3s ease-in-out';
 
+            }
+            // Move up to parent ID (e.g., script-1-2 -> script-1)
+            let lastIndex = currentId.lastIndexOf('-');
+            if (lastIndex === -1) break;
+            currentId = currentId.substring(0, lastIndex);
         }
     });
 });

@@ -15,9 +15,10 @@
     {% endif %}
 
     {% for button in buttons %}
-        <li id="{{ button['id'] }}" style="list-style-type: none;">
+        <li id="{{ button['id'] }}" style="list-style-type: none;" class="d-flex align-items-center mb-1">
             <span class="line-number d-none">{{ button['id'] }}.</span>
-            <a href="#" onclick="editAction('{{ button['uuid'] }}'); return false;" type="button" class="btn btn-light" style="{{ button['style'] }}">{{ button['label'] }}</a>
+{#            <input type="checkbox" class="form-check-input me-2 action-checkbox" value="{{ button['id'] }}" style="margin-right: 10px;">#}
+            <a href="#" onclick="editAction('{{ button['uuid'] }}'); return false;" type="button" class="btn btn-light flex-grow-1 text-start" style="{{ button['style'] }}">{{ button['label'] }}</a>
             {% if not button["instrument"] in ["if","while","repeat"] %}
                 <button onclick="duplicateAction('{{ button['id'] }}')" type="button" class="btn btn-light"><span class="bi bi-copy"></span></button>
 

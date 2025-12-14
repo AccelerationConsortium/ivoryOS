@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 from ivoryos.routes.library.library import publish
 from ivoryos.utils import utils
 from ivoryos.utils.global_config import GlobalConfig
-from ivoryos.utils.form import create_action_button, create_form_from_pseudo, create_all_builtin_forms
+from ivoryos.utils.form import create_action_button, create_form_from_pseudo, create_all_builtin_forms, create_workflow_forms
 from ivoryos.utils.db_models import Script
 from ivoryos.utils.py_to_json import convert_to_cards
 
@@ -152,9 +152,10 @@ def update_script_meta():
             return jsonify(success=False)
 
     if 'status' in data:
-        if data['status'] == "finished":
+        if data['status'] == "finalized":
             script.finalize()
             utils.post_script_file(script)
+            publish()
             return jsonify(success=True)
     return jsonify(success=False)
 
@@ -334,7 +335,10 @@ def methods_handler(instrument: str = ''):
     pseudo_deck = utils.load_deck(pseudo_deck_path) if off_line and pseudo_deck_name else None
     autofill = session.get('autofill', False)
 
-    functions, forms = _create_forms(instrument, script, autofill, pseudo_deck)
+    if instrument == 'workflows':
+        functions, forms = create_workflow_forms(script, autofill=autofill, design=True)
+    else:
+        functions, forms = _create_forms(instrument, script, autofill, pseudo_deck)
 
     success = True
     msg = ""
@@ -414,19 +418,27 @@ def methods_handler(instrument: str = ''):
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
             if form.validate_on_submit():
                 save_data = kwargs.pop('return', '')
-
+                kwargs.pop('workflow_name')
                 # validate return variable name
                 save_data = script.validate_function_name(save_data)
 
                 primitive_arg_types = utils.get_arg_type(kwargs, functions[workflow_name])
                 script.eval_list(kwargs, primitive_arg_types)
                 kwargs = script.validate_variables(kwargs, primitive_arg_types)
+                
+                # Fetch the workflow to embed its steps
+                target_workflow = Script.query.filter_by(name=workflow_name).first()
+                embedded_steps = []
+                if target_workflow:
+                    embedded_steps = target_workflow.script_dict.get('script', [])
+
                 action = {"instrument": instrument, "action": workflow_name,
                           "args": kwargs,
                           "return": save_data,
-                          'arg_types': primitive_arg_types}
+                          'arg_types': primitive_arg_types,
+                          "workflow": embedded_steps} # Embed steps
+                # print(action)
                 script.add_action(action=action, insert_position=insert_position)
-                script.add_workflow(**kwargs, insert_position=insert_position)
             else:
                 success = False
                 msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
@@ -465,7 +477,19 @@ def get_operation_sidebar(instrument: str = ''):
     pseudo_deck = utils.load_deck(pseudo_deck_path) if off_line and pseudo_deck_name else None
     autofill = session.get('autofill', False)
 
-    functions, forms = _create_forms(instrument, script, autofill, pseudo_deck)
+    if instrument == 'workflows':
+        functions, forms = create_workflow_forms(script, autofill=autofill, design=True)
+
+    elif instrument in global_config.defined_variables.keys() or instrument == 'flow_control' or instrument.startswith("blocks"):
+        functions, forms = _create_forms(instrument, script, autofill, pseudo_deck)
+    else:
+        # Check if it's a deck method
+        deck = global_config.deck
+        if deck:
+             # This part seems redundant given _create_forms logic but let's stick to existing pattern or just call _create_forms
+             pass
+        functions, forms = _create_forms(instrument, script, autofill, pseudo_deck)
+
 
     if instrument:
         html = render_template("components/sidebar.html", forms=forms, instrument=instrument, script=script)
@@ -489,5 +513,3 @@ def get_operation_sidebar(instrument: str = ''):
                                block_variables=global_config.building_blocks,
                                )
     return jsonify({"html": html})
-
-

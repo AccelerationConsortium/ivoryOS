@@ -603,24 +603,33 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
         pass
 
     deck_name = script.deck
-    workflows = Script.query.filter(Script.deck==deck_name, Script.name != script.name).all()
+    workflows = Script.query.filter(Script.deck==deck_name, Script.name != script.name, Script.status == 'finalized').all()
     for workflow in workflows:
-        compiled_strs = workflow.compile().get('script', "")
-        method = get_method_from_workflow(compiled_strs)
-        functions[workflow.name] = dict(signature=inspect.signature(method), docstring=inspect.getdoc(method))
-        setattr(RegisteredWorkflows, workflow.name, method)
+        workflow_name = Script.validate_function_name(workflow.name)
+        try:
+        # if True:
+            compiled_strs = workflow.compile().get('script', "")
+            if not compiled_strs:
+                continue
+            method = get_method_from_workflow(compiled_strs)
+            functions[workflow_name] = dict(signature=inspect.signature(method), docstring=inspect.getdoc(method))
+            setattr(RegisteredWorkflows, workflow_name, method)
 
-        form_class = create_form_for_method(method, autofill, script, design)
+            form_class = create_form_for_method(method, autofill, script, design)
 
-        hidden_method_name = HiddenField(name=f'hidden_name', description="",
-                                         render_kw={"value": f'{workflow.name}'})
-        if design:
-            return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
-            setattr(form_class, 'return', return_value)
-        setattr(form_class, 'workflow_name', hidden_method_name)
-        workflow_forms[workflow.name] = form_class()
+            hidden_method_name = HiddenField(name=f'workflow_name', description="",
+                                             render_kw={"value": f'{workflow_name}'})
+            if design:
+                return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
+                setattr(form_class, 'return', return_value)
+            setattr(form_class, 'workflow_name', hidden_method_name)
+            workflow_forms[workflow_name] = form_class()
+        except Exception as e:
+            # Log error or skip this workflow
+            # print(f"Error loading workflow {workflow_name}: {e}")
+            pass
     global_config.registered_workflows = RegisteredWorkflows
-    return workflow_forms, functions
+    return functions, workflow_forms
 
 
 def create_action_button(script, stype=None):

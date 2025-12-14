@@ -85,7 +85,7 @@ def experiment_run():
         return redirect(url_for("design.experiment_builder"))
 
 
-    line_collection = script.render_script_lines(script.script_dict)
+    line_collection = script.render_nested_script_lines(script.script_dict)
 
     run_name = script.name if script.name else "untitled"
 
