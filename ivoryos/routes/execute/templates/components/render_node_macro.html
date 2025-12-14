@@ -1,0 +1,18 @@
+{% macro render_nodes(nodes) %}
+{% for node in nodes %}
+{% if node.type == 'workflow' %}
+<details style="margin-left: 0px;">
+    <summary style="font-family: monospace; cursor: pointer; list-style: none;">
+        <pre
+            style="margin: 0; padding: 0; line-height: 1; display: inline;"><code class="python" id="{{ node.id }}" style="font-weight: bold;">{{ node.code }}</code></pre>
+    </summary>
+    <div style="margin-left: 20px;">
+        {{ render_nodes(node.children) }}
+    </div>
+</details>
+{% else %}
+<pre
+    style="margin: 0; padding: 0; line-height: 1;"><code class="python" id="{{ node.id }}" >{{ node.code }}</code></pre>
+{% endif %}
+{% endfor %}
+{% endmacro %}
