@@ -57,7 +57,7 @@ class AxOptimizer(OptimizerBase):
                 # if step is used here, convert to ChoiceParameterConfig
                 if  len(p["bounds"]) == 3:
                     values = self._create_discrete_search_space(range_with_step=p["bounds"],value_type=p["value_type"])
-                    ax_params.append(ChoiceParameterConfig(name=p["name"], values=values, parameter_type="int", is_ordered=True))
+                    ax_params.append(ChoiceParameterConfig(name=p["name"], values=values, parameter_type="float", is_ordered=True))
                 else:
                     ax_params.append(
                         RangeParameterConfig(
