@@ -102,6 +102,7 @@ def _inspect_class(class_object=None, debug=False):
     under_score = "_"
     if debug:
         under_score = "__"
+
     for function, method in inspect.getmembers(type(class_object), predicate=callable):
         if not function.startswith(under_score) and not function.isupper():
             try:
@@ -110,6 +111,16 @@ def _inspect_class(class_object=None, debug=False):
                 coroutine = inspect.iscoroutinefunction(method)
                 functions[function] = dict(signature=annotation, docstring=docstring, coroutine=coroutine,)
 
+            except Exception:
+                pass
+
+    for function, prop in inspect.getmembers(type(class_object), lambda x: isinstance(x, property)):
+        if not function.startswith(under_score) and not function.isupper():
+            try:
+                annotation = inspect.signature(prop.fget) if prop.fget else None
+                docstring = inspect.getdoc(prop)
+                functions[function] = dict(signature=annotation, docstring=docstring, coroutine=False,
+                                           is_property=True, has_setter=prop.fset is not None)
             except Exception:
                 pass
     return functions

@@ -442,10 +442,39 @@ def create_form_from_pseudo(pseudo: dict, autofill: bool, script=None, design=Tr
     :param design: if design is enabled
     """
     method_forms = {}
-    for attr_name, signature in pseudo.items():
-        # signature = info.get('signature', {})
-        form_class = create_add_form(signature, attr_name, autofill, script, design)
-        method_forms[attr_name] = form_class()
+    for attr_name, info in pseudo.items():
+        # Handle properties (getter/setter)
+        if isinstance(info, dict) and info.get('is_property'):
+            # Getter
+            form_class = create_add_form(info, attr_name, autofill, script, design)
+            method_forms[attr_name] = form_class()
+            
+            # Setter
+            if info.get('has_setter'):
+                setter_name = f"{attr_name}_(setter)"
+                sig = info.get('signature')
+                # Infer type from getter return annotation if available
+                param_type = inspect._empty
+                if sig and sig.return_annotation is not inspect._empty:
+                    param_type = sig.return_annotation
+                
+                # Create a synthetic signature for the setter: (value: type)
+                setter_sig = inspect.Signature(
+                    parameters=[inspect.Parameter('value', inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=param_type)],
+                    return_annotation=None
+                )
+                
+                setter_info = {
+                    'signature': setter_sig,
+                    'docstring': f"Set {attr_name}"
+                }
+                form_class_setter = create_add_form(setter_info, setter_name, autofill, script, design)
+                method_forms[setter_name] = form_class_setter()
+        else:
+            # Regular method
+            # signature = info.get('signature', {})
+            form_class = create_add_form(info, attr_name, autofill, script, design)
+            method_forms[attr_name] = form_class()
     return method_forms
 
 
@@ -603,7 +632,7 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
         pass
 
     deck_name = script.deck
-    workflows = Script.query.filter(Script.deck==deck_name, Script.name != script.name, Script.status == 'finalized').all()
+    workflows = Script.query.filter(Script.deck==deck_name, Script.name != script.name).all()
     for workflow in workflows:
         workflow_name = Script.validate_function_name(workflow.name)
         try:

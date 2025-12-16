@@ -1,4 +1,5 @@
 import os
+import inspect
 
 from flask import Blueprint, redirect, url_for, flash, jsonify, request, render_template, session, current_app
 from flask_login import login_required, current_user
@@ -88,7 +89,8 @@ def experiment_builder():
     # edit_action_info = session.get("edit_action")
 
     try:
-        exec_string = script.python_script if script.python_script else script.compile(current_app.config['SCRIPT_FOLDER'])
+        snapshot = global_config.deck_snapshot if deck else pseudo_deck
+        exec_string = script.python_script if script.python_script else script.compile(current_app.config['SCRIPT_FOLDER'], snapshot=snapshot)
     except Exception as e:
         exec_string = {}
         flash(f"Error in Python script: {e}")
@@ -108,12 +110,18 @@ def compile_preview():
     mode = request.args.get("mode", "single")   # default to "single"
     batch = request.args.get("batch", "sample") # default to "sample"
 
+    pseudo_deck_name = session.get('pseudo_deck', '')
+    pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
+    off_line = current_app.config["OFF_LINE"]
+    pseudo_deck = utils.load_deck(pseudo_deck_path) if off_line and pseudo_deck_name else None
+    snapshot = global_config.deck_snapshot if not off_line and global_config.deck else pseudo_deck
+
     try:
         # Example: decide which code to return based on mode/batch
         if mode == "single":
-            code = script.compile(current_app.config['SCRIPT_FOLDER'])
+            code = script.compile(current_app.config['SCRIPT_FOLDER'], snapshot=snapshot)
         elif mode == "batch":
-            code = script.compile(current_app.config['SCRIPT_FOLDER'], batch=True, mode=batch)
+            code = script.compile(current_app.config['SCRIPT_FOLDER'], batch=True, mode=batch, snapshot=snapshot)
         else:
             code = "Invalid mode. Please select 'single' or 'batch'."
     except Exception as e:
@@ -361,18 +369,38 @@ def methods_handler(instrument: str = ''):
                 # validate return variable name
                 save_data = script.validate_function_name(save_data)
 
-                primitive_arg_types = utils.get_arg_type(kwargs, functions[function_name])
+                function_data = functions.get(function_name)
+                # Handle virtual property setters
+                if not function_data and function_name.endswith("_(setter)"):
+                    prop_name = function_name[:-9]
+                    prop_data = functions.get(prop_name)
+                    if prop_data and prop_data.get('is_property'):
+                        # Synthesize setter signature: (value: type)
+                        sig = prop_data.get('signature')
+                        param_type = inspect._empty
+                        if sig and sig.return_annotation is not inspect._empty:
+                            param_type = sig.return_annotation
+                        
+                        setter_sig = inspect.Signature(
+                            parameters=[inspect.Parameter('value', inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=param_type)],
+                            return_annotation=None
+                        )
+                        # Inherit coroutine status from property (usually False)
+                        is_coroutine = prop_data.get('coroutine', False)
+                        function_data = {'signature': setter_sig, 'coroutine': is_coroutine}
 
-                # todo
-                # print(primitive_arg_types)
+                if not function_data:
+                    # Fallback or error handling
+                    function_data = {}
+
+                primitive_arg_types = utils.get_arg_type(kwargs, function_data)
 
                 script.eval_list(kwargs, primitive_arg_types)
                 kwargs = script.validate_variables(kwargs, primitive_arg_types)
-                coroutine = False
-                if instrument.startswith("deck") and deck_snapshot:
-                    coroutine = deck_snapshot[instrument][function_name].get("coroutine", False)
-                elif instrument.startswith("blocks") and block_snapshot:
-                    coroutine = block_snapshot[instrument][function_name].get("coroutine", False)
+                
+                # Use function_data to get coroutine status, avoiding KeyError for virtual setters
+                coroutine = function_data.get("coroutine", False)
+
                 # print(kwargs)
                 action = {"instrument": instrument, "action": function_name,
                           "args": kwargs,
@@ -444,8 +472,13 @@ def methods_handler(instrument: str = ''):
                 msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
     utils.post_script_file(script)
     #TODO
+    pseudo_deck_name = session.get('pseudo_deck', '')
+    pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
+    off_line = current_app.config["OFF_LINE"]
+    pseudo_deck = utils.load_deck(pseudo_deck_path) if off_line and pseudo_deck_name else None
+    snapshot = global_config.deck_snapshot if not off_line and global_config.deck else pseudo_deck
     try:
-        exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+        exec_string = script.compile(current_app.config['SCRIPT_FOLDER'], snapshot=snapshot)
     except Exception as e:
         exec_string = {}
         msg = f"Compilation failed: {str(e)}"
