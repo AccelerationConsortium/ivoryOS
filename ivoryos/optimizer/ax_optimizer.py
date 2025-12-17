@@ -114,7 +114,7 @@ class AxOptimizer(OptimizerBase):
             generator = step.get("model")
             num_trials = step.get("num_samples", -1)
             if not num_trials == 0:
-                steps.append(GenerationStep(generator=generators.get(generator), num_trials=num_trials))
+                steps.append(GenerationStep(generator=generators.get(generator), num_trials=num_trials, should_deduplicate=True))
 
         return GenerationStrategy(steps=steps)
 
