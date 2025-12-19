@@ -585,7 +585,7 @@ class Script(db.Model):
             "cleanup": parse_block(script_dict.get("cleanup", []))
         }
 
-    def render_nested_script_lines(self, script_dict):
+    def render_nested_script_lines(self, script_dict, snapshot=None):
         """
         Convert script_dict into a nested structure for collapsible UI.
         Returns check dict: { 'script': [ {type: 'line', code: '...', id: 'script-0'}, ... ] }
@@ -669,13 +669,44 @@ class Script(db.Model):
                         stmt = action["args"].get("statement", "")
                         line_code = "    " * indent + f"{act} = {stmt}"
                     else:
-                        args = render_args(action.get("args", {}))
+                        args_dict = action.get("args", {})
+                        args = render_args(args_dict)
                         ret = action.get("return")
                         line_code = "    " * indent
-                        if ret:
-                            line_code += f"{ret} = {instrument}.{act}({args})"
+                        
+                        # Check metadata for properties
+                        is_property_setter = False
+                        is_property_getter = False
+                        property_name = None
+                        
+                        if snapshot and instrument in snapshot:
+                            inst_data = snapshot[instrument]
+                            if act.endswith("_(setter)"):
+                                prop_candidate = act[:-9]
+                                if prop_candidate in inst_data and inst_data[prop_candidate].get('is_property'):
+                                    is_property_setter = True
+                                    property_name = prop_candidate
+                            elif act in inst_data and inst_data[act].get('is_property'):
+                                is_property_getter = True
+                                property_name = act
+                        
+                        if is_property_setter:
+                             arg_val = args_dict.get('value')
+                             if isinstance(arg_val, str) and not arg_val.startswith("#"):
+                                 arg_val = f"'{arg_val}'"
+                             elif isinstance(arg_val, str) and arg_val.startswith("#"):
+                                 arg_val = arg_val[1:]
+                             line_code += f"{instrument}.{property_name} = {arg_val}"
+                        elif is_property_getter:
+                             if ret:
+                                 line_code += f"{ret} = {instrument}.{property_name}"
+                             else:
+                                 line_code += f"{instrument}.{property_name}"
                         else:
-                            line_code += f"{instrument}.{act}({args})"
+                            if ret:
+                                line_code += f"{ret} = {instrument}.{act}({args})"
+                            else:
+                                line_code += f"{instrument}.{act}({args})"
                     
                     nodes.append({
                         "type": "line",
@@ -691,7 +722,7 @@ class Script(db.Model):
             "cleanup": parse_block(script_dict.get("cleanup", []), "cleanup")
         }
 
-    def compile(self, script_path=None, batch=False, mode="sample"):
+    def compile(self, script_path=None, batch=False, mode="sample", snapshot=None):
         """
         Compile the current script to a Python file.
         :return: String to write to a Python file.
@@ -707,7 +738,7 @@ class Script(db.Model):
         for i in self.stypes:
             if self.script_dict[i]:
                 is_async = any(a.get("coroutine", False) for a in self.script_dict[i])
-                func_str = self._generate_function_header(run_name, i, is_async, batch) + self._generate_function_body(i, batch, mode)
+                func_str = self._generate_function_header(run_name, i, is_async, batch) + self._generate_function_body(i, batch, mode, snapshot)
                 exec_str_collection[i] = func_str
         if script_path:
             self._write_to_file(script_path, run_name, exec_str_collection)
@@ -748,7 +779,7 @@ class Script(db.Model):
             function_header += self.indent(1) + f'"""Batch mode is experimental and may have bugs."""'
         return function_header
 
-    def _generate_function_body(self, stype, batch=False, mode="sample"):
+    def _generate_function_body(self, stype, batch=False, mode="sample", snapshot=None):
         """
         Generate the function body for each type in stypes.
         """
@@ -760,7 +791,7 @@ class Script(db.Model):
             if not configure:
                 body += self.indent(indent_unit) + "param_list = [{} for _ in range(n)]"
             for index, action in enumerate(self.script_dict[stype]):
-                text, indent_unit = self._process_action(indent_unit, action, index, stype, batch)
+                text, indent_unit = self._process_action(indent_unit, action, index, stype, batch, snapshot=snapshot)
                 body += text
             if return_list:
                 # body += self.indent(indent_unit) + f"result_list.append({return_str})"
@@ -768,14 +799,14 @@ class Script(db.Model):
 
         else:
             for index, action in enumerate(self.script_dict[stype]):
-                text, indent_unit = self._process_action(indent_unit, action, index, stype)
+                text, indent_unit = self._process_action(indent_unit, action, index, stype, snapshot=snapshot)
                 body += text
             return_str, return_list = self.config_return()
             if return_list and stype == "script":
                 body += self.indent(indent_unit) + f"return {return_str}"
         return body
 
-    def _process_action(self, indent_unit, action, index, stype, batch=False, mode="sample"):
+    def _process_action(self, indent_unit, action, index, stype, batch=False, mode="sample", snapshot=None):
         """
         Process each action within the script dictionary.
         """
@@ -836,7 +867,7 @@ class Script(db.Model):
             is_async = action.get("coroutine", False)
             dynamic_arg = len(self.get_variables()) > 0
             workflow_steps = action.get("workflow", None)
-        return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data, is_async, dynamic_arg, batch, batch_action, workflow_steps)
+        return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data, is_async, dynamic_arg, batch, batch_action, workflow_steps, snapshot=snapshot)
 
     def _process_args(self, args):
         """
@@ -911,7 +942,7 @@ class Script(db.Model):
         return cleaned
 
     def _process_instrument_action(self, indent_unit, instrument, action, args, save_data, is_async=False, dynamic_arg=False,
-                                   batch=False, batch_action=False, workflow_steps=None):
+                                   batch=False, batch_action=False, workflow_steps=None, snapshot=None):
         """
         Process actions related to instruments.
         """
@@ -974,7 +1005,43 @@ class Script(db.Model):
             self.blocks_included = True
             function_call = action
 
-        if isinstance(args, dict) and args != {}:
+        # Check if this is a property getter/setter
+        is_property_setter = False
+        is_property_getter = False
+        property_name = None
+        
+        if snapshot and instrument in snapshot:
+            inst_data = snapshot[instrument]
+            if action.endswith("_(setter)"):
+                prop_candidate = action[:-9]
+                if prop_candidate in inst_data and inst_data[prop_candidate].get('is_property'):
+                     is_property_setter = True
+                     property_name = prop_candidate
+            elif action in inst_data and inst_data[action].get('is_property'):
+                is_property_getter = True
+                property_name = action
+
+        if is_property_setter:
+            # Generate assignment: inst.prop = value
+            arg_str = "None"
+            if isinstance(args, dict):
+                 val = args.get('value')
+                 if val is not None:
+                      # If it is a string starting with # or text, handle quoting
+                      if isinstance(val, str):
+                           if val.startswith("#"):
+                                arg_str = val[1:]
+                           else:
+                                arg_str = f"'{val}'"
+                      else:
+                           arg_str = str(val)
+            single_line = f"{async_str}{instrument}.{property_name} = {arg_str}"
+
+        elif is_property_getter:
+            # Generate access: inst.prop (no parentheses)
+            single_line = f"{async_str}{instrument}.{property_name}"
+
+        elif isinstance(args, dict) and args != {}:
             args_str = self._process_dict_args(args)
             single_line = f"{async_str}{function_call}(**{args_str})"
         elif isinstance(args, str):
