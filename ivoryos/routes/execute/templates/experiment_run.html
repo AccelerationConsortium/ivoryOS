@@ -2,29 +2,112 @@
 {% block title %}IvoryOS | Design execution{% endblock %}
 
 {% block body %}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
 
-    {% if no_deck_warning and not dismiss %}
-        {# auto pop import when there is no deck#}
-        <script type="text/javascript">
-            function OpenBootstrapPopup() {
-                $("#importModal").modal('show');
-            }
-            window.onload = function () {
-                OpenBootstrapPopup();
-            };
-        </script>
-    {% endif %}
+{% if no_deck_warning and not dismiss %}
+{# auto pop import when there is no deck#}
+<script type="text/javascript">
+    function OpenBootstrapPopup() {
+        $("#importModal").modal('show');
+    }
+    window.onload = function () {
+        OpenBootstrapPopup();
+    };
+</script>
+{% endif %}
+<style>
+    #config-container {
+        height: 70vh;
+        /* Initial height */
+        overflow-y: auto;
+        min-height: 50px;
+        transition: height 0.1s ease-out;
+        /* Smooth resizing mostly */
+    }
 
-    <div class="row">
-        {% include 'components/run_panel.html' %}
-        {% include 'components/progress_panel.html' %}
-        {% include 'components/logging_panel.html' %}
+
+
+    #resizer {
+        height: 12px;
+        background: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        border-bottom: 1px solid #dee2e6;
+        cursor: row-resize;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    #resizer:hover {
+        background: #e9ecef;
+    }
+
+    #resizer i {
+        color: #adb5bd;
+        font-size: 1.2rem;
+    }
+</style>
+
+<div class="d-flex flex-column" style="height: calc(100vh - 100px);">
+    <div id="config-container" class="d-flex flex-column flex-shrink-0">
+        <div class="row h-100 m-0">
+            {% include 'components/run_panel.html' %}
+        </div>
     </div>
 
-    {# Include error modal #}
-    {% include 'components/error_modal.html' %}
+    <div id="resizer" title="Drag to resize">
+        <i class="bi bi-three-dots"></i>
+    </div>
 
-    <script src="{{ url_for('static', filename='js/socket_handler.js') }}"></script>
+    <div id="monitor-container" class="d-flex flex-column flex-grow-1"
+        style="overflow: hidden; min-height: 20px; padding-top: 10px;">
+        <div class="row h-100">
+            {% include 'components/progress_panel.html' %}
+            {% include 'components/logging_panel.html' %}
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const resizer = document.getElementById('resizer');
+        const configContainer = document.getElementById('config-container');
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', function (e) {
+            isResizing = true;
+            document.body.style.cursor = 'row-resize';
+            document.body.style.userSelect = 'none';
+            configContainer.style.transition = 'none'; // Disable transition during drag
+        });
+
+        document.addEventListener('mousemove', function (e) {
+            if (!isResizing) return;
+
+            const rect = configContainer.getBoundingClientRect();
+            const offset = rect.top + window.scrollY; // Position relative to document
+            const newHeight = e.pageY - offset; // Use pageY for robust drag
+
+            if (newHeight > 50 && newHeight < window.innerHeight - 200) {
+                configContainer.style.height = newHeight + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', function (e) {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                // configContainer.style.transition = 'height 0.1s ease-out'; // Re-enable if desired
+            }
+        });
+    });
+</script>
+
+{# Include error modal #}
+{% include 'components/error_modal.html' %}
+
+<script src="{{ url_for('static', filename='js/socket_handler.js') }}"></script>
 
 {% endblock %}

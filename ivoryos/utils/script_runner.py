@@ -49,6 +49,8 @@ class ScriptRunner:
         self.lock = global_config.runner_lock
         self.paused = False
         self.current_app = None
+        self.last_progress = 0
+        self.last_execution_section = None
 
     def toggle_pause(self):
         """Toggles between pausing and resuming the script"""
@@ -454,6 +456,7 @@ class ScriptRunner:
         return filename
 
     def _emit_progress(self, progress):
+        self.last_progress = progress
         self.socketio.emit('progress', {'progress': progress})
 
     def safe_sleep(self, duration: float):
@@ -621,8 +624,10 @@ class ScriptRunner:
 
             if self.logger:
                 self.logger.info(f"Executing '{instrument}.{action}' with args {substituted_args}")
-
-            self.socketio.emit('execution', {'section': f"{section_name}-{step_index-1}"})
+            
+            section_id = f"{section_name}-{step_index-1}"
+            self.last_execution_section = section_id
+            self.socketio.emit('execution', {'section': section_id})
             if action == "wait":
                 duration = float(substituted_args["statement"])
                 self.safe_sleep(duration)

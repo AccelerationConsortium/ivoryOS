@@ -1,9 +1,9 @@
 {# Run panel component for experiment run #}
 {% if script['script'] or script['prep'] or script['cleanup'] %}
-    <div class="col-lg-6 col-sm-12" id="run-panel"  style="{{ 'display: none;'  if pause_status else '' }}">
-        {% include 'components/run_tabs.html' %}
-    </div>
+<div class="col-lg-12 col-sm-12 h-100" id="run-panel">
+    {% include 'components/run_tabs.html' %}
+</div>
 {% else %}
-    <div class="col-lg-6 col-sm-12" id="placeholder-panel">
-    </div>
-{% endif %} 
+<div class="col-lg-6 col-sm-12" id="placeholder-panel">
+</div>
+{% endif %}

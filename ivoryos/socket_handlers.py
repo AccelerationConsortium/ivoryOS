@@ -58,4 +58,10 @@ def handle_connect():
     with open(filename, 'r') as log_file:
         log_history = log_file.readlines()
     for message in log_history[-10:]:
-        socketio.emit('log', {'message': message}) 
+        socketio.emit('log', {'message': message})
+
+    # Emit last known progress and last known execution section
+    if 0 < runner.last_progress < 100:
+        socketio.emit('progress', {'progress': runner.last_progress})
+        if runner.last_execution_section:
+            socketio.emit('execution', {'section': runner.last_execution_section}) 
