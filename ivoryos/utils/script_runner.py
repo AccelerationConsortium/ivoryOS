@@ -188,13 +188,18 @@ class ScriptRunner:
             # try:
             if self.logger:
                 self.logger.info(f"Initializing optimizer {optimizer_cls.__name__}")
-            optimizer = optimizer_cls(experiment_name=run_name, parameter_space=parameters, objective_config=objectives,
-                                  parameter_constraints=constraints, additional_params=additional_params,
-                                  optimizer_config=steps, datapath=output_path)
-            current_app.config["LAST_OPTIMIZER"] = optimizer
-            # except Exception as e:
-            #     if self.logger:
-            #         self.logger.error(f"Error during optimizer initialization: {e.__str__()}")
+            try:
+                optimizer = optimizer_cls(experiment_name=run_name, parameter_space=parameters, objective_config=objectives,
+                                      parameter_constraints=constraints, additional_params=additional_params,
+                                      optimizer_config=steps, datapath=output_path)
+                current_app.config["LAST_OPTIMIZER"] = optimizer
+            except Exception as e:
+                if self.logger:
+                    self.logger.error(f"Error during optimizer initialization: {e.__str__()}")
+                self._emit_progress(100)
+                if self.lock.locked():
+                    self.lock.release()
+                return None
 
         with current_app.app_context():
             run = WorkflowRun(name=script.name or "untitled", platform=script.deck or "deck", start_time=datetime.now(),
