@@ -1,51 +1,53 @@
 {# Logging panel component for experiment run #}
-<div class="col-lg-6 col-sm-12 logging-panel">
-    <div class="d-flex justify-content-between align-items-center">
+<div class="col-lg-6 col-sm-12 logging-panel d-flex flex-column h-100">
+    <div class="d-flex justify-content-between align-items-center flex-shrink-0">
         <h5>Progress：</h5>
         <div class="d-flex gap-2 ms-auto">
             <button id="pause-resume" class="btn btn-info text-white">
-            {% if pause_status %}
-            <i class="bi bi-play-circle"></i>
-            {% else %}
-            <i class="bi bi-pause-circle"></i>
-            {% endif %}
+                {% if pause_status %}
+                <i class="bi bi-play-circle"></i>
+                {% else %}
+                <i class="bi bi-pause-circle"></i>
+                {% endif %}
             </button>
             <button id="abort-current" class="btn btn-danger text-white">
-            <i class="bi bi-stop-circle"></i>
+                <i class="bi bi-stop-circle"></i>
             </button>
             <button id="abort-pending" class="btn btn-warning text-white">
-            <i class="bi bi-hourglass-split"></i>
+                <i class="bi bi-hourglass-split"></i>
             </button>
         </div>
     </div>
-    <small class="text-muted mt-2">
-    <strong>Note:</strong> The current step cannot be paused or stopped until it completes.
+    <small class="text-muted mt-2 flex-shrink-0">
+        <strong>Note:</strong> The current step cannot be paused or stopped until it completes.
     </small>
-    <div class="progress my-3">
+    <div class="progress my-3 flex-shrink-0">
         <div id="progress-bar-inner" class="progress-bar progress-bar-striped progress-bar-animated"></div>
     </div>
     <!-- Tabs -->
-    <ul class="nav nav-tabs" id="logPlotTabs" role="tablist">
+    <ul class="nav nav-tabs flex-shrink-0" id="logPlotTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="log-tab" data-bs-toggle="tab" data-bs-target="#log" type="button" role="tab">Log</button>
+            <button class="nav-link active" id="log-tab" data-bs-toggle="tab" data-bs-target="#log" type="button"
+                    role="tab">Log</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="plot-tab" data-bs-toggle="tab" data-bs-target="#plot" type="button" role="tab">Optimizer Plot</button>
+            <button class="nav-link" id="plot-tab" data-bs-toggle="tab" data-bs-target="#plot" type="button"
+                    role="tab">Optimizer Plot</button>
         </li>
     </ul>
-    <div class="tab-content mt-3" id="logPlotTabsContent">
-        <div class="tab-pane fade show active" id="log" role="tabpanel">
-            <div id="logging-panel" class="border p-2 bg-light" style="max-height: 400px; overflow-y: auto;"></div>
+    <div class="tab-content mt-3 flex-grow-1 d-flex flex-column" id="logPlotTabsContent" style="min-height: 0;">
+        <div class="tab-pane fade show active flex-grow-1 d-flex flex-column" id="log" role="tabpanel"
+             style="min-height: 0;">
+        <div id="logging-panel" class="border p-2 bg-light flex-grow-1 overflow-auto"></div>
         </div>
-        <div class="tab-pane fade" id="plot" role="tabpanel">
+        <div class="tab-pane fade flex-grow-1" id="plot" role="tabpanel" style="overflow-y: auto;">
             <button class="btn btn-success mb-2" onclick="showPlot()">Refresh Plot</button>
             <small class="text-muted d-block mt-1" id="plot-info">This function is only available for NIMO optimizers.</small>
             <br>
-            <img id="optimizerPlot" src="" class="img-fluid rounded shadow-sm d-block mx-auto" style="max-width:100%; display:none;">
+            <img id="optimizerPlot" src="" class="img-fluid rounded shadow-sm d-block mx-auto"
+                 style="max-width:100%; display:none;">
         </div>
-
     </div>
-
 </div>
 <!-- Abort Pending Modal -->
 <div class="modal fade" id="abortPendingModal" tabindex="-1" aria-hidden="true">

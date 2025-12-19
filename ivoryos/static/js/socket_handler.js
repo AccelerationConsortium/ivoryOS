@@ -13,11 +13,6 @@ document.addEventListener("DOMContentLoaded", function () {
         const runPanel = document.getElementById("run-panel");
         const codePanel = document.getElementById("code-panel");
         if (progress === 1) {
-            if (runPanel) runPanel.style.display = "none";
-            if (codePanel) {
-                codePanel.style.display = "block";
-                codePanel.scrollIntoView({ behavior: "smooth" });
-            }
             progressBar.classList.remove('bg-success');
             progressBar.classList.remove('bg-danger');
             progressBar.classList.add('progress-bar-animated');
@@ -26,10 +21,18 @@ document.addEventListener("DOMContentLoaded", function () {
             // Remove animation and set green color when 100% is reached
             progressBar.classList.remove('progress-bar-animated');
             progressBar.classList.add('bg-success'); // Bootstrap class for green color
-            setTimeout(() => {
-                if (runPanel) runPanel.style.display = "block";
-                if (codePanel) codePanel.style.display = "none";
-            }, 1000);  // Small delay to let users see the completion
+
+            // Clear all execution highlights
+            document.querySelectorAll('pre code').forEach(el => el.style.backgroundColor = '');
+
+            // Reset config container height if it exists
+            const configContainer = document.getElementById('config-container');
+            if (configContainer) {
+                configContainer.style.height = '70vh';
+                // console.log(configContainer.style.height);
+            }
+            // Reset flag so it can resize again next run
+            hasAutoResized = false;
         }
     });
 
@@ -118,9 +121,7 @@ document.addEventListener("DOMContentLoaded", function () {
         socket.emit('abort_current');  // Stop execution
         console.log("Execution stopped.");
 
-        // Reset UI back to initial state
-        document.getElementById("code-panel").style.display = "none";
-        document.getElementById("run-panel").style.display = "block";
+        console.log("Execution stopped.");
     });
 
     socket.on('log', function (data) {
@@ -154,7 +155,20 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    socket.on('execution', function(data) {
+    // Flag to track if we've already auto-resized the panel
+    let hasAutoResized = false;
+
+    socket.on('execution', function (data) {
+        // Auto-resize logic: shrink config panel to show more logs
+        if (!hasAutoResized) {
+            const configContainer = document.getElementById('config-container');
+            if (configContainer) {
+                // Set to a smaller height (e.g., 20vh) to prioritize logs
+                configContainer.style.height = '20vh';
+                hasAutoResized = true;
+            }
+        }
+
         // Remove highlighting from all lines
         document.querySelectorAll('pre code').forEach(el => el.style.backgroundColor = '');
 

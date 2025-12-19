@@ -1,111 +1,164 @@
 {# Configuration tab component #}
-<div class="tab-pane fade {{ 'show active' if config_list else '' }}" id="tab2" role="tabpanel" aria-labelledby="tab2-tab">
-    <!-- File Management Section -->
-    <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h6 class="mb-0"><i class="bi bi-file-earmark-text"></i> Configuration File</h6>
-            <small class="text-muted">
-                <a href="{{ url_for('execute.execute_files.download_empty_config', filetype='configure') }}">
-                    <i class="bi bi-download"></i> Download Empty Template
-                </a>
-            </small>
-        </div>
-        <div class="card-body">
-            <div class="row g-3">
-                <!-- File Selection -->
-                <div class="col-md-6">
-                    <form name="filenameForm" id="filenameForm" method="GET" action="{{ url_for('execute.experiment_run') }}" enctype="multipart/form-data">
-                        <div class="input-group">
-                            <label class="input-group-text"><i class="bi bi-folder2-open"></i></label>
-                            <select class="form-select" name="filename" id="filenameSelect" onchange="document.getElementById('filenameForm').submit();">
-                                <option {{ 'selected' if not filename else '' }} value="">-- Select existing file --</option>
-                                {% for config_file in config_file_list %}
-                                    <option {{ 'selected' if filename == config_file else '' }} value="{{ config_file }}">{{ config_file }}</option>
-                                {% endfor %}
-                            </select>
+<div class="tab-pane fade {{ 'show active' if config_list else '' }} h-100" id="tab2" role="tabpanel"
+    aria-labelledby="tab2-tab">
+    <div class="row h-100 overflow-auto">
+        <!-- Sidebar: File Management -->
+        <div class="col-xl-3 col-lg-4 mb-4">
+            <div class="card border-0 bg-transparent">
+                <div class="d-flex flex-column gap-3">
+                    <!-- File Actions -->
+                    <div class="card shadow-sm">
+                        <div class="card-header py-2">
+                            <h6 class="mb-0 fw-bold"><i class="bi bi-file-earmark-text me-2"></i>File Actions</h6>
                         </div>
-                    </form>
-                </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-3">
+                                <!-- Download Template -->
+                                <a href="{{ url_for('execute.execute_files.download_empty_config', filetype='configure') }}"
+                                    class="btn btn-outline-secondary btn-sm text-start">
+                                    <i class="bi bi-download me-2"></i> Download Template
+                                </a>
 
-                <!-- File Upload -->
-                <div class="col-md-6">
-                    <form method="POST" id="loadFile" name="loadFile" action="{{ url_for('execute.execute_files.upload') }}" enctype="multipart/form-data">
-                        <div class="input-group">
-                            <input class="form-control" name="file" type="file" accept=".csv" required="required" onchange="document.getElementById('loadFile').submit();">
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
+                                <hr class="my-1">
 
-    <!-- Configuration Table -->
-    <div class="card mb-4">
-        <div class="card-header position-relative">
-            <div class="position-absolute top-50 end-0 translate-middle-y me-3">
-                <span id="saveStatus" class="badge bg-success" style="display: none;">
-                    <i class="bi bi-check-circle"></i> Auto-saved
-                </span>
-                <span id="modifiedStatus" class="badge bg-warning" style="display: none;">
-                    <i class="bi bi-pencil"></i> Modified
-                </span>
-            </div>
-        </div>
-        <div class="card-body p-0">
-            <form method="POST" name="online-config" id="online-config" action="{{url_for('execute.experiment_run')}}">
-                <div class="table-responsive">
-                    <table id="dataInputTable" class="table table-striped table-hover mb-0">
-                        <thead class="table-dark">
-                        <tr>
-                            <th style="width: 30px;"></th>
-                            <th style="width: 40px;">#</th>
-                            {% for column in config_list %}
-                                <th>{{ column }}</th>
-                            {% endfor %}
-                            <th></th>
-                        </tr>
-                        </thead>
-                        <tbody id="tableBody">
-                        </tbody>
-                    </table>
-                </div>
+                                <!-- Select Existing -->
+                                <form name="filenameForm" id="filenameForm" method="GET"
+                                    action="{{ url_for('execute.experiment_run') }}" enctype="multipart/form-data">
+                                    <label class="form-label small text-muted mb-1">Select Existing</label>
+                                    <div class="input-group input-group-sm">
+                                        <select class="form-select" name="filename" id="filenameSelect"
+                                            onchange="document.getElementById('filenameForm').submit();">
+                                            <option {{ 'selected' if not filename else '' }} value="">-- Select file --
+                                            </option>
+                                            {% for config_file in config_file_list %}
+                                            <option {{ 'selected' if filename==config_file else '' }}
+                                                value="{{ config_file }}">{{ config_file }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </form>
 
-                <div class="card-footer">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                        <!-- Left side: Action buttons -->
-                        <div class="d-flex gap-2 flex-wrap">
-                            <button type="button" class="btn btn-success" onclick="addRow()">
-                                <i class="bi bi-plus-circle"></i> Add Row
-                            </button>
-                            <button type="button" class="btn btn-warning" onclick="clearAllRows()">
-                                <i class="bi bi-trash"></i> Clear All
-                            </button>
-                            <button type="button" class="btn btn-info" onclick="resetToFile()" id="resetToFileBtn" style="display: none;">
-                                <i class="bi bi-arrow-clockwise"></i> Reset to File
-                            </button>
-                        </div>
-
-                        <!-- Right side: Batch size and Run button -->
-                        <div class="d-flex gap-2 align-items-center flex-wrap">
-                            <div class="input-group" style="width: auto;">
-                                <label class="input-group-text" for="batch_size">Batch size</label>
-                                <input class="form-control" type="number" id="batch_size" name="batch_size" min="1" max="1000" value="1" style="width: 80px;">
+                                <!-- Upload New -->
+                                <form method="POST" id="loadFile" name="loadFile"
+                                    action="{{ url_for('execute.execute_files.upload') }}"
+                                    enctype="multipart/form-data">
+                                    <label class="form-label small text-muted mb-1">Upload New (.csv)</label>
+                                    <div class="input-group input-group-sm">
+                                        <input class="form-control" name="file" type="file" accept=".csv"
+                                            required="required"
+                                            onchange="document.getElementById('loadFile').submit();">
+                                    </div>
+                                </form>
                             </div>
-                            <button type="submit" name="online-config" class="btn btn-primary btn-lg">
-                                <i class="bi bi-play-circle"></i> Run
-                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Config Status / Info -->
+
+
+                    <!-- Run Settings -->
+                    <div class="card shadow-sm">
+                        <div class="card-header py-2">
+                            <h6 class="mb-0 fw-bold"><i class="bi bi-play-circle me-2"></i>Run Experiment</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label small text-muted">Batch Size</label>
+                                <input class="form-control" type="number" id="batch_size" name="batch_size" min="1"
+                                    max="1000" value="1" form="online-config">
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" name="online-config" class="btn btn-primary shadow-sm"
+                                    form="online-config">
+                                    <i class="bi bi-play-circle-fill me-2"></i> Run
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-
-            </form>
-        </div>
-        <!-- Config Preview (if loaded from file) -->
-        {% if config_preview %}
-            <div class="alert alert-info">
-                <small><i class="bi bi-info-circle"></i> {{ config_preview|length }} rows loaded from {{ filename }}</small>
             </div>
-        {% endif %}
+        </div>
+
+        <!-- Main Content: Configuration Table -->
+        <div class="col-xl-9 col-lg-8">
+            {% if config_preview %}
+            <div class="alert alert-info shadow-sm mb-3">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-info-circle fs-4 me-3"></i>
+                    <div>
+                        <small class="d-block fw-bold">Loaded File: {{ filename }}</small>
+                        <small class="text-muted">{{ config_preview|length }} rows loaded</small>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            <div class="card shadow-sm">
+                <div class="card-header py-2 bg-light d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-bold">Configuration Data</h6>
+
+                    <!-- Status Badges -->
+                    <div>
+                        <span id="saveStatus" class="badge bg-success rounded-pill" style="display: none;">
+                            <i class="bi bi-check-circle me-1"></i> Saved
+                        </span>
+                        <span id="modifiedStatus" class="badge bg-warning text-dark rounded-pill"
+                            style="display: none;">
+                            <i class="bi bi-pencil me-1"></i> Modified
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card-body p-0 d-flex flex-column">
+                    <form method="POST" name="online-config" id="online-config"
+                        action="{{url_for('execute.experiment_run')}}" class="d-flex flex-column h-100">
+
+                        <!-- Table Wrapper with scroll -->
+                        <div class="table-responsive flex-grow-1 border-bottom" style="overflow-y: auto;">
+                            <table id="dataInputTable"
+                                class="table table-striped table-hover mb-0 table-sm align-middle">
+                                <thead class="table-light sticky-top" style="z-index: 5;">
+                                    <tr>
+                                        <th style="width: 30px;"></th>
+                                        <th style="width: 40px;">#</th>
+                                        {% for column in config_list %}
+                                        <th class="text-nowrap">{{ column }}</th>
+                                        {% endfor %}
+                                        <th style="width: 50px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableBody">
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Footer Actions -->
+                        <div class="card-footer bg-white py-3">
+                            <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+                                <!-- Table Controls -->
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-outline-success btn-sm" onclick="addRow()">
+                                        <i class="bi bi-plus-circle me-1"></i> Add Row
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        onclick="clearAllRows()">
+                                        <i class="bi bi-trash me-1"></i> Clear
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        onclick="resetToFile()" id="resetToFileBtn" style="display: none;">
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                                    </button>
+                                </div>
+
+                                <!-- Run Execution -->
+                                <div class="d-flex gap-3 align-items-center">
+                                </div>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -136,16 +189,8 @@
 
 <script>
     var rowCount = 0;
-    var configColumns = [
-        {% for column in config_list %}
-            '{{ column }}'{{ ',' if not loop.last else '' }}
-        {% endfor %}
-    ];
-    var configTypes = {
-        {% for column, type in config_type_list.items() %}
-            '{{ column }}': '{{ type }}'{{ ',' if not loop.last else '' }}
-        {% endfor %}
-    };
+    var configColumns = {{ config_list| tojson }};
+    var configTypes = {{ config_type_list| tojson }};
 
     // State management
     var originalFileData = null;
@@ -169,7 +214,7 @@
         rowNumCell.innerHTML = '<span class="badge bg-secondary">' + rowCount + '</span>';
 
         // Data cells
-        configColumns.forEach(function(column, index) {
+        configColumns.forEach(function (column, index) {
             var cell = newRow.insertCell(-1);
             var value = data && data[column] ? data[column] : '';
             var placeholder = configTypes[column] || 'value';
@@ -260,14 +305,14 @@
     function showSaveStatus() {
         var saveStatus = document.getElementById('saveStatus');
         saveStatus.style.display = 'inline-block';
-        setTimeout(function() {
+        setTimeout(function () {
             saveStatus.style.display = 'none';
         }, 2000);
     }
 
     function debouncedSave() {
         clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(function() {
+        saveTimeout = setTimeout(function () {
             saveFormData();
             showSaveStatus();
         }, 1000); // Save 1 second after user stops typing
@@ -349,7 +394,7 @@
         rowCount = 0;
 
         // Add rows with data
-        data.forEach(function(rowData) {
+        data.forEach(function (rowData) {
             addRow(rowData, true);
         });
 
@@ -379,7 +424,7 @@
             animation: 150,
             ghostClass: 'sortable-ghost',
             dragClass: 'sortable-drag',
-            onEnd: function(evt) {
+            onEnd: function (evt) {
                 updateRowNumbers();
                 markAsModified();
                 debouncedSave();
@@ -393,46 +438,47 @@
         var savedData = loadSavedData();
 
         {% if config_preview %}
-            var fileData = {{ config_preview | tojson | safe }};
-            originalFileData = JSON.parse(JSON.stringify(fileData)); // Deep copy
+        var fileData = {{ config_preview | tojson | safe
+    }};
+    originalFileData = JSON.parse(JSON.stringify(fileData)); // Deep copy
 
-            if (savedData && savedData.length > 0) {
-                // Load saved data if available
-                loadDataFromSource(savedData, false);
-                console.log('Tab2: Loaded saved form data');
-            } else {
-                // Load from file
-                loadDataFromSource(fileData, true);
-                console.log('Tab2: Loaded file data');
+    if (savedData && savedData.length > 0) {
+        // Load saved data if available
+        loadDataFromSource(savedData, false);
+        console.log('Tab2: Loaded saved form data');
+    } else {
+        // Load from file
+        loadDataFromSource(fileData, true);
+        console.log('Tab2: Loaded file data');
+    }
+    {% else %}
+    if (savedData && savedData.length > 0) {
+        // Load saved data
+        loadDataFromSource(savedData, false);
+        console.log('Tab2: Loaded saved form data');
+    } else {
+        // Add default empty rows
+        var tableBody = document.getElementById("tableBody");
+        var currentRows = tableBody.rows.length;
+        if (currentRows < 5) {
+            for (let i = 0; i < 5; i++) {
+                addRow(null, true);
             }
-        {% else %}
-            if (savedData && savedData.length > 0) {
-                // Load saved data
-                loadDataFromSource(savedData, false);
-                console.log('Tab2: Loaded saved form data');
-            } else {
-                // Add default empty rows
-                var tableBody = document.getElementById("tableBody");
-                var currentRows = tableBody.rows.length;
-                if (currentRows < 5) {
-                    for (let i = 0; i < 5; i++) {
-                        addRow(null, true);
-                    }
-                }
-            }
-        {% endif %}
+        }
+    }
+    {% endif %}
 
-        // Initialize sortable after loading data
-        initializeSortable();
+    // Initialize sortable after loading data
+    initializeSortable();
     }
 
     // Handle page unload
-    window.addEventListener('beforeunload', function() {
+    window.addEventListener('beforeunload', function () {
         saveFormData();
     });
 
     // Initialize table when page loads
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
         loadConfigData();
     });
 

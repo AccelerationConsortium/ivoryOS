@@ -1,18 +1,51 @@
 {# Repeat tab component #}
-<div class="tab-pane fade {{ 'show active' if not config_list else '' }}" id="tab1" role="tabpanel" aria-labelledby="tab1-tab">
-    <p></p>
-    <form role="form" method='POST' name="run" action="{{url_for('execute.experiment_run')}}">
-        <div class="input-group mb-3">
-            <label class="input-group-text" for="batch_size">Batch size </label>
-            <input class="form-control" type="number" id="batch_size" name="batch_size" min="1" max="1000" value="1">
+<div class="tab-pane fade {{ 'show active' if not config_list else '' }} h-100" id="tab1" role="tabpanel"
+    aria-labelledby="tab1-tab">
+    <div class="row h-100">
+        <!-- Sidebar: Controls -->
+        <div class="col-xl-3 col-lg-4 mb-3">
+            <div class="card border-0 bg-transparent">
+                <!-- Run Settings Card -->
+                <div class="card shadow-sm">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0 fw-bold"><i class="bi bi-arrow-repeat me-2"></i>Repeat Settings</h6>
+                    </div>
+                    <div class="card-body">
+                        <form role="form" method='POST' name="run" action="{{url_for('execute.experiment_run')}}">
+                            <div class="mb-3">
+                                <label class="form-label small text-muted">Batch size</label>
+                                <input class="form-control" type="number" id="batch_size" name="batch_size" min="1"
+                                    max="1000" value="1">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small text-muted">Repeat for (times)</label>
+                                <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="1000"
+                                    value="1">
+                            </div>
+                            <div class="d-grid">
+                                <button class="btn btn-primary shadow-sm py-2" type="submit">
+                                    <i class="bi bi-play-circle-fill me-2"></i> Run
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="input-group mb-3">
-            <label class="input-group-text" for="repeat">Repeat for </label>
-            <input class="form-control" type="number" id="repeat" name="repeat" min="1" max="1000" value="1">
-            <label class="input-group-text" for="repeat"> times</label>
+
+        <!-- Main Content: Placeholder / Info -->
+        <div class="col-xl-9 col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header py-2 bg-light">
+                    <h6 class="mb-0 fw-bold">Experiment Info</h6>
+                </div>
+                <div class="card-body d-flex align-items-center justify-content-center text-muted">
+                    <div class="text-center">
+                        <i class="bi bi-arrow-repeat fs-1 mb-3 d-block"></i>
+                        <p class="mb-0">Run the current experiment multiple times with the specified batch size.</p>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="input-group mb-3">
-            <button class="form-control" type="submit" class="btn btn-dark">Run</button>
-        </div>
-    </form>
+    </div>
 </div>
