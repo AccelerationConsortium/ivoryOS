@@ -1,3 +1,10 @@
+1.5.3 (Dec 20th, 2025)
+- !66 human-in-the-loop user input (@Yusuke)
+- !65 additional user log (@Veronica)
+- !64 setter/getter support
+- !63 deduplicate in Ax custom strategy
+- !62 always-on progress bar
+
 1.5.2 (Dec 15th, 2025)
 - fix ax step range input conversion bug (@Yusuke)
 
