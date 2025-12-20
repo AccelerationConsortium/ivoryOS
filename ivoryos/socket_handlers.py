@@ -51,6 +51,12 @@ def handle_pause():
 def handle_retry():
     retry()
 
+@socketio.on('submit_input')
+def handle_input_submission(data):
+    value = data.get('value')
+    runner.handle_input_submission(value)
+    socketio.emit('log', {'message': f"User input received: {value}"})
+
 @socketio.on('connect')
 def handle_connect():
     # Fetch log messages from local file

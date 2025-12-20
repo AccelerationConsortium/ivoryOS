@@ -187,4 +187,51 @@ document.addEventListener("DOMContentLoaded", function () {
             currentId = currentId.substring(0, lastIndex);
         }
     });
+
+    socket.on('request_input', function (data) {
+        console.log("Request input:", data);
+        var inputModal = new bootstrap.Modal(document.getElementById('inputModal'));
+        document.getElementById('input-prompt').innerText = data.prompt;
+
+        var container = document.getElementById('input-container');
+        container.innerHTML = ''; // Clear previous
+
+        var inputField;
+        if (data.type === 'bool') {
+            inputField = document.createElement('div');
+            inputField.className = 'form-check';
+            inputField.innerHTML = `
+                <input class="form-check-input" type="checkbox" id="user-input-value">
+                <label class="form-check-label" for="user-input-value">Check for True</label>
+             `;
+        } else {
+            inputField = document.createElement('input');
+            inputField.className = 'form-control';
+            inputField.id = 'user-input-value';
+            if (data.type === 'int' || data.type === 'float') {
+                inputField.type = 'number';
+                if (data.type === 'float') inputField.step = 'any';
+            } else {
+                inputField.type = 'text';
+            }
+        }
+        container.appendChild(inputField);
+
+        inputModal.show();
+
+        // Handle Submit
+        document.getElementById('submit-input-btn').onclick = function () {
+            var val;
+            var inputEl = document.getElementById('user-input-value');
+            if (data.type === 'bool') {
+                val = inputEl.checked;
+            } else {
+                val = inputEl.value;
+                if (data.type === 'int') val = parseInt(val);
+                if (data.type === 'float') val = parseFloat(val);
+            }
+            socket.emit('submit_input', { value: val });
+            inputModal.hide();
+        };
+    });
 });

@@ -51,6 +51,16 @@ class ScriptRunner:
         self.current_app = None
         self.last_progress = 0
         self.last_execution_section = None
+        self.waiting_for_input = False
+        self.input_value = None
+
+    def handle_input_submission(self, value):
+        """Resume execution with user input"""
+        if self.waiting_for_input:
+            self.input_value = value
+            self.pause_event.set()
+            return True
+        return False
 
     def toggle_pause(self):
         """Toggles between pausing and resuming the script"""
@@ -507,6 +517,9 @@ class ScriptRunner:
             elif instrument == "math_variable":
                 await self._execute_variable_batched(step, contexts, phase_id=phase_id, step_index=action_id,
                                                      section_name=section_name)
+            elif instrument == "input":
+                await self._execute_variable_batched(step, contexts, phase_id=phase_id, step_index=action_id,
+                                                     section_name=section_name)
             elif instrument == "workflows":
                 # Recursively logic for nested workflows
                 # print(step.get("workflow", []))
@@ -640,6 +653,11 @@ class ScriptRunner:
             elif action == "pause":
                 msg = substituted_args.get("statement", "")
                 pause(msg)
+
+            elif action == "comment":
+                msg = substituted_args.get("statement", "")
+                if self.logger:
+                    self.logger.info(f"Comment: {msg}")
 
             elif instrument_type == "deck" and hasattr(deck, instrument):
                 component = getattr(deck, instrument)
@@ -792,6 +810,34 @@ class ScriptRunner:
 
         return False  # No row met all thresholds
 
+    def prompt_user(self, prompt: str, var_type) -> str:
+        result = None
+        if self.socketio:
+            self.waiting_for_input = True
+            self.input_value = None
+            self.socketio.emit('request_input', {
+                'prompt': prompt,
+                'type': var_type
+            })
+            if self.logger:
+                self.logger.info(f"Requesting input: {prompt} ({var_type})")
+
+            # Pause and wait for input
+            self.pause_event.clear()
+            self.pause_event.wait()
+
+            # Process result
+            result = self.input_value
+            self.waiting_for_input = False
+
+            # Log result
+            if self.logger:
+                self.logger.info(f"Input received: {result}")
+        else:
+            if self.logger:
+                self.logger.warning("No socketio connection, skipping input")
+        return result
+
     async def _execute_variable_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index,
                                         section_name):
         """Execute variable assignment for multiple samples."""
@@ -800,6 +846,11 @@ class ScriptRunner:
         arg_type = step["arg_types"]["statement"]
 
         for context in contexts:
+            if step["instrument"] == "input":
+                value = self.prompt_user(var_value, arg_type)
+                context[var_name] = value
+                continue
+
             # Substitute any variable references in the value
             if isinstance(var_value, str):
                 substituted_value = var_value
