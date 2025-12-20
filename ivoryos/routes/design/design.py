@@ -421,13 +421,15 @@ def methods_handler(instrument: str = ''):
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
             if form.validate_on_submit():
                 logic_type = kwargs.pop('builtin_name')
-                if 'variable' in kwargs:
+                if logic_type == 'input':
+                    script.add_input_action(insert_position=insert_position, **kwargs)
+                elif logic_type == 'variable':
                     try:
                         script.add_variable(insert_position=insert_position, **kwargs)
                     except ValueError as e:
                         success = False
                         msg = e.__str__()
-                elif 'math_variable' in kwargs:
+                elif logic_type == 'math_variable':
                     try:
                         script.add_math_variable(insert_position=insert_position, **kwargs)
                     except ValueError as e:

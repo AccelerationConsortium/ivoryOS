@@ -256,6 +256,16 @@ class Script(db.Model):
         self._insert_action(insert_position, current_len)
         self.update_time_stamp()
 
+    def add_input_action(self, statement, variable, variable_type, insert_position=None):
+        current_len = len(self.currently_editing_script)
+        uid = uuid.uuid4().fields[-1]
+        action = {"id": current_len + 1, "instrument": 'input', "action": variable,
+                  "args": {"statement": statement, "variable": variable}, "return": '', "uuid": uid,
+                  "arg_types": {"statement": variable_type}}
+        self.currently_editing_script.append(action)
+        self._insert_action(insert_position, current_len)
+        self.update_time_stamp()
+
     def _insert_action(self, insert_position, current_len, action_len:int=1):
 
         if insert_position is None:
@@ -557,6 +567,11 @@ class Script(db.Model):
                         stmt = stmt[1:]
                     lines.append("    " * indent + f"{act} = {stmt}")
 
+                elif instrument == "input":
+                    stmt = action["args"].get("statement", "")
+                    var_name = action["args"].get("variable", "")
+                    lines.append("    " * indent + f"{var_name} = input({repr(stmt)})")
+
                 elif instrument == "math_variable":
                     stmt = action["args"].get("statement", "")
                     lines.append("    " * indent + f"{act} = {stmt}")
@@ -682,6 +697,10 @@ class Script(db.Model):
                         else:
                              # Use repr to handle quotes safely
                              line_code = "    " * indent + f"print({repr(stmt)})"
+                    elif instrument == "input":
+                        stmt = action["args"].get("statement", "")
+                        var_name = action["args"].get("variable", "var")
+                        line_code = "    " * indent + f"{var_name} = input({repr(stmt)})"
                     else:
                         args_dict = action.get("args", {})
                         args = render_args(args_dict)
@@ -850,6 +869,39 @@ class Script(db.Model):
                 if isinstance(statement, str) and statement.startswith("#"):
                     statement = statement[1:]
                 return self.indent(indent_unit) + f"{action_name} = {statement}", indent_unit
+        elif instrument == 'input':
+            var_name = args.get('variable')
+            var_type = args.get('variable_type', 'str')
+            prompt = statement
+            
+            # Construct input call
+            if isinstance(prompt, str) and prompt.startswith("#"):
+                prompt_expr = prompt[1:]
+            else:
+                prompt_expr = repr(prompt) if prompt else "''"
+                
+            input_call = f"input({prompt_expr})"
+            
+            # Apply type casting
+            if var_type == 'int':
+                expr = f"int({input_call})"
+            elif var_type == 'float':
+                expr = f"float({input_call})"
+            elif var_type == 'bool':
+            # Simplified bool conversion (non-empty string is True) or specific 'true' check?
+            # Standard bool("False") is True. 
+            # Let's simple use bool() for now or specific parsing if needed. 
+            # Python input() returns string. 
+                expr = f"bool({input_call})"
+            else:
+                expr = input_call
+                
+            if batch:
+                return self.indent(indent_unit) + "for param in param_list:" + \
+                       self.indent(indent_unit + 1) + f"param['{var_name}'] = {expr}", indent_unit
+            else:
+                return self.indent(indent_unit) + f"{var_name} = {expr}", indent_unit
+
         elif instrument == 'wait':
             if isinstance(statement, str) and statement.startswith("#"):
                 statement = statement[1:]
