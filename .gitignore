@@ -114,3 +114,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# mac users
+*DS_STORE
+
+# user data
+ivoryos_data/
