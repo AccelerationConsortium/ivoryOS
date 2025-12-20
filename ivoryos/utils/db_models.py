@@ -260,7 +260,7 @@ class Script(db.Model):
         current_len = len(self.currently_editing_script)
         uid = uuid.uuid4().fields[-1]
         action = {"id": current_len + 1, "instrument": 'input', "action": variable,
-                  "args": {"statement": statement, "variable": variable}, "return": '', "uuid": uid,
+                  "args": {"statement": statement, "variable": variable}, "return": variable, "uuid": uid,
                   "arg_types": {"statement": variable_type}}
         self.currently_editing_script.append(action)
         self._insert_action(insert_position, current_len)

@@ -58,7 +58,7 @@
                             </div>
                             <div class="card-body">
                                 <div class="mb-3">
-                                    <label class="form-label small text-muted">Suggestions per batch</label>
+                                    <label class="form-label small text-muted">Batch size (# of suggestions)</label>
                                     <input class="form-control form-control-sm" type="number" id="batch_size"
                                         name="batch_size" min="1" max="100" value="1">
                                 </div>
@@ -89,7 +89,7 @@
                         <h6 class="mb-0 fw-bold"><i class="bi bi-gear me-2"></i>Optimizer Strategy</h6>
                     </div>
                     <div class="card-body">
-                        <select class="form-select" id="optimizer_type" name="optimizer_type">
+                        <select class="form-select form-select-sm" id="optimizer_type" name="optimizer_type">
                             <option value="">-- Select Strategy --</option>
                             {% for optimizer_name, optimizer_info in optimizer_schema.items() %}
                             <option value="{{ optimizer_name }}"
@@ -100,9 +100,7 @@
                             </option>
                             {% endfor %}
                         </select>
-                        <div class="form-text small mt-2">
-                            Select an optimization strategy to configure parameters.
-                        </div>
+
                     </div>
                 </div>
                 <div class="card shadow-sm h-100">
@@ -205,6 +203,7 @@
                                     <div class="col-12">
                                         <div id="constraints_section">
                                             <h6 class="fw-bold border-bottom pb-2 mb-3 text-secondary">Constraints
+                                                (optional, Ax expression only)
                                             </h6>
                                             <div id="constraints_container">
                                                 <div class="input-group input-group-sm mb-2 constraint-row">
