@@ -52,14 +52,50 @@ class TaskRunner:
         if component.startswith("deck."):
             component = component.split(".")[1]
             instrument = getattr(deck, component)
-            function_executable = getattr(instrument, method)
         elif component.startswith("blocks."):
             component = component.split(".")[1]
-            function_executable = BUILDING_BLOCKS[component][method]["func"]
+            return BUILDING_BLOCKS[component][method]["func"]
         else:
             temp_connections = global_config.defined_variables
             instrument = temp_connections.get(component)
-            function_executable = getattr(instrument, method)
+        
+        # Check for property setter convention: "<prop>_(setter)"
+        if method.endswith("_(setter)"):
+            prop_name = method[:-9] # remove "_(setter)"
+            # Check trait on class to avoid triggering property
+            if hasattr(type(instrument), prop_name):
+                 attr = getattr(type(instrument), prop_name)
+                 if isinstance(attr, property) and attr.fset:
+                     def setter(**kwargs):
+                         if len(kwargs) == 1:
+                             val = next(iter(kwargs.values()))
+                             setattr(instrument, prop_name, val)
+                             return None
+                         elif "value" in kwargs:
+                             setattr(instrument, prop_name, kwargs["value"])
+                             return None
+                         raise ValueError(f"Setter for {prop_name} expects 1 argument")
+                     
+                     # Copy signature from fset but remove self
+                     try:
+                         sig = inspect.signature(attr.fset)
+                         params = [p for n, p in sig.parameters.items() if n != 'self']
+                         setter.__signature__ = sig.replace(parameters=params)
+                     except Exception:
+                         # Fallback if signature extraction fails
+                         pass
+                     
+                     return setter
+        
+        # Check for property getter
+        if hasattr(type(instrument), method):
+            attr = getattr(type(instrument), method)
+            if isinstance(attr, property):
+                def getter(**kwargs):
+                    return getattr(instrument, method)
+                return getter
+
+        function_executable = getattr(instrument, method)
         return function_executable
 
     async def _run_single_step(self, component, method, kwargs, current_app=None):

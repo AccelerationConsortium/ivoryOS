@@ -52,8 +52,9 @@ def experiment_run():
     config_file_list = [i for i in os.listdir(current_app.config["CSV_FOLDER"]) if not i == ".gitkeep"]
 
     try:
+        snapshot = global_config.deck_snapshot
         exec_string = script.python_script if script.python_script else script.compile(
-            current_app.config['SCRIPT_FOLDER'])
+            current_app.config['SCRIPT_FOLDER'], snapshot=snapshot)
     except Exception as e:
         flash(e.__str__())
         if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
@@ -85,7 +86,7 @@ def experiment_run():
         return redirect(url_for("design.experiment_builder"))
 
 
-    line_collection = script.render_nested_script_lines(script.script_dict)
+    line_collection = script.render_nested_script_lines(script.script_dict, snapshot=snapshot)
 
     run_name = script.name if script.name else "untitled"
 
