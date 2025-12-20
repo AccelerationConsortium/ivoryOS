@@ -643,15 +643,24 @@ class ScriptRunner:
 
             elif instrument_type == "deck" and hasattr(deck, instrument):
                 component = getattr(deck, instrument)
+                if "_(setter)" in action:
+                    action = action.replace("_(setter)", "")
                 if hasattr(component, action):
-                    method = getattr(component, action)
+                    attr = getattr(component, action)
 
-                    # Execute and handle return value
-                    if step.get("coroutine", False):
-                        result = await method(**substituted_args)
+                    if callable(attr):
+                        # Execute and handle return value
+                        if step.get("coroutine", False):
+                            result = await attr(**substituted_args)
+                        else:
+                            result = attr(**substituted_args)
                     else:
-                        result = method(**substituted_args)
-
+                        # Handle property setter/getter
+                        if "value" in substituted_args:
+                            setattr(component, action, substituted_args["value"])
+                            result = substituted_args["value"]
+                        else:
+                            result = attr
                     # Store return value if specified
                     # return_var = step.get("return", "")
                     # if return_var:
