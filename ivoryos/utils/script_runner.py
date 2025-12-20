@@ -641,6 +641,11 @@ class ScriptRunner:
                 msg = substituted_args.get("statement", "")
                 pause(msg)
 
+            elif action == "comment":
+                msg = substituted_args.get("statement", "")
+                if self.logger:
+                    self.logger.info(f"Comment: {msg}")
+
             elif instrument_type == "deck" and hasattr(deck, instrument):
                 component = getattr(deck, instrument)
                 if "_(setter)" in action:

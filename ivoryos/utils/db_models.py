@@ -354,6 +354,12 @@ class Script(db.Model):
                      "args": {"statement": 1 if statement == '' else statement}, "return": '', "uuid": uid,
                      "arg_types": {"statement": "str"}}
                 ],
+            "comment":
+                [
+                    {"id": current_len + 1, "instrument": 'comment', "action": "comment",
+                     "args": {"statement": statement}, "return": '', "uuid": uid,
+                     "arg_types": {"statement": "str"}}
+                ],
         }
         action_list = logic_dict[logic_type]
         self.currently_editing_script.extend(action_list)
@@ -668,6 +674,14 @@ class Script(db.Model):
                     elif instrument == "math_variable":
                         stmt = action["args"].get("statement", "")
                         line_code = "    " * indent + f"{act} = {stmt}"
+                    elif instrument == "comment":
+                        stmt = action["args"].get("statement", "")
+                        if isinstance(stmt, str) and stmt.startswith("#"):
+                             stmt = stmt[1:]
+                             line_code = "    " * indent + f"print({stmt})"
+                        else:
+                             # Use repr to handle quotes safely
+                             line_code = "    " * indent + f"print({repr(stmt)})"
                     else:
                         args_dict = action.get("args", {})
                         args = render_args(args_dict)
@@ -844,6 +858,17 @@ class Script(db.Model):
             return f"{self.indent(indent_unit)}time.sleep({statement})", indent_unit
         elif instrument == 'repeat':
             return self._process_repeat(indent_unit, action_name, statement, next_action)
+        elif instrument == 'comment':
+            if isinstance(statement, str) and statement.startswith("#"):
+                statement = statement[1:]
+                out_stmt = f"print({statement})"
+            else:
+                # Use repr to safely escape string with quotes
+                out_stmt = f"print({repr(statement)})"
+
+            if batch:
+                return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit + 1)}{out_stmt}", indent_unit
+            return f"{self.indent(indent_unit)}{out_stmt}", indent_unit
         elif instrument == 'pause':
             self.needs_call_human = True
             if isinstance(statement, str) and statement.startswith("#"):

@@ -552,7 +552,7 @@ def create_form_from_action(action: dict, script=None, design=True):
 
 def create_all_builtin_forms(script):
     all_builtin_forms = {}
-    for logic_name in ['if', 'while', 'variable', 'wait', 'repeat', 'pause', 'math']:
+    for logic_name in ['if', 'while', 'variable', 'wait', 'repeat', 'pause', 'math', 'comment']:
         # signature = info.get('signature', {})
         form_class = create_builtin_form(logic_name, script)
         all_builtin_forms[logic_name] = form_class()
@@ -569,6 +569,7 @@ def create_builtin_form(logic_type, script):
         'wait': 'Enter second',
         'repeat': 'Enter an integer',
         'pause': 'Human Intervention Message',
+        'comment': 'Enter comment to log',
         'math': 'Enter math expression, e.g. #x + 5 * (#y - 2)'
     }.get(logic_type, 'Enter statement')
     description_text = {
@@ -683,6 +684,7 @@ def _action_button(action: dict, variables: dict):
         "if": "background-color: mistyrose",
         "while": "background-color: #a8b5a2",
         "pause": "background-color: palegoldenrod",
+        "comment": "background-color: lightgoldenrodyellow",
     }.get(action['instrument'], "")
     if not style:
         style = "background-color: thistle" if 'batch_action' in action and action["batch_action"] else ""
