@@ -120,3 +120,5 @@ dmypy.json
 
 # user data
 ivoryos_data/
+
+*pkl
