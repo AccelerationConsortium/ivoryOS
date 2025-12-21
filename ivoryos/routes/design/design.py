@@ -350,7 +350,6 @@ def methods_handler(instrument: str = ''):
 
     success = True
     msg = ""
-    request.form
     if "hidden_name" in request.form:
         deck_snapshot = global_config.deck_snapshot
         block_snapshot = global_config.building_blocks
@@ -393,6 +392,9 @@ def methods_handler(instrument: str = ''):
                     # Fallback or error handling
                     function_data = {}
 
+                # Save arg_order from signature
+                arg_order = list(kwargs.keys())
+
                 primitive_arg_types = utils.get_arg_type(kwargs, function_data)
 
                 script.eval_list(kwargs, primitive_arg_types)
@@ -408,6 +410,7 @@ def methods_handler(instrument: str = ''):
                           'arg_types': primitive_arg_types,
                           "coroutine": coroutine,
                           "batch_action": batch_action,
+                          "arg_order": arg_order,  # Explicitly save order
                           }
                 script.add_action(action=action, insert_position=insert_position)
             else:

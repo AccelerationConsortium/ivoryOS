@@ -504,7 +504,11 @@ def create_form_from_action(action: dict, script=None, design=True):
         "bool": (VariableOrBoolField if design else BooleanField, 'Empty for false')
     }
 
-    for name, param_type in arg_types.items():
+    # Use explicitly saved order if available, otherwise fallback (e.g. for old actions)
+    arg_order = action.get("arg_order", arg_types.keys())
+
+    for name in arg_order:
+        param_type = arg_types[name]
         # formatted_param_name = format_name(name)
         value = args.get(name, "")
         if type(value) is dict and value:
@@ -715,18 +719,23 @@ def _action_button(action: dict, variables: dict):
         if action['args']:
             if type(action['args']) is dict:
                 arg_list = []
-                for k, v in action['args'].items():
-                    if isinstance(v, dict):
-                        if not v:
-                            value = v  # Keep the original value if not a dict
+                if 'arg_order' in action:
+                    arg_order = action.get('arg_order')
+                else:
+                    arg_order = sorted(action['args'].keys())
+                for argument_name in arg_order:
+                    argument_data = action['args'].get(argument_name)
+                    if isinstance(argument_data, dict):
+                        if not argument_data:
+                            value = argument_data  # Keep the original value if not a dict
                         else:
-                            value = next(iter(v))  # Extract the first key if it's a dict
+                            value = next(iter(argument_data))  # Extract the first key if it's a dict
                             # show warning color for variable calling when there is no definition
 
-                            style = "background-color: khaki" if v.get(value) == "function_output" and value not in variables.keys() else ""
+                            style = "background-color: khaki" if argument_data.get(value) == "function_output" and value not in variables.keys() else ""
                     else:
-                        value = v  # Keep the original value if not a dict
-                    arg_list.append(f"{k} = {value}")  # Format the key-value pair
+                        value = argument_data  # Keep the original value if not a dict
+                    arg_list.append(f"{argument_name} = {value}")  # Format the key-value pair
                 arg_string = "(" + ", ".join(arg_list) + ")"
             else:
                 arg_string = f"= {action['args']}"
