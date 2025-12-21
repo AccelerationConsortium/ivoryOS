@@ -94,9 +94,9 @@ class Script(db.Model):
         # self.r = registered
 
     def as_dict(self):
-        dict = self.__dict__
-        dict.pop('_sa_instance_state', None)
-        return dict
+        data = dict(self.__dict__)  # shallow copy
+        data.pop('_sa_instance_state', None)
+        return data
 
     def get(self):
         workflows = db.session.query(Script).all()
