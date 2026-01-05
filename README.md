@@ -164,7 +164,9 @@ Local version in [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/m
 ---
 
 ## Roadmap
-- [ ] Python property support (setter/getter)
+- [x] Python property support (setter/getter)
+- [ ] Support dataclass input
+- [ ] Support **kwargs input
 - [ ] dropdown input 
 - [ ] snapshot version control
 - [ ] check batch-config file compatibility
@@ -174,7 +176,7 @@ Local version in [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/m
 ## Contributing
 
 We welcome all contributions — from core improvements to new drivers, plugins, and real-world use cases.
-See `CONTRIBUTING.md` for details and let us know you're interested: https://forms.gle/fPSvw5LEGrweUQUH8
+See `CONTRIBUTING.md` for details.
 
 ---
 
