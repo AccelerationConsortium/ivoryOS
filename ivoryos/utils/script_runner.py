@@ -2,6 +2,7 @@ import asyncio
 import os
 import threading
 import time
+import re
 from datetime import datetime
 from typing import List, Dict, Any
 
@@ -748,10 +749,23 @@ class ScriptRunner:
         """Substitute parameter placeholders like #param_1 with actual values."""
         substituted = {}
 
+        def substitute_vars(value: str, context: Dict[str, Any]) -> Any:
+            # Replace placeholders of the form `#var` in a string with values from a context.
+            def replacer(match):
+                var_name = match.group(1)
+                if var_name not in context:
+                    raise KeyError(f"Missing context value for '{var_name}'")
+                return str(context[var_name])
+
+            return re.sub(r"#(\w+)", replacer, value)
+
         for key, value in args.items():
             if isinstance(value, str) and value.startswith("#"):
                 param_name = value[1:]  # Remove '#'
                 substituted[key] = context.get(param_name)
+            elif isinstance(value, str):
+                # for comment need to substitue #args in the arg with the actual values
+                substituted[key] = substitute_vars(value, context)
             else:
                 substituted[key] = value
 
