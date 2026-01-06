@@ -248,9 +248,9 @@ class ScriptRunner:
                 asyncio.run(self._run_actions(script, section_name="cleanup", run_id=run_id))
                 # Reset the running flag when done
                 # Save results if necessary
-                if not script.python_script and return_list:
+                if not script.python_script: # and return_list:
+                    # save data even if there is no return list, as in the case values are saved as variables instead of returns
                     # print(output_list)
-
                     filename = self._save_results(run_name, arg_type, return_list, output_list, output_path)
 
 
