@@ -81,7 +81,8 @@ def experiment_run():
         else:
             # Handle string case - you might need to adjust this based on your needs
             line_collection = {}
-    except Exception:
+    except Exception as e:
+        g.logger.exception(f"Exception while executing script: {e}")
         flash(f"Please check syntax!!")
         return redirect(url_for("design.experiment_builder"))
 
@@ -159,6 +160,8 @@ def experiment_run():
             time.sleep(1)
         return jsonify({"status": "task started", "task_id": global_config.runner_status.get("id")})
     else:
+        # todo if want to be able to optimize more then add something called objectives_list instead, and add that to the tab_bayesian.html, and add in
+        #  more than just the return_list in there; e.g. be able to use math or normal or human input variables as objectives
         return render_template('experiment_run.html', script=script.script_dict, filename=filename,
                                dot_py=exec_string, line_collection=line_collection,
                                return_list=return_list, config_list=config_list, config_file_list=config_file_list,
@@ -219,16 +222,24 @@ def run_bo():
         repeat = payload.pop("repeat", None)
         optimizer_type = payload.pop("optimizer_type", None)
         existing_data = payload.pop("existing_data", None)
+        upload_new_data = payload.pop("data_mode_toggle", None)
 
-        # Handle file upload if present
-        if 'uploaded_data' in request.files:
-            file = request.files['uploaded_data']
-            if file and file.filename and file.filename.endswith('.csv'):
-                filename = secure_filename(file.filename)
+        # warning - existing data may be set if selected a file in choose existing data, BUT if you choose to upload
+        #   data then the uplodaded data payload will also exist. choose the one to use based on the data mode toggle
+        if upload_new_data == 'on': # use custom uploaded data
+            uploaded_file = request.files.get("uploaded_data")
+            # Handle file upload if present
+            if uploaded_file and uploaded_file.filename:
+                filename = secure_filename(uploaded_file.filename)
                 filepath = os.path.join(current_app.config['DATA_FOLDER'], filename)
-                file.save(filepath)
+                uploaded_file.save(filepath)
                 existing_data = filename
-                
+            else:
+                existing_data = ''
+        else:
+            # use previous existing data
+            existing_data = existing_data
+
         batch_mode = payload.pop("batch_mode", None)
         batch_size = payload.pop("batch_size", 1)
 
