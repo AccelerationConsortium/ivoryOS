@@ -39,6 +39,8 @@ def _create_forms(instrument, script, autofill, pseudo_deck = None):
     elif instrument.startswith("blocks"):
         forms = create_form_from_pseudo(pseudo=global_config.building_blocks[instrument], autofill=autofill, script=script)
         functions = global_config.building_blocks[instrument]
+    elif instrument.startswith("workflows"):
+        _, forms = create_workflow_forms(script, autofill=autofill)
     else:
         if deck:
             functions = global_config.deck_snapshot.get(instrument, {})
