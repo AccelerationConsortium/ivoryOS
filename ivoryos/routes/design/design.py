@@ -432,7 +432,7 @@ def methods_handler(instrument: str = ''):
                     except ValueError as e:
                         success = False
                         msg = e.__str__()
-                elif logic_type == 'math_variable':
+                elif logic_type == 'math_variable' or logic_type == 'math': # should work with math_variable but doesnt, but does for math because it is the builtin name; should change all instances of using == "math_variable" to math later?
                     try:
                         script.add_math_variable(insert_position=insert_position, **kwargs)
                     except ValueError as e:
