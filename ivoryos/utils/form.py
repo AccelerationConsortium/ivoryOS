@@ -664,7 +664,7 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
 
             form_class = create_form_for_method(method, autofill, script, design)
 
-            hidden_method_name = HiddenField(name=f'workflow_name', description="",
+            hidden_method_name = HiddenField(name=f'workflow_name', description=f"{workflow.description}",
                                              render_kw={"value": f'{workflow_name}'})
             if design:
                 return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
