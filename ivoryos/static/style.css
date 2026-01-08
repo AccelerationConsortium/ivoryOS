@@ -4,33 +4,45 @@
     margin: auto;
     align-content: center;
 }
-.card{
+
+.card {
+    display: flex;
+    justify-content: flex-end;
+    border: none;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.draggable-method-card {
     display: flex;
     justify-content: flex-end;
     cursor: move;
     border: none;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
-
 }
 
 .card a {
     text-decoration: none;
 }
+
 .card-title {
-    color: #007bff; /* Bootstrap primary color */
+    color: #007bff;
+    /* Bootstrap primary color */
 }
+
 .grid-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 400px));
     gap: 25px;
     padding: 10px;
 }
+
 .navbar-nav {
     font-size: larger;
 }
-.navbar-nav li{
-    margin-right:10px;
-    margin-left:10px;
+
+.navbar-nav li {
+    margin-right: 10px;
+    margin-left: 10px;
 }
 
 .canvas {
@@ -42,33 +54,38 @@
     background-image: radial-gradient(circle, cadetblue 1px, rgba(0, 0, 0, 0) 1px);
 }
 
-.canvas content{
+.canvas content {
     margin-top: 10px;
 }
+
 body {
     padding-top: 100px;
-    background-color: #f8f9fa; /* Light grey background */
+    background-color: #f8f9fa;
+    /* Light grey background */
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
+
 /*.run-panel-row-height {*/
 /*    height: 80vh;*/
 /*}*/
 pre {
-  tab-size: 4;
+    tab-size: 4;
 }
-.scroll-column{
-  height: 90vh;
+
+.scroll-column {
+    height: 90vh;
     overflow: hidden;
-  overflow-y: scroll;
+    overflow-y: scroll;
 }
 
 label {
-    display:block
+    display: block
 }
 
 .scroll {
     overflow: auto;
-    -webkit-overflow-scrolling: touch; /* enables momentum-scrolling on iOS */
+    -webkit-overflow-scrolling: touch;
+    /* enables momentum-scrolling on iOS */
     position: absolute;
     top: 0;
     left: 0;
@@ -83,17 +100,20 @@ label {
 }
 
 * {
-  -ms-overflow-style: none !important;
+    -ms-overflow-style: none !important;
 }
-.script-table{
+
+.script-table {
     background: white;
     width: fit-content;
 }
+
 .script-table td {
     border-bottom: none;
     border-top: cadetblue;
 }
-.script-table th{
+
+.script-table th {
     border-top: cadetblue;
     border-bottom: none;
 }
@@ -107,17 +127,18 @@ hr.vertical {
     width: 5px;
     height: 100%;
     display: inline-block;
-  /* or height in PX */
+    /* or height in PX */
 }
+
 .list-group a {
     text-align: left;
 }
 
-.tray input[type="checkbox"]:checked + label{
+.tray input[type="checkbox"]:checked+label {
     background: radial-gradient(circle, white 40%, midnightblue, dodgerblue 43%);
 }
 
-.btn-vial{
+.btn-vial {
     height: 50px;
     width: 50px;
     border-radius: 50%;
@@ -138,11 +159,11 @@ hr.vertical {
 }
 
 .disabled-link {
-  pointer-events: none;
+    pointer-events: none;
     color: currentColor;
-  cursor: not-allowed;
-  opacity: 0.5;
-  text-decoration: none;
+    cursor: not-allowed;
+    opacity: 0.5;
+    text-decoration: none;
 }
 
 
@@ -159,33 +180,38 @@ hr.vertical {
 }
 
 .dropdown:hover .dropdown-menu {
-  display: block;
+    display: block;
 }
 
 #reorder {
-  overflow-y: scroll;
-  -webkit-overflow-scrolling: touch;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
 }
 
 .accordion-item.design-control .accordion-button.collapsed {
-    background-color:#c1f2f1 !important;
+    background-color: #c1f2f1 !important;
 }
+
 .accordion-item.design-control .accordion-button {
-    background-color:#b3dad9 !important;
+    background-color: #b3dad9 !important;
 }
+
 .accordion-item.design-control .accordion-button:hover {
-    background-color:#b3dad9 !important;
+    background-color: #b3dad9 !important;
 }
 
 .accordion-item.text-to-code .accordion-button.collapsed {
     background-color: #cdc1f2 !important;
 }
+
 .accordion-item.text-to-code .accordion-button {
     background-color: #cdc1f2 !important;
 }
+
 .accordion-item.text-to-code .accordion-button:hover {
     background-color: #b8afdc !important;
 }
+
 .overlay {
     position: fixed;
     top: 0;
@@ -200,17 +226,23 @@ hr.vertical {
     font-size: 24px;
     padding-top: 20%;
 }
+
 .drop-placeholder {
-    height: 2px !important;  /* Keep it very thin */
+    height: 2px !important;
+    /* Keep it very thin */
     min-height: 2px !important;
     margin: 0 !important;
     padding: 0 !important;
-    background: rgba(0, 0, 0, 0.2); /* Slight visibility */
+    background: rgba(0, 0, 0, 0.2);
+    /* Slight visibility */
     border-radius: 2px;
-    list-style: none; /* Remove any default list styling */
+    list-style: none;
+    /* Remove any default list styling */
 }
+
 .description-truncate {
-    max-width: 600px;      /* adjust for your layout */
+    max-width: 600px;
+    /* adjust for your layout */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
