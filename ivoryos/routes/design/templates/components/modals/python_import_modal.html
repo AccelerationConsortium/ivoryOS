@@ -1,0 +1,149 @@
+{# Python import modal component #}
+<div class="modal fade" id="pythonModal" tabindex="-1" aria-labelledby="pythonModal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="pythonModalTitle">Import from Python</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="pythonImportForm">
+                    <div class="input-group mb-3">
+                        <input class="form-control" type="file" id="pythonFile" accept=".py">
+                    </div>
+                </div>
+                <div id="pythonImportPreview" style="display:none;">
+                    <p>Found workflows:</p>
+                    <ul id="pythonWorkflowList" class="list-group mb-3"></ul>
+                    <div id="pythonDuplicateWarning" class="alert alert-warning" style="display:none;">
+                        Some workflows already exist. Warning: Duplicates will be overwritten if selected.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Close </button>
+                <button type="button" class="btn btn-primary" id="btnUploadPython" onclick="uploadPythonFile()"> Upload
+                </button>
+                <button type="button" class="btn btn-primary" id="btnConfirmPython" onclick="confirmPythonImport()"
+                    style="display:none;"> Import </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let importedWorkflows = {};
+    let duplicateList = [];
+
+    async function uploadPythonFile() {
+        const fileInput = document.getElementById('pythonFile');
+        const file = fileInput.files[0];
+        if (!file) {
+            alert("Please select a file");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch("{{ url_for('design.import_python_file') }}", {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                importedWorkflows = data.workflows;
+                duplicateList = data.duplicates || [];
+                showPreview();
+            } else {
+                alert("Error: " + data.error);
+            }
+        } catch (e) {
+            alert("Upload failed: " + e);
+        }
+    }
+
+    function showPreview() {
+        document.getElementById('pythonImportForm').style.display = 'none';
+        document.getElementById('pythonImportPreview').style.display = 'block';
+        document.getElementById('btnUploadPython').style.display = 'none';
+        document.getElementById('btnConfirmPython').style.display = 'inline-block';
+
+        const list = document.getElementById('pythonWorkflowList');
+        list.innerHTML = '';
+
+        const hasDuplicates = duplicateList.length > 0;
+        if (hasDuplicates) {
+            document.getElementById('pythonDuplicateWarning').style.display = 'block';
+        }
+
+        for (const name of Object.keys(importedWorkflows)) {
+            const li = document.createElement('li');
+            li.className = 'list-group-item';
+
+            const isDuplicate = duplicateList.includes(name);
+            const badge = isDuplicate ? '<span class="badge bg-warning text-dark">Exists</span>' : '<span class="badge bg-success">New</span>';
+
+            // Checkbox to select for import
+            // Default: check if new, uncheck if duplicate? user wants to choose.
+            // "pop whether user want to overwrite that".
+            // It's better to force user to check explicitly if they want to overwrite.
+            const checked = !isDuplicate ? 'checked' : '';
+
+            li.innerHTML = `
+                <div class="form-check">
+                    <input class="form-check-input workflow-checkbox" type="checkbox" value="${name}" id="cb_${name}" ${checked} data-is-duplicate="${isDuplicate}">
+                    <label class="form-check-label" for="cb_${name}">
+                        ${name} ${badge}
+                    </label>
+                </div>
+            `;
+            list.appendChild(li);
+        }
+    }
+
+    async function confirmPythonImport() {
+        const checkboxes = document.querySelectorAll('.workflow-checkbox:checked');
+        const overwrite = [];
+        const workflowsToImport = {};
+
+        checkboxes.forEach(cb => {
+            const name = cb.value;
+            const isDuplicate = cb.dataset.isDuplicate === 'true';
+            if (isDuplicate) {
+                overwrite.push(name);
+            }
+            workflowsToImport[name] = importedWorkflows[name];
+        });
+
+        if (Object.keys(workflowsToImport).length === 0) {
+            alert("No workflows selected.");
+            return;
+        }
+
+        // Send confirm request
+        try {
+            const response = await fetch("{{ url_for('design.confirm_import_python') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    workflows: workflowsToImport,
+                    overwrite: overwrite
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert("Import successful!");
+                location.reload();
+            } else {
+                alert("Import failed: " + data.error);
+            }
+        } catch (e) {
+            alert("Request failed: " + e);
+        }
+    }
+</script>
