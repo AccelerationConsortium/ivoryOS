@@ -180,8 +180,8 @@ def convert_to_cards(source_code: str):
                 else:
                     return # invalid format like deck.something
             elif full_func_name.startswith("blocks."):
-                 instrument = ".".join(func_parts[:-1])
-                 action = func_parts[-1]
+                instrument = ".".join(func_parts[:-1])
+                action = func_parts[-1]
             elif func_parts[-1] in building_blocks.keys():
                 instrument = building_blocks.get(func_parts[-1])
                 action = func_parts[-1]
@@ -189,21 +189,21 @@ def convert_to_cards(source_code: str):
                 # Try to see if the first part is a known instrument in deck_snapshot
                 # This covers cases like 'sdl.dose' where 'sdl' is the instrument
                 if len(func_parts) >= 2:
-                     possible_instrument = ".".join(func_parts[:-1])
-                     possible_action = func_parts[-1]
-                     if possible_instrument in global_config.deck_snapshot:
-                         instrument = possible_instrument
-                         action = possible_action
-                     else:
-                         return
+                    possible_instrument = ".".join(func_parts[:-1])
+                    possible_action = func_parts[-1]
+                    if f"deck.{possible_instrument}" in global_config.deck_snapshot:
+                        instrument = f"deck.{possible_instrument}"
+                        action = possible_action
+                    else:
+                        return
                 else:
                     return
 
-            # Validate that the instrument (if not a block or time) exists in deck_snapshot
-            if not instrument.startswith("blocks.") and instrument != "time":
-                 if instrument not in global_config.deck_snapshot:
-                     return # Not a valid instrument call for this deck
-
+            # # Validate that the instrument (if not a block or time) exists in deck_snapshot
+            # if not instrument.startswith("blocks.") and instrument != "time":
+            #      if instrument not in global_config.deck_snapshot:
+            #          return # Not a valid instrument call for this deck
+            #
 
 
             # --- special case for time.sleep ---
@@ -240,20 +240,22 @@ def convert_to_cards(source_code: str):
 
             # 1. Check in deck_snapshot
             if instrument in global_config.deck_snapshot:
-                 func_info = global_config.deck_snapshot[instrument].get(action)
-                 if func_info and 'signature' in func_info:
-                     sig_params = list(func_info['signature'].parameters.keys())
+                func_info = global_config.deck_snapshot[instrument].get(action)
+                if func_info and 'signature' in func_info:
+                    sig_params = list(func_info['signature'].parameters.keys())
+                    sig_params.remove("self")
+                    print(sig_params)
 
             # 2. Check in building_blocks
             # instrument might be mapped name or actual block name
             # building_blocks keys are short names, values are mapped names (e.g. 'test' -> 'blocks.general.test')
             if not sig_params:
-                 # Check if instrument is a block name e.g. "blocks.general"
-                 if instrument.startswith("blocks."):
-                     if instrument in global_config.building_blocks:
-                         func_info = global_config.building_blocks[instrument].get(action)
-                         if func_info and 'signature' in func_info:
-                             sig_params = list(func_info['signature'].parameters.keys())
+                # Check if instrument is a block name e.g. "blocks.general"
+                if instrument.startswith("blocks."):
+                    if instrument in global_config.building_blocks:
+                        func_info = global_config.building_blocks[instrument].get(action)
+                        if func_info and 'signature' in func_info:
+                            sig_params = list(func_info['signature'].parameters.keys())
 
             # Handle positional arguments
             for i, arg_node in enumerate(node.args):
