@@ -170,19 +170,40 @@ def convert_to_cards(source_code: str):
 
             full_func_name = ".".join(func_parts)
 
-            # Check if this is a deck call or a building block
-            if full_func_name.startswith("deck.") or full_func_name.startswith("blocks."):
+            # Check if it starts with 'deck.' and strip it
+            if full_func_name.startswith("deck."):
+                remaining_parts = full_func_name.split(".")[1:]
+                # Must have at least instrument.action
+                if len(remaining_parts) >= 2:
+                    instrument = ".".join(remaining_parts[:-1])
+                    action = remaining_parts[-1]
+                else:
+                    return # invalid format like deck.something
+            elif full_func_name.startswith("blocks."):
                 instrument = ".".join(func_parts[:-1])
                 action = func_parts[-1]
-            # not starting with deck or block, check if it's a decorated function
-            # ["general", "action"] or ["action"]
             elif func_parts[-1] in building_blocks.keys():
                 instrument = building_blocks.get(func_parts[-1])
                 action = func_parts[-1]
             else:
-                # ignore other calls
-                return
+                # Try to see if the first part is a known instrument in deck_snapshot
+                # This covers cases like 'sdl.dose' where 'sdl' is the instrument
+                if len(func_parts) >= 2:
+                    possible_instrument = ".".join(func_parts[:-1])
+                    possible_action = func_parts[-1]
+                    if f"deck.{possible_instrument}" in global_config.deck_snapshot:
+                        instrument = f"deck.{possible_instrument}"
+                        action = possible_action
+                    else:
+                        return
+                else:
+                    return
 
+            # # Validate that the instrument (if not a block or time) exists in deck_snapshot
+            # if not instrument.startswith("blocks.") and instrument != "time":
+            #      if instrument not in global_config.deck_snapshot:
+            #          return # Not a valid instrument call for this deck
+            #
 
 
             # --- special case for time.sleep ---
@@ -212,6 +233,48 @@ def convert_to_cards(source_code: str):
 
             args = {}
             arg_types = {}
+
+            # Resolve function signature
+            sig_params = []
+            func_def = None
+
+            # 1. Check in deck_snapshot
+            if instrument in global_config.deck_snapshot:
+                func_info = global_config.deck_snapshot[instrument].get(action)
+                if func_info and 'signature' in func_info:
+                    sig_params = list(func_info['signature'].parameters.keys())
+                    sig_params.remove("self")
+                    print(sig_params)
+
+            # 2. Check in building_blocks
+            # instrument might be mapped name or actual block name
+            # building_blocks keys are short names, values are mapped names (e.g. 'test' -> 'blocks.general.test')
+            if not sig_params:
+                # Check if instrument is a block name e.g. "blocks.general"
+                if instrument.startswith("blocks."):
+                    if instrument in global_config.building_blocks:
+                        func_info = global_config.building_blocks[instrument].get(action)
+                        if func_info and 'signature' in func_info:
+                            sig_params = list(func_info['signature'].parameters.keys())
+
+            # Handle positional arguments
+            for i, arg_node in enumerate(node.args):
+                if i < len(sig_params):
+                    arg_name = sig_params[i]
+                else:
+                    # Fallback if we have more args than parameters or no signature found
+                    arg_name = f"arg_{i}"
+
+                if isinstance(arg_node, ast.Constant):
+                    value = arg_node.value
+                elif isinstance(arg_node, ast.Name):
+                    value = f"#{arg_node.id}"
+                else:
+                    value = ast.unparse(arg_node)
+
+                args[arg_name] = value
+                arg_types[arg_name] = infer_type(value)
+
 
             for kw in node.keywords:
                 if kw.arg is None and isinstance(kw.value, ast.Dict):
@@ -257,6 +320,25 @@ def convert_to_cards(source_code: str):
     CardVisitor().visit(tree)
     return cards
 
+def extract_functions_and_convert(source_code: str):
+    """
+    Parses source code, extracts each top-level function definition,
+    and converts its body to cards.
+    Returns a dict {func_name: cards_list}.
+    """
+    tree = ast.parse(source_code)
+    results = {}
+    
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef):
+             # Extract the source code for this function
+             # ast.get_source_segment is available in 3.8+
+             func_source = ast.get_source_segment(source_code, node)
+             if func_source:
+                 cards = convert_to_cards(func_source)
+                 results[node.name] = {"cards": cards, "source": func_source}
+    return results
+
 
 if __name__ == "__main__":
     test = '''def workflow_dynamic(solid_amount_mg, methanol_amount_ml):
@@ -271,7 +353,7 @@ if __name__ == "__main__":
         dict: Results containing analysis data
     """
     # Step 1: Dose solid material
-    deck.sdl.dose_solid(amount_in_mg=solid_amount_mg)
+    deck.sdl.dose_solid(solid_amount_mg)
     
     # Step 2: Add methanol solvent
     deck.sdl.dose_solvent(solvent_name='Methanol', amount_in_ml=methanol_amount_ml)

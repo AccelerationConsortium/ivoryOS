@@ -267,6 +267,9 @@ class Script(db.Model):
         self.update_time_stamp()
 
     def _insert_action(self, insert_position, current_len, action_len:int=1):
+        if not len(self.currently_editing_order) == current_len:
+            # check if order exists, if not, create a new one
+            self.currently_editing_order = list(range(1, current_len + action_len + 1))
 
         if insert_position is None:
             self.currently_editing_order.extend([str(current_len + i + 1) for i in range(action_len)])

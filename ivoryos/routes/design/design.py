@@ -8,8 +8,8 @@ from ivoryos.routes.library.library import publish
 from ivoryos.utils import utils
 from ivoryos.utils.global_config import GlobalConfig
 from ivoryos.utils.form import create_action_button, create_form_from_pseudo, create_all_builtin_forms, create_workflow_forms
-from ivoryos.utils.db_models import Script
-from ivoryos.utils.py_to_json import convert_to_cards
+from ivoryos.utils.db_models import Script, db
+from ivoryos.utils.py_to_json import convert_to_cards, extract_functions_and_convert
 
 # Import the new modular components
 from ivoryos.routes.design.design_file import files
@@ -553,3 +553,91 @@ def get_operation_sidebar(instrument: str = ''):
                                block_variables=global_config.building_blocks,
                                )
     return jsonify({"html": html})
+
+
+@design.route("/draft/import_python_file", methods=["POST"])
+@login_required
+def import_python_file():
+    try:
+        if 'file' not in request.files:
+            return jsonify({"success": False, "error": "No file part"})
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"success": False, "error": "No selected file"})
+
+        source_code = file.read().decode("utf-8")
+        workflows = extract_functions_and_convert(source_code)
+
+        if not workflows:
+            return jsonify({"success": False, "error": "No functions found in file"})
+
+        duplicates = []
+        for name in workflows.keys():
+            if Script.query.get(name):
+                duplicates.append(name)
+
+        return jsonify({
+            "success": True,
+            "workflows": workflows,
+            "duplicates": duplicates
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@design.route("/draft/confirm_import_python", methods=["POST"])
+@login_required
+def confirm_import_python():
+    try:
+        data = request.get_json()
+        workflows = data.get("workflows", {})
+        overwrite = data.get("overwrite", [])
+
+        results = {}
+
+        deck = global_config.deck
+        if deck:
+             deck_name = os.path.splitext(os.path.basename(deck.__file__))[0] if deck.__name__ == "__main__" else deck.__name__
+        else:
+             deck_name = "unknown"
+
+        for name, content in workflows.items():
+            cards = content.get("cards", [])
+            source = content.get("source", "")
+
+            exist_script = Script.query.get(name)
+
+            if exist_script:
+                if name in overwrite:
+                    # Overwrite
+                    # Create a copy of dict to modify to ensure SQLAlchemy detects change
+                    new_dict = dict(exist_script.script_dict)
+                    new_dict['script'] = cards
+                    exist_script.script_dict = new_dict
+                    
+                    # if isinstance(exist_script.python_script, dict):
+                    #      exist_script.python_script['script'] = source
+                    # else:
+                    #      exist_script.python_script = {'script': source}
+
+                    exist_script.author = current_user.get_id()
+                    db.session.merge(exist_script)
+                    results[name] = "overwritten"
+                else:
+                    results[name] = "skipped"
+            else:
+                # Create
+                new_script = Script(name=name, author=current_user.get_id(), deck=deck_name)
+                # Initialize script_dict and ensure 'script' key is set
+                script_dict = {"prep": [], "script": cards, "cleanup": []}
+                new_script.script_dict = script_dict
+                # new_script.python_script = {'script': source}
+                
+                db.session.add(new_script)
+                results[name] = "created"
+        
+        db.session.commit()
+        return jsonify({"success": True, "results": results})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)})
