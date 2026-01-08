@@ -18,7 +18,12 @@
                     {% for field in form %}
                         {% if field.type not in ['CSRFTokenField', 'HiddenField'] %}
                             <div class="input-group mb-3">
-                                <label class="input-group-text">{{ field.label.text | format_name }}</label>
+                                <label class="input-group-text">{{ field.label.text | format_name }}
+                                    {% if field.flags.required %}
+                                        <span class="text-danger ms-1">*</span>
+                                    {% endif %}
+                                </label>
+
                                 {% if field.type == "SubmitField" %}
                                     {{ field(class="btn btn-dark") }}
                                 {% elif field.type == "BooleanField" %}
@@ -44,8 +49,11 @@
                     <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top"
                        title='{{ form.hidden_name.description or "Docstring is not available" }}'>
                     </i>
-                {% else %}
+                {% elif 'workflow_name' in form %}
                     <!-- handle info tooltip for flow control / workflows -->
+                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top"
+                       title='{{ form.workflow_name.description or "Docstring is not available" }}'>
+                    </i>
                 {% endif %}
             </form>
         </div>

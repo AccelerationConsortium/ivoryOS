@@ -5,5 +5,9 @@
        onclick="saveWorkflow(this); return false;">
         Quick Save
     </a>
-    <a class="btn btn-dark " href="{{ url_for('execute.experiment_run') }}">Compile and Run</a>
+    <a class="btn btn-dark " href="{{ url_for('execute.experiment_run') }}">Prepare Run</a>
+    <span class="text-muted small ms-2">
+        <i class="bi bi-info-circle"></i>
+        Does not start the workflow
+    </span>
 </div> 

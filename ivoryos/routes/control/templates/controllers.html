@@ -3,73 +3,74 @@
 
 {% block body %}
 <div id="overlay" class="overlay">
-    <div>
-        <h3 id="overlay-text"></h3>
-        <div class="spinner-border" role="status"></div>
-    </div>
+  <div>
+    <h3 id="overlay-text"></h3>
+    <div class="spinner-border" role="status"></div>
+  </div>
 </div>
 <div class="container-fluid">
   <div class="row">
     <!-- Sidebar: Instruments -->
-    <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar py-3" style="height: 100vh; overflow-y: auto; position: sticky; top: 0;">
+    <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar py-3"
+      style="height: 100vh; overflow-y: auto; position: sticky; top: 0;">
       <div class="sidebar-sticky">
         <!-- Deck Instruments -->
         <div class="mb-4">
           <div class="list-group">
             {% for inst in defined_variables %}
-              <a class="list-group-item list-group-item-action d-flex align-items-center {% if instrument == inst %}active bg-primary text-white border-0{% else %}bg-light{% endif %}"
-                 href="{{ url_for('control.deck_controllers') }}?instrument={{ inst }}"
-                 style="border-radius: 0.5rem; margin-bottom: 0.5rem; transition: background 0.2s;">
-                <span class="flex-grow-1">{{ inst | format_name }}</span>
-                {% if instrument == inst %}
-                  <span class="ms-auto">&gt;</span>
-                {% endif %}
-              </a>
+            <a class="list-group-item list-group-item-action d-flex align-items-center {% if instrument == inst %}active bg-primary text-white border-0{% else %}bg-light{% endif %}"
+              href="{{ url_for('control.deck_controllers') }}?instrument={{ inst }}"
+              style="border-radius: 0.5rem; margin-bottom: 0.5rem; transition: background 0.2s;">
+              <span class="flex-grow-1">{{ inst | format_name }}</span>
+              {% if instrument == inst %}
+              <span class="ms-auto">&gt;</span>
+              {% endif %}
+            </a>
             {% endfor %}
           </div>
         </div>
 
 
-
         <!-- Temp Instruments -->
         {% if temp_variables %}
-          <div class="mb-4">
-            <h6 class="fw-bold text-secondary mb-2" style="letter-spacing: 1px;">Temp Instruments</h6>
-            <div class="list-group">
-              {% for inst in temp_variables %}
-                <a class="list-group-item list-group-item-action d-flex align-items-center {% if instrument == inst %}active bg-warning text-dark border-0{% else %}bg-light{% endif %}"
-                   href="{{ url_for('control.deck_controllers') }}?instrument={{ inst }}"
-                   style="border-radius: 0.5rem; margin-bottom: 0.5rem; transition: background 0.2s;">
-                  <span class="flex-grow-1">{{ inst | format_name }}</span>
-                  {% if instrument == inst %}
-                    <span class="ms-auto">&gt;</span>
-                  {% endif %}
-                </a>
-              {% endfor %}
-            </div>
+        <div class="mb-4">
+          <h6 class="fw-bold text-secondary mb-2" style="letter-spacing: 1px;">Temp Instruments</h6>
+          <div class="list-group">
+            {% for inst in temp_variables %}
+            <a class="list-group-item list-group-item-action d-flex align-items-center {% if instrument == inst %}active bg-warning text-dark border-0{% else %}bg-light{% endif %}"
+              href="{{ url_for('control.deck_controllers') }}?instrument={{ inst }}"
+              style="border-radius: 0.5rem; margin-bottom: 0.5rem; transition: background 0.2s;">
+              <span class="flex-grow-1">{{ inst | format_name }}</span>
+              {% if instrument == inst %}
+              <span class="ms-auto">&gt;</span>
+              {% endif %}
+            </a>
+            {% endfor %}
           </div>
+        </div>
         {% endif %}
 
-          {% if block_variables %}
-            <div class="mb-4">
-            <h6 class="fw-bold text-secondary mb-2" style="letter-spacing: 1px;">Methods</h6>
-            <div class="list-group">
-              {% for inst in block_variables %}
-                <a class="list-group-item list-group-item-action d-flex align-items-center {% if instrument == inst %}active bg-warning text-dark border-0{% else %}bg-light{% endif %}"
-                   href="{{ url_for('control.deck_controllers') }}?instrument={{ inst }}"
-                   style="border-radius: 0.5rem; margin-bottom: 0.5rem; transition: background 0.2s;">
-                  <span class="flex-grow-1">{{ inst | format_name }}</span>
-                  {% if instrument == inst %}
-                    <span class="ms-auto">&gt;</span>
-                  {% endif %}
-                </a>
-              {% endfor %}
-            </div>
+        {% if block_variables %}
+        <div class="mb-4">
+          <h6 class="fw-bold text-secondary mb-2" style="letter-spacing: 1px;">Methods</h6>
+          <div class="list-group">
+            {% for inst in block_variables %}
+            <a class="list-group-item list-group-item-action d-flex align-items-center {% if instrument == inst %}active bg-warning text-dark border-0{% else %}bg-light{% endif %}"
+              href="{{ url_for('control.deck_controllers') }}?instrument={{ inst }}"
+              style="border-radius: 0.5rem; margin-bottom: 0.5rem; transition: background 0.2s;">
+              <span class="flex-grow-1">{{ inst | format_name }}</span>
+              {% if instrument == inst %}
+              <span class="ms-auto">&gt;</span>
+              {% endif %}
+            </a>
+            {% endfor %}
           </div>
-          {% endif %}
+        </div>
+        {% endif %}
         <!-- Action Buttons -->
         <div class="mb-4">
-          <a href="{{ url_for('control.file.download_proxy', filetype='proxy') }}" class="btn btn-outline-primary w-100 mb-2">
+          <a href="{{ url_for('control.file.download_proxy', filetype='proxy') }}"
+            class="btn btn-outline-primary w-100 mb-2">
             Download proxy
           </a>
           <a href="{{ url_for('control.temp.new_controller') }}" class="btn btn-outline-success w-100">
@@ -81,111 +82,126 @@
 
     <!-- Main: Method Cards -->
     <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: 100vh; overflow-y: auto;">
-      {% if instrument%}
-{#        <h2 class="text-secondary">{{ instrument }} controller</h2>#}
-        <div class="grid-container" id="sortable-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1rem; width: 100%;">
-          {% set hidden = session.get('hidden_functions', {}) %}
-          {% set hidden_instrument = hidden.get(instrument, []) %}
-          {% for function, form in forms.items() %}
-            {% if function not in hidden_instrument %}
-              <div class="card" id="{{function}}" style="margin: 0;">
-                <div class="bg-white rounded shadow-sm h-100">
-                  <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top" title='{{ form.hidden_name.description or "Docstring is not available" }}' ></i>
-                    <a href="{{ url_for('control.hide_function', instrument=instrument, function=function) }}"
-                       data-method="patch" data-payload='{"hidden":true}' class="toggle-visibility">
-                       <i style="float: right;" class="bi bi-eye-slash-fill text-muted" title="Hide function"></i>
-                    </a>
-                    <div class="form-control" style="border: none">
-                        <form role="form" method='POST' name="{{function}}" id="{{function}}" action="{{ url_for('control.deck_controllers') }}?instrument={{ instrument }}">
-                      <div class="form-group">
-                        {{ form.hidden_tag() }}
-                        {% for field in form %}
-                          {% if field.type not in ['CSRFTokenField', 'HiddenField'] %}
-                            <div class="input-group mb-3">
-                              <label class="input-group-text">{{ field.label.text | format_name }}</label>
-                              {% if field.type == "SubmitField" %}
-                                {{ field(class="btn btn-dark") }}
-                              {% elif field.type == "BooleanField" %}
-                                {{ field(class="form-check-input") }}
-                              {% elif field.type == "FlexibleEnumField" %}
-                                 <input type="text" id="{{ field.id }}" name="{{ field.name }}" value="{{ field.data }}"
-                                    list="{{ field.id }}_options" placeholder="{{ field.render_kw.placeholder if field.render_kw and field.render_kw.placeholder }}"
-                                    class="form-control">
-                                 <datalist id="{{ field.id }}_options">
-                                    {% for key in field.choices %}
-                                       <option value="{{ key }}">{{ key }}</option>
-                                    {% endfor %}
-                                 </datalist>
-                              {% else %}
-                                {{ field(class="form-control") }}
-                              {% endif %}
-                            </div>
-                          {% endif %}
-                        {% endfor %}
-                      </div>
-                      <div class="input-group mb-3">
-                        <button type="submit" name="{{ function }}" id="{{ function }}" class="form-control" style="background-color: #a5cece;">
-                            {{ function | format_name }}
-                        </button>
-                      </div>
-                    </form>
+      {% if instrument %}
+      {# <h2 class="text-secondary">{{ instrument }} controller</h2>#}
+      <div class="grid-container" id="sortable-grid"
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1rem; width: 100%;">
+        {% set hidden = session.get('hidden_functions', {}) %}
+        {% set hidden_instrument = hidden.get(instrument, []) %}
+        {% for function, form in forms.items() %}
+        {% if function not in hidden_instrument %}
+        <div class="card draggable-method-card" id="{{ function }}" style="margin: 0;">
+          <div class="bg-white rounded shadow-sm h-100">
+            <a tabindex="0" class="ms-2 text-decoration-none" role="button" data-bs-toggle="popover"
+              data-bs-trigger="focus" data-bs-placement="top" data-bs-container="body"
+              data-bs-content="{{ (form.hidden_name.description or 'Docstring is not available') | e }}">
+              <i class="bi bi-info-circle"></i>
+            </a>
+            <a href="{{ url_for('control.hide_function', instrument=instrument, function=function) }}"
+              data-method="patch" data-payload='{"hidden":true}' class="toggle-visibility">
+              <i style="float: right;" class="bi bi-eye-slash-fill text-muted" title="Hide function"></i>
+            </a>
+            <div class="form-control" style="border: none">
+              <form role="form" method='POST' name="{{ function }}" id="{{ function }}"
+                action="{{ url_for('control.deck_controllers') }}?instrument={{ instrument }}">
+                <div class="form-group">
+                  {{ form.hidden_tag() }}
+                  {% for field in form %}
+                  {% if field.type not in ['CSRFTokenField', 'HiddenField'] %}
+                  <div class="input-group mb-3">
+                    <label class="input-group-text">{{ field.label.text | format_name }}</label>
+                    {% if field.type == "SubmitField" %}
+                    {{ field(class="btn btn-dark") }}
+                    {% elif field.type == "BooleanField" %}
+                    {{ field(class="form-check-input") }}
+                    {% elif field.type == "FlexibleEnumField" %}
+                    <input type="text" id="{{ field.id }}" name="{{ field.name }}" value="{{ field.data }}"
+                      list="{{ field.id }}_options"
+                      placeholder="{{ field.render_kw.placeholder if field.render_kw and field.render_kw.placeholder }}"
+                      class="form-control">
+                    <datalist id="{{ field.id }}_options">
+                      {% for key in field.choices %}
+                      <option value="{{ key }}">{{ key }}</option>
+                      {% endfor %}
+                    </datalist>
+                    {% else %}
+                    {{ field(class="form-control") }}
+                    {% endif %}
                   </div>
+                  {% endif %}
+                  {% endfor %}
                 </div>
-              </div>
-            {% endif %}
-          {% endfor %}
-        </div>
-        <!-- Hidden functions accordion -->
-        <div class="accordion accordion-flush" id="accordionActions" >
-          <div class="accordion-item">
-            <h4 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#hidden">
-                Hidden functions
-              </button>
-            </h4>
-          </div>
-          <div id="hidden" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
-            <div class="accordion-body">
-              {% for function in hidden_instrument %}
-                <div>
-                  {{ function }}
-                    <a href="{{ url_for('control.hide_function', instrument=instrument, function=function) }}"
-                       data-method="patch" data-payload='{"hidden":false}' class="toggle-visibility">
-                       <i class="bi bi-eye-fill text-success" title="Show function"></i>
-                    </a>
+                <div class="input-group mb-3">
+                  <button type="submit" name="{{ function }}" id="{{ function }}" class="form-control"
+                    style="background-color: #a5cece;">
+                    {{ function | format_name }}
+                  </button>
                 </div>
-              {% endfor %}
+              </form>
             </div>
           </div>
         </div>
-        <script>
-
-            document.querySelectorAll('.toggle-visibility').forEach(el => {
-              el.addEventListener('click', e => {
-                e.preventDefault();
-                const url = el.getAttribute('href');
-                const payload = JSON.parse(el.getAttribute('data-payload') || '{}');
-                fetch(url, {
-                  method: 'PATCH',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify(payload)
-                }).then(response => {
-                  if (response.ok) {
-                    location.reload(); // or update the DOM directly
-                  }
-                });
-              });
+        {% endif %}
+        {% endfor %}
+      </div>
+      <!-- Hidden functions accordion -->
+      <div class="accordion accordion-flush" id="accordionActions">
+        <div class="accordion-item">
+          <h4 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#hidden">
+              Hidden functions
+            </button>
+          </h4>
+        </div>
+        <div id="hidden" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
+          <div class="accordion-body">
+            {% for function in hidden_instrument %}
+            <div>
+              {{ function }}
+              <a href="{{ url_for('control.hide_function', instrument=instrument, function=function) }}"
+                data-method="patch" data-payload='{"hidden":false}' class="toggle-visibility">
+                <i class="bi bi-eye-fill text-success" title="Show function"></i>
+              </a>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <script>
+        document.querySelectorAll('.toggle-visibility').forEach(el => {
+          el.addEventListener('click', e => {
+            e.preventDefault();
+            const url = el.getAttribute('href');
+            const payload = JSON.parse(el.getAttribute('data-payload') || '{}');
+            fetch(url, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(payload)
+            }).then(response => {
+              if (response.ok) {
+                location.reload(); // or update the DOM directly
+              }
             });
+          });
+        });
 
-          const saveOrderUrl = `{{ url_for('control.save_order', instrument=instrument) }}`;
-          const buttonIds = {{ session['card_order'][instrument] | tojson }};
-        </script>
-        <script src="{{ url_for('static', filename='js/sortable_card.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/overlay.js') }}"></script>
+        const saveOrderUrl = `{{ url_for('control.save_order', instrument=instrument) }}`;
+        const buttonIds = {{ session['card_order'][instrument] | tojson }};
+
+        // Initialize Bootstrap Popovers
+        document.addEventListener('DOMContentLoaded', function () {
+          var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+          var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl)
+          })
+        });
+      </script>
+      <script src="{{ url_for('static', filename='js/sortable_card.js') }}"></script>
+      <script src="{{ url_for('static', filename='js/overlay.js') }}"></script>
       {% else %}
-        <div class="alert alert-info mt-4">Select an instrument to view its methods.</div>
+      <div class="alert alert-info mt-4">Select an instrument to view its methods.</div>
       {% endif %}
     </main>
   </div>
