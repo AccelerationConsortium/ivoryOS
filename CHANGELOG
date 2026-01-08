@@ -3,9 +3,9 @@ Happy New Year from IvoryOS team!!
 - !73 [New] import Python functions as workflow (Finn)
 - !72 [Qol] UI/UX optimization
 - !71 [Bug] autofill is not working in workflow method
-- !70 [Bug] BO history csv not working
+- !70 [Bug] BO history csv upload not working
 - !69 [Bug] use dynamic param within comment text
-- !68 [Bug] fix can't addd a math var
+- !68 [Bug] fix can't add a math var
 - !67 [Qol] always save csv regardless of output
 
 1.5.3 (Dec 20th, 2025)
