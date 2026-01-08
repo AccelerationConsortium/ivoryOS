@@ -4,8 +4,7 @@
     <div>
         <span class="fw-bold">{{ script.name or "Untitled Script" }}</span>
         <span class="badge bg-secondary">{{ script.status }}</span>
-        <div class="text-muted small description-truncate"
-             title="{{ script.description }}">
+        <div class="text-muted small description-truncate" title="{{ script.description }}">
             {{ script.description }}
         </div>
     </div>
@@ -13,20 +12,26 @@
     <!-- Center: Main Actions -->
     <div class="btn-toolbar" role="toolbar">
         <button class="btn btn-primary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#newScriptModal">New</button>
-        <button class="btn btn-secondary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#jsonModal">Import</button>
-        <a class="btn btn-secondary btn-sm me-1" href="{{url_for('design.design_files.download_json', filetype='script')}}">Export</a>
-        <button class="btn btn-secondary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#saveasModal">Save as</button>
+        <button class="btn btn-secondary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#jsonModal">Import
+            JSON</button>
+        <button class="btn btn-secondary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#pythonModal">Import
+            Python</button>
+        <a class="btn btn-secondary btn-sm me-1"
+            href="{{url_for('design.design_files.download_json', filetype='script')}}">Export</a>
+        <button class="btn btn-secondary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#saveasModal">Save
+            as</button>
         <div class="btn-group">
-            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">More</button>
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown"
+                aria-expanded="false">More</button>
             <ul class="dropdown-menu">
                 <li>
                     <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#renameModal">Rename</button>
                 </li>
                 {% if script.name %}
                 <li>
-                    <a class="dropdown-item {{ 'disabled' if not script.name or script.status == "finalized" else '' }}"
-                       href="#" data-post-url="{{ url_for('library.workflow_script', script_name=script.name) }}"
-                       onclick="saveWorkflow(this); return false;">
+                    <a class="dropdown-item {{ 'disabled' if not script.name or script.status == " finalized" else ''
+                        }}" href="#" data-post-url="{{ url_for('library.workflow_script', script_name=script.name) }}"
+                        onclick="saveWorkflow(this); return false;">
                         Save
                     </a>
                 </li>
@@ -45,20 +50,20 @@
 <div class="d-flex align-items-center mt-2 justify-content-between">
     <ul class="nav nav-tabs mb-0">
         <li class="nav-item">
-            <a class="nav-link {{ 'active' if script.editing_type == 'prep' else '' }}"
-               href="#" onclick="setScriptPhase('prep')">
+            <a class="nav-link {{ 'active' if script.editing_type == 'prep' else '' }}" href="#"
+                onclick="setScriptPhase('prep')">
                 Prep
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link {{ 'active' if script.editing_type == 'script' else '' }}"
-               href="#" onclick="setScriptPhase('script')">
+            <a class="nav-link {{ 'active' if script.editing_type == 'script' else '' }}" href="#"
+                onclick="setScriptPhase('script')">
                 Experiment
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link {{ 'active' if script.editing_type == 'cleanup' else '' }}"
-               href="#" onclick="setScriptPhase('cleanup')">
+            <a class="nav-link {{ 'active' if script.editing_type == 'cleanup' else '' }}" href="#"
+                onclick="setScriptPhase('cleanup')">
                 Clean up
             </a>
         </li>
@@ -66,14 +71,14 @@
 
     <div class="d-flex align-items-center ms-auto">
         <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="showPythonCodeSwitch" name="show_code"
-                       onchange="toggleCodeOverlay()" {% if session.get('show_code') %}checked{% endif %}>
+            <input class="form-check-input" type="checkbox" id="showPythonCodeSwitch" name="show_code"
+                onchange="toggleCodeOverlay()" {% if session.get('show_code') %}checked{% endif %}>
             <label class="form-check-label" for="showPythonCodeSwitch">Preview code</label>
         </div>
-{#        <div class="form-check form-switch">#}
-{#            <input class="form-check-input" type="checkbox" id="toggleLineNumbers"#}
-{#                   onchange="toggleLineNumbers()">#}
-{#            <label class="form-check-label" for="toggleLineNumbers">Show Line Numbers</label>#}
-{#        </div>#}
+        {# <div class="form-check form-switch">#}
+            {# <input class="form-check-input" type="checkbox" id="toggleLineNumbers" #} {#
+                onchange="toggleLineNumbers()">#}
+            {# <label class="form-check-label" for="toggleLineNumbers">Show Line Numbers</label>#}
+            {# </div>#}
     </div>
 </div>
