@@ -1,3 +1,7 @@
+1.5.5 (Jan 13th, 2026)
+- !75 [Bug] workflow steps not in sequential execution
+- !74 [Bug] BO config UI - Choice input not reloaded
+
 1.5.4 (Jan 8th, 2026)
 Happy New Year from IvoryOS team!!
 - !73 [New] import Python functions as workflow (Finn)
