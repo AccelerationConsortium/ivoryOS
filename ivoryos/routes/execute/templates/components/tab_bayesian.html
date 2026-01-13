@@ -650,6 +650,16 @@
                 });
                 // Ensure UI is updated after restoring toggle state
                 updateUIState();
+
+                // Trigger update of parameter inputs to show/hide ranges correctly
+                const opt = optimizerSelect ? optimizerSelect.value : null;
+                const schema = (opt && optimizerSchema) ? optimizerSchema[opt] : null;
+                const supportsContinuous = schema ? (schema.supports_continuous !== false) : true;
+
+                document.querySelectorAll(".parameter-type").forEach(sel => {
+                    updateParameterInputs(sel, supportsContinuous);
+                });
+
             }, 100);
         }
 
