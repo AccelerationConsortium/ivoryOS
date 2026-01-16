@@ -30,6 +30,8 @@ dependencies = [
 optimizer-ax = ["ax-platform"]
 optimizer-baybe = ["baybe"]
 optimizer-nimo = ["nimo"]
+db = ["psycopg2-binary"]
+
 optimizers = [
     "ax-platform>=1.1.2",
     "baybe>=0.14.0",

@@ -34,8 +34,12 @@ def login():
         # session.query(User, User.name).all()
         user = db.session.query(User).filter(User.username == username).first()
         input_password = password.encode('utf-8')
-        # if user and bcrypt.checkpw(input_password, user.hashPassword.encode('utf-8')):
-        if user and bcrypt.checkpw(input_password, user.hashPassword):
+        # user.hashPassword might be bytes (SQLite) or string (Postgres)
+        user_hash = user.hashPassword
+        if isinstance(user_hash, str):
+            user_hash = user_hash.encode('utf-8')
+
+        if user and bcrypt.checkpw(input_password, user_hash):
             # password.encode("utf-8")
             # user = User(username, password.encode("utf-8"))
             login_user(user)
@@ -79,7 +83,8 @@ def signup():
         if existing_user:
             flash("User already exists :(", "error")
             return render_template('signup.html'), 409
-        hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+        # Store as string for DB compatibility
+        hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         user = User(username, hashed)
         db.session.add(user)
         db.session.commit()
@@ -103,10 +108,13 @@ def change_password():
         new_password = request.form.get("new_password")
         # confirm_password = request.form.get("confirm_password")
         user = User.query.filter_by(username=current_user.get_id()).first()
-        if not bcrypt.checkpw(old_password.encode('utf-8'), user.hashPassword):
+        
+        if not bcrypt.checkpw(old_password.encode('utf-8'), user.hashPassword.encode('utf-8')):
             flash("Incorrect password")
             return redirect(url_for("auth.change_password"))
-        user.hashPassword = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+        
+        new_hashed = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        user.hashPassword = new_hashed
         db.session.commit()
         return redirect(url_for("main.index"))
     return render_template("change_password.html")
