@@ -400,7 +400,7 @@ def create_add_form(attr, attr_name, autofill: bool, script=None, design: bool =
         if return_type is not None:
             return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
             setattr(dynamic_form, 'return', return_value)
-        batch_action = BooleanField(label='Batch Action', render_kw={"placeholder": "Optional"})
+        batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})
         setattr(dynamic_form, 'batch_action', batch_action)
     hidden_method_name = HiddenField(name=f'hidden_name', description=docstring, render_kw={"value": f'{attr_name}'})
     setattr(dynamic_form, 'hidden_name', hidden_method_name)
@@ -548,7 +548,7 @@ def create_form_from_action(action: dict, script=None, design=True):
 
     if design:
         if "batch_action" in action:
-            batch_action = BooleanField(label='Batch Action', default=bool(action["batch_action"]))
+            batch_action = BooleanField(label='run once per batch', default=bool(action["batch_action"]))
             setattr(DynamicForm, 'batch_action', batch_action)
         return_value = StringField(label='Save value as', default=f"{save_as}", render_kw={"placeholder": "Optional"})
         setattr(DynamicForm, 'return', return_value)
@@ -669,7 +669,7 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
             if design:
                 return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
                 setattr(form_class, 'return', return_value)
-                batch_action = BooleanField(label='Batch Action', render_kw={"placeholder": "Optional"})
+                batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})
                 setattr(form_class, 'batch_action', batch_action)
             setattr(form_class, 'workflow_name', hidden_method_name)
             workflow_forms[workflow_name] = form_class()
