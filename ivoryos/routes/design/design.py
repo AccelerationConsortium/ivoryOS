@@ -449,6 +449,7 @@ def methods_handler(instrument: str = ''):
         workflow_name = request.form.get("workflow_name")
         form = forms.get(workflow_name) if forms else None
         insert_position = request.form.get("drop_target_id", None)
+        batch_action = request.form.get("batch_action", False)
         if form:
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
             if form.validate_on_submit():
@@ -470,6 +471,7 @@ def methods_handler(instrument: str = ''):
                 action = {"instrument": instrument, "action": workflow_name,
                           "args": kwargs,
                           "return": save_data,
+                          "batch_action": batch_action,
                           'arg_types': primitive_arg_types,
                           "workflow": embedded_steps} # Embed steps
                 # print(action)

@@ -669,6 +669,8 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
             if design:
                 return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
                 setattr(form_class, 'return', return_value)
+                batch_action = BooleanField(label='Batch Action', render_kw={"placeholder": "Optional"})
+                setattr(form_class, 'batch_action', batch_action)
             setattr(form_class, 'workflow_name', hidden_method_name)
             workflow_forms[workflow_name] = form_class()
         except Exception as e:
