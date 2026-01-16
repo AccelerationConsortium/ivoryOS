@@ -540,8 +540,15 @@ class ScriptRunner:
                              else:
                                  context[key] = value
 
-                        # sequentially execute workflow steps
-                        await self._execute_steps_batched(workflow_steps, [context], phase_id=phase_id, section_name=f"{section_name}-{action_id-1}")
+                    if step.get("batch_action", False):
+                        await self._execute_steps_batched(workflow_steps, contexts[0], phase_id=phase_id, section_name=f"{section_name}-{action_id-1}")
+
+                    else:
+                        for context in contexts:
+                            # sequentially execute workflow steps
+                            await self._execute_steps_batched(workflow_steps, [context], phase_id=phase_id,
+                                                              section_name=f"{section_name}-{action_id - 1}")
+
             else:
                 # Regular action - check if batch
                 if step.get("batch_action", False):
