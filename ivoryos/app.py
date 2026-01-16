@@ -81,9 +81,12 @@ def create_admin():
         admin_user = User.query.filter_by(username='admin').first()
         if not admin_user:
             print("Creating default admin user...")
+            hashed_pw = bcrypt.hashpw("admin".encode('utf-8'), bcrypt.gensalt())
+            if isinstance(hashed_pw, bytes):
+                hashed_pw = hashed_pw.decode('utf-8')
             admin_user = User(
                 username='admin',
-                password=bcrypt.hashpw("admin".encode('utf-8'), bcrypt.gensalt()),
+                password=hashed_pw,
             )
             db.session.add(admin_user)
             db.session.commit()
