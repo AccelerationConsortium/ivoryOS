@@ -34,8 +34,12 @@ def login():
         # session.query(User, User.name).all()
         user = db.session.query(User).filter(User.username == username).first()
         input_password = password.encode('utf-8')
-        # store the hash as a string (for Postgres compatibility)
-        if user and bcrypt.checkpw(input_password, user.hashPassword.encode('utf-8')):
+        # user.hashPassword might be bytes (SQLite) or string (Postgres)
+        user_hash = user.hashPassword
+        if isinstance(user_hash, str):
+            user_hash = user_hash.encode('utf-8')
+
+        if user and bcrypt.checkpw(input_password, user_hash):
             # password.encode("utf-8")
             # user = User(username, password.encode("utf-8"))
             login_user(user)
