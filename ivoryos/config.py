@@ -18,7 +18,8 @@ class Config:
     DECK_HISTORY = os.path.join(OUTPUT_FOLDER, 'deck_history.txt')
     LOGGERS_PATH = "default.log"
 
-    SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(OUTPUT_FOLDER, 'ivoryos.db')}"
+    # To use Supabase, set IVORYOS_DB_URI or DATABASE_URL env var
+    SQLALCHEMY_DATABASE_URI = os.getenv('IVORYOS_DB_URI') or os.getenv('DATABASE_URL') or f"sqlite:///{os.path.join(OUTPUT_FOLDER, 'ivoryos.db')}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     ENABLE_LLM = True if OPENAI_API_KEY else False
