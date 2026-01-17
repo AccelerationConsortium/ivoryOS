@@ -229,6 +229,12 @@ class FlexibleEnumField(StringField):
 
         raise TypeError(f"FlexibleEnumField expected Enum or Optional[Enum], got {annotation!r}")
 
+    def _value(self):
+        """Return empty string for None values instead of 'None'"""
+        if self.data is None:
+            return ''
+        return str(self.data)
+
     def process_formdata(self, valuelist):
         # todo right now enum types will be processed to methods as a str, so the method must convert to the enum type
         if valuelist:
