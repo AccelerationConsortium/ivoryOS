@@ -295,7 +295,7 @@
     function onInputChange(inputElement) {
         if (inputElement) {
             var row = inputElement.closest('tr');
-            var inputs = row.getElementsByTagName('input');
+            var inputs = row.querySelectorAll('input, select, textarea');
             var hasData = false;
             for (var i = 0; i < inputs.length; i++) {
                 if (inputs[i].value.trim() !== '') {
@@ -373,7 +373,7 @@
         var data = [];
 
         for (var i = 0; i < rows.length; i++) {
-            var inputs = rows[i].getElementsByTagName('input');
+            var inputs = rows[i].querySelectorAll('input, select, textarea');
             var rowData = {};
             var hasData = false;
 
