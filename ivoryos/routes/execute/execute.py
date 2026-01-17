@@ -87,7 +87,7 @@ def experiment_run():
             line_collection = {}
     except Exception as e:
         g.logger.exception(f"Exception while executing script: {e}")
-        flash(f"Please check syntax!!")
+        flash(f"Please check syntax!! {e}")
         return redirect(url_for("design.experiment_builder"))
 
 
@@ -103,6 +103,16 @@ def experiment_run():
     config_list, config_type_list = script.config("script")
 
     for key, type_str in config_type_list.items():
+        # Handle Optional/Union types which come as lists
+        if isinstance(type_str, list):
+             # Find the Enum entry if it exists
+             enum_entries = [t for t in type_str if isinstance(t, str) and t.startswith("Enum:")]
+             if enum_entries:
+                 # Use the first found Enum type
+                 type_str = enum_entries[0]
+                 # Update the list in place so template gets the simple string? 
+                 # Or better, just proceed to process it as a string
+        
         if isinstance(type_str, str) and type_str.startswith("Enum:"):
             try:
                 _, full_path = type_str.split(":", 1)

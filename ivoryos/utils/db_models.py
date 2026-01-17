@@ -807,6 +807,26 @@ class Script(db.Model):
                  _, full_path = param_type.split(":", 1)
                  class_name = full_path.split(".")[-1]
                  new_configure.append(f"{param}: {class_name}")
+            elif isinstance(param_type, list):
+                 # Handle list types (Union/Optional)
+                 enum_item = next((item for item in param_type if isinstance(item, str) and item.startswith("Enum:")), None)
+                 if enum_item:
+                      _, full_path = enum_item.split(":", 1)
+                      class_name = full_path.split(".")[-1]
+                      if "NoneType" in param_type:
+                          new_configure.append(f"{param}: Optional[{class_name}]")
+                      else:
+                          new_configure.append(f"{param}: {class_name}")
+                 else:
+                      # Try to clean up standard Union types if needed, or fallback
+                      valid_types = [t for t in param_type if t != "NoneType"]
+                      if len(valid_types) == 1:
+                           if "NoneType" in param_type:
+                               new_configure.append(f"{param}: Optional[{valid_types[0]}]")
+                           else:
+                               new_configure.append(f"{param}: {valid_types[0]}")
+                      else:
+                           new_configure.append(f"{param}: {param_type}")
             elif not param_type == "any":
                  new_configure.append(f"{param}: {param_type}")
             else:
@@ -1225,13 +1245,22 @@ class Script(db.Model):
                 # But here we iterate items().
                 if isinstance(arg_types, dict):
                     for key, type_str in arg_types.items():
-                        if isinstance(type_str, str) and type_str.startswith("Enum:"):
-                            try:
-                                _, full_path = type_str.split(":", 1)
-                                module_name, class_name = full_path.rsplit(".", 1)
-                                imports.add(f"from {module_name} import {class_name}")
-                            except Exception:
-                                pass
+                        enum_strs = []
+                        if isinstance(type_str, str):
+                            enum_strs.append(type_str)
+                        elif isinstance(type_str, list):
+                            enum_strs.extend([t for t in type_str if isinstance(t, str)])
+                        
+                        for t in enum_strs:
+                            if t.startswith("Enum:"):
+                                try:
+                                    _, full_path = t.split(":", 1)
+                                    module_name, class_name = full_path.rsplit(".", 1)
+                                    imports.add(f"from {module_name} import {class_name}")
+                                except Exception:
+                                    pass
+                        if isinstance(type_str, list) and "NoneType" in type_str:
+                             imports.add("from typing import Optional")
         return "\n".join(sorted(list(imports)))
 
     def _write_to_file(self, script_path, run_name, exec_string, call_human=False):
@@ -1247,6 +1276,9 @@ class Script(db.Model):
                  s.write("deck = None\n")
             
             s.write("import time")
+
+            # TODO should not always import optional
+            s.write("\nfrom typing import Optional")
             if self.blocks_included:
                 s.write(f"\n{self._create_block_import()}")
             

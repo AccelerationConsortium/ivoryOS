@@ -142,6 +142,8 @@ def _get_type_from_parameters(arg, parameters):
     except Exception:
         return arg_type
 
+def _resolve_type_string(annotation):
+    arg_type = ''
     if isinstance(annotation, str):
         arg_type = annotation
     elif isinstance(annotation, type) and issubclass(annotation, Enum):
@@ -159,18 +161,45 @@ def _get_type_from_parameters(arg, parameters):
                 else:
                     module_name = deck.__name__
         arg_type = f"Enum:{module_name}.{annotation.__name__}"
+    elif hasattr(annotation, '__name__'):
+        arg_type = annotation.__name__
+    else:
+        arg_type = str(annotation)
+    return arg_type
+
+
+def _get_type_from_parameters(arg, parameters):
+    """get argument types from inspection"""
+    # TODO
+    arg_type = ''
+    try:
+        if isinstance(parameters, inspect.Signature):
+            if arg not in parameters.parameters:
+                return arg_type
+            annotation = parameters.parameters[arg].annotation
+        elif isinstance(parameters, dict):
+            annotation = parameters.get(arg, '')
+        else:
+            annotation = ''
+    except Exception:
+        return arg_type
+
+    if isinstance(annotation, str):
+        arg_type = annotation
+    elif isinstance(annotation, type) and issubclass(annotation, Enum):
+        arg_type = _resolve_type_string(annotation)
     elif annotation is not inspect._empty:
         if annotation.__module__ == 'typing':
 
             if hasattr(annotation, '__origin__'):
                 origin = annotation.__origin__
                 if hasattr(origin, '_name') and origin._name in ["Optional", "Union"]:
-                    arg_type = [i.__name__ for i in annotation.__args__]
+                    arg_type = [_resolve_type_string(i) for i in annotation.__args__]
                 elif hasattr(origin, '__name__'):
                     arg_type = origin.__name__
                 # todo other types
         elif annotation.__module__ == 'types':
-            arg_type = [i.__name__ for i in annotation.__args__]
+            arg_type = [_resolve_type_string(i) for i in annotation.__args__]
 
         else:
             arg_type = annotation.__name__
