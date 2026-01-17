@@ -175,7 +175,7 @@ def convert_to_cards(source_code: str):
                 remaining_parts = full_func_name.split(".")[1:]
                 # Must have at least instrument.action
                 if len(remaining_parts) >= 2:
-                    instrument = ".".join(remaining_parts[:-1])
+                    instrument = f"deck.{'.'.join(remaining_parts[:-1])}"
                     action = remaining_parts[-1]
                 else:
                     return # invalid format like deck.something
