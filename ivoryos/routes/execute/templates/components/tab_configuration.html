@@ -217,10 +217,25 @@
         configColumns.forEach(function (column, index) {
             var cell = newRow.insertCell(-1);
             var value = data && data[column] ? data[column] : '';
-            var placeholder = configTypes[column] || 'value';
-            cell.innerHTML = '<input type="text" class="form-control form-control-sm" name="' +
-                column + '[' + rowCount + ']" value="' + value + '" placeholder="' + placeholder +
-                '" oninput="onInputChange(this)" onchange="onInputChange(this)">';
+            var configType = configTypes[column] || '';
+
+            if (configType.startsWith('Enum:')) {
+                var options = configType.substring(5).split(',');
+                var optionsHtml = '<option value="">Select...</option>';
+                options.forEach(function (opt) {
+                    var selected = (value === opt) ? 'selected' : '';
+                    optionsHtml += '<option value="' + opt + '" ' + selected + '>' + opt + '</option>';
+                });
+
+                cell.innerHTML = '<select class="form-select form-select-sm" name="' +
+                    column + '[' + rowCount + ']" onchange="onInputChange(this)">' +
+                    optionsHtml + '</select>';
+            } else {
+                var placeholder = configTypes[column] || 'value';
+                cell.innerHTML = '<input type="text" class="form-control form-control-sm" name="' +
+                    column + '[' + rowCount + ']" value="' + value + '" placeholder="' + placeholder +
+                    '" oninput="onInputChange(this)" onchange="onInputChange(this)">';
+            }
         });
 
         // Action cell

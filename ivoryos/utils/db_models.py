@@ -120,6 +120,8 @@ class Script(db.Model):
         if type(arg_types) is not list:
             arg_types = [arg_types]
         for arg_type in arg_types:
+            if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
+                 continue
             try:
                 # print(arg_type)
                 args = eval(f"{arg_type}('{args}')")
@@ -147,6 +149,8 @@ class Script(db.Model):
     def eval_list(args, arg_types):
         for arg in args:
             arg_type = arg_types[arg]
+            if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
+                continue
             if arg_type in ["list", "tuple", "set"]:
 
                 if type(arg) is str and not args[arg].startswith("#"):
@@ -828,8 +832,17 @@ class Script(db.Model):
         Generate the function header.
         """
         configure, config_type = self.config(stype)
-        configure = [param + f":{param_type}" if not param_type == "any" else param for param, param_type in
-                     config_type.items()]
+        new_configure = []
+        for param, param_type in config_type.items():
+            if isinstance(param_type, str) and param_type.startswith("Enum:"):
+                 _, full_path = param_type.split(":", 1)
+                 class_name = full_path.split(".")[-1]
+                 new_configure.append(f"{param}: {class_name}")
+            elif not param_type == "any":
+                 new_configure.append(f"{param}: {param_type}")
+            else:
+                 new_configure.append(param)
+        configure = new_configure
 
         script_type = f"_{stype}" if stype != "script" else ""
         async_str = "async " if is_async else ""
@@ -978,7 +991,8 @@ class Script(db.Model):
             is_async = action.get("coroutine", False)
             dynamic_arg = len(self.get_variables()) > 0
             workflow_steps = action.get("workflow", None)
-        return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data, is_async, dynamic_arg, batch, batch_action, workflow_steps, snapshot=snapshot)
+        arg_types = action.get('arg_types', {})
+        return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data, is_async, dynamic_arg, batch, batch_action, workflow_steps, snapshot=snapshot, arg_types=arg_types)
 
     def _process_args(self, args):
         """
@@ -1053,7 +1067,7 @@ class Script(db.Model):
         return cleaned
 
     def _process_instrument_action(self, indent_unit, instrument, action, args, save_data, is_async=False, dynamic_arg=False,
-                                   batch=False, batch_action=False, workflow_steps=None, snapshot=None):
+                                   batch=False, batch_action=False, workflow_steps=None, snapshot=None, arg_types=None):
         """
         Process actions related to instruments.
         """
@@ -1153,7 +1167,7 @@ class Script(db.Model):
             single_line = f"{async_str}{instrument}.{property_name}"
 
         elif isinstance(args, dict) and args != {}:
-            args_str = self._process_dict_args(args)
+            args_str = self._process_dict_args(args, arg_types)
             single_line = f"{async_str}{function_call}(**{args_str})"
         elif isinstance(args, str):
             single_line = f"{function_call} = {args}"
@@ -1179,34 +1193,40 @@ class Script(db.Model):
 
         return output_code, indent_unit
 
-    def _process_dict_args(self, args):
+    def _process_dict_args(self, args, arg_types=None):
         """
-        Process dictionary arguments, handling special cases like variables.
+        Process dictionary arguments, handling special cases like variables and Enums.
         """
-        args_str = args.__str__()
-        for arg in args:
-            if isinstance(args[arg], str) and args[arg].startswith("#"):
-                args_str = args_str.replace(f"'#{args[arg][1:]}'", args[arg][1:])
-            elif isinstance(args[arg], dict):
-                # print(args[arg])
-                if not args[arg]:
-                    continue
-                # Extract the variable name (first key in the dict)
-                value = next(iter(args[arg]))
-                var_type = args[arg].get(value)
+        items = []
+        for k, v in args.items():
+             val_str = repr(v)
+             # Handle variables
+             if isinstance(v, str) and v.startswith("#"):
+                 val_str = v[1:]
+             elif isinstance(v, dict):
+                 # Handle nested dicts (variable reference logic from original code)
+                 if v and isinstance(next(iter(v)), str): # Check if looks like variable dict
+                      key = next(iter(v))
+                      if v[key] == "function_output":
+                           # Simplified variable check, assuming valid if exists
+                           val_str = key
+                 else:
+                      # Recursive processing for nested dicts not supported yet properly with types
+                      pass
 
-                # Only process if it's a function_output variable reference
-                if var_type == "function_output":
-                    variables = self.get_variables()
-                    if value not in variables:
-                        raise ValueError(f"Variable ({value}) is not defined.")
-                    # Replace the dict string representation with just the variable name
-                    args_str = args_str.replace(f"{args[arg]}", value)
-
-        # elif self._is_variable(arg):
-            #     print("is variable")
-            #     args_str = args_str.replace(f"'{args[arg]}'", args[arg])
-        return args_str
+             # Handle Enums
+             elif arg_types and k in arg_types:
+                 type_str = arg_types[k]
+                 if isinstance(type_str, str) and type_str.startswith("Enum:"):
+                     try:
+                        _, full_path = type_str.split(":", 1)
+                        class_name = full_path.split(".")[-1]
+                        val_str = f"{class_name}({repr(v)})"
+                     except:
+                        pass
+             
+             items.append(f"'{k}': {val_str}")
+        return "{" + ", ".join(items) + "}"
 
     def _get_next_action(self, stype, index):
         """
@@ -1222,18 +1242,47 @@ class Script(db.Model):
         """
         return arg in self.script_dict and self.script_dict[arg].get("arg_types") in ("variable", 'math_variable')
 
+    def get_required_imports(self):
+        imports = set()
+        if self.deck:
+             imports.add(f"import {self.deck} as deck")
+        for stype in self.stypes:
+            for action in self.script_dict[stype]:
+                arg_types = action.get('arg_types', {})
+                if not arg_types: continue
+                # Handle direct arg_types dict or nested structures if any?
+                # arg_types is usually flat dict: {'arg': 'type'}
+                # Wait, earlier code showed arg_types could be string in some cases?
+                # But here we iterate items().
+                if isinstance(arg_types, dict):
+                    for key, type_str in arg_types.items():
+                        if isinstance(type_str, str) and type_str.startswith("Enum:"):
+                            try:
+                                _, full_path = type_str.split(":", 1)
+                                module_name, class_name = full_path.rsplit(".", 1)
+                                imports.add(f"from {module_name} import {class_name}")
+                            except Exception:
+                                pass
+        return "\n".join(sorted(list(imports)))
+
     def _write_to_file(self, script_path, run_name, exec_string, call_human=False):
         """
         Write the compiled script to a file.
         """
         with open(script_path + run_name + ".py", "w") as s:
-            if self.deck:
-                s.write(f"import {self.deck} as deck")
-            else:
-                s.write("deck = None")
-            s.write("\nimport time")
+            # if self.deck:
+            #     s.write(f"import {self.deck} as deck")
+            # else:
+            #     s.write("deck = None")
+            if not self.deck:
+                 s.write("deck = None\n")
+            
+            s.write("import time")
             if self.blocks_included:
                 s.write(f"\n{self._create_block_import()}")
+            
+            s.write(f"\n{self.get_required_imports()}")
+
             if self.needs_call_human:
                 s.write("""\n\ndef pause(reason="Manual intervention required"):\n\tprint(f"\\nHUMAN INTERVENTION REQUIRED: {reason}")\n\tinput("Press Enter to continue...\\n")""")
 

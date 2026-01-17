@@ -144,6 +144,21 @@ def _get_type_from_parameters(arg, parameters):
 
     if isinstance(annotation, str):
         arg_type = annotation
+    elif isinstance(annotation, type) and issubclass(annotation, Enum):
+        module_name = annotation.__module__
+        if module_name == "__main__":
+            # Try to resolve __main__ to the actual deck name
+            from ivoryos.utils.global_config import GlobalConfig
+            import os
+            deck = GlobalConfig().deck
+            if deck:
+                # If deck is __main__, use its filename stem
+                if deck.__name__ == "__main__":
+                     if hasattr(deck, '__file__'):
+                         module_name = os.path.splitext(os.path.basename(deck.__file__))[0]
+                else:
+                    module_name = deck.__name__
+        arg_type = f"Enum:{module_name}.{annotation.__name__}"
     elif annotation is not inspect._empty:
         if annotation.__module__ == 'typing':
 
@@ -172,9 +187,35 @@ def _convert_by_str(args, arg_types):
     for arg_type in arg_types:
         if not arg_type == "any":
             try:
+                if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
+                    # Handle Enum conversion
+                    _, full_path = arg_type.split(":", 1)
+                    module_name, class_name = full_path.rsplit(".", 1)
+                    
+                    # Handle deck module resolution if needed, though usually it's set correctly
+                    # But if we are running in a context where deck is loaded as __main__ vs module
+                    # We try importlib.
+                    try:
+                        mod = importlib.import_module(module_name)
+                    except ImportError:
+                         # Fallback: check if it's the current deck
+                         from ivoryos.utils.global_config import GlobalConfig
+                         deck = GlobalConfig().deck
+                         if deck and (deck.__name__ == module_name or module_name == "__main__"): # or check filename?
+                             mod = deck
+                         else:
+                             raise
+                    
+                    enum_class = getattr(mod, class_name)
+                    return enum_class[args].value # args is the member name e.g. "Methanol"
+
                 args = eval(f'{arg_type}("{args}")') if type(args) is str else eval(f'{arg_type}({args})')
                 return args
             except Exception:
+                if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
+                     # If Enum conversion fails (e.g. wrong member), we probably should fail explicitly 
+                     raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
+                
                 raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
     return args
 
