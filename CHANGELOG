@@ -1,3 +1,8 @@
+1.5.7 (Jan 19th, 2026)
+- !79 [Bug] once per batch action execution bug
+- !78 [Bug] custom type / dropdown menu import
+
+
 1.5.6 (Jan 16th, 2026)
 - !77 [Qol] central/cloud db, auth tweak to support PostgreSQL, config from .env
 - !76 [Qol] per batch / per sample option for workflow steps
