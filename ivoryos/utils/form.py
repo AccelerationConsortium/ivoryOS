@@ -14,6 +14,7 @@ from wtforms.widgets.core import TextInput
 from flask_wtf import FlaskForm
 from wtforms import StringField, FloatField, HiddenField, BooleanField, IntegerField
 import inspect
+import importlib
 
 from ivoryos.utils.db_models import Script
 from ivoryos.utils.global_config import GlobalConfig
@@ -227,6 +228,12 @@ class FlexibleEnumField(StringField):
                     return arg
 
         raise TypeError(f"FlexibleEnumField expected Enum or Optional[Enum], got {annotation!r}")
+
+    def _value(self):
+        """Return empty string for None values instead of 'None'"""
+        if self.data is None:
+            return ''
+        return str(self.data)
 
     def process_formdata(self, valuelist):
         # todo right now enum types will be processed to methods as a str, so the method must convert to the enum type
@@ -529,10 +536,26 @@ def create_form_from_action(action: dict, script=None, design=True):
             if none_type == "NoneType":
                 param_type = param_type[0]
         param_type = param_type if type(param_type) is str else f"{param_type}"
-        field_class, placeholder_text = annotation_mapping.get(
-            param_type,
-            (VariableOrStringField if design else StringField, f'Enter {param_type} value')
-        )
+        extra_kwargs = {}
+        if param_type.startswith("Enum:"):
+            try:
+                _, full_path = param_type.split(":", 1)
+                module_name, class_name = full_path.rsplit(".", 1)
+                mod = importlib.import_module(module_name)
+                enum_class = getattr(mod, class_name)
+                field_class = FlexibleEnumField
+                placeholder_text = f"Choose or type a value for {class_name}"
+                extra_kwargs = {"choices": enum_class}
+            except Exception as e:
+                field_class, placeholder_text = annotation_mapping.get(
+                    param_type,
+                    (VariableOrStringField if design else StringField, f'Enter {param_type} value')
+                )
+        else:
+            field_class, placeholder_text = annotation_mapping.get(
+                param_type,
+                (VariableOrStringField if design else StringField, f'Enter {param_type} value')
+            )
 
         if instrument == "math_variable":
             field_class = VariableOrStringField
@@ -543,7 +566,7 @@ def create_form_from_action(action: dict, script=None, design=True):
         render_kwargs = {"placeholder": placeholder_text}
 
         # Create the field with additional rendering kwargs for placeholder text
-        field = field_class(**field_kwargs, render_kw=render_kwargs)
+        field = field_class(**field_kwargs, render_kw=render_kwargs, **extra_kwargs)
         setattr(DynamicForm, name, field)
 
     if design:
@@ -633,11 +656,23 @@ def create_builtin_form(logic_type, script):
     return BuiltinFunctionForm
 
 
-def get_method_from_workflow(function_string):
+def get_method_from_workflow(function_string, func_name=None):
     """Creates a function from a string and assigns it a new name."""
 
     namespace = {}
     exec(function_string, globals(), namespace)  # Execute the string in a safe namespace
+    
+    if func_name and func_name in namespace:
+        return namespace[func_name]
+    
+    # Fallback to finding the first function if name not provided or found
+    # But if imports are present, next(iter) might be an module.
+    # We should prefer functions.
+    for key, val in namespace.items():
+        if inspect.isfunction(val):
+             return val
+
+    # Final fallback (original behavior)
     func_name = next(iter(namespace))
     # Get the function name dynamically
     return namespace[func_name]
@@ -658,7 +693,12 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
             compiled_strs = workflow.compile().get('script', "")
             if not compiled_strs:
                 continue
-            method = get_method_from_workflow(compiled_strs)
+            
+            # Add imports so Enums are defined
+            import_str = workflow.get_required_imports() or ""
+            full_code = f"{import_str}\n{compiled_strs}"
+            
+            method = get_method_from_workflow(full_code, func_name=workflow_name)
             functions[workflow_name] = dict(signature=inspect.signature(method), docstring=inspect.getdoc(method))
             setattr(RegisteredWorkflows, workflow_name, method)
 

@@ -57,8 +57,11 @@ async function updateCode() {
         const script = data.code?.script || "";
         const prep = data.code?.prep || "";
         const cleanup = data.code?.cleanup || "";
+        const imports = data.code?.imports || "";
 
         let finalCode = "";
+        if (imports.trim())
+            finalCode += imports + "\n\n";
 
         if (prep.trim()) {
             finalCode += "# --- PREP CODE ---\n" + prep.trim() + "\n\n";

@@ -30,7 +30,7 @@
                             {% if field.type == "BooleanField" %}
                                 {{ field(class="form-check-input") }}
                             {% elif field.type == "FlexibleEnumField" %}
-                               <input type="text" id="{{ field.id }}" name="{{ field.name }}" value="{{ field.data }}"
+                               <input type="text" id="{{ field.id }}" name="{{ field.name }}" value="{{ field._value() }}"
                                   list="{{ field.id }}_options" placeholder="{{ field.render_kw.placeholder if field.render_kw and field.render_kw.placeholder }}"
                                   class="form-control">
                                <datalist id="{{ field.id }}_options">

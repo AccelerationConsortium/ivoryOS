@@ -142,20 +142,64 @@ def _get_type_from_parameters(arg, parameters):
     except Exception:
         return arg_type
 
+def _resolve_type_string(annotation):
+    arg_type = ''
     if isinstance(annotation, str):
         arg_type = annotation
+    elif isinstance(annotation, type) and issubclass(annotation, Enum):
+        module_name = annotation.__module__
+        if module_name == "__main__":
+            # Try to resolve __main__ to the actual deck name
+            from ivoryos.utils.global_config import GlobalConfig
+            import os
+            deck = GlobalConfig().deck
+            if deck:
+                # If deck is __main__, use its filename stem
+                if deck.__name__ == "__main__":
+                     if hasattr(deck, '__file__'):
+                         module_name = os.path.splitext(os.path.basename(deck.__file__))[0]
+                else:
+                    module_name = deck.__name__
+        arg_type = f"Enum:{module_name}.{annotation.__name__}"
+    elif hasattr(annotation, '__name__'):
+        arg_type = annotation.__name__
+    else:
+        arg_type = str(annotation)
+    return arg_type
+
+
+def _get_type_from_parameters(arg, parameters):
+    """get argument types from inspection"""
+    # TODO
+    arg_type = ''
+    try:
+        if isinstance(parameters, inspect.Signature):
+            if arg not in parameters.parameters:
+                return arg_type
+            annotation = parameters.parameters[arg].annotation
+        elif isinstance(parameters, dict):
+            annotation = parameters.get(arg, '')
+        else:
+            annotation = ''
+    except Exception:
+        return arg_type
+
+    if isinstance(annotation, str):
+        arg_type = annotation
+    elif isinstance(annotation, type) and issubclass(annotation, Enum):
+        arg_type = _resolve_type_string(annotation)
     elif annotation is not inspect._empty:
         if annotation.__module__ == 'typing':
 
             if hasattr(annotation, '__origin__'):
                 origin = annotation.__origin__
                 if hasattr(origin, '_name') and origin._name in ["Optional", "Union"]:
-                    arg_type = [i.__name__ for i in annotation.__args__]
+                    arg_type = [_resolve_type_string(i) for i in annotation.__args__]
                 elif hasattr(origin, '__name__'):
                     arg_type = origin.__name__
                 # todo other types
         elif annotation.__module__ == 'types':
-            arg_type = [i.__name__ for i in annotation.__args__]
+            arg_type = [_resolve_type_string(i) for i in annotation.__args__]
 
         else:
             arg_type = annotation.__name__
@@ -172,9 +216,35 @@ def _convert_by_str(args, arg_types):
     for arg_type in arg_types:
         if not arg_type == "any":
             try:
+                if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
+                    # Handle Enum conversion
+                    _, full_path = arg_type.split(":", 1)
+                    module_name, class_name = full_path.rsplit(".", 1)
+                    
+                    # Handle deck module resolution if needed, though usually it's set correctly
+                    # But if we are running in a context where deck is loaded as __main__ vs module
+                    # We try importlib.
+                    try:
+                        mod = importlib.import_module(module_name)
+                    except ImportError:
+                         # Fallback: check if it's the current deck
+                         from ivoryos.utils.global_config import GlobalConfig
+                         deck = GlobalConfig().deck
+                         if deck and (deck.__name__ == module_name or module_name == "__main__"): # or check filename?
+                             mod = deck
+                         else:
+                             raise
+                    
+                    enum_class = getattr(mod, class_name)
+                    return enum_class[args].value # args is the member name e.g. "Methanol"
+
                 args = eval(f'{arg_type}("{args}")') if type(args) is str else eval(f'{arg_type}({args})')
                 return args
             except Exception:
+                if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
+                     # If Enum conversion fails (e.g. wrong member), we probably should fail explicitly 
+                     raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
+                
                 raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
     return args
 

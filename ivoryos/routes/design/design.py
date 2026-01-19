@@ -40,7 +40,7 @@ def _create_forms(instrument, script, autofill, pseudo_deck = None):
         forms = create_form_from_pseudo(pseudo=global_config.building_blocks[instrument], autofill=autofill, script=script)
         functions = global_config.building_blocks[instrument]
     elif instrument.startswith("workflows"):
-        _, forms = create_workflow_forms(script, autofill=autofill)
+        _, forms = create_workflow_forms(script, autofill=autofill, design=True)
     else:
         if deck:
             functions = global_config.deck_snapshot.get(instrument, {})
@@ -128,7 +128,13 @@ def compile_preview():
             code = "Invalid mode. Please select 'single' or 'batch'."
     except Exception as e:
         code = f"Error compiling: {e}"
-    # print(code)
+
+    if isinstance(code, dict):
+        imports = script.get_required_imports()
+        if imports:
+            # Simple approach: prepend to valid code blocks.
+            code["imports"] = imports
+
     return jsonify(code=code)
 
 

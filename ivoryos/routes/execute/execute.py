@@ -1,6 +1,7 @@
 import csv
 import os
 import time
+import importlib
 
 from flask import Blueprint, redirect, url_for, flash, jsonify, request, render_template, session, \
     current_app, g, send_file
@@ -75,6 +76,9 @@ def experiment_run():
     try:
         # Handle both string and dict exec_string
         if isinstance(exec_string, dict):
+            import_str = script.get_required_imports()
+            if import_str:
+                exec(import_str)
             for key, func_str in exec_string.items():
                 exec(func_str)
 
@@ -83,7 +87,7 @@ def experiment_run():
             line_collection = {}
     except Exception as e:
         g.logger.exception(f"Exception while executing script: {e}")
-        flash(f"Please check syntax!!")
+        flash(f"Please check syntax!! {e}")
         return redirect(url_for("design.experiment_builder"))
 
 
@@ -97,6 +101,30 @@ def experiment_run():
 
     _, return_list = script.config_return()
     config_list, config_type_list = script.config("script")
+
+    for key, type_str in config_type_list.items():
+        # Handle Optional/Union types which come as lists
+        if isinstance(type_str, list):
+             # Find the Enum entry if it exists
+             enum_entries = [t for t in type_str if isinstance(t, str) and t.startswith("Enum:")]
+             if enum_entries:
+                 # Use the first found Enum type
+                 type_str = enum_entries[0]
+                 # Update the list in place so template gets the simple string? 
+                 # Or better, just proceed to process it as a string
+        
+        if isinstance(type_str, str) and type_str.startswith("Enum:"):
+            try:
+                _, full_path = type_str.split(":", 1)
+                module_name, class_name = full_path.rsplit(".", 1)
+                mod = importlib.import_module(module_name)
+                enum_class = getattr(mod, class_name)
+                options = [e.name for e in enum_class]
+                config_type_list[key] = f"Enum:{','.join(options)}"
+            except Exception:
+                pass
+
+
     data_list = [f for f in os.listdir(current_app.config['DATA_FOLDER']) if f.endswith('.csv')]
     # Remove .gitkeep if present
     if ".gitkeep" in data_list:
