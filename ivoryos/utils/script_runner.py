@@ -533,13 +533,8 @@ class ScriptRunner:
                     
                     # For batched contexts:
                     for context in contexts:
-                        args = step.get("args", {})
-                        for key, value in args.items():
-                             if isinstance(value, str) and value.startswith("#"):
-                                 context[key] = context.get(value[1:])
-                             else:
-                                 context[key] = value
-
+                        substituted_args = self._substitute_params(step.get("args", {}), context)
+                        context.update(substituted_args)
                     if step.get("batch_action", False):
                         await self._execute_steps_batched(workflow_steps, [contexts[0]], phase_id=phase_id, section_name=f"{section_name}-{action_id-1}")
 
@@ -629,7 +624,7 @@ class ScriptRunner:
         result = None
         if self.stop_current_event.is_set():
             return context
-        substituted_args = self._substitute_params(step["args"], context)
+        substituted_args = self._substitute_params(step["args"], context, step.get("arg_types", {}))
 
         # Get the component and method
         instrument = step.get("instrument", "")
@@ -753,29 +748,76 @@ class ScriptRunner:
         return await self._execute_action(step, context, phase_id=phase_id, step_index=step_index, section_name=section_name)
 
     @staticmethod
-    def _substitute_params(args: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
-        """Substitute parameter placeholders like #param_1 with actual values."""
+    def _substitute_params(args: Dict[str, Any], context: Dict[str, Any], type_hints: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Substitute parameter placeholders like #param_1 with actual values recursively and perform type casting."""
+        
+        def _cast_value(val, type_str):
+            if val is None or not type_str:
+                return val
+            
+            # Handle generic types like list[int]
+            if isinstance(type_str, str) and "[" in type_str:
+                parts = type_str.split("[")
+                base_type = parts[0]
+                inner_type_str = parts[1].rstrip("]")
+                
+                if base_type == "list" and isinstance(val, (list, tuple)):
+                    return [_cast_value(v, inner_type_str) for v in val]
+                elif base_type == "tuple" and isinstance(val, (list, tuple)):
+                    inner_types = inner_type_str.split(",")
+                    if len(inner_types) == 1:
+                        return tuple(_cast_value(v, inner_types[0]) for v in val)
+                    else:
+                        return tuple(_cast_value(v, inner_types[i]) if i < len(inner_types) else v for i, v in enumerate(val))
+            
+            try:
+                if type_str == "int":
+                    return int(float(val)) if isinstance(val, str) else int(val)
+                elif type_str == "float":
+                    return float(val)
+                elif type_str == "bool":
+                    if isinstance(val, str):
+                        return val.lower() == "true"
+                    return bool(val)
+            except (ValueError, TypeError):
+                pass
+            return val
+
+        def _substitute_recursive(val, current_type_hint=None):
+            if isinstance(val, str):
+                if val.startswith("#"):
+                    param_name = val[1:]
+                    result = context.get(param_name, val)
+                    return _cast_value(result, current_type_hint)
+                
+                # For strings that might contain #var as part of a larger sentence (e.g. comments)
+                def replacer(match):
+                    var_name = match.group(1)
+                    if var_name not in context:
+                        return match.group(0) # Keep #var if not in context
+                    return str(context[var_name])
+                
+                return re.sub(r"#(\w+)", replacer, val)
+            
+            elif isinstance(val, list):
+                # If we have a list type hint, pass the inner part
+                inner_hint = None
+                if isinstance(current_type_hint, str) and current_type_hint.startswith("list["):
+                    inner_hint = current_type_hint[5:-1]
+                return [_substitute_recursive(i, inner_hint) for i in val]
+            elif isinstance(val, tuple):
+                inner_hint = None
+                if isinstance(current_type_hint, str) and current_type_hint.startswith("tuple["):
+                    inner_hint = current_type_hint[6:-1]
+                return tuple(_substitute_recursive(i, inner_hint) for i in val)
+            elif isinstance(val, dict):
+                return {k: _substitute_recursive(v) for k, v in val.items()}
+            return val
+
         substituted = {}
-
-        def substitute_vars(value: str, context: Dict[str, Any]) -> Any:
-            # Replace placeholders of the form `#var` in a string with values from a context.
-            def replacer(match):
-                var_name = match.group(1)
-                if var_name not in context:
-                    raise KeyError(f"Missing context value for '{var_name}'")
-                return str(context[var_name])
-
-            return re.sub(r"#(\w+)", replacer, value)
-
         for key, value in args.items():
-            if isinstance(value, str) and value.startswith("#"):
-                param_name = value[1:]  # Remove '#'
-                substituted[key] = context.get(param_name)
-            elif isinstance(value, str):
-                # for comment need to substitue #args in the arg with the actual values
-                substituted[key] = substitute_vars(value, context)
-            else:
-                substituted[key] = value
+            hint = type_hints.get(key) if type_hints else None
+            substituted[key] = _substitute_recursive(value, hint)
 
         return substituted
 

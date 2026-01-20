@@ -206,6 +206,27 @@ class VariableOrBoolField(Field):
         return str(self.data)
 
 
+class VariableOrListField(Field):
+    widget = TextInput()
+
+    def __init__(self, label='', validators=None, script=None, **kwargs):
+        super(VariableOrListField, self).__init__(label, validators, **kwargs)
+        self.script = script
+
+    def process_formdata(self, valuelist):
+        if valuelist:
+            if not self.script.editing_type == "script" and valuelist[0].startswith("#"):
+                raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
+            self.data = valuelist[0]
+
+    def _value(self):
+        if self.script:
+            variable, variable_type = find_variable(self.data, self.script)
+            if variable:
+                return variable
+        return str(self.data) if self.data is not None else ''
+
+
 class FlexibleEnumField(StringField):
     def __init__(self, label=None, validators=None, choices=None, script=None, **kwargs):
         super().__init__(label, validators, **kwargs)
@@ -272,11 +293,12 @@ def parse_annotation(annotation):
     if origin is Union:
         types = list(set(args))
         is_optional = type(None) in types
-        non_none_types = [t for t in types if t is not type(None)]
+        # Unwrap origins for elements inside Union/Optional
+        non_none_types = [get_origin(t) or t for t in types if t is not type(None)]
         return non_none_types, is_optional
 
-    # Not a Union, just a regular type
-    return [annotation], False
+    # Handle generic types like List[int] or Tuple[str, ...]
+    return [origin or annotation], False
 
 def create_form_for_method(method, autofill, script=None, design=True):
     """
@@ -294,7 +316,9 @@ def create_form_for_method(method, autofill, script=None, design=True):
         int: (VariableOrIntField if design else IntegerField, 'Enter integer value'),
         float: (VariableOrFloatField if design else FloatField, 'Enter numeric value'),
         str: (VariableOrStringField if design else StringField, 'Enter text'),
-        bool: (VariableOrBoolField if design else BooleanField, 'Empty for false')
+        bool: (VariableOrBoolField if design else BooleanField, 'Empty for false'),
+        list: (VariableOrListField if design else StringField, 'Enter list [1, 2, #var]'),
+        tuple: (VariableOrListField if design else StringField, 'Enter tuple (1, 2, #var)'),
     }
     sig = method if type(method) is inspect.Signature else inspect.signature(method)
 
@@ -508,7 +532,9 @@ def create_form_from_action(action: dict, script=None, design=True):
         "int": (VariableOrIntField if design else IntegerField, 'Enter integer value'),
         "float": (VariableOrFloatField if design else FloatField, 'Enter numeric value'),
         "str": (VariableOrStringField if design else StringField, 'Enter text'),
-        "bool": (VariableOrBoolField if design else BooleanField, 'Empty for false')
+        "bool": (VariableOrBoolField if design else BooleanField, 'Empty for false'),
+        "list": (VariableOrListField if design else StringField, 'Enter list'),
+        "tuple": (VariableOrListField if design else StringField, 'Enter tuple'),
     }
 
     # Use explicitly saved order if available, otherwise fallback (e.g. for old actions)
@@ -551,6 +577,9 @@ def create_form_from_action(action: dict, script=None, design=True):
                     param_type,
                     (VariableOrStringField if design else StringField, f'Enter {param_type} value')
                 )
+        elif param_type.startswith("list[") or param_type.startswith("tuple["):
+            field_class = VariableOrListField if design else StringField
+            placeholder_text = f"Enter {param_type} value"
         else:
             field_class, placeholder_text = annotation_mapping.get(
                 param_type,

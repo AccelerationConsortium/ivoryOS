@@ -10,6 +10,7 @@ import subprocess
 import sys
 from collections import Counter
 from enum import Enum
+from typing import Union, get_origin, get_args
 
 import flask
 from flask import session
@@ -189,20 +190,31 @@ def _get_type_from_parameters(arg, parameters):
     elif isinstance(annotation, type) and issubclass(annotation, Enum):
         arg_type = _resolve_type_string(annotation)
     elif annotation is not inspect._empty:
-        if annotation.__module__ == 'typing':
-
-            if hasattr(annotation, '__origin__'):
-                origin = annotation.__origin__
-                if hasattr(origin, '_name') and origin._name in ["Optional", "Union"]:
-                    arg_type = [_resolve_type_string(i) for i in annotation.__args__]
-                elif hasattr(origin, '__name__'):
-                    arg_type = origin.__name__
-                # todo other types
-        elif annotation.__module__ == 'types':
-            arg_type = [_resolve_type_string(i) for i in annotation.__args__]
-
+        if annotation.__module__ in ['typing', 'builtins']:
+            origin = get_origin(annotation)
+            args = get_args(annotation)
+            
+            if origin is Union:
+                # Keep existing Union/Optional logic, resolving elements recursively
+                arg_type = [_resolve_type_string(i) for i in args]
+            elif origin is not None:
+                # Handle List[int], Tuple[str, int], etc.
+                origin_name = origin.__name__ if hasattr(origin, '__name__') else str(origin)
+                if args:
+                    inner_types = []
+                    for arg_item in args:
+                        inner_types.append(_resolve_type_string(arg_item))
+                    arg_type = f"{origin_name.lower()}[{','.join(inner_types)}]"
+                else:
+                    arg_type = origin_name.lower()
+            elif hasattr(annotation, '__name__'):
+                arg_type = annotation.__name__
+            else:
+                arg_type = str(annotation)
+        elif annotation.__module__ == 'types' and hasattr(annotation, '__args__'):
+             arg_type = [_resolve_type_string(i) for i in annotation.__args__]
         else:
-            arg_type = annotation.__name__
+            arg_type = annotation.__name__ if hasattr(annotation, '__name__') else str(annotation)
     return arg_type
 
 

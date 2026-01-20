@@ -11,6 +11,8 @@ import keyword
 import re
 import uuid
 from datetime import datetime
+import inspect
+from enum import Enum
 from typing import Dict
 
 from flask_login import UserMixin
@@ -111,25 +113,40 @@ class Script(db.Model):
                     return action
 
     def _convert_type(self, args, arg_types):
-        if arg_types in ["list", "tuple", "set"]:
+        # Handle generic types like list[int]
+        is_generic = isinstance(arg_types, str) and "[" in arg_types
+        base_type = arg_types.split("[")[0] if is_generic else arg_types
+
+        if base_type in ["list", "tuple", "set"]:
+            convert_type = getattr(builtins, base_type)
             try:
                 args = ast.literal_eval(args)
+                if type(args) not in [list, tuple, set]:
+                    args = convert_type([args])
                 return args
             except Exception:
+                # If it's a string starting with #, it's a variable reference
+                # but if the type is list/tuple/set, we should wrap it if it's literally just a variable
+                if isinstance(args, str) and args.startswith("#") and "," not in args and "[" not in args:
+                    return convert_type([args])
                 pass
         if type(arg_types) is not list:
+            # If it's a generic type string, we don't want to split it by character or anything
+            # Just put it in a list if it's not already one
             arg_types = [arg_types]
+
         for arg_type in arg_types:
             if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
                  continue
             try:
+                # If it's generic, we just want the base type for simple conversion if possible
+                actual_type = arg_type.split("[")[0] if isinstance(arg_type, str) and "[" in arg_type else arg_type
                 # print(arg_type)
-                args = eval(f"{arg_type}('{args}')")
+                args = eval(f"{actual_type}('{args}')")
                 return
             except Exception:
-
                 pass
-        raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
+        raise TypeError(f"Input type error: cannot convert '{args}' to {arg_types}.")
 
     def update_by_uuid(self, uuid, args, output, batch_action=False):
         action = self.find_by_uuid(uuid)
@@ -151,22 +168,43 @@ class Script(db.Model):
             arg_type = arg_types[arg]
             if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
                 continue
-            if arg_type in ["list", "tuple", "set"]:
 
-                if type(arg) is str and not args[arg].startswith("#"):
+            # Handle list[int], tuple[str], etc.
+            is_generic = isinstance(arg_type, str) and "[" in arg_type
+            base_type = arg_type.split("[")[0] if is_generic else arg_type
+
+            if base_type in ["list", "tuple", "set"]:
+
+                # Check if it's a purely single variable reference (e.g. #v1)
+                # If it has commas or brackets, it's a collection and should be parsed
+                is_single_var = isinstance(args[arg], str) and args[arg].startswith("#") and "," not in args[arg] and "[" not in args[arg]
+
+                if isinstance(args[arg], str) and not is_single_var:
                     # arg_types = arg_types[arg]
                     # if arg_types in ["list", "tuple", "set"]:
-                    convert_type = getattr(builtins, arg_type)  # Handle unknown types s
+                    convert_type = getattr(builtins, base_type)  # Handle unknown types s
                     try:
-                        output = ast.literal_eval(args[arg])
+                        # Try to replace #var with "var" to make it valid for literal_eval
+                        # then we can swap it back or handle it in _process_dict_args
+                        temp_str = re.sub(r'#([A-Za-z_]\w*)', r'"#\1"', args[arg])
+                        output = ast.literal_eval(temp_str)
                         if type(output) not in [list, tuple, set]:
                             output = [output]
                         args[arg] = convert_type(output)
                         # return args
-                    except ValueError:
-                        _list = ''.join(args[arg]).split(',')
-                        # convert_type = getattr(builtins, arg_types)  # Handle unknown types s
-                        args[arg] = convert_type([s.strip() for s in _list])
+                    except (ValueError, SyntaxError):
+                        s = args[arg].strip()
+                        if s.startswith('[') and s.endswith(']'):
+                            s = s[1:-1]
+                        elif s.startswith('(') and s.endswith(')'):
+                            s = s[1:-1]
+                        elif s.startswith('{') and s.endswith('}'):
+                            s = s[1:-1]
+                        _list = s.split(',')
+                        args[arg] = convert_type([item.strip() for item in _list if item.strip()])
+                elif is_single_var:
+                    convert_type = getattr(builtins, base_type)
+                    args[arg] = convert_type([args[arg]])
 
     @property
     def stypes(self):
@@ -308,24 +346,32 @@ class Script(db.Model):
         Validates the kwargs passed to the Script
         """
         output_variables: Dict[str, str] = self.get_variables()
-        # print(output_variables)
+
+        def _validate_value(val, type_hint=""):
+            if isinstance(val, str):
+                if val in output_variables:
+                    return f"#{val}"
+                elif val.startswith("#"):
+                    return f"#{self.validate_function_name(val[1:])}"
+                elif not type_hint:
+                    try:
+                        converted = ast.literal_eval(val)
+                        if isinstance(converted, (int, float, bool)):
+                            return converted
+                    except (ValueError, SyntaxError):
+                        pass
+                return val
+            elif isinstance(val, list):
+                return [_validate_value(i) for i in val]
+            elif isinstance(val, tuple):
+                return tuple(_validate_value(i) for i in val)
+            elif isinstance(val, dict):
+                return {k: _validate_value(v) for k, v in val.items()}
+            return val
+
         for key, value in kwargs.items():
-            if isinstance(value, str):
-                if value in output_variables:
-                    var_type = output_variables[value]
-                    kwargs[key] = f"#{value}"
-                elif value.startswith("#"):
-                    kwargs[key] = f"#{self.validate_function_name(value[1:])}"
-                else:
-                    # attempt to convert to numerical or bool value for args with no type hint
-                    type_hint = arg_types.get(key, "") if arg_types else ""
-                    if not type_hint:
-                        try:
-                            converted = ast.literal_eval(value)
-                            if isinstance(converted, (int, float, bool)):
-                                kwargs[key] = converted
-                        except (ValueError, SyntaxError):
-                            pass
+            type_hint = arg_types.get(key, "") if arg_types else ""
+            kwargs[key] = _validate_value(value, type_hint)
         return kwargs
 
     def add_logic_action(self, logic_type: str, statement, insert_position=None):
@@ -1186,6 +1232,46 @@ class Script(db.Model):
         """
         Process dictionary arguments, handling special cases like variables and Enums.
         """
+        #
+        # def _process_value(v, type_hint=None):
+        #     if isinstance(v, str) and v.startswith("#"):
+        #         return v[1:]
+        #     elif isinstance(v, dict):
+        #         # Handle variables like {'v1': 'function_output'}
+        #         if len(v) == 1:
+        #             key = next(iter(v))
+        #             if v[key] == "function_output":
+        #                 return key
+        #         # Otherwise recurse for normal dicts
+        #         inner_items = []
+        #         for ik, iv in v.items():
+        #             inner_items.append(f"'{ik}': {_process_value(iv)}")
+        #         return "{" + ", ".join(inner_items) + "}"
+        #     elif isinstance(v, list):
+        #         return "[" + ", ".join([_process_value(i) for i in v]) + "]"
+        #     elif isinstance(v, tuple):
+        #         return "(" + ", ".join([_process_value(i) for i in v]) + ")"
+        #     elif isinstance(v, set):
+        #         return "{" + ", ".join([_process_value(i) for i in v]) + "}"
+        #
+        #     # Handle Enums if type_hint is provided
+        #     if type_hint and isinstance(type_hint, str) and type_hint.startswith("Enum:"):
+        #         try:
+        #             _, full_path = type_hint.split(":", 1)
+        #             class_name = full_path.split(".")[-1]
+        #             return f"{class_name}({repr(v)})"
+        #         except:
+        #             pass
+        #
+        #     return repr(v)
+        #
+        # items = []
+        # for k, v in args.items():
+        #     hint = arg_types.get(k) if arg_types else None
+        #     val_str = _process_value(v, hint)
+        #     items.append(f"'{k}': {val_str}")
+        #
+        # return "{" + ", ".join(items) + "}"
         items = []
         for k, v in args.items():
              val_str = repr(v)
@@ -1213,7 +1299,7 @@ class Script(db.Model):
                         val_str = f"{class_name}({repr(v)})"
                      except:
                         pass
-             
+
              items.append(f"'{k}': {val_str}")
         return "{" + ", ".join(items) + "}"
 

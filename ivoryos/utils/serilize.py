@@ -32,19 +32,33 @@ class ScriptAnalyzer:
 
         # Handle Union types (including Optional which is Union[T, None])
         origin = get_origin(type_hint)
+        args = get_args(type_hint)
+
         if origin is Union:
-            args = get_args(type_hint)
             types = []
             for arg in args:
                 if arg is type(None):  # Skip None type
                     continue
-                if arg in self.type_mapping:
-                    types.append(self.type_mapping[arg])
-                elif hasattr(arg, '__name__') and arg.__name__ in self.primitive_types:
-                    types.append(arg.__name__)
+                extracted = self.extract_type_from_hint(arg)
+                if extracted:
+                    types.extend(extracted)
                 else:
                     return None  # Non-primitive type found
             return types if types else None
+
+        # Handle generic types like List[int] or Tuple[str, int]
+        if origin is not None:
+            origin_name = origin.__name__ if hasattr(origin, '__name__') else str(origin)
+            if args:
+                inner_types = []
+                for arg_item in args:
+                    if hasattr(arg_item, '__name__'):
+                        inner_types.append(arg_item.__name__)
+                    else:
+                        inner_types.append(str(arg_item))
+                return [f"{origin_name.lower()}[{','.join(inner_types)}]"]
+            else:
+                return [origin_name.lower()]
 
         # Handle direct primitive types
         if type_hint in self.type_mapping:
