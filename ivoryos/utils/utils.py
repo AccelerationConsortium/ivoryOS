@@ -211,40 +211,14 @@ def _convert_by_str(args, arg_types):
     Converts a value to type through eval(f'{type}("{args}")')
     v1.3.4 TODO try str lastly, otherwise it's always converted to str
     """
-    if type(arg_types) is not list:
+    if not isinstance(arg_types, list):
         arg_types = [arg_types]
     for arg_type in arg_types:
-        if not arg_type == "any":
+        if not arg_type in ["str", "any"]:
             try:
-                if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
-                    # Handle Enum conversion
-                    _, full_path = arg_type.split(":", 1)
-                    module_name, class_name = full_path.rsplit(".", 1)
-                    
-                    # Handle deck module resolution if needed, though usually it's set correctly
-                    # But if we are running in a context where deck is loaded as __main__ vs module
-                    # We try importlib.
-                    try:
-                        mod = importlib.import_module(module_name)
-                    except ImportError:
-                         # Fallback: check if it's the current deck
-                         from ivoryos.utils.global_config import GlobalConfig
-                         deck = GlobalConfig().deck
-                         if deck and (deck.__name__ == module_name or module_name == "__main__"): # or check filename?
-                             mod = deck
-                         else:
-                             raise
-                    
-                    enum_class = getattr(mod, class_name)
-                    return enum_class[args].value # args is the member name e.g. "Methanol"
-
                 args = eval(f'{arg_type}("{args}")') if type(args) is str else eval(f'{arg_type}({args})')
                 return args
             except Exception:
-                if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
-                     # If Enum conversion fails (e.g. wrong member), we probably should fail explicitly 
-                     raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
-                
                 raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
     return args
 

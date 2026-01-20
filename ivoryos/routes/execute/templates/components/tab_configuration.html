@@ -219,7 +219,7 @@
             var value = data && data[column] ? data[column] : '';
             var configType = configTypes[column] || '';
 
-            if (configType.startsWith('Enum:')) {
+            if (typeof configType === "string" && configType.startsWith('Enum:')) {
                 var options = configType.substring(5).split(',');
                 var optionsHtml = '<option value="">Select...</option>';
                 options.forEach(function (opt) {
