@@ -1,7 +1,17 @@
+1.5.8 (Jan 20th, 2026)
+(workflow + batch fix)
+- !83 [Bug] remove type conversion for str type in Union[]
+- !82 [Bug] arg substitute bug
+- !82 [Bug] fix "batch_action" shows in step arg
+- !81 [Bug] serialize all input arg and out before db commit
+New Workflow Behaviours:
+- register workflow (only registered will show up in workflow section)
+- once per batch action - duplicate results for all per sample actions
+- auto complete return values for workflows (inherit workflow returns)
+
 1.5.7 (Jan 19th, 2026)
 - !79 [Bug] once per batch action execution bug
 - !78 [Bug] custom type / dropdown menu import
-
 
 1.5.6 (Jan 16th, 2026)
 - !77 [Qol] central/cloud db, auth tweak to support PostgreSQL, config from .env
