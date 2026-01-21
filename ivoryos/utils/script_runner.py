@@ -305,7 +305,7 @@ class ScriptRunner:
 
         step_outputs = await self.exec_steps(script, section_name, phase_id=phase_id)
         # Save phase-level output
-        phase.outputs = step_outputs
+        phase.outputs = utils.sanitize_for_json(step_outputs)
         phase.end_time = datetime.now()
         db.session.commit()
         return step_outputs
@@ -341,7 +341,7 @@ class ScriptRunner:
                     run_id=run_id,
                     name="main",
                     repeat_index=i,
-                    parameters=kwargs_list,
+                    parameters=utils.sanitize_for_json(kwargs_list),
                     start_time=datetime.now()
                 )
                 db.session.add(phase)
@@ -354,7 +354,7 @@ class ScriptRunner:
                     # kwargs.update(output)
                     for output_dict in output:
                         output_list.append(output_dict)
-                    phase.outputs = output
+                    phase.outputs = utils.sanitize_for_json(output)
                 phase.end_time = datetime.now()
                 db.session.commit()
         return output_list
@@ -421,7 +421,7 @@ class ScriptRunner:
 
                     if self.logger:
                         self.logger.info(f'Parameters: {parameters}')
-                    phase.parameters = parameters
+                    phase.parameters = utils.sanitize_for_json(parameters)
 
                     output = await self.exec_steps(script, "script",  phase_id, kwargs_list=parameters)
                     if output:
@@ -445,7 +445,7 @@ class ScriptRunner:
                 output_list.extend(output)
                 if self.logger:
                     self.logger.info(f'Output value: {output}')
-                phase.outputs = output
+                phase.outputs = utils.sanitize_for_json(output)
 
             phase.end_time = datetime.now()
             db.session.commit()
@@ -464,7 +464,7 @@ class ScriptRunner:
         filename = run_name + "_" + datetime.now().strftime("%Y-%m-%d %H-%M") + ".csv"
         file_path = os.path.join(output_path, filename)
         df = pd.DataFrame(output_list)
-        df = df.loc[:, [c for c in output_columns if c in df.columns]]
+        # df = df.loc[:, [c for c in output_columns if c in df.columns]]
 
         df. to_csv(file_path, index=False)
         if self.logger:
@@ -494,7 +494,7 @@ class ScriptRunner:
             }
 
 
-    async def _execute_steps_batched(self, steps: List[Dict], contexts: List[Dict[str, Any]], phase_id, section_name):
+    async def _execute_steps_batched(self, steps: List[Dict], contexts: List[Dict[str, Any]], phase_id, section_name, arg_contexts:List[Dict[str, Any]] = None):
         """
         Execute a list of steps for multiple samples, batching where appropriate.
         """
@@ -532,36 +532,51 @@ class ScriptRunner:
                     # Inject parameters into context
                     
                     # For batched contexts:
+                    workflow_contexts = []
                     for context in contexts:
-                        args = step.get("args", {})
-                        for key, value in args.items():
-                             if isinstance(value, str) and value.startswith("#"):
-                                 context[key] = context.get(value[1:])
-                             else:
-                                 context[key] = value
-
+                        substituted_args =  self._substitute_params( step.get("args", {}), context)
+                        # args = step.get("args", {})
+                        # for key, value in args.items():
+                        #      if isinstance(value, str) and value.startswith("#"):
+                        #          context[key] = context.get(value[1:])
+                        #      else:
+                        #          context[key] = value
+                        workflow_contexts.append(substituted_args)
+                        # print("context", context)
+                        # print("substituted_args", substituted_args)
                     if step.get("batch_action", False):
-                        await self._execute_steps_batched(workflow_steps, [contexts[0]], phase_id=phase_id, section_name=f"{section_name}-{action_id-1}")
+                        await self._execute_steps_batched(workflow_steps, [contexts[0]], arg_contexts=[workflow_contexts[0]], phase_id=phase_id, section_name=f"{section_name}-{action_id-1}")
+                        if len(contexts) > 1:
+                            # Propagate any new values from first context to others
+                            for key, value in contexts[0].items():
+                                for context in contexts[1:]:
+                                    if key not in context:
+                                        context[key] = value
 
                     else:
-                        for context in contexts:
+                        for context, workflow_context in zip(contexts, workflow_contexts):
                             # sequentially execute workflow steps
-                            await self._execute_steps_batched(workflow_steps, [context], phase_id=phase_id,
+                            await self._execute_steps_batched(workflow_steps, [context], arg_contexts=[workflow_context], phase_id=phase_id,
                                                               section_name=f"{section_name}-{action_id - 1}")
 
             else:
                 # Regular action - check if batch
                 if step.get("batch_action", False):
                     # Execute once for all samples
-                    await self._execute_action_once(step, contexts[0], phase_id=phase_id, step_index=action_id,
+                    await self._execute_action_once(step, contexts[0], arg_contexts=arg_contexts, phase_id=phase_id, step_index=action_id,
                                                         section_name=section_name)
 
                 else:
                     # Execute for each sample
-                    for context in contexts:
-                        await self._execute_action(step, context, phase_id=phase_id, step_index=action_id,
-                                                   section_name=section_name)
-                        self.pause_event.wait()
+                    if arg_contexts:
+                        for context, arg_context in zip(contexts, arg_contexts):
+                            await self._execute_action(step, context, arg_contexts=arg_context, phase_id=phase_id, step_index=action_id,
+                                                       section_name=section_name)
+                    else:
+                        for context in contexts:
+                            await self._execute_action(step, context, phase_id=phase_id, step_index=action_id,
+                                                       section_name=section_name)
+                            self.pause_event.wait()
 
 
 
@@ -623,13 +638,16 @@ class ScriptRunner:
         # if iteration >= max_iterations:
         #     raise RuntimeError(f"While loop exceeded max iterations ({max_iterations})")
 
-    async def _execute_action(self, step: Dict, context: Dict[str, Any], phase_id=1, step_index=1, section_name=None):
+    async def _execute_action(self, step: Dict, context: Dict[str, Any], arg_contexts: Dict[str, Any]=None, phase_id=1, step_index=1, section_name=None):
         """Execute a single action with parameter substitution."""
         # Substitute parameters in args
         result = None
         if self.stop_current_event.is_set():
             return context
-        substituted_args = self._substitute_params(step["args"], context)
+        if arg_contexts:
+            substituted_args = self._substitute_params(step["args"], arg_contexts)
+        else:
+            substituted_args = self._substitute_params(step["args"], context)
 
         # Get the component and method
         instrument = step.get("instrument", "")
@@ -740,17 +758,17 @@ class ScriptRunner:
             self.toggle_pause()
         finally:
             step_db.end_time = datetime.now()
-            step_db.output = context
+            step_db.output = utils.sanitize_for_json(context)
             db.session.commit()
 
             self.pause_event.wait()
 
         return context
 
-    async def _execute_action_once(self, step: Dict, context: Dict[str, Any], phase_id, step_index, section_name):
+    async def _execute_action_once(self, step: Dict, context: Dict[str, Any], arg_contexts, phase_id, step_index, section_name):
         """Execute a batch action once (not per sample)."""
         # print(f"Executing batch action: {step['action']}")
-        return await self._execute_action(step, context, phase_id=phase_id, step_index=step_index, section_name=section_name)
+        return await self._execute_action(step, context, arg_contexts=arg_contexts, phase_id=phase_id, step_index=step_index, section_name=section_name)
 
     @staticmethod
     def _substitute_params(args: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:

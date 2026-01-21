@@ -216,9 +216,35 @@ def _convert_by_str(args, arg_types):
     for arg_type in arg_types:
         if not arg_type in ["str", "any"]:
             try:
+                if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
+                    # Handle Enum conversion
+                    _, full_path = arg_type.split(":", 1)
+                    module_name, class_name = full_path.rsplit(".", 1)
+                    
+                    # Handle deck module resolution if needed, though usually it's set correctly
+                    # But if we are running in a context where deck is loaded as __main__ vs module
+                    # We try importlib.
+                    try:
+                        mod = importlib.import_module(module_name)
+                    except ImportError:
+                         # Fallback: check if it's the current deck
+                         from ivoryos.utils.global_config import GlobalConfig
+                         deck = GlobalConfig().deck
+                         if deck and (deck.__name__ == module_name or module_name == "__main__"): # or check filename?
+                             mod = deck
+                         else:
+                             raise
+                    
+                    enum_class = getattr(mod, class_name)
+                    return enum_class[args].value # args is the member name e.g. "Methanol"
+
                 args = eval(f'{arg_type}("{args}")') if type(args) is str else eval(f'{arg_type}({args})')
                 return args
             except Exception:
+                if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
+                     # If Enum conversion fails (e.g. wrong member), we probably should fail explicitly 
+                     raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
+                
                 raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
     return args
 
@@ -516,14 +542,31 @@ def get_local_ip():
     return ip
 
 
-def safe_dump(obj):
+def sanitize_for_json(obj):
+    """
+    Recursively converts sets and other non-JSON-serializable objects to JSON-friendly types.
+    """
+    from datetime import datetime, date
+    
+    if isinstance(obj, dict):
+        return {k: sanitize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [sanitize_for_json(x) for x in obj]
+    elif isinstance(obj, set):
+        return [sanitize_for_json(x) for x in list(obj)]
+    elif isinstance(obj, Enum):
+        return obj.value
+    elif isinstance(obj, (datetime, date)):
+        return obj.isoformat()
     try:
         json.dumps(obj)
         return obj
     except (TypeError, OverflowError):
-        if isinstance(obj, Enum):
-            return obj.value
-        return repr(obj)  # store readable representation
+        return repr(obj)
+
+def safe_dump(obj):
+    return sanitize_for_json(obj)
+
 
 
 def create_module_snapshot(module):

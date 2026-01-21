@@ -110,7 +110,7 @@ class TaskRunner:
         with current_app.app_context():
             step = SingleStep(
                 method_name=method_name,
-                kwargs=kwargs,
+                kwargs=utils.sanitize_for_json(kwargs),
                 run_error=None,
                 start_time=datetime.now()
             )
@@ -125,7 +125,7 @@ class TaskRunner:
                     output = await function_executable(**kwargs)
                 else:
                     output = function_executable(**kwargs)
-                output = utils.safe_dump(output)
+                output = utils.sanitize_for_json(output)
                 step.output = output
                 step.end_time = datetime.now()
                 success = True
