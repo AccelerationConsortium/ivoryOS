@@ -284,8 +284,11 @@ class Script(db.Model):
             self.currently_editing_order[index:index] = [str(current_len + i + 1) for i in range(action_len)]
             self.sort_actions()
 
-    def get_added_variables(self):
-        return self._collect_added_variables(self.currently_editing_script)
+    def get_added_variables(self, before_id: int = None):
+        script_list = self.currently_editing_script
+        if before_id is not None:
+            script_list = [a for a in script_list if a['id'] < before_id]
+        return self._collect_added_variables(script_list)
 
     def _collect_added_variables(self, script_list):
         vars_dict = {}
@@ -300,8 +303,11 @@ class Script(db.Model):
                 vars_dict.update(self._collect_added_variables(action["workflow"]))
         return vars_dict
 
-    def get_output_variables(self):
-        return self._collect_output_variables(self.currently_editing_script)
+    def get_output_variables(self, before_id: int = None):
+        script_list = self.currently_editing_script
+        if before_id is not None:
+            script_list = [a for a in script_list if a['id'] < before_id]
+        return self._collect_output_variables(script_list)
 
     def _collect_output_variables(self, script_list):
         output_vars = {}
@@ -314,9 +320,9 @@ class Script(db.Model):
                 output_vars.update(self._collect_output_variables(action["workflow"]))
         return output_vars
 
-    def get_variables(self):
-        output_variables: Dict[str, str] = self.get_output_variables()
-        added_variables = self.get_added_variables()
+    def get_variables(self, before_id: int = None):
+        output_variables: Dict[str, str] = self.get_output_variables(before_id=before_id)
+        added_variables = self.get_added_variables(before_id=before_id)
         output_variables.update(added_variables)
 
         return output_variables
@@ -466,13 +472,13 @@ class Script(db.Model):
         else:
             raise ValueError("Action not found: Unable to duplicate the action with ID", id)
 
-    def config(self, stype):
+    def config(self, stype, before_id: int = None):
         """
         take the global script_dict
         :return: list of variable that require input
         """
         configure = []
-        variables = self.get_variables()
+        variables = self.get_variables(before_id=before_id)
         # print(variables)
         config_type_dict = {}
         for action in self.script_dict[stype]:
