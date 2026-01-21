@@ -211,10 +211,10 @@ def _convert_by_str(args, arg_types):
     Converts a value to type through eval(f'{type}("{args}")')
     v1.3.4 TODO try str lastly, otherwise it's always converted to str
     """
-    if type(arg_types) is not list:
+    if not isinstance(arg_types, list):
         arg_types = [arg_types]
     for arg_type in arg_types:
-        if not arg_type == "any":
+        if not arg_type in ["str", "any"]:
             try:
                 if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
                     # Handle Enum conversion

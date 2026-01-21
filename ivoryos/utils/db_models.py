@@ -337,13 +337,44 @@ class Script(db.Model):
                 else:
                     # attempt to convert to numerical or bool value for args with no type hint
                     type_hint = arg_types.get(key, "") if arg_types else ""
-                    if not type_hint:
-                        try:
-                            converted = ast.literal_eval(value)
-                            if isinstance(converted, (int, float, bool)):
+
+                    # Convert single type hint to list for uniform handling
+                    valid_types = type_hint if isinstance(type_hint, list) else [type_hint] if type_hint else []
+
+                    # Try literal_eval first (handles mismatch of bool/numbers correctly)
+                    is_converted = False
+                    try:
+                        converted = ast.literal_eval(value)
+
+                        # If we have specific target types
+                        if valid_types:
+                            # Check if the converted type matches one of the valid types
+                            if type(converted).__name__ in valid_types:
                                 kwargs[key] = converted
-                        except (ValueError, SyntaxError):
-                            pass
+                                is_converted = True
+                        else:
+                            # No type hint: accept expanded set of types
+                            if isinstance(converted, (int, float, bool, list, tuple, dict, set)):
+                                kwargs[key] = converted
+                                is_converted = True
+                    except (ValueError, SyntaxError):
+                        pass
+
+                    # If literal_eval didn't work or satisfy types, try explicit casting for specific types
+                    if not is_converted and valid_types:
+                        for t_name in valid_types:
+                            if t_name in ['str', 'any', 'NoneType']: continue
+                            # Skip container/bool types that should have been caught by literal_eval
+                            if t_name in ['bool', 'list', 'tuple', 'dict', 'set']: continue
+
+                            try:
+                                converter = getattr(builtins, t_name, None)
+                                if converter:
+                                    kwargs[key] = converter(value)
+                                    # is_converted = True
+                                    break
+                            except Exception:
+                                pass
         return kwargs
 
     def add_logic_action(self, logic_type: str, statement, insert_position=None):
