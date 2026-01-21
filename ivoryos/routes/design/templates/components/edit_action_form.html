@@ -17,7 +17,8 @@
                 <div class="input-group mb-3">
                     <label class="input-group-text">{{ action['action'] }}</label>
                     <input class="form-control" type="text" id="arg" name="arg" 
-                           placeholder="{{ action['arg_types']}}" value="{{ action['args'] }}" 
+                           placeholder="{{ action['arg_types']}}" value="{{ action['args'] }}"
+                           list="variables_datalist"
                            aria-labelledby="variableHelpBlock">
                 </div>
             {% else %}
@@ -39,11 +40,23 @@
                                   {% endfor %}
                                </datalist>
                             {% else %}
-                                {{ field(class="form-control") }}
+                                {{ field(class="form-control", list="variables_datalist") }}
                             {% endif %}
                         </div>
                     {% endif %}
                 {% endfor %}
+            <datalist id="variables_datalist">
+                {% if script %}
+                {% for var_name in script.get_variables().keys() %}
+                <option value="{{ var_name }}">{{ var_name }}</option>
+                {% endfor %}
+                {% set config_vars = script.config(script.editing_type or 'script')[0] if (script.editing_type or 'script')
+                in script.script_dict else [] %}
+                {% for var_name in config_vars %}
+                <option value="#{{ var_name }}">#{{ var_name }}</option>
+                {% endfor %}
+                {% endif %}
+            </datalist>
             {% endif %}
         </div>
         {% endif %}

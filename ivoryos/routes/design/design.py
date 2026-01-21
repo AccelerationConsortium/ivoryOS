@@ -566,6 +566,7 @@ def get_operation_sidebar(instrument: str = ''):
                                defined_variables=deck_variables,
                                local_variables=global_config.defined_variables,
                                block_variables=global_config.building_blocks,
+                               script=script
                                )
     return jsonify({"html": html})
 
