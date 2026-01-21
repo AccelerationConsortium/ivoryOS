@@ -34,7 +34,7 @@
                 <th scope="col">Time created</th>
                 <th scope="col">Last modified</th>
                 <th scope="col">Author</th>
-{#                <th scope="col">Registered</th>#}
+                <th scope="col">Registered</th>
                 <th scope="col"></th>
             </tr>
         </thead>
@@ -48,7 +48,7 @@
                     <td>{{ script.time_created }}</td>
                     <td>{{ script.last_modified }}</td>
                     <td>{{ script.author }}</td>
-{#                    <td>{{ workflow.registered }}</td>#}
+                    <td>{{ script.registered }}</td>
                     <td>
                         {#not workflow.status == "finalized" or#}
                         {% set username = current_user.get_id() %}

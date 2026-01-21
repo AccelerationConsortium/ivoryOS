@@ -160,7 +160,11 @@ def update_script_meta():
         run_name = data.get("name")
         exist_script = Script.query.get(run_name)
         if exist_script is None:
+            _, return_list = script.config_return()
+            script.return_values = list(return_list)
             script.save_as(run_name)
+            if 'registered' in data:
+                 script.registered = data.get('registered')
             utils.post_script_file(script)
             return jsonify(success=True)
         else:
@@ -169,6 +173,8 @@ def update_script_meta():
 
     if 'status' in data:
         if data['status'] == "finalized":
+            _, return_list = script.config_return()
+            script.return_values = list(return_list)
             script.finalize()
             utils.post_script_file(script)
             publish()
@@ -455,10 +461,11 @@ def methods_handler(instrument: str = ''):
         workflow_name = request.form.get("workflow_name")
         form = forms.get(workflow_name) if forms else None
         insert_position = request.form.get("drop_target_id", None)
-        batch_action = request.form.get("batch_action", False)
+        # batch_action = request.form.get("batch_action", False)
         if form:
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
             if form.validate_on_submit():
+                batch_action = kwargs.pop("batch_action", False)
                 save_data = kwargs.pop('return', '')
                 kwargs.pop('workflow_name')
                 # validate return variable name

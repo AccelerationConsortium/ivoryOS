@@ -69,6 +69,14 @@ def reset_old_schema(engine, db_dir):
             conn.execute(text("ALTER TABLE script ADD COLUMN description TEXT"))
         except Exception:
             pass
+        try:
+            conn.execute(text("ALTER TABLE script ADD COLUMN registered BOOLEAN DEFAULT 0"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE script ADD COLUMN return_values TEXT DEFAULT '[]'"))
+        except Exception:
+            pass
     # Recreate new schema
     db.create_all()  # creates workflow_runs, workflow_phases, workflow_steps
 
