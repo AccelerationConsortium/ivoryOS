@@ -141,8 +141,11 @@ function updateActionCanvas(html) {
     initializeCanvas();
 }
 
+let currentSidebarUrl = '/draft/instruments';
+
 function updateInstrumentPanel(link) {
     const url = link.dataset.getUrl;
+    currentSidebarUrl = url;
 
     fetch(url)
         .then(res => res.json())
@@ -153,6 +156,49 @@ function updateInstrumentPanel(link) {
             }
         })
         .catch(err => console.error("Error updating instrument panel:", err));
+}
+
+function refreshSidebar() {
+    // Check if we can detect the current instrument from the DOM to ensure currentSidebarUrl is correct
+    const methodsDiv = document.getElementById('instrument-methods');
+    if (methodsDiv && methodsDiv.dataset.instrument) {
+        currentSidebarUrl = `/draft/instruments/${methodsDiv.dataset.instrument}`;
+    } else if (document.getElementById('instrument-panel') && !document.querySelector('form[onsubmit^="submitEditForm"]')) {
+        // If we are in the main instruments list and not editing
+        currentSidebarUrl = '/draft/instruments';
+    }
+
+    // Check which accordion item is currently open to preserve state
+    const openItem = document.querySelector('#accordionActions .accordion-collapse.show');
+    const openItemId = openItem ? openItem.id : null;
+
+    fetch(currentSidebarUrl)
+        .then(res => res.json())
+        .then(data => {
+            if (data.html) {
+                const sidebarWrapper = document.getElementById("sidebar-wrapper");
+                // Only refresh if we aren't currently editing a specific action
+                // (Unless specifically coming from a form submission where previousHtmlState would have been used)
+                if (!document.querySelector('form[onsubmit^="submitEditForm"]')) {
+                    sidebarWrapper.innerHTML = data.html;
+                    initializeDragHandlers();
+
+                    // Re-open the accordion item if it was open
+                    if (openItemId) {
+                        const newOpenItem = document.getElementById(openItemId);
+                        if (newOpenItem) {
+                            const button = document.querySelector(`[data-bs-target="#${openItemId}"]`);
+                            if (button) {
+                                button.classList.remove('collapsed');
+                                button.setAttribute('aria-expanded', 'true');
+                            }
+                            newOpenItem.classList.add('show');
+                        }
+                    }
+                }
+            }
+        })
+        .catch(err => console.error("Error refreshing sidebar:", err));
 }
 
 // ============================================================================
@@ -218,6 +264,7 @@ function addMethodToDesign(event, form) {
             if (data.success) {
                 updateActionCanvas(data.html);
                 hideModal();
+                refreshSidebar();
             } else {
                 alert("Failed to add method: " + data.error);
             }
@@ -264,10 +311,8 @@ function editAction(uuid) {
             if (backButton) {
                 backButton.addEventListener('click', function (e) {
                     e.preventDefault();
-                    if (previousHtmlState) {
-                        document.getElementById('instrument-panel').innerHTML = previousHtmlState;
-                        previousHtmlState = null;
-                    }
+                    refreshSidebar();
+                    previousHtmlState = null;
                 });
             }
         })
@@ -289,11 +334,9 @@ function submitEditForm(event) {
             if (html) {
                 updateActionCanvas(html);
 
-                // Restore previous instrument panel state
-                if (previousHtmlState) {
-                    document.getElementById('instrument-panel').innerHTML = previousHtmlState;
-                    previousHtmlState = null;
-                }
+                // Refresh sidebar to get updated variables
+                refreshSidebar();
+                previousHtmlState = null;
 
                 // Check for warnings
                 showWarningIfExists(html);
@@ -318,6 +361,7 @@ function duplicateAction(uuid) {
         .then(html => {
             updateActionCanvas(html);
             showWarningIfExists(html);
+            refreshSidebar();
         })
         .catch(error => console.error('Error:', error));
 }
@@ -338,6 +382,7 @@ function deleteAction(uuid) {
         .then(html => {
             updateActionCanvas(html);
             showWarningIfExists(html);
+            refreshSidebar();
         })
         .catch(error => console.error('Error:', error));
 }
