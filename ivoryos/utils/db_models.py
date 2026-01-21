@@ -54,11 +54,12 @@ class Script(db.Model):
     editing_type = db.Column(db.String(50), nullable=True)
     author = db.Column(db.String(50), nullable=False)
     description = db.Column(db.String(255), nullable=True)
-    # registered = db.Column(db.Boolean, nullable=True, default=False)
+    registered = db.Column(db.Boolean, nullable=True, default=False)
+    return_values = db.Column(JSONType, default=[])
 
     def __init__(self, name=None, deck=None, status=None, script_dict: dict = None, id_order: dict = None,
                  time_created=None, last_modified=None, editing_type=None, author: str = None,
-                 # registered:bool=False,
+                 registered:bool=False, return_values: list = None,
                  description: str = None,
                  python_script: str = None
                  ):
@@ -91,7 +92,8 @@ class Script(db.Model):
         self.author = author
         self.python_script = python_script
         self.description = description
-        # self.r = registered
+        self.registered = registered
+        self.return_values = return_values
 
     def as_dict(self):
         data = dict(self.__dict__)  # shallow copy
@@ -283,18 +285,34 @@ class Script(db.Model):
             self.sort_actions()
 
     def get_added_variables(self):
-        added_variables: Dict[str, str] = {action["action"]: action["arg_types"]["statement"] for action in
-                                           self.currently_editing_script if action["instrument"] == "variable"}
-        added_math_variables: Dict[str, str] = {action["action"]: action["arg_types"]["statement"] for action in
-                                                self.currently_editing_script if action["instrument"] == "math_variable"}
-        all_added_variables = {**added_variables, **added_math_variables}
-        return all_added_variables
+        return self._collect_added_variables(self.currently_editing_script)
+
+    def _collect_added_variables(self, script_list):
+        vars_dict = {}
+        for action in script_list:
+            if action["instrument"] == "variable":
+                vars_dict[action["action"]] = action["arg_types"]["statement"]
+            elif action["instrument"] == "math_variable":
+                vars_dict[action["action"]] = action["arg_types"]["statement"]
+            
+            # Check for embedded workflow steps
+            if "workflow" in action and isinstance(action["workflow"], list):
+                vars_dict.update(self._collect_added_variables(action["workflow"]))
+        return vars_dict
 
     def get_output_variables(self):
-        output_variables: Dict[str, str] = {action["return"]: "function_output" for action in
-                                            self.currently_editing_script if action["return"]}
+        return self._collect_output_variables(self.currently_editing_script)
 
-        return output_variables
+    def _collect_output_variables(self, script_list):
+        output_vars = {}
+        for action in script_list:
+            if action.get("return"):
+                 output_vars[action["return"]] = "function_output"
+            
+            # Check for embedded workflow steps
+            if "workflow" in action and isinstance(action["workflow"], list):
+                output_vars.update(self._collect_output_variables(action["workflow"]))
+        return output_vars
 
     def get_variables(self):
         output_variables: Dict[str, str] = self.get_output_variables()
@@ -466,13 +484,14 @@ class Script(db.Model):
         take the global script_dict
         :return: list of variable that require input
         """
+        output_vars = self._collect_output_variables(self.script_dict['script'])
+        return_list = set(output_vars.keys())
 
-        return_list = set([action['return'] for action in self.script_dict['script'] if not action['return'] == ''])
         output_str = "{"
         for i in return_list:
             output_str += "'" + i + "':" + i + ","
         output_str += "}"
-        return output_str, return_list
+        return output_str, list(return_list)
 
     def finalize(self):
         """finalize script, disable editing"""
