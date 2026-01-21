@@ -305,7 +305,7 @@ class ScriptRunner:
 
         step_outputs = await self.exec_steps(script, section_name, phase_id=phase_id)
         # Save phase-level output
-        phase.outputs = step_outputs
+        phase.outputs = utils.sanitize_for_json(step_outputs)
         phase.end_time = datetime.now()
         db.session.commit()
         return step_outputs
@@ -341,7 +341,7 @@ class ScriptRunner:
                     run_id=run_id,
                     name="main",
                     repeat_index=i,
-                    parameters=kwargs_list,
+                    parameters=utils.sanitize_for_json(kwargs_list),
                     start_time=datetime.now()
                 )
                 db.session.add(phase)
@@ -354,7 +354,7 @@ class ScriptRunner:
                     # kwargs.update(output)
                     for output_dict in output:
                         output_list.append(output_dict)
-                    phase.outputs = output
+                    phase.outputs = utils.sanitize_for_json(output)
                 phase.end_time = datetime.now()
                 db.session.commit()
         return output_list
@@ -421,7 +421,7 @@ class ScriptRunner:
 
                     if self.logger:
                         self.logger.info(f'Parameters: {parameters}')
-                    phase.parameters = parameters
+                    phase.parameters = utils.sanitize_for_json(parameters)
 
                     output = await self.exec_steps(script, "script",  phase_id, kwargs_list=parameters)
                     if output:
@@ -445,7 +445,7 @@ class ScriptRunner:
                 output_list.extend(output)
                 if self.logger:
                     self.logger.info(f'Output value: {output}')
-                phase.outputs = output
+                phase.outputs = utils.sanitize_for_json(output)
 
             phase.end_time = datetime.now()
             db.session.commit()
@@ -740,7 +740,7 @@ class ScriptRunner:
             self.toggle_pause()
         finally:
             step_db.end_time = datetime.now()
-            step_db.output = context
+            step_db.output = utils.sanitize_for_json(context)
             db.session.commit()
 
             self.pause_event.wait()
