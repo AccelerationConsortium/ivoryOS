@@ -707,9 +707,9 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
             hidden_method_name = HiddenField(name=f'workflow_name', description=f"{workflow.description}",
                                              render_kw={"value": f'{workflow_name}'})
             if design:
-                if workflow.return_values:
-                    return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
-                    setattr(form_class, 'return', return_value)
+                # if workflow.return_values:
+                #     return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
+                #     setattr(form_class, 'return', return_value)
                 batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})
                 setattr(form_class, 'batch_action', batch_action)
             setattr(form_class, 'workflow_name', hidden_method_name)
