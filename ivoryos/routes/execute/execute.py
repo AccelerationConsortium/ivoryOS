@@ -78,7 +78,7 @@ def experiment_run():
         if isinstance(exec_string, dict):
             import_str = script.get_required_imports()
             if import_str:
-                exec(import_str)
+                exec(import_str, globals())
             for key, func_str in exec_string.items():
                 exec(func_str)
 
