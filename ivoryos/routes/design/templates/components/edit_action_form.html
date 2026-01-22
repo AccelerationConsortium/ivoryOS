@@ -39,6 +39,8 @@
                                      <option value="{{ key }}">{{ key }}</option>
                                   {% endfor %}
                                </datalist>
+                            {% elif field.name =="return" %}
+                                    {{ field(class="form-control") }}
                             {% else %}
                                 {{ field(class="form-control", list="variables_datalist") }}
                             {% endif %}
