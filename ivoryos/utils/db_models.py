@@ -327,6 +327,19 @@ class Script(db.Model):
 
         return output_variables
 
+    def get_autocomplete_variables(self, before_id: int = None) -> list:
+        variables = self.get_variables(before_id=before_id)
+        variable_list = list(variables.keys())
+
+        # Get config variables (hash-prefixed)
+        editing_type = self.editing_type or 'script'
+        if editing_type in self.script_dict:
+             config_vars, _ = self.config(editing_type, before_id=before_id)
+             
+             for var in config_vars:
+                 variable_list.append(f"#{var}")
+        return variable_list
+
     def validate_variables(self, kwargs, arg_types: dict = None):
         """
         Validates the kwargs passed to the Script

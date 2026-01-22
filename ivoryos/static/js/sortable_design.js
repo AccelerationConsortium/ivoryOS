@@ -24,6 +24,21 @@ function triggerModal(formHtml, actionName, actionId, dropTargetId) {
             .data("action-id", actionId)
             .data("action-name", actionName)
             .data("drop-target-id", dropTargetId);
+
+        // Fetch valid variables for this position
+        const datalistId = "modal_vars_" + Date.now();
+        $("#modalFormFields").find("input[list='variables_datalist']").attr("list", datalistId);
+
+        fetch(variablesUrl + "?before_id=" + (dropTargetId || ""))
+            .then(res => res.json())
+            .then(data => {
+                const $datalist = $("<datalist>").attr("id", datalistId);
+                data.variables.forEach(v => {
+                    $datalist.append($("<option>").val(v).text(v));
+                });
+                $("#modalFormFields").append($datalist);
+            })
+            .catch(console.error);
     } else {
         console.error("Form HTML is undefined or empty!");
     }
@@ -60,7 +75,10 @@ function initializeCanvas() {
                 cache: false,
                 success: function (data) {
                     // Update the canvas content with the new HTML
-                    updateActionCanvas(data)
+                    updateActionCanvas(data);
+                    if (typeof refreshSidebarVariables === "function") {
+                        refreshSidebarVariables();
+                    }
                 }
             }).fail(function (jqXHR, textStatus, errorThrown) {
                 console.error("Failed to update order:", textStatus, errorThrown);

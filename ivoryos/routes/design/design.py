@@ -657,3 +657,22 @@ def confirm_import_python():
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)})
+
+
+@design.get("/draft/variables")
+@login_required
+def get_available_variables():
+    """
+    Get available variables for the current script state.
+    Optional query param: before_id (int) - filter variables available before this step ID.
+    """
+    script = utils.get_script_file()
+    before_id = request.args.get('before_id')
+    if before_id:
+        try:
+            before_id = int(before_id)
+        except ValueError:
+            before_id = None
+
+    variable_list = script.get_autocomplete_variables(before_id=before_id)
+    return jsonify({"variables": variable_list})

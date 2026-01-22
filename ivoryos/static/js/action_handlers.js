@@ -200,6 +200,24 @@ function clearDraft() {
         .catch(error => console.error("Failed to clear draft", error));
 }
 
+function refreshSidebarVariables() {
+    fetch(variablesUrl)
+        .then(res => res.json())
+        .then(data => {
+            const datalist = document.getElementById("variables_datalist");
+            if (datalist) {
+                datalist.innerHTML = "";
+                data.variables.forEach(v => {
+                    const option = document.createElement("option");
+                    option.value = v;
+                    option.textContent = v;
+                    datalist.appendChild(option);
+                });
+            }
+        })
+        .catch(err => console.error("Failed to refresh variables:", err));
+}
+
 // ============================================================================
 // ACTION MANAGEMENT (CRUD Operations)
 // ============================================================================
@@ -218,6 +236,7 @@ function addMethodToDesign(event, form) {
             if (data.success) {
                 updateActionCanvas(data.html);
                 hideModal();
+                refreshSidebarVariables();
             } else {
                 alert("Failed to add method: " + data.error);
             }
@@ -318,6 +337,7 @@ function duplicateAction(uuid) {
         .then(html => {
             updateActionCanvas(html);
             showWarningIfExists(html);
+            refreshSidebarVariables();
         })
         .catch(error => console.error('Error:', error));
 }
@@ -338,6 +358,7 @@ function deleteAction(uuid) {
         .then(html => {
             updateActionCanvas(html);
             showWarningIfExists(html);
+            refreshSidebarVariables();
         })
         .catch(error => console.error('Error:', error));
 }
