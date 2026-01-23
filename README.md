@@ -1,5 +1,6 @@
 [![Documentation Status](https://readthedocs.org/projects/ivoryos/badge/?version=latest)](https://ivoryos.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://img.shields.io/pypi/v/ivoryos)](https://pypi.org/project/ivoryos/)
+[![Downloads](https://pepy.tech/badge/ivoryos)](https://pepy.tech/project/ivoryos)
 ![License](https://img.shields.io/pypi/l/ivoryos)
 [![YouTube](https://img.shields.io/badge/YouTube-tutorial-red?logo=youtube)](https://youtu.be/dFfJv9I2-1g)
 [![YouTube](https://img.shields.io/badge/YouTube-demo-red?logo=youtube)](https://youtu.be/flr5ydiE96s)
@@ -14,6 +15,12 @@ A **plug-and-play** web interface for flexible, modular SDLs —
 you focus on developing protocols, IvoryOS handles the rest.
 
 ![code_launch_design.png](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/code_launch_design.png)
+
+## Join our community!
+IvoryOS is an open-source project under active development. We welcome feedback, feature ideas, and contributions 
+from anyone working on or interested in self-driving laboratories.
+
+Join our [Discord](https://discord.gg/3KdjhUmsYA) or [Slack](https://join.slack.com/t/ivoryos/shared_invite/zt-3mmwcu5f7-XIG42Ufyp~v450Fob0mj3A) to ask questions, share use cases, and help shape IvoryOS.
 
 ---
 
@@ -102,12 +109,14 @@ Use `admin` for both username and password, and start building workflows!
 ### Direct control: 
 direct function calling _Devices_ tab
 ### Workflows
-  - **Design Editor**: drag/add function to canvas in _Design_ tab. click `Compile and Run` button to go to the execution configuration page
+  - **Design Editor**: drag/add function to canvas in _Design_ tab, use `#parameter_name` for dynamic parameters, click `Prepare Run` button to go to the execution configuration page
   - **Execution Config**: configure iteration methods and parameters in _Compile/Run_ tab. 
   - **Design Library**: manage workflow scripts in _Library_ tab.
   - **Workflow Data**: Execution records are in _Data_ tab.
-### Offline mode
-after one successful connection, a blueprint will be automatically saved and made accessible without hardware connection. In a new Python script in the same directory, use `ivoryos.run()` to start offline mode.
+
+[//]: # (### Offline mode)
+
+[//]: # (after one successful connection, a blueprint will be automatically saved and made accessible without hardware connection. In a new Python script in the same directory, use `ivoryos.run&#40;&#41;` to start offline mode.)
 
 
 
@@ -139,6 +148,8 @@ def slack_bot(msg: str = "Hi"):
 import ivoryos
 ivoryos.run(__name__, notification_handler=slack_bot)
 ```
+Use `Input` in flow control to get human input during workflow execution. Example:
+
 
 ### Directory Structure
 
@@ -167,7 +178,7 @@ Local version in [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/m
 - [x] Python property support (setter/getter)
 - [ ] Support dataclass input
 - [ ] Support **kwargs input
-- [ ] dropdown input 
+- [x] dropdown input 
 - [ ] snapshot version control
 - [ ] check batch-config file compatibility
 
