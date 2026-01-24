@@ -657,111 +657,121 @@ class ScriptRunner:
         else:
             instrument_type = ""
         # Execute the action
-        step_db = WorkflowStep(
-            phase_id=phase_id,
-            step_index=step_index,
-            method_name=action,
-            start_time=datetime.now(),
-        )
-        db.session.add(step_db)
-        db.session.flush()
-        try:
+        while True:
+            step_db = WorkflowStep(
+                phase_id=phase_id,
+                step_index=step_index,
+                method_name=action,
+                start_time=datetime.now(),
+            )
+            db.session.add(step_db)
+            db.session.flush()
+            try:
 
-            if self.logger:
-                self.logger.info(f"Executing '{instrument}.{action}' with args {substituted_args}")
-            
-            section_id = f"{section_name}-{step_index-1}"
-            self.last_execution_section = section_id
-            self.socketio.emit('execution', {'section': section_id})
-            if action == "wait":
-                duration = float(substituted_args["statement"])
-                self.safe_sleep(duration)
-
-            elif action == "pause":
-                msg = substituted_args.get("statement", "")
-                pause(msg)
-
-            elif action == "comment":
-                msg = substituted_args.get("statement", "")
                 if self.logger:
-                    self.logger.info(f"Comment: {msg}")
+                    self.logger.info(f"Executing '{instrument}.{action}' with args {substituted_args}")
+                
+                section_id = f"{section_name}-{step_index-1}"
+                self.last_execution_section = section_id
+                self.socketio.emit('execution', {'section': section_id})
+                if action == "wait":
+                    duration = float(substituted_args["statement"])
+                    self.safe_sleep(duration)
 
-            elif instrument_type == "deck" and hasattr(deck, instrument):
-                component = getattr(deck, instrument)
-                if "_(setter)" in action:
-                    action = action.replace("_(setter)", "")
-                if hasattr(component, action):
-                    attr = getattr(component, action)
+                elif action == "pause":
+                    msg = substituted_args.get("statement", "")
+                    pause(msg)
 
-                    if callable(attr):
+                elif action == "comment":
+                    msg = substituted_args.get("statement", "")
+                    if self.logger:
+                        self.logger.info(f"Comment: {msg}")
+
+                elif instrument_type == "deck" and hasattr(deck, instrument):
+                    component = getattr(deck, instrument)
+                    if "_(setter)" in action:
+                        action = action.replace("_(setter)", "")
+                    if hasattr(component, action):
+                        attr = getattr(component, action)
+
+                        if callable(attr):
+                            # Execute and handle return value
+                            if step.get("coroutine", False):
+                                result = await attr(**substituted_args)
+                            else:
+                                result = attr(**substituted_args)
+                        else:
+                            # Handle property setter/getter
+                            if "value" in substituted_args:
+                                setattr(component, action, substituted_args["value"])
+                                result = substituted_args["value"]
+                            else:
+                                result = attr
+                        # Store return value if specified
+                        # return_var = step.get("return", "")
+                        # if return_var:
+                        #     context[return_var] = result
+
+                elif instrument_type == "blocks" and instrument in BUILDING_BLOCKS.keys():
+                    # Inject all block categories
+                    method_collection = BUILDING_BLOCKS[instrument]
+                    if action in method_collection.keys():
+                        method = method_collection[action]["func"]
+
                         # Execute and handle return value
+                        # print(step.get("coroutine", False))
                         if step.get("coroutine", False):
-                            result = await attr(**substituted_args)
+                            result = await method(**substituted_args)
                         else:
-                            result = attr(**substituted_args)
-                    else:
-                        # Handle property setter/getter
-                        if "value" in substituted_args:
-                            setattr(component, action, substituted_args["value"])
-                            result = substituted_args["value"]
-                        else:
-                            result = attr
-                    # Store return value if specified
-                    # return_var = step.get("return", "")
-                    # if return_var:
-                    #     context[return_var] = result
+                            result = method(**substituted_args)
 
-            elif instrument_type == "blocks" and instrument in BUILDING_BLOCKS.keys():
-                # Inject all block categories
-                method_collection = BUILDING_BLOCKS[instrument]
-                if action in method_collection.keys():
-                    method = method_collection[action]["func"]
-
-                    # Execute and handle return value
-                    # print(step.get("coroutine", False))
+                        # # Store return value if specified
+                        # return_var = step.get("return", "")
+                        # if return_var:
+                        #     context[return_var] = result
+                else:
+                    module = global_config.defined_variables.get(instrument, None)
+                    if module is None:
+                        raise ValueError(f"Unknown instrument '{instrument}'")
+                    method = getattr(module, action)
                     if step.get("coroutine", False):
                         result = await method(**substituted_args)
                     else:
                         result = method(**substituted_args)
+                        # Store return value if specified
+                return_var = step.get("return", "")
+                if return_var and result is not None:
+                    result = utils.safe_dump(result)
+                    context[return_var] = result
 
-                    # # Store return value if specified
-                    # return_var = step.get("return", "")
-                    # if return_var:
-                    #     context[return_var] = result
-            else:
-                module = global_config.defined_variables.get(instrument, None)
-                if module is None:
-                    raise ValueError(f"Unknown instrument '{instrument}'")
-                method = getattr(module, action)
-                if step.get("coroutine", False):
-                    result = await method(**substituted_args)
-                else:
-                    result = method(**substituted_args)
-                    # Store return value if specified
-            return_var = step.get("return", "")
-            if return_var and result is not None:
-                result = utils.safe_dump(result)
-                context[return_var] = result
+            except HumanInterventionRequired as e:
+                self.logger.warning(f"Human intervention required: {e}")
+                self.socketio.emit('human_intervention', {'message': str(e)})
+                # Instead of auto-resume, explicitly stay paused until user action
+                # step.run_error = False
+                self.toggle_pause()
 
-        except HumanInterventionRequired as e:
-            self.logger.warning(f"Human intervention required: {e}")
-            self.socketio.emit('human_intervention', {'message': str(e)})
-            # Instead of auto-resume, explicitly stay paused until user action
-            # step.run_error = False
-            self.toggle_pause()
+            except Exception as e:
+                self.logger.error(f"Error during script execution: {e}")
+                self.socketio.emit('error', {'message': str(e)})
 
-        except Exception as e:
-            self.logger.error(f"Error during script execution: {e}")
-            self.socketio.emit('error', {'message': str(e)})
+                step_db.run_error = True
+                self.toggle_pause()
+            finally:
+                step_db.end_time = datetime.now()
+                step_db.output = utils.sanitize_for_json(context)
+                db.session.commit()
 
-            step_db.run_error = True
-            self.toggle_pause()
-        finally:
-            step_db.end_time = datetime.now()
-            step_db.output = utils.sanitize_for_json(context)
-            db.session.commit()
-
-            self.pause_event.wait()
+                self.pause_event.wait()
+            
+            if self.retry:
+                # only retry if it errored out
+                if step_db.run_error:
+                    self.retry = False
+                    continue
+                self.retry = False
+            
+            break
 
         return context
 
