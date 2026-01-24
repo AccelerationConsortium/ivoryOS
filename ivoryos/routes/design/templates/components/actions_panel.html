@@ -22,4 +22,11 @@
             {% include 'components/action_form.html' %}
         {% endfor %}
     </div>
-</div> 
+    <datalist id="variables_datalist">
+        {% if script %}
+        {% for var_name in script.get_autocomplete_variables() %}
+        <option value="{{ var_name }}">{{ var_name }}</option>
+        {% endfor %}
+        {% endif %}
+    </datalist>
+</div>

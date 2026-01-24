@@ -31,7 +31,8 @@ def get_step(uuid: int):
         # session['edit_action'] = action
         return render_template("components/edit_action_form.html",
                                action=action,
-                               forms=forms)
+                               forms=forms,
+                               script=script)
 
 
 

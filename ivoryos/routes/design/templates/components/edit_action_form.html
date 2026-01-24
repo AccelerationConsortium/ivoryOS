@@ -17,7 +17,8 @@
                 <div class="input-group mb-3">
                     <label class="input-group-text">{{ action['action'] }}</label>
                     <input class="form-control" type="text" id="arg" name="arg" 
-                           placeholder="{{ action['arg_types']}}" value="{{ action['args'] }}" 
+                           placeholder="{{ action['arg_types']}}" value="{{ action['args'] }}"
+                           list="variables_datalist"
                            aria-labelledby="variableHelpBlock">
                 </div>
             {% else %}
@@ -38,12 +39,19 @@
                                      <option value="{{ key }}">{{ key }}</option>
                                   {% endfor %}
                                </datalist>
+                            {% elif field.name =="return" %}
+                                    {{ field(class="form-control") }}
                             {% else %}
-                                {{ field(class="form-control") }}
+                                {{ field(class="form-control", list="variables_datalist") }}
                             {% endif %}
                         </div>
                     {% endif %}
                 {% endfor %}
+            <datalist id="variables_datalist">
+                {% for var_name in script.get_autocomplete_variables(before_id=action.id) %}
+                <option value="{{ var_name }}">{{ var_name }}</option>
+                {% endfor %}
+            </datalist>
             {% endif %}
         </div>
         {% endif %}
