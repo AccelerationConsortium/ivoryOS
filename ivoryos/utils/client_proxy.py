@@ -1,6 +1,8 @@
 import os
 import re
-from typing import Dict, Set, Any, Optional
+import inspect
+from enum import Enum
+from typing import Dict, Set, Any, Optional, Type, Union
 
 
 class ProxyGenerator:
@@ -28,6 +30,7 @@ class ProxyGenerator:
         self.base_url = base_url.rstrip('/')
         self.api_path_template = api_path_template
         self.used_typing_symbols: Set[str] = set()
+        self.collected_enums: Dict[str, Type[Enum]] = {}
 
     def extract_typing_from_signatures(self, functions: Dict[str, Dict[str, Any]]) -> Set[str]:
         """
@@ -42,9 +45,37 @@ class ProxyGenerator:
         for function_data in functions.values():
             signature = function_data.get("signature", "")
             for symbol in self.TYPING_SYMBOLS:
-                if re.search(rf"\b{symbol}\b", signature):
+                if re.search(rf"\b{symbol}\b", str(signature)):
                     self.used_typing_symbols.add(symbol)
         return self.used_typing_symbols
+
+    def _collect_types_from_signature(self, signature: inspect.Signature):
+        """
+        Recursively find Enum types in a signature and add to collected_enums.
+        """
+        if not signature or isinstance(signature, str):
+            return
+
+        for param in signature.parameters.values():
+            self._collect_types_from_annotation(param.annotation)
+
+        if signature.return_annotation is not inspect.Signature.empty:
+            self._collect_types_from_annotation(signature.return_annotation)
+
+    def _collect_types_from_annotation(self, annotation):
+        """Helper to check an annotation for Enums."""
+        if annotation is inspect.Parameter.empty:
+            return
+
+        # Check if it's an Enum
+        if isinstance(annotation, type) and issubclass(annotation, Enum):
+            self.collected_enums[annotation.__name__] = annotation
+            return
+
+        # Check for composite types (Union, Optional, List, etc.)
+        if hasattr(annotation, "__args__"):
+            for arg in annotation.__args__:
+                self._collect_types_from_annotation(arg)
 
     def create_class_definition(self, class_name: str, functions: Dict[str, Dict[str, Any]]) -> str:
         """
@@ -115,10 +146,24 @@ class ProxyGenerator:
             String containing the method definition
         """
         signature = details.get("signature", "(self)")
+        str_signature = str(signature) if signature else "(self)"
+        
+        # Clean up the signature string
+        # Remove __main__. prefix from types
+        str_signature = str_signature.replace("__main__.", "")
+        
+        # Also clean up any other module prefixes for collected enums (optional, but good practice)
+        for enum_name in self.collected_enums:
+             # This regex matches "somemodule.EnumName" but not just "EnumName"
+             # It's a bit risky if EnumName is common, but sufficient for now.
+             # Actually, simple string replacement for module paths found in the enum might be better if we tracked them.
+             # For now, just handling __main__ is the primary request.
+             pass
+
         docstring = details.get("docstring", "")
 
         # Build method header
-        method = f"    def {function_name}{signature}:\n"
+        method = f"    def {function_name}{str_signature}:\n"
 
         if docstring:
             method += f'        """{docstring}"""\n'
@@ -136,18 +181,40 @@ class ProxyGenerator:
 
         return method
 
-    def _extract_parameters(self, signature: str) -> list:
+    def _write_enum_definitions(self, f):
+        """Write generated Enum classes to the file."""
+        if not self.collected_enums:
+            return
+
+        f.write("# Generated Enum definitions\n")
+        f.write("from enum import Enum\n\n")
+        
+        for name, enum_cls in self.collected_enums.items():
+            f.write(f"class {name}(Enum):\n")
+            for member in enum_cls:
+                # Handle value types (str or int)
+                value = member.value
+                if isinstance(value, str):
+                    f.write(f"    {member.name} = \"{value}\"\n")
+                else:
+                    f.write(f"    {member.name} = {value}\n")
+            f.write("\n")
+
+    def _extract_parameters(self, signature: Union[str, inspect.Signature]) -> list:
         """
         Extract parameter names from a function signature.
 
         Args:
-            signature: Function signature string like "(self, param1, param2: int = 5)"
+            signature: Function signature string or inspect.Signature object
 
         Returns:
             List of parameter names (excluding 'self')
         """
+        if isinstance(signature, inspect.Signature):
+            return [name for name in signature.parameters.keys() if name != 'self']
+
         # Remove parentheses and split by comma
-        param_str = signature.strip("()").strip()
+        param_str = str(signature).strip("()").strip()
         if not param_str or param_str == "self":
             return []
 
@@ -180,13 +247,22 @@ class ProxyGenerator:
         """
         class_definitions = {}
         self.used_typing_symbols.clear()
+        self.collected_enums.clear()
+
+        # First pass: collect all types and Enums
+        for instrument_key, instrument_data in snapshot.items():
+            for function_key, function_data in instrument_data.items():
+                sig = function_data.get('signature')
+                if isinstance(sig, inspect.Signature):
+                   self._collect_types_from_signature(sig)
 
         # Process each instrument in the snapshot
         for instrument_key, instrument_data in snapshot.items():
             # Convert function signatures to strings if needed
             for function_key, function_data in instrument_data.items():
                 if 'signature' in function_data:
-                    function_data['signature'] = str(function_data['signature'])
+                     # We keep the object for now to allow _generate_method to use string conversion late
+                     pass
 
             # Extract class name from instrument path
             class_name = instrument_key.split('.')[-1]
@@ -229,6 +305,9 @@ class ProxyGenerator:
 
             # Write session setup
             f.write("session = requests.Session()\n\n")
+
+            # Write Enum definitions
+            self._write_enum_definitions(f)
 
             # Write class definitions
             for class_name, class_def in class_definitions.items():

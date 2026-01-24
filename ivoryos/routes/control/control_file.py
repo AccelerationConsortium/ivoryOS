@@ -1,4 +1,6 @@
 import os
+from copy import deepcopy
+
 from flask import Blueprint,  request,current_app, send_file
 from flask_login import login_required
 
@@ -22,12 +24,10 @@ def download_proxy():
     .. http:get:: /files/proxy
     """
     generator = ProxyGenerator(request.url_root)
-    snapshot = global_config.deck_snapshot.copy()
-
+    snapshot = deepcopy(global_config.deck_snapshot)
     filepath = generator.generate_from_flask_route(
         snapshot,
         request.url_root,
         current_app.config["OUTPUT_FOLDER"]
     )
-
     return send_file(os.path.abspath(filepath), as_attachment=True)
