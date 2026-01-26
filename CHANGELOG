@@ -1,3 +1,9 @@
+1.5.9 (Jan 26th, 2026)
+- !88 [Bug] cannot scroll progress region after start a run
+- !87 [Bug] step retry not working in workflow execution
+- !86 [Bug] page load error after proxy download + enum import in proxy
+- !85 [QoL] dropdown menu showing existing variable names in workflow
+
 1.5.8 (Jan 20th, 2026)
 (workflow + batch fix)
 - !83 [Bug] remove type conversion for str type in Union[]
