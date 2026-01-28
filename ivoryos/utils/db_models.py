@@ -154,8 +154,7 @@ class Script(db.Model):
             if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
                 continue
             if arg_type in ["list", "tuple", "set"]:
-
-                if type(arg) is str and not args[arg].startswith("#"):
+                if isinstance(args[arg], str) and not args[arg].startswith("#"):
                     # arg_types = arg_types[arg]
                     # if arg_types in ["list", "tuple", "set"]:
                     convert_type = getattr(builtins, arg_type)  # Handle unknown types s

@@ -149,7 +149,6 @@ class ScriptRunner:
         _func_str = script.python_script or script.compile()
         _, return_list = script.config_return()
 
-        step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
         global deck
         # global deck, registered_workflows
         if deck is None:
@@ -278,12 +277,7 @@ class ScriptRunner:
 
 
     async def _run_actions(self, script, section_name="", run_id=None):
-        _func_str = script.python_script or script.compile()
-        step_list: list = script.convert_to_lines(_func_str).get(section_name, [])
-        if not step_list:
-            if self.logger:
-                self.logger.info(f'No {section_name} steps')
-            return None
+
         if self.logger:
             self.logger.info(f'Executing {section_name} steps')
 
