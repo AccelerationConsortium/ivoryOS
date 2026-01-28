@@ -110,10 +110,10 @@ def create_app(config_class=None):
     app.config.from_object(config_class or 'config.get_config()')
     os.makedirs(app.config["OUTPUT_FOLDER"], exist_ok=True)
     # Initialize extensions
-    socketio.init_app(app, cors_allowed_origins="*", cookie=None)
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
     db.init_app(app)
+    socketio.init_app(app, cors_allowed_origins="*", cookie=None)
 
     # Create database tables
     with app.app_context():
