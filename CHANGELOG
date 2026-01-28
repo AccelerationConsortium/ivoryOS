@@ -1,3 +1,7 @@
+1.5.10 (Jan 26th, 2026)
+- !89 [Bug] syntax error during execution with list of Enum, remove legacy compile in script runner
+- !89 [Bug] error page when editing steps with list param
+
 1.5.9 (Jan 26th, 2026)
 - !88 [Bug] cannot scroll progress region after start a run
 - !87 [Bug] step retry not working in workflow execution
