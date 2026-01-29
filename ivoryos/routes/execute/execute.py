@@ -91,12 +91,19 @@ def experiment_run():
         return redirect(url_for("design.experiment_builder"))
 
 
-    line_collection = script.render_nested_script_lines(script.script_dict, snapshot=snapshot)
+    # If there is a current task running, use that script for display
+    # otherwise use the current script being configured
+    
+    current_lines_script = script
+    if runner.current_task and runner.current_task.get("script"):
+        current_lines_script = runner.current_task["script"]
+        
+    line_collection = current_lines_script.render_nested_script_lines(current_lines_script.script_dict, snapshot=snapshot)
 
     run_name = script.name if script.name else "untitled"
 
     dismiss = session.get("dismiss", None)
-    script = utils.get_script_file()
+    # script = utils.get_script_file() 
     no_deck_warning = False
 
     _, return_list = script.config_return()
@@ -169,11 +176,28 @@ def experiment_run():
         # if True:
             datapath = current_app.config["DATA_FOLDER"]
             run_name = script.validate_function_name(run_name)
-            runner.run_script(script=script, run_name=run_name, config=config,
+            
+            socketio_instance = g.socketio
+            def on_start_callback():
+                # This runs inside the thread with app context pushed
+                snapshot = global_config.deck_snapshot
+                line_collection = script.render_nested_script_lines(script.script_dict, snapshot=snapshot)
+                progress_panel_html = render_template('components/progress_panel.html', line_collection=line_collection)
+                socketio_instance.emit('start_task', {
+                    'run_name': run_name,
+                    'progress_panel_html': progress_panel_html
+                })
+
+            result = runner.run_script(script=script, run_name=run_name, config=config,
                               logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                               output_path=datapath, compiled=compiled, history=existing_data,
-                              current_app=current_app._get_current_object(), batch_size=batch_size
+                              current_app=current_app._get_current_object(), batch_size=batch_size,
+                              on_start=on_start_callback
                               )
+            if result == "queued":
+                flash(f"System busy. Task {run_name} added to queue.", "popup")
+            # else:
+            #     flash(f"Task '{run_name}' started.")
             if utils.check_config_duplicate(config):
                 flash(f"WARNING: Duplicate in config entries.")
         except Exception as e:
@@ -290,13 +314,29 @@ def run_bo():
         if not Optimizer:
             raise ValueError(f"Optimizer {optimizer_type} is not supported or not found.")
 
-        runner.run_script(script=script, run_name=run_name, optimizer=None,
+        socketio_instance = g.socketio
+        def on_start_callback():
+            # This runs inside the thread with app context pushed
+            snapshot = global_config.deck_snapshot
+            line_collection = script.render_nested_script_lines(script.script_dict, snapshot=snapshot)
+            progress_panel_html = render_template('components/progress_panel.html', line_collection=line_collection)
+            socketio_instance.emit('start_task', {
+                'run_name': run_name,
+                'progress_panel_html': progress_panel_html
+            })
+
+        result = runner.run_script(script=script, run_name=run_name, optimizer=None,
                           logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                           output_path=datapath, compiled=False, history=existing_data,
                           current_app=current_app._get_current_object(), batch_size=int(batch_size),
                           objectives=objectives, parameters=parameters, constraints=constraints, steps=steps,
-                          optimizer_cls=Optimizer, additional_params=additional_params
+                          optimizer_cls=Optimizer, additional_params=additional_params,
+                          on_start=on_start_callback
                           )
+        if result == "queued":
+            flash(f"System busy. Optimization {run_name} added to queue.")
+        else:
+            flash(f"Optimization {run_name} started.")
 
     except Exception as e:
         if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
@@ -318,6 +358,46 @@ def get_optimizer_plot():
             return send_file(latest_file, mimetype="image/png")
     # print("No plots found")
     return jsonify({"error": "No plots found"}), 404
+
+
+@execute.route("/executions/queue", methods=["GET"])
+@login_required
+def get_queue():
+    """
+    Get the current execution queue
+    """
+    return jsonify(runner.get_queue_status())
+
+@execute.route("/executions/queue/delete", methods=["POST"])
+@login_required
+def delete_queue_task():
+    """
+    Delete a task from the queue
+    """
+    try:
+        data = request.get_json()
+        task_id = data.get("id")
+        if runner.remove_task(task_id):
+            return jsonify({"status": "ok"})
+        return jsonify({"error": "Failed to remove task"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@execute.route("/executions/queue/reorder", methods=["POST"])
+@login_required
+def reorder_queue_task():
+    """
+    Reorder a task in the queue
+    """
+    try:
+        data = request.get_json()
+        task_id = data.get("id")
+        direction = data.get("direction")
+        if runner.reorder_tasks(task_id, direction):
+            return jsonify({"status": "ok"})
+        return jsonify({"error": "Failed to reorder task"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 

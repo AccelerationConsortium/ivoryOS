@@ -25,14 +25,12 @@ document.addEventListener("DOMContentLoaded", function () {
             // Clear all execution highlights
             document.querySelectorAll('pre code').forEach(el => el.style.backgroundColor = '');
 
-            // Reset config container height if it exists
-            const configContainer = document.getElementById('config-container');
-            if (configContainer) {
-                configContainer.style.height = '70vh';
-                // console.log(configContainer.style.height);
-            }
-            // Reset flag so it can resize again next run
-            hasAutoResized = false;
+            // Reset config container height logic removed based on user request
+            // const configContainer = document.getElementById('config-container');
+            // if (configContainer) {
+            //     configContainer.style.height = '70vh';
+            //     // console.log(configContainer.style.height);
+            // }
         }
     });
 
@@ -155,19 +153,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // Flag to track if we've already auto-resized the panel
-    let hasAutoResized = false;
-
     socket.on('execution', function (data) {
-        // Auto-resize logic: shrink config panel to show more logs
-        if (!hasAutoResized) {
-            const configContainer = document.getElementById('config-container');
-            if (configContainer) {
-                // Set to a smaller height (e.g., 20vh) to prioritize logs
-                configContainer.style.height = '20vh';
-                hasAutoResized = true;
-            }
-        }
 
         // Remove highlighting from all lines
         document.querySelectorAll('pre code').forEach(el => el.style.backgroundColor = '');
@@ -185,6 +171,34 @@ document.addEventListener("DOMContentLoaded", function () {
             let lastIndex = currentId.lastIndexOf('-');
             if (lastIndex === -1) break;
             currentId = currentId.substring(0, lastIndex);
+        }
+    });
+
+    socket.on('start_task', function (data) {
+        console.log("New task started:", data.run_name);
+
+        // Reset progress bar
+        var progressBar = document.getElementById('progress-bar-inner');
+        progressBar.style.width = '0%';
+        // progressBar.textContent = 'Starting...';
+        progressBar.classList.remove('bg-success', 'bg-danger', 'bg-warning');
+        progressBar.classList.add('progress-bar-animated', 'bg-primary');
+
+        // Update progress panel with the new script
+        if (data.progress_panel_html) {
+            const currentCodePanel = document.getElementById('code-panel');
+            if (currentCodePanel) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(data.progress_panel_html, 'text/html');
+                const newCodePanel = doc.getElementById('code-panel');
+                if (newCodePanel) {
+                    currentCodePanel.innerHTML = newCodePanel.innerHTML;
+                } else {
+                    // fallback if the template doesn't have the id wrapper (e.g. just children)
+                    currentCodePanel.innerHTML = data.progress_panel_html;
+                }
+                hljs.highlightAll();
+            }
         }
     });
 

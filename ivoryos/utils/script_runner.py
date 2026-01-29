@@ -41,6 +41,7 @@ class ScriptRunner:
         if globals_dict is None:
             globals_dict = globals()
         self.globals_dict = globals_dict
+        self.execution_queue = []  # List to hold pending tasks
         self.pause_event = threading.Event()  # A threading event to manage pause/resume
         self.pause_event.set()
         self.stop_pending_event = threading.Event()
@@ -54,6 +55,7 @@ class ScriptRunner:
         self.last_execution_section = None
         self.waiting_for_input = False
         self.input_value = None
+        self.current_task = None
 
     def handle_input_submission(self, value):
         """Resume execution with user input"""
@@ -84,6 +86,50 @@ class ScriptRunner:
         self.stop_cleanup_event.clear()
         self.pause_event.set()
 
+    def get_queue_status(self):
+        """Returns the current queue status"""
+        return [
+            {
+                "id": i,
+                "name": task.get("run_name", "untitled"),
+                "status": "pending",
+                "args": f"{task.get('repeat_count', 1)} iteration(s)" if not task.get('config') else f"Config: {len(task.get('config'))} entries"
+            }
+            for i, task in enumerate(self.execution_queue)
+        ]
+
+    def remove_task(self, task_index):
+        """Removes a task from the queue"""
+        try:
+            task_index = int(task_index)
+            if 0 <= task_index < len(self.execution_queue):
+                task = self.execution_queue.pop(task_index)
+                if self.logger:
+                    self.logger.info(f"Removed task from queue: {task.get('run_name')}")
+                return True
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error removing task: {e}")
+        return False
+
+    def reorder_tasks(self, task_index, direction):
+        """Reorder tasks in the queue"""
+        try:
+            task_index = int(task_index)
+            if direction == "up" and task_index > 0:
+                self.execution_queue[task_index], self.execution_queue[task_index - 1] = \
+                    self.execution_queue[task_index - 1], self.execution_queue[task_index]
+                return True
+            elif direction == "down" and task_index < len(self.execution_queue) - 1:
+                self.execution_queue[task_index], self.execution_queue[task_index + 1] = \
+                    self.execution_queue[task_index + 1], self.execution_queue[task_index]
+                return True
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error reordering tasks: {e}")
+        return False
+
+
     def abort_pending(self):
         """Abort the pending iteration after the current is finished"""
         self.stop_pending_event.set()
@@ -106,7 +152,7 @@ class ScriptRunner:
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None,
                    output_path="", compiled=False, current_app=None, history=None, optimizer=None, batch_mode=None,
                    batch_size=1, objectives=None, parameters=None, constraints=None, steps=None, optimizer_cls=None,
-                   additional_params=None):
+                   additional_params=None, on_start=None):
 
 
         self.socketio = socketio
@@ -120,19 +166,52 @@ class ScriptRunner:
             self.current_app = current_app
         # time.sleep(1)  # Optional: may help ensure deck readiness
 
+        
+        task = {
+            "script": script,
+            "repeat_count": repeat_count,
+            "run_name": run_name,
+            "config": config,
+            "output_path": output_path,
+            "current_app": current_app,
+            "compiled": compiled,
+            "history": history,
+            "optimizer": optimizer,
+            "batch_mode": batch_mode,
+            "batch_size": batch_size,
+            "objectives": objectives,
+            "parameters": parameters,
+            "constraints": constraints,
+            "steps": steps,
+            "optimizer_cls": optimizer_cls,
+            "additional_params": additional_params,
+            "on_start": on_start
+        }
+        
+        self.execution_queue.append(task)
+        if self.logger:
+            self.logger.info(f"Added task to queue: {run_name}")
+            
+        return self._process_queue()
+        
+    def _process_queue(self):
+        """Process the next task in the queue if the runner is free"""
         # Try to acquire lock without blocking
         if not self.lock.acquire(blocking=False):
-            if self.logger:
-                self.logger.info("System is busy. Please wait for it to finish or stop it before starting a new one.")
-            return None
+            return "queued"
 
+        if not self.execution_queue:
+            self.lock.release()
+            return "empty"
+            
+        # Get next task
+        task = self.execution_queue.pop(0)
+        self.current_task = task # Store current task details
         self.reset_stop_event()
 
         thread = threading.Thread(
             target=self._run_with_stop_check,
-            args=(script, repeat_count, run_name, config, output_path, current_app, compiled,
-                  history, optimizer, batch_mode, batch_size, objectives, parameters, constraints, steps, optimizer_cls,
-                  additional_params),
+            kwargs=task
         )
         thread.start()
         return thread
@@ -185,8 +264,23 @@ class ScriptRunner:
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, config,
                              output_path, current_app, compiled, history=None, optimizer=None, batch_mode=None,
                              batch_size=None, objectives=None, parameters=None, constraints=None, steps=None,
-                             optimizer_cls=None, additional_params=None):
+                             optimizer_cls=None, additional_params=None, on_start=None):
+        if current_app:
+            ctx = current_app.app_context()
+            ctx.push()
+
         time.sleep(1)
+        
+        if on_start:
+            try:
+                on_start()
+            except Exception as e:
+                if self.logger:
+                    self.logger.error(f"Error in on_start callback: {e}")
+        elif self.socketio:
+             # Fallback if no callback provided? Or just minimal emit?
+             self.socketio.emit('start_task', {'run_name': run_name})
+
         # _func_str = script.compile()
         # step_list_dict: dict = script.convert_to_lines(_func_str)
         self._emit_progress(1)
@@ -262,6 +356,10 @@ class ScriptRunner:
                 self._emit_progress(100)
                 if self.lock.locked():
                     self.lock.release()
+                
+                self.current_task = None # Clear current task
+                # Check for next task in queue
+                self._process_queue()
 
 
         with current_app.app_context():

@@ -31,21 +31,36 @@
         role="tab">Log</button>
     </li>
     <li class="nav-item" role="presentation">
+      <button class="nav-link" id="queue-tab" data-bs-toggle="tab" data-bs-target="#queue" type="button"
+        role="tab">Queue</button>
+    </li>
+    <li class="nav-item" role="presentation">
       <button class="nav-link" id="plot-tab" data-bs-toggle="tab" data-bs-target="#plot" type="button"
         role="tab">Optimizer Plot</button>
     </li>
   </ul>
   <div class="tab-content mt-3 flex-grow-1 d-flex flex-column" id="logPlotTabsContent" style="min-height: 0;">
-    <div class="tab-pane fade show active flex-grow-1 d-flex flex-column" id="log" role="tabpanel"
-      style="min-height: 0;">
-      <div id="logging-panel" class="border p-2 bg-light flex-grow-1 overflow-auto"></div>
+    <div class="tab-pane fade show active flex-grow-1 h-100" id="log" role="tabpanel" style="min-height: 0;">
+      <div class="d-flex flex-column h-100">
+        <div id="logging-panel" class="border p-2 bg-light flex-grow-1 overflow-auto"></div>
+      </div>
     </div>
-    <div class="tab-pane fade flex-grow-1" id="plot" role="tabpanel" style="overflow-y: auto;">
-      <button class="btn btn-success mb-2" onclick="showPlot()">Refresh Plot</button>
-      <small class="text-muted d-block mt-1" id="plot-info">This function is only available for NIMO optimizers.</small>
-      <br>
-      <img id="optimizerPlot" src="" class="img-fluid rounded shadow-sm d-block mx-auto"
-        style="max-width:100%; display:none;">
+    <div class="tab-pane fade flex-grow-1 h-100" id="queue" role="tabpanel" style="overflow-y: auto; min-height: 0;">
+      <div class="d-flex flex-column h-100 justify-content-start">
+        <div id="queue-list" class="list-group w-100">
+          <!-- Queue items will be inserted here -->
+        </div>
+      </div>
+    </div>
+    <div class="tab-pane fade flex-grow-1 h-100" id="plot" role="tabpanel" style="overflow-y: auto;">
+      <div class="d-flex flex-column h-100 justify-content-start">
+        <button class="btn btn-success mb-2" onclick="showPlot()">Refresh Plot</button>
+        <small class="text-muted d-block mt-1" id="plot-info">This function is only available for NIMO
+          optimizers.</small>
+        <br>
+        <img id="optimizerPlot" src="" class="img-fluid rounded shadow-sm d-block mx-auto"
+          style="max-width:100%; display:none;">
+      </div>
     </div>
   </div>
 </div>
@@ -104,4 +119,92 @@
         img.src = "{{ url_for('execute.get_optimizer_plot') }}";
         img.style.display = 'block';
     }
+
+  function updateQueue() {
+    // Add timestamp to prevent caching
+    const timestamp = new Date().getTime();
+    fetch("{{ url_for('execute.get_queue') }}?t=" + timestamp)
+      .then(response => response.json())
+      .then(data => {
+        const queueList = document.getElementById('queue-list');
+        // If element doesn't exist (e.g. if tabs are switched or hidden?), return
+        if (!queueList) return;
+
+        queueList.innerHTML = '';
+        if (data.length === 0) {
+          queueList.innerHTML = '<div class="list-group-item text-center text-muted">No pending tasks</div>';
+          return;
+        }
+        data.forEach((task, index) => {
+          const item = document.createElement('div');
+          item.className = 'list-group-item d-flex justify-content-between align-items-center';
+          item.innerHTML = `
+            <div>
+              <span class="badge bg-secondary me-2">#${index + 1}</span>
+              <span class="fw-bold">${task.name}</span>
+              <br>
+              <small class="text-muted ms-4">${task.args}</small>
+            </div>
+            <div>
+              <button class="btn btn-sm btn-outline-secondary" onclick="reorderTask(${index}, 'up')" ${index === 0 ? 'disabled' : ''}>
+                <i class="bi bi-arrow-up"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="reorderTask(${index}, 'down')" ${index === data.length - 1 ? 'disabled' : ''}>
+                <i class="bi bi-arrow-down"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${index})">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          `;
+          queueList.appendChild(item);
+        });
+      })
+      .catch(error => console.error('Error fetching queue:', error));
+  }
+
+  function deleteTask(id) {
+    fetch("{{ url_for('execute.delete_queue_task') }}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ id: id })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          updateQueue();
+        } else {
+          console.error('Delete failed:', data.error);
+        }
+      })
+      .catch(error => console.error('Error deleting task:', error));
+  }
+
+  function reorderTask(id, direction) {
+    fetch("{{ url_for('execute.reorder_queue_task') }}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ id: id, direction: direction })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          updateQueue();
+        } else {
+          console.error('Reorder failed:', data.error);
+        }
+      })
+      .catch(error => console.error('Error reordering task:', error));
+  }
+
+  // Poll queue status every 2 seconds
+  // Store interval ID to potentially clear it if needed
+  if (!window.queueInterval) {
+    window.queueInterval = setInterval(updateQueue, 2000);
+  }
+  updateQueue(); // Initial call
 </script>
