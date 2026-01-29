@@ -394,9 +394,11 @@ class ScriptRunner:
         db.session.add(phase)
         db.session.flush()
         phase_id = phase.id
+        db.session.commit()
 
         step_outputs = await self.exec_steps(script, section_name, phase_id=phase_id)
         # Save phase-level output
+        phase = db.session.get(WorkflowPhase, phase_id)
         phase.outputs = utils.sanitize_for_json(step_outputs)
         phase.end_time = datetime.now()
         db.session.commit()
@@ -440,8 +442,11 @@ class ScriptRunner:
                 db.session.flush()
 
                 phase_id = phase.id
+                db.session.commit()
+
                 output = await self.exec_steps(script, "script", phase_id, kwargs_list=kwargs_list, )
                 # print(output)
+                phase = db.session.get(WorkflowPhase, phase_id)
                 if output:
                     # kwargs.update(output)
                     for output_dict in output:
@@ -497,6 +502,8 @@ class ScriptRunner:
             db.session.add(phase)
             db.session.flush()
             phase_id = phase.id
+            db.session.commit()
+
             if self.logger:
                 self.logger.info(f'Executing {run_name} experiment: {i_progress + 1}/{int(repeat_count)}')
             progress = (i_progress + 1) * 100 / int(repeat_count) - 0.1
@@ -513,7 +520,10 @@ class ScriptRunner:
 
                     if self.logger:
                         self.logger.info(f'Parameters: {parameters}')
+                    # Re-fetch phase to update
+                    phase = db.session.get(WorkflowPhase, phase_id)
                     phase.parameters = utils.sanitize_for_json(parameters)
+                    db.session.commit() # Commit parameters early? Or wait? Let's commit to be safe if exec_steps crashes
 
                     output = await self.exec_steps(script, "script",  phase_id, kwargs_list=parameters)
                     if output:
@@ -532,6 +542,7 @@ class ScriptRunner:
 
                 output = await self.exec_steps(script, "script", phase_id, batch_size=batch_size)
 
+            phase = db.session.get(WorkflowPhase, phase_id)
             if output:
                 # print("output: ", output)
                 output_list.extend(output)
@@ -758,6 +769,9 @@ class ScriptRunner:
             )
             db.session.add(step_db)
             db.session.flush()
+            step_id = step_db.id # Save ID
+            db.session.commit() # Commit early to release lock
+            
             try:
 
                 if self.logger:
@@ -846,10 +860,15 @@ class ScriptRunner:
             except Exception as e:
                 self.logger.error(f"Error during script execution: {e}")
                 self.socketio.emit('error', {'message': str(e)})
-
+                
+                # Update error status in a fresh transaction
+                step_db = db.session.get(WorkflowStep, step_id)
                 step_db.run_error = True
+                db.session.commit()
+                
                 self.toggle_pause()
             finally:
+                step_db = db.session.get(WorkflowStep, step_id)
                 step_db.end_time = datetime.now()
                 step_db.output = utils.sanitize_for_json(context)
                 db.session.commit()
