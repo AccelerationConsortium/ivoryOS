@@ -394,6 +394,36 @@ function showWarningIfExists(html) {
 }
 
 // ============================================================================
+// DYNAMIC ARGUMENTS MANAGEMENT
+// ============================================================================
+
+function addDynamicArg(btn) {
+    let container = null;
+    if (btn) {
+        // Try to find relative container within the same form
+        const form = btn.closest('form');
+        if (form) {
+            container = form.querySelector('.dynamic-args-container') || form.querySelector('#dynamic-args-container');
+        }
+    }
+    // Fallback to ID for backward compatibility or if called without btn (though strict usage is better)
+    if (!container) {
+        container = document.getElementById("dynamic-args-container");
+    }
+
+    if (!container) return;
+
+    const div = document.createElement("div");
+    div.className = "input-group mb-2 dynamic-arg-row";
+    div.innerHTML = `
+        <input type="text" class="form-control" name="extra_key[]" placeholder="Parameter Name" required>
+        <input type="text" class="form-control" name="extra_value[]" list="variables_datalist" placeholder="Value" required>
+        <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">X</button>
+    `;
+    container.appendChild(div);
+}
+
+// ============================================================================
 // INITIALIZATION
 // ============================================================================
 

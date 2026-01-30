@@ -16,7 +16,8 @@
                 <div class="form-group">
                     {{ form.hidden_tag() }}
                     {% for field in form %}
-                        {% if field.type not in ['CSRFTokenField', 'HiddenField'] %}
+                        {% if field.type not in ['CSRFTokenField', 'HiddenField'] and field.name != 'return' and field.name
+                        != 'batch_action' %}
                             <div class="input-group mb-3">
                                 <label class="input-group-text">{{ field.label.text | format_name }}
                                     {% if field.flags.required %}
@@ -29,16 +30,14 @@
                                 {% elif field.type == "BooleanField" %}
                                     {{ field(class="form-check-input") }}
                                 {% elif field.type == "FlexibleEnumField" %}
-                                   <input type="text" id="{{ field.id }}" name="{{ field.name }}" value="{{ field._value() }}"
-                                      list="{{ field.id }}_options" placeholder="{{ field.render_kw.placeholder if field.render_kw and field.render_kw.placeholder }}"
-                                      class="form-control">
-                                   <datalist id="{{ field.id }}_options">
-                                      {% for key in field.choices %}
-                                         <option value="{{ key }}">{{ key }}</option>
-                                      {% endfor %}
-                                   </datalist>
-                                {% elif field.name =="return" %}
-                                    {{ field(class="form-control") }}
+                                    <input type="text" id="{{ field.id }}" name="{{ field.name }}" value="{{ field._value() }}"
+                                        list="{{ field.id }}_options" placeholder="{{ field.render_kw.placeholder if field.render_kw and field.render_kw.placeholder }}"
+                                        class="form-control">
+                                    <datalist id="{{ field.id }}_options">
+                                        {% for key in field.choices %}
+                                            <option value="{{ key }}">{{ key }}</option>
+                                        {% endfor %}
+                                    </datalist>
                                 {% else %}
                                     {{ field(class="form-control", list="variables_datalist") }}
                                 {% endif %}
@@ -46,6 +45,33 @@
                         {% endif %}
                     {% endfor %}
                 </div>
+
+                {# Dynamic Arguments Section #}
+                {% if form.has_kwargs %}
+                <h6 class="mt-3 text-muted">Additional Parameters</h6>
+                <div class="mb-3 dynamic-args-container">
+                    {# New args will be added here #}
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary mb-3" onclick="addDynamicArg(this)">
+                    <i class="bi bi-plus"></i> Add Parameter
+                </button>
+                {% endif %}
+
+                {# Manual rendering of batch_action and return #}
+                {% if form.batch_action %}
+                <div class="input-group mb-3">
+                    <label class="input-group-text">{{ form.batch_action.label.text | format_name }}</label>
+                    {{ form.batch_action(class="form-check-input") }}
+                </div>
+                {% endif %}
+
+                {% if form.return %}
+                <div class="input-group mb-3">
+                    <label class="input-group-text">{{ form.return.label.text | format_name }}</label>
+                    {{ form.return(class="form-control") }}
+                </div>
+                {% endif %}
+
                 <button type="submit" class="btn btn-dark">Add</button>
                 {% if 'hidden_name' in form %}
                     <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top"

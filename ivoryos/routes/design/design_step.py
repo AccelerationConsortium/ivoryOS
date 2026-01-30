@@ -63,6 +63,13 @@ def save_step(uuid: int):
 
             batch_action = kwargs.pop('batch_action', False)
 
+            # Collect dynamic kwargs
+            extra_keys = request.form.getlist('extra_key[]')
+            extra_values = request.form.getlist('extra_value[]')
+            if extra_keys:
+                extra_args = {k.strip(): v for k, v in zip(extra_keys, extra_values) if k and k.strip()}
+                kwargs.update(extra_args)
+
             # literal for args with no typehint
             arg_types = action.get('arg_types', {})
             kwargs = script.validate_variables(kwargs, arg_types)

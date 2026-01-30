@@ -373,6 +373,14 @@ def methods_handler(instrument: str = ''):
 
         if form:
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
+            
+            # Collect dynamic kwargs
+            extra_keys = request.form.getlist('extra_key[]')
+            extra_values = request.form.getlist('extra_value[]')
+            if extra_keys:
+                extra_args = {k.strip(): v for k, v in zip(extra_keys, extra_values) if k and k.strip()}
+                kwargs.update(extra_args)
+
             # print(kwargs)
             if form.validate_on_submit():
                 function_name = kwargs.pop("hidden_name")
@@ -406,8 +414,12 @@ def methods_handler(instrument: str = ''):
                     # Fallback or error handling
                     function_data = {}
 
-                # Save arg_order from signature
-                arg_order = list(kwargs.keys())
+                # Save arg_order from signature to exclude dynamic args
+                if function_data and 'signature' in function_data:
+                    sig = function_data['signature']
+                    arg_order = [k for k in kwargs.keys() if k in sig.parameters]
+                else:
+                    arg_order = list(kwargs.keys())
 
                 primitive_arg_types = utils.get_arg_type(kwargs, function_data)
 
