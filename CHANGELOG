@@ -1,3 +1,8 @@
+1.5.12 (Jan 30th, 2026)
+- !94 [Bug] fix loaded csv doesn't auto update, show reset button next when data doesn't match
+- !93 [New] support **kwargs input
+- !92 [QoL] add search bar on top of the controller and designer
+
 1.5.11 (Jan 29th, 2026)
 - !91 [Bug] fix database is locked error during workflow execution
 - !90 [New] add task queue system
