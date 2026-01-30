@@ -24,23 +24,21 @@
             {% else %}
                 {{ forms.hidden_tag() }}
                 {% for field in forms %}
-
-                    {% if field.type not in ['CSRFTokenField'] %}
+                    {% if field.type not in ['CSRFTokenField'] and field.name != 'return' and field.name != 'batch_action' %}
                         <div class="input-group mb-3">
                             <label class="input-group-text">{{ field.label.text | format_name }}</label>
                             {% if field.type == "BooleanField" %}
                                 {{ field(class="form-check-input") }}
                             {% elif field.type == "FlexibleEnumField" %}
-                               <input type="text" id="{{ field.id }}" name="{{ field.name }}" value="{{ field._value() }}"
-                                  list="{{ field.id }}_options" placeholder="{{ field.render_kw.placeholder if field.render_kw and field.render_kw.placeholder }}"
-                                  class="form-control">
-                               <datalist id="{{ field.id }}_options">
-                                  {% for key in field.choices %}
-                                     <option value="{{ key }}">{{ key }}</option>
-                                  {% endfor %}
-                               </datalist>
-                            {% elif field.name =="return" %}
-                                    {{ field(class="form-control") }}
+                                <input type="text" id="{{ field.id }}" name="{{ field.name }}" value="{{ field._value() }}"
+                                       list="{{ field.id }}_options"
+                                       placeholder="{{ field.render_kw.placeholder if field.render_kw and field.render_kw.placeholder }}"
+                                       class="form-control">
+                                <datalist id="{{ field.id }}_options">
+                                    {% for key in field.choices %}
+                                        <option value="{{ key }}">{{ key }}</option>
+                                    {% endfor %}
+                                </datalist>
                             {% else %}
                                 {{ field(class="form-control", list="variables_datalist") }}
                             {% endif %}
@@ -53,9 +51,59 @@
                 {% endfor %}
             </datalist>
             {% endif %}
+
+            {# Dynamic Arguments Section #}
+            {% set extra_args = [] %}
+            {% set form_fields = [] %}
+            {% for field in forms %}
+                {% set _ = form_fields.append(field.name) %}
+            {% endfor %}
+
+            {% if action['args'] and action['args'] is mapping %}
+                {% for key, value in action['args'].items() %}
+                    {% if key not in form_fields %}
+                        {% set _ = extra_args.append((key, value)) %}
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+
+            {% if forms.has_kwargs or extra_args %}
+                <h6 class="mt-3 text-muted">Additional Parameters</h6>
+                <div id="dynamic-args-container" class="mb-3 dynamic-args-container">
+                    {% for key, value in extra_args %}
+                    <div class="input-group mb-2 dynamic-arg-row">
+                        <input type="text" class="form-control" name="extra_key[]" value="{{key}}" placeholder="Parameter Name">
+                        <input type="text" class="form-control" name="extra_value[]" value="{{value}}" list="variables_datalist"
+                            placeholder="Value">
+                        <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">X</button>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if forms.has_kwargs %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary mb-3" onclick="addDynamicArg(this)">
+                        <i class="bi bi-plus"></i> Add Parameter
+                    </button>
+                {% endif %}
+            {% endif %}
+
+            {# Manual rendering of batch_action and return #}
+            {% if forms.batch_action %}
+                <div class="input-group mb-3">
+                    <label class="input-group-text">{{ forms.batch_action.label.text | format_name }}</label>
+                    {{ forms.batch_action(class="form-check-input") }}
+                </div>
+            {% endif %}
+
+            {% if forms.return %}
+                <div class="input-group mb-3">
+                    <label class="input-group-text">{{ forms.return.label.text | format_name }}</label>
+                    {{ forms.return(class="form-control") }}
+                </div>
+            {% endif %}
+            <button type="submit" class="btn btn-primary">Save</button>
+            <button type="button" class="btn btn-primary" id="back">Back</button>
         </div>
         {% endif %}
-        <button type="submit" class="btn btn-primary">Save</button>
-        <button type="button" class="btn btn-primary" id="back">Back</button>
     </form>
     {% endif %}

@@ -150,6 +150,10 @@ class Script(db.Model):
     @staticmethod
     def eval_list(args, arg_types):
         for arg in args:
+            # Handle dynamic keys not in arg_types
+            if arg not in arg_types:
+                continue
+            
             arg_type = arg_types[arg]
             if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
                 continue

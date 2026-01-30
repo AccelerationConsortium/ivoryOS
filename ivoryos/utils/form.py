@@ -297,10 +297,18 @@ def create_form_for_method(method, autofill, script=None, design=True):
         bool: (VariableOrBoolField if design else BooleanField, 'Empty for false')
     }
     sig = method if type(method) is inspect.Signature else inspect.signature(method)
-
+    
+    has_kwargs = False
     for param in sig.parameters.values():
         if param.name == 'self':
             continue
+        
+        if param.kind == inspect.Parameter.VAR_POSITIONAL:
+            continue
+        if param.kind == inspect.Parameter.VAR_KEYWORD:
+            has_kwargs = True
+            continue
+
         # formatted_param_name = format_name(param.name)
 
         default_value = None
@@ -350,6 +358,7 @@ def create_form_for_method(method, autofill, script=None, design=True):
         field = field_class(**field_kwargs, render_kw=render_kwargs, **extra_kwargs)
         setattr(DynamicForm, param.name, field)
 
+    setattr(DynamicForm, 'has_kwargs', has_kwargs)
     # setattr(DynamicForm, f'add', fname)
     return DynamicForm
 
@@ -575,6 +584,25 @@ def create_form_from_action(action: dict, script=None, design=True):
             setattr(DynamicForm, 'batch_action', batch_action)
         return_value = StringField(label='Save value as', default=f"{save_as}", render_kw={"placeholder": "Optional"})
         setattr(DynamicForm, 'return', return_value)
+    
+    has_kwargs = action.get('has_kwargs')
+    if has_kwargs is None:
+        try:
+            # Try to resolve instrument method to check if it has kwargs
+            if instrument and instrument.startswith("deck."):
+                module_name = instrument.split(".")[1]
+                deck = GlobalConfig().deck
+                if deck:
+                    inst = getattr(deck, module_name, None)
+                    if inst:
+                        method = getattr(inst, action['action'], None)
+                        if method:
+                            sig = inspect.signature(method)
+                            has_kwargs = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+        except Exception:
+            pass
+
+    setattr(DynamicForm, 'has_kwargs', has_kwargs)
     return DynamicForm()
 
 def create_all_builtin_forms(script):

@@ -109,7 +109,10 @@ def _inspect_class(class_object=None, debug=False):
                 annotation = inspect.signature(method)
                 docstring = inspect.getdoc(method)
                 coroutine = inspect.iscoroutinefunction(method)
-                functions[function] = dict(signature=annotation, docstring=docstring, coroutine=coroutine,)
+                has_args = any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in annotation.parameters.values())
+                has_kwargs = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in annotation.parameters.values())
+                functions[function] = dict(signature=annotation, docstring=docstring, coroutine=coroutine,
+                                           has_args=has_args, has_kwargs=has_kwargs)
 
             except Exception:
                 pass
