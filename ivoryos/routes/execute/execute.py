@@ -65,7 +65,7 @@ def experiment_run():
 
     config_file = request.args.get("filename")
     config = []
-    if config_file:
+    if "filename" in request.args:
         session['config_file'] = config_file
     filename = session.get("config_file")
     if filename:

@@ -47,7 +47,7 @@
                                     <div class="input-group input-group-sm">
                                         <input class="form-control" name="file" type="file" accept=".csv"
                                             required="required"
-                                            onchange="document.getElementById('loadFile').submit();">
+                                            onchange="isSwitchingFile=true; document.getElementById('loadFile').submit();">
                                     </div>
                                 </form>
                             </div>
@@ -196,6 +196,7 @@
     var saveTimeout = null;
     var lastSavedData = null;
     var sortable = null;
+    var isSwitchingFile = false;
 
     function addRow(data = null, skipSave = false) {
         rowCount++;
@@ -443,7 +444,7 @@
         if (isFromFile) {
             originalFileData = JSON.parse(JSON.stringify(data)); // Deep copy
             isModifiedFromFile = false;
-            clearSavedData(); // Clear saved data when loading from file
+            // clearSavedData(); // Keep saved data for persistence across reloads
         }
 
         updateStatusIndicators();
@@ -480,11 +481,19 @@
     originalFileData = JSON.parse(JSON.stringify(fileData)); // Deep copy
 
     if (savedData && savedData.length > 0) {
+        // Check if saved data matches new file data
+        if (JSON.stringify(savedData) !== JSON.stringify(fileData)) {
+            isModifiedFromFile = true;
+        } else {
+            isModifiedFromFile = false;
+        }
         // Load saved data if available
         loadDataFromSource(savedData, false);
-        console.log('Tab2: Loaded saved form data');
+        console.log('Tab2: Loaded saved form data and compared');
+        updateStatusIndicators();
     } else {
-        // Load from file
+        // Load from file because no saved data or saved data matches exactly (implicitly handled by treating as new load)
+        // But actually if savedData is null/empty we just load file
         loadDataFromSource(fileData, true);
         console.log('Tab2: Loaded file data');
     }
@@ -518,6 +527,14 @@
     document.addEventListener("DOMContentLoaded", function () {
         loadConfigData();
     });
+
+    // Add change listener to filename select
+    var filenameSelect = document.getElementById('filenameSelect');
+    if (filenameSelect) {
+        filenameSelect.addEventListener('change', function () {
+            isSwitchingFile = true;
+        });
+    }
 
     // ============================================
     // EXPOSE FUNCTIONS GLOBALLY FOR COORDINATION
