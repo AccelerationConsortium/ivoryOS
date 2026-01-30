@@ -1,7 +1,6 @@
 {# Instrument panel component #}
 <div>
     <div class="d-flex justify-content-between align-items-center " style="margin-bottom: 1vh;margin-top: 1vh;">
-{#        <a class="btn btn-primary" role="button" type="button" href="{{url_for('design.experiment_builder')}}"><i class="bi bi-arrow-return-left"></i></a>#}
         <a type="button"
                 data-get-url="{{ url_for('design.get_operation_sidebar') }}"
                 onclick="updateInstrumentPanel(this)">
@@ -15,8 +14,14 @@
         {% include 'components/autofill_toggle.html' %}
     {% endif %}
 
+    {% if forms|length > 10 %}
+        <div class="mb-3">
+            <input type="text" id="actionSearch" class="form-control" placeholder="Search actions...">
+        </div>
+    {% endif %}
+
     {# accordion for instrument #}
-    <div class="accordion accordion-flush" id="accordionActions" >
+    <div class="accordion accordion-flush" id="accordionActions">
 
         {% for name, form in forms.items() %}
             {% include 'components/action_form.html' %}

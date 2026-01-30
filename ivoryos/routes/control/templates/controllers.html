@@ -84,6 +84,9 @@
     <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: 100vh; overflow-y: auto;">
       {% if instrument %}
       {# <h2 class="text-secondary">{{ instrument }} controller</h2>#}
+      <div class="mb-3">
+        <input type="text" id="methodSearch" class="form-control" placeholder="Search methods...">
+      </div>
       <div class="grid-container" id="sortable-grid"
         style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1rem; width: 100%;">
         {% set hidden = session.get('hidden_functions', {}) %}
@@ -195,7 +198,25 @@
           var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
           var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
             return new bootstrap.Popover(popoverTriggerEl)
-          })
+          });
+
+          // Search Filter Logic
+          const searchInput = document.getElementById('methodSearch');
+          if (searchInput) {
+            searchInput.addEventListener('input', function (e) {
+              const searchTerm = e.target.value.toLowerCase();
+              const cards = document.querySelectorAll('.draggable-method-card');
+
+              cards.forEach(card => {
+                const methodText = card.innerText.toLowerCase();
+                if (methodText.includes(searchTerm)) {
+                  card.style.display = '';
+                } else {
+                  card.style.display = 'none';
+                }
+              });
+            });
+          }
         });
       </script>
       <script src="{{ url_for('static', filename='js/sortable_card.js') }}"></script>
