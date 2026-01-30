@@ -400,3 +400,26 @@ function showWarningIfExists(html) {
 document.addEventListener("DOMContentLoaded", function () {
     getCodePreview();
 });
+
+// ============================================================================
+// SEARCH BAR DELEGATION
+// ============================================================================
+
+document.addEventListener('input', function (e) {
+    if (e.target && e.target.id === 'actionSearch') {
+        const searchTerm = e.target.value.toLowerCase();
+        const actions = document.querySelectorAll('.design-control');
+
+        actions.forEach(action => {
+            const button = action.querySelector('.accordion-button');
+            if (button) {
+                const name = button.innerText.toLowerCase();
+                if (name.includes(searchTerm)) {
+                    action.style.display = '';
+                } else {
+                    action.style.display = 'none';
+                }
+            }
+        });
+    }
+});
