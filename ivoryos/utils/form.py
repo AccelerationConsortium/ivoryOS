@@ -1,3 +1,4 @@
+import uuid
 from enum import Enum, EnumMeta
 from typing import Union, Any
 try:
@@ -718,6 +719,17 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
         workflow_name = Script.validate_function_name(workflow.name)
         try:
         # if True:
+
+            # Backfill UUID if missing (persistent check)
+            if not workflow.uuid:
+                workflow.uuid = str(uuid.uuid4())
+                from ivoryos.utils.db_models import db
+                db.session.add(workflow)
+                db.session.commit()
+            
+            # Use UUID for only for html field id
+            unique_key = workflow.uuid
+
             compiled_strs = workflow.compile().get('script', "")
             if not compiled_strs:
                 continue
@@ -727,11 +739,15 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
             full_code = f"{import_str}\n{compiled_strs}"
             
             method = get_method_from_workflow(full_code, func_name=workflow_name)
-            functions[workflow_name] = dict(signature=inspect.signature(method), docstring=inspect.getdoc(method))
-            setattr(RegisteredWorkflows, workflow_name, method)
+            
+            functions[unique_key] = dict(signature=inspect.signature(method), docstring=inspect.getdoc(method))
+            setattr(RegisteredWorkflows, unique_key, method)
 
             form_class = create_form_for_method(method, autofill, script, design)
-
+            
+            # Store original name for display purposes
+            form_class.original_name = workflow.name
+            
             hidden_method_name = HiddenField(name=f'workflow_name', description=f"{workflow.description}",
                                              render_kw={"value": f'{workflow_name}'})
             if design:

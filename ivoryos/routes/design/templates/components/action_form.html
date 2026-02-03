@@ -1,12 +1,9 @@
 {# Action form component #}
 <div class="accordion-item design-control">
-    <h2 class="accordion-header" >
-        <button class="accordion-button collapsed draggable-action"
-                type="button" data-bs-toggle="collapse"
-                data-bs-target="#{{name}}" aria-expanded="false"
-                aria-controls="collapseExample"
-                 data-action="{{ name }}">
-            {{ name | format_name }}
+    <h2 class="accordion-header">
+        <button class="accordion-button collapsed draggable-action" type="button" data-bs-toggle="collapse"
+            data-bs-target="#{{name}}" aria-expanded="false" aria-controls="collapseExample" data-action="{{ name }}">
+            {{ form.original_name if form.original_name else name | format_name }}
         </button>
     </h2>
     <div id="{{name}}" class="accordion-collapse collapse" data-bs-parent="#accordionActions">

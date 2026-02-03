@@ -471,7 +471,15 @@ def methods_handler(instrument: str = ''):
                 msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
     elif "workflow_name" in request.form:
         workflow_name = request.form.get("workflow_name")
-        form = forms.get(workflow_name) if forms else None
+
+        # still get workflow by name (name is the primary key)
+        target_workflow = Script.query.filter_by(name=workflow_name).first()
+        unique_key = None
+        if target_workflow and target_workflow.uuid:
+            unique_key = target_workflow.uuid
+            
+        form = forms.get(unique_key) if forms and unique_key else None
+        
         insert_position = request.form.get("drop_target_id", None)
         # batch_action = request.form.get("batch_action", False)
         if form:
@@ -483,7 +491,7 @@ def methods_handler(instrument: str = ''):
                 # validate return variable name
                 save_data = script.validate_function_name(save_data)
 
-                primitive_arg_types = utils.get_arg_type(kwargs, functions[workflow_name])
+                primitive_arg_types = utils.get_arg_type(kwargs, functions[unique_key])
                 script.eval_list(kwargs, primitive_arg_types)
                 kwargs = script.validate_variables(kwargs, primitive_arg_types)
                 
