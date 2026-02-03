@@ -757,7 +757,7 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
                 batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})
                 setattr(form_class, 'batch_action', batch_action)
             setattr(form_class, 'workflow_name', hidden_method_name)
-            workflow_forms[workflow_name] = form_class()
+            workflow_forms[unique_key] = form_class()
         except Exception as e:
             # Log error or skip this workflow
             # print(f"Error loading workflow {workflow_name}: {e}")
