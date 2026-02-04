@@ -849,6 +849,8 @@ class ScriptRunner:
                 if return_var and result is not None:
                     result = utils.safe_dump(result)
                     context[return_var] = result
+                    if arg_contexts:
+                        arg_contexts[return_var] = result
 
             except HumanInterventionRequired as e:
                 self.logger.warning(f"Human intervention required: {e}")
