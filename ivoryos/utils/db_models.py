@@ -1179,7 +1179,7 @@ class Script(db.Model):
                 # Prerequisite: _process_action is stateless regarding the script content list.
                 # It seems so.
                 for i, inner_action in enumerate(script_actions):
-                     text, _ = self._process_action(indent_unit, inner_action, i, 'script', batch, mode="sample") 
+                     text, indent_unit = self._process_action(indent_unit, inner_action, i, 'script', batch, mode="sample")
                      expanded_body += text
                 
                 output_code += expanded_body
