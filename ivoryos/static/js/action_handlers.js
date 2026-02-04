@@ -453,3 +453,46 @@ document.addEventListener('input', function (e) {
         });
     }
 });
+
+// ============================================================================
+// BATCH CONSOLIDATION UI
+// ============================================================================
+
+function updateConsolidateVisibility(input) {
+    if (!input) return;
+    const form = input.closest('form');
+    if (!form) return;
+
+    // Find batch action checkbox
+    const batchBox = form.querySelector('input[name="batch_action"]');
+    if (!batchBox) return;
+
+    const isBatch = batchBox.checked;
+    const isVar = input.value.trim().startsWith('#');
+
+    // Find wrapper in the same input-group
+    const group = input.closest('.input-group');
+    if (!group) return;
+
+    const wrapper = group.querySelector('.consolidate-wrapper');
+    if (wrapper) {
+        if (isBatch && isVar) {
+            wrapper.style.display = 'flex';
+        } else {
+            wrapper.style.display = 'none';
+        }
+    }
+}
+
+function handleBatchActionChange(batchCheckbox) {
+    const form = batchCheckbox.closest('form');
+    if (!form) return;
+
+    // Update all fields that have a consolidate wrapper
+    const wrappers = form.querySelectorAll('.consolidate-wrapper');
+    wrappers.forEach(wrapper => {
+        const group = wrapper.closest('.input-group');
+        const input = group.querySelector('input:not([type="checkbox"]):not([type="hidden"])');
+        if (input) updateConsolidateVisibility(input);
+    });
+}
