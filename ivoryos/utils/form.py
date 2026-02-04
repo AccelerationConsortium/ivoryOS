@@ -19,6 +19,27 @@ import importlib
 from ivoryos.utils.db_models import Script
 from ivoryos.utils.global_config import GlobalConfig
 
+def is_list_type(ann):
+    if ann is list: return True
+    try:
+        origin = get_origin(ann)
+    except:
+        origin = getattr(ann, '__origin__', None)
+    
+    if origin is list: return True
+    
+    # String fallback
+    s = str(ann).lower()
+    if s.startswith('list[') or s == 'list': return True
+    if 'typing.list' in s: return True
+    
+    # Check Union
+    if origin is Union:
+         args = get_args(ann)
+         return any(is_list_type(arg) for arg in args)
+         
+    return False
+
 global_config = GlobalConfig()
 
 def find_variable(data, script):
@@ -359,7 +380,29 @@ def create_form_for_method(method, autofill, script=None, design=True):
         setattr(DynamicForm, param.name, field)
 
     setattr(DynamicForm, 'has_kwargs', has_kwargs)
-    # setattr(DynamicForm, f'add', fname)
+    
+    # Attach arg types metadata for UI
+    arg_types_meta = {}
+    for param in sig.parameters.values():
+        if param.name == 'self': continue
+        if param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD): continue
+        
+        # Simple type inference for UI needs (checking for list)
+        # We can rely on parse_annotation or strict string check
+        # Checking if annotation is exactly 'list' or List[T]
+        ann = param.annotation
+        is_list = False
+        if ann is list:
+            is_list = True
+        is_list = is_list_type(ann)
+        
+        if is_list:
+             arg_types_meta[param.name] = "list"
+        else:
+             arg_types_meta[param.name] = str(ann)
+
+    setattr(DynamicForm, 'arg_types', arg_types_meta)
+
     return DynamicForm
 
 
@@ -585,6 +628,9 @@ def create_form_from_action(action: dict, script=None, design=True):
         return_value = StringField(label='Save value as', default=f"{save_as}", render_kw={"placeholder": "Optional"})
         setattr(DynamicForm, 'return', return_value)
     
+    # Attach arg_types for UI
+    setattr(DynamicForm, 'arg_types', arg_types)
+    
     has_kwargs = action.get('has_kwargs')
     if has_kwargs is None:
         try:
@@ -681,6 +727,8 @@ def create_builtin_form(logic_type, script):
 
     hidden_field = HiddenField(name=f'builtin_name', render_kw={"value": f'{logic_type}'})
     setattr(BuiltinFunctionForm, "builtin_name", hidden_field)
+    
+    setattr(BuiltinFunctionForm, 'arg_types', {})
     return BuiltinFunctionForm
 
 
@@ -741,6 +789,16 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
                 batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})
                 setattr(form_class, 'batch_action', batch_action)
             setattr(form_class, 'workflow_name', hidden_method_name)
+            
+            wf_arg_types = {}
+            for param in functions[workflow_name]['signature'].parameters.values():
+                 ann = param.annotation
+                 if is_list_type(ann):
+                      wf_arg_types[param.name] = "list"
+                 else:
+                      wf_arg_types[param.name] = str(ann)
+            setattr(form_class, 'arg_types', wf_arg_types)
+            
             workflow_forms[workflow_name] = form_class()
         except Exception as e:
             # Log error or skip this workflow

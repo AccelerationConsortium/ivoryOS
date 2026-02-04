@@ -133,7 +133,7 @@ class Script(db.Model):
                 pass
         raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
 
-    def update_by_uuid(self, uuid, args, output, batch_action=False):
+    def update_by_uuid(self, uuid, args, output, batch_action=False, consolidate_batch_args=False):
         action = self.find_by_uuid(uuid)
         if not action:
             return
@@ -146,6 +146,7 @@ class Script(db.Model):
         action['args'] = args
         action['return'] = output
         action['batch_action'] = batch_action
+        action['consolidate_batch_args'] = consolidate_batch_args
 
     @staticmethod
     def eval_list(args, arg_types):
