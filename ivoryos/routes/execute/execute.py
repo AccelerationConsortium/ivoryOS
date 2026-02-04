@@ -399,6 +399,17 @@ def reorder_queue_task():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@execute.route("/executions/queue/task/<int:task_id>", methods=["GET"])
+@login_required
+def get_queue_task_details(task_id):
+    """
+    Get full details for a queued task
+    """
+    details = runner.get_task_details(task_id)
+    if details:
+        return jsonify(details)
+    return jsonify({"error": "Task not found"}), 404
+
 
 
 

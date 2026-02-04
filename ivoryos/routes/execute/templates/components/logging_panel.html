@@ -113,12 +113,139 @@
     </div>
   </div>
 </div>
+<!-- Queue Details Modal -->
+<div class="modal fade" id="queueDetailsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Task Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <pre id="queue-details-content" class="bg-light p-3 border rounded"></pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
     function showPlot() {
         const img = document.getElementById('optimizerPlot');
         img.src = "{{ url_for('execute.get_optimizer_plot') }}";
         img.style.display = 'block';
     }
+
+  let currentDetailsMsg = null;
+  let currentTaskId = null;
+
+  function renderTaskDetails(details, fullConfig = null) {
+    const content = document.getElementById('queue-details-content');
+    content.innerHTML = '';
+    currentDetailsMsg = details; // Store for reloading
+
+    if (!details) {
+      content.innerText = "No details available.";
+      return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'table table-striped table-sm';
+    const tbody = document.createElement('tbody');
+
+    for (const [key, value] of Object.entries(details)) {
+      if (key === 'Config Preview (First 5)' || key === 'Full Config') continue;
+
+      const row = document.createElement('tr');
+      const th = document.createElement('th');
+      th.scope = 'row';
+      th.innerText = key;
+      const td = document.createElement('td');
+
+      if (typeof value === 'object' && value !== null) {
+        td.innerHTML = `<pre class="m-0" style="max-height: 200px; overflow: auto;">${JSON.stringify(value, null, 2)}</pre>`;
+      } else {
+        td.innerText = value;
+      }
+      row.appendChild(th);
+      row.appendChild(td);
+      tbody.appendChild(row);
+    }
+    table.appendChild(tbody);
+    content.appendChild(table);
+
+    // Handle Config Display
+    if (fullConfig) {
+      const configContainer = document.createElement('div');
+      configContainer.className = 'mt-3';
+      configContainer.innerHTML = `<h6>Full Configuration (${fullConfig.length} entries):</h6>`;
+      const pre = document.createElement('pre');
+      pre.className = 'bg-white p-2 border rounded';
+      pre.style.maxHeight = '400px';
+      pre.style.overflow = 'auto';
+      pre.innerText = JSON.stringify(fullConfig, null, 2);
+      configContainer.appendChild(pre);
+      content.appendChild(configContainer);
+
+    } else if (details['Config Preview (First 5)']) {
+      const configContainer = document.createElement('div');
+      configContainer.className = 'mt-3';
+      configContainer.innerHTML = '<h6>Configuration Preview (First 5):</h6>';
+      const pre = document.createElement('pre');
+      pre.className = 'bg-white p-2 border rounded';
+      pre.innerText = JSON.stringify(details['Config Preview (First 5)'], null, 2);
+      configContainer.appendChild(pre);
+
+      const loadBtn = document.createElement('button');
+      loadBtn.className = 'btn btn-sm btn-primary mt-2';
+      loadBtn.innerText = 'Load Full Config';
+      loadBtn.onclick = () => loadFullConfig(currentTaskId);
+      configContainer.appendChild(loadBtn);
+
+      content.appendChild(configContainer);
+    }
+  }
+
+  function showQueueDetails(details, taskId) {
+    currentTaskId = taskId;
+    renderTaskDetails(details);
+    const modal = new bootstrap.Modal(document.getElementById('queueDetailsModal'));
+    modal.show();
+  }
+
+  function loadFullConfig(taskId) {
+    if (taskId === null) return;
+    const btn = document.querySelector('#queue-details-content button');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerText = 'Loading...';
+    }
+
+    // Use a dummy ID 0 to generate the base URL, then replace it with the actual taskId
+    const baseUrl = "{{ url_for('execute.get_queue_task_details', task_id=0) }}".slice(0, -1);
+    fetch(`${baseUrl}${taskId}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data && data["Full Config"]) {
+          renderTaskDetails(currentDetailsMsg, data["Full Config"]);
+        } else {
+          alert('Failed to load full configuration.');
+          if (btn) {
+            btn.disabled = false;
+            btn.innerText = 'Load Full Config';
+          }
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert('Error loading configuration.');
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = 'Load Full Config';
+        }
+      });
+  }
 
   function updateQueue() {
     // Add timestamp to prevent caching
@@ -138,14 +265,28 @@
         data.forEach((task, index) => {
           const item = document.createElement('div');
           item.className = 'list-group-item d-flex justify-content-between align-items-center';
-          item.innerHTML = `
-            <div>
+
+          const infoDiv = document.createElement('div');
+          infoDiv.style.cursor = 'pointer';
+          infoDiv.setAttribute('title', 'Click to view details');
+
+          let batchBadge = '';
+          if (task.details && task.details['Batch Size']) {
+            batchBadge = `<span class="badge bg-info text-dark ms-2">Batch: ${task.details['Batch Size']}</span>`;
+          }
+
+          infoDiv.innerHTML = `
               <span class="badge bg-secondary me-2">#${index + 1}</span>
               <span class="fw-bold">${task.name}</span>
+              ${batchBadge}
               <br>
               <small class="text-muted ms-4">${task.args}</small>
-            </div>
-            <div>
+          `;
+          infoDiv.onclick = () => showQueueDetails(task.details, index); // Use index as ID for now, backend uses index
+          item.appendChild(infoDiv);
+
+          const controlsDiv = document.createElement('div');
+          controlsDiv.innerHTML = `
               <button class="btn btn-sm btn-outline-secondary" onclick="reorderTask(${index}, 'up')" ${index === 0 ? 'disabled' : ''}>
                 <i class="bi bi-arrow-up"></i>
               </button>
@@ -155,8 +296,9 @@
               <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${index})">
                 <i class="bi bi-trash"></i>
               </button>
-            </div>
           `;
+          item.appendChild(controlsDiv);
+
           queueList.appendChild(item);
         });
       })
