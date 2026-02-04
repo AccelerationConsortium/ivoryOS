@@ -88,15 +88,104 @@ class ScriptRunner:
 
     def get_queue_status(self):
         """Returns the current queue status"""
-        return [
-            {
+        queue_status = []
+        for i, task in enumerate(self.execution_queue):
+            # Basic info
+            info = {
                 "id": i,
                 "name": task.get("run_name", "untitled"),
                 "status": "pending",
                 "args": f"{task.get('repeat_count', 1)} iteration(s)" if not task.get('config') else f"Config: {len(task.get('config'))} entries"
             }
-            for i, task in enumerate(self.execution_queue)
-        ]
+            
+            # Add detailed info for the modal
+            details = {}
+            if task.get("repeat_count"):
+                details["Mode"] = "Repeated Execution"
+                details["Repeat Count"] = task.get("repeat_count")
+            
+            if task.get("config"):
+                details["Mode"] = "Configuration List"
+                config_data = task.get("config")
+                details["Config Entries"] = len(config_data)
+                # Show a preview of the first 5 entries to avoid sending too much data
+                details["Config Preview (First 5)"] = config_data[:5]
+                # If it's a list of dicts, maybe show the first one or just say it's a list
+                # For CSV loaded configs, it is a list of dicts
+            
+            if task.get("batch_size"):
+                details["Batch Size"] = task.get("batch_size")
+                
+            if task.get("history"):
+                 details["History File"] = task.get("history")
+
+            # Optimization details
+            if task.get("optimizer_cls"):
+                details["Mode"] = "Bayesian Optimization"
+                details["Optimizer"] = task.get("optimizer_cls").__name__
+                
+            if task.get("objectives"):
+                details["Objectives"] = task.get("objectives")
+                
+            if task.get("parameters"):
+                details["Parameters"] = task.get("parameters")
+                
+            if task.get("constraints"):
+                details["Constraints"] = task.get("constraints")
+                
+            if task.get("additional_params"):
+                details["Additional Params"] = task.get("additional_params")
+
+            info["details"] = details
+            queue_status.append(info)
+
+        return queue_status
+
+    def get_task_details(self, task_index):
+        """Returns the full details for a specific task"""
+        try:
+            task_index = int(task_index)
+            if 0 <= task_index < len(self.execution_queue):
+                task = self.execution_queue[task_index]
+                details = {}
+                if task.get("repeat_count"):
+                    details["Mode"] = "Repeated Execution"
+                    details["Repeat Count"] = task.get("repeat_count")
+                
+                if task.get("config"):
+                    details["Mode"] = "Configuration List"
+                    details["Config Entries"] = len(task.get("config"))
+                    # Return full config here
+                    details["Full Config"] = task.get("config")
+                
+                if task.get("batch_size"):
+                    details["Batch Size"] = task.get("batch_size")
+                    
+                if task.get("history"):
+                     details["History File"] = task.get("history")
+
+                # Optimization details
+                if task.get("optimizer_cls"):
+                    details["Mode"] = "Bayesian Optimization"
+                    details["Optimizer"] = task.get("optimizer_cls").__name__
+                    
+                if task.get("objectives"):
+                    details["Objectives"] = task.get("objectives")
+                    
+                if task.get("parameters"):
+                    details["Parameters"] = task.get("parameters")
+                    
+                if task.get("constraints"):
+                    details["Constraints"] = task.get("constraints")
+                    
+                if task.get("additional_params"):
+                    details["Additional Params"] = task.get("additional_params")
+                    
+                return details
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error getting task details: {e}")
+        return None
 
     def remove_task(self, task_index):
         """Removes a task from the queue"""
