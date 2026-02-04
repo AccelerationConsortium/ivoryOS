@@ -16,15 +16,14 @@
             {% if not action['args'].__class__.__name__ == 'dict' %}
                 <div class="input-group mb-3">
                     <label class="input-group-text">{{ action['action'] }}</label>
-                    <input class="form-control" type="text" id="arg" name="arg" 
-                           placeholder="{{ action['arg_types']}}" value="{{ action['args'] }}"
-                           list="variables_datalist"
-                           aria-labelledby="variableHelpBlock">
+                    <input class="form-control" type="text" id="arg" name="arg" placeholder="{{ action['arg_types']}}"
+                        value="{{ action['args'] }}" list="variables_datalist" aria-labelledby="variableHelpBlock">
                 </div>
             {% else %}
                 {{ forms.hidden_tag() }}
                 {% for field in forms %}
-                    {% if field.type not in ['CSRFTokenField'] and field.name != 'return' and field.name != 'batch_action' %}
+                    {% if field.type not in ['CSRFTokenField'] and field.name != 'return' and field.name != 'batch_action' and
+                        field.name != 'consolidate_batch_args' %}
                         <div class="input-group mb-3">
                             <label class="input-group-text">{{ field.label.text | format_name }}</label>
                             {% if field.type == "BooleanField" %}
@@ -40,9 +39,22 @@
                                     {% endfor %}
                                 </datalist>
                             {% else %}
-                                {{ field(class="form-control", list="variables_datalist") }}
+                                {{ field(class="form-control", list="variables_datalist", oninput="updateConsolidateVisibility(this)") }}
                             {% endif %}
                         </div>
+                        {% if forms.arg_types and forms.arg_types.get(field.name) == 'list' %}
+                            {% set is_consolidated = field.name in (action.get('consolidate_batch_args') or []) %}
+                            {# Initial visibility calculation #}
+                            {% set is_visible = forms.batch_action.data and field.data and field.data.startswith('#') %}
+                            <div class="input-group mb-3 consolidate-wrapper" title="Consolidate batch arguments"
+                                style="display: {{ 'flex' if is_visible else 'none' }}">
+                                <div class="input-group-text">
+                                    <input class="form-check-input mt-0" type="checkbox" name="consolidate_batch_args"
+                                        value="{{ field.name }}" aria-label="Consolidate" {% if is_consolidated %}checked{% endif %}>
+                                    <span class="ms-1 small">Consolidate</span>
+                                </div>
+                            </div>
+                        {% endif %}
                     {% endif %}
                 {% endfor %}
             <datalist id="variables_datalist">
@@ -91,7 +103,7 @@
             {% if forms.batch_action %}
                 <div class="input-group mb-3">
                     <label class="input-group-text">{{ forms.batch_action.label.text | format_name }}</label>
-                    {{ forms.batch_action(class="form-check-input") }}
+                    {{ forms.batch_action(class="form-check-input", onchange="handleBatchActionChange(this)") }}
                 </div>
             {% endif %}
 

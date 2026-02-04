@@ -62,6 +62,7 @@ def save_step(uuid: int):
             save_data = script.validate_function_name(save_data)
 
             batch_action = kwargs.pop('batch_action', False)
+            consolidate_batch_args = request.form.getlist('consolidate_batch_args')
 
             # Collect dynamic kwargs
             extra_keys = request.form.getlist('extra_key[]')
@@ -74,7 +75,7 @@ def save_step(uuid: int):
             arg_types = action.get('arg_types', {})
             kwargs = script.validate_variables(kwargs, arg_types)
 
-            script.update_by_uuid(uuid=uuid, args=kwargs, output=save_data, batch_action=batch_action)
+            script.update_by_uuid(uuid=uuid, args=kwargs, output=save_data, batch_action=batch_action, consolidate_batch_args=consolidate_batch_args)
         else:
             warning = f"Compilation failed: {str(forms.errors)}"
     utils.post_script_file(script)

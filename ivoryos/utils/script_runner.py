@@ -666,8 +666,50 @@ class ScriptRunner:
                 # Regular action - check if batch
                 if step.get("batch_action", False):
                     # Execute once for all samples
-                    await self._execute_action_once(step, contexts[0], arg_contexts=arg_contexts, phase_id=phase_id, step_index=action_id,
-                                                        section_name=section_name)
+                    consolidate_keys = step.get("consolidate_batch_args", [])
+                    if consolidate_keys:
+                        # Normalize to list if boolean (backward compat)
+                        if isinstance(consolidate_keys, bool):
+                            consolidate_keys = [k for k, v in step.get("arg_types", {}).items() if v == "list"]
+                        
+                        # Aggregate arguments
+                        aggregated_args = {}
+                        
+                        # Initialize based on first context substitution to get keys
+                        first_args = self._substitute_params(step["args"], contexts[0])
+                        
+                        # Identify keys to consolidate
+                        # Must be in consolidate_keys AND be a list type (user requirement)
+                        target_keys = []
+                        arg_types = step.get("arg_types", {})
+                        for key in consolidate_keys:
+                            if arg_types.get(key) == "list" or key in first_args: # weak check if arg_types invalid
+                                target_keys.append(key)
+                        
+                        # Initialize aggregated args
+                        for key, val in first_args.items():
+                             if key in target_keys:
+                                 aggregated_args[key] = []
+                             else:
+                                 aggregated_args[key] = val # For non-consolidated args, keep first value
+
+                        # Iterate all contexts to collect lists
+                        for ctx in contexts:
+                            sub_args = self._substitute_params(step["args"], ctx)
+                            for key in target_keys:
+                                if key in sub_args:
+                                    val = sub_args[key]
+                                    if isinstance(val, (list, tuple)):
+                                        aggregated_args[key].extend(val)
+                                    else:
+                                        aggregated_args[key].append(val)
+                        
+                        await self._execute_action_once(step, contexts[0], arg_contexts=arg_contexts, phase_id=phase_id, step_index=action_id,
+                                                            section_name=section_name, override_args=aggregated_args)
+
+                    else:
+                        await self._execute_action_once(step, contexts[0], arg_contexts=arg_contexts, phase_id=phase_id, step_index=action_id,
+                                                            section_name=section_name)
 
                 else:
                     # Execute for each sample
@@ -741,13 +783,16 @@ class ScriptRunner:
         # if iteration >= max_iterations:
         #     raise RuntimeError(f"While loop exceeded max iterations ({max_iterations})")
 
-    async def _execute_action(self, step: Dict, context: Dict[str, Any], arg_contexts: Dict[str, Any]=None, phase_id=1, step_index=1, section_name=None):
+    async def _execute_action(self, step: Dict, context: Dict[str, Any], arg_contexts: Dict[str, Any]=None, phase_id=1, step_index=1, section_name=None, override_args=None):
         """Execute a single action with parameter substitution."""
         # Substitute parameters in args
         result = None
         if self.stop_current_event.is_set():
             return context
-        if arg_contexts:
+        
+        if override_args is not None:
+            substituted_args = override_args
+        elif arg_contexts:
             substituted_args = self._substitute_params(step["args"], arg_contexts)
         else:
             substituted_args = self._substitute_params(step["args"], context)
@@ -888,10 +933,10 @@ class ScriptRunner:
 
         return context
 
-    async def _execute_action_once(self, step: Dict, context: Dict[str, Any], arg_contexts, phase_id, step_index, section_name):
+    async def _execute_action_once(self, step: Dict, context: Dict[str, Any], arg_contexts, phase_id, step_index, section_name, override_args=None):
         """Execute a batch action once (not per sample)."""
         # print(f"Executing batch action: {step['action']}")
-        return await self._execute_action(step, context, arg_contexts=arg_contexts, phase_id=phase_id, step_index=step_index, section_name=section_name)
+        return await self._execute_action(step, context, arg_contexts=arg_contexts, phase_id=phase_id, step_index=step_index, section_name=section_name, override_args=override_args)
 
     @staticmethod
     def _substitute_params(args: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
