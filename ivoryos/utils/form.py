@@ -716,7 +716,7 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
     deck_name = script.deck
     workflows = Script.query.filter(Script.deck==deck_name, Script.name != script.name, Script.registered == True).all()
     for workflow in workflows:
-        workflow_name = Script.validate_function_name(workflow.name)
+        # workflow_name = Script.validate_function_name(workflow.name)
         try:
         # if True:
 
@@ -738,7 +738,7 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
             import_str = workflow.get_required_imports() or ""
             full_code = f"{import_str}\n{compiled_strs}"
             
-            method = get_method_from_workflow(full_code, func_name=workflow_name)
+            method = get_method_from_workflow(full_code, func_name=workflow.name)
             
             functions[unique_key] = dict(signature=inspect.signature(method), docstring=inspect.getdoc(method))
             setattr(RegisteredWorkflows, unique_key, method)
@@ -749,7 +749,7 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
             form_class.original_name = workflow.name
             
             hidden_method_name = HiddenField(name=f'workflow_name', description=f"{workflow.description}",
-                                             render_kw={"value": f'{workflow_name}'})
+                                             render_kw={"value": f'{workflow.name}'})
             if design:
                 # if workflow.return_values:
                 #     return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
