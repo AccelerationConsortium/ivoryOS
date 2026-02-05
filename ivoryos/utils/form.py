@@ -1,3 +1,4 @@
+import uuid
 from enum import Enum, EnumMeta
 from typing import Union, Any
 try:
@@ -715,9 +716,20 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
     deck_name = script.deck
     workflows = Script.query.filter(Script.deck==deck_name, Script.name != script.name, Script.registered == True).all()
     for workflow in workflows:
-        workflow_name = Script.validate_function_name(workflow.name)
+        # workflow_name = Script.validate_function_name(workflow.name)
         try:
         # if True:
+
+            # Backfill UUID if missing (persistent check)
+            if not workflow.uuid:
+                workflow.uuid = str(uuid.uuid4())
+                from ivoryos.utils.db_models import db
+                db.session.add(workflow)
+                db.session.commit()
+            
+            # Use UUID for only for html field id
+            unique_key = workflow.uuid
+
             compiled_strs = workflow.compile().get('script', "")
             if not compiled_strs:
                 continue
@@ -726,14 +738,18 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
             import_str = workflow.get_required_imports() or ""
             full_code = f"{import_str}\n{compiled_strs}"
             
-            method = get_method_from_workflow(full_code, func_name=workflow_name)
-            functions[workflow_name] = dict(signature=inspect.signature(method), docstring=inspect.getdoc(method))
-            setattr(RegisteredWorkflows, workflow_name, method)
+            method = get_method_from_workflow(full_code, func_name=workflow.name)
+            
+            functions[unique_key] = dict(signature=inspect.signature(method), docstring=inspect.getdoc(method))
+            setattr(RegisteredWorkflows, unique_key, method)
 
             form_class = create_form_for_method(method, autofill, script, design)
-
+            
+            # Store original name for display purposes
+            form_class.original_name = workflow.name
+            
             hidden_method_name = HiddenField(name=f'workflow_name', description=f"{workflow.description}",
-                                             render_kw={"value": f'{workflow_name}'})
+                                             render_kw={"value": f'{workflow.name}'})
             if design:
                 # if workflow.return_values:
                 #     return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
@@ -741,7 +757,7 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
                 batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})
                 setattr(form_class, 'batch_action', batch_action)
             setattr(form_class, 'workflow_name', hidden_method_name)
-            workflow_forms[workflow_name] = form_class()
+            workflow_forms[unique_key] = form_class()
         except Exception as e:
             # Log error or skip this workflow
             # print(f"Error loading workflow {workflow_name}: {e}")

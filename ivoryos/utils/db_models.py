@@ -56,12 +56,14 @@ class Script(db.Model):
     description = db.Column(db.String(255), nullable=True)
     registered = db.Column(db.Boolean, nullable=True, default=False)
     return_values = db.Column(JSONType, default=[])
+    uuid = db.Column(db.String(36), unique=True, nullable=True)
 
     def __init__(self, name=None, deck=None, status=None, script_dict: dict = None, id_order: dict = None,
                  time_created=None, last_modified=None, editing_type=None, author: str = None,
                  registered:bool=False, return_values: list = None,
                  description: str = None,
-                 python_script: str = None
+                 python_script: str = None,
+                 uuid: str = None,
                  ):
         if script_dict is None:
             script_dict = {"prep": [], "script": [], "cleanup": []}
@@ -94,6 +96,7 @@ class Script(db.Model):
         self.description = description
         self.registered = registered
         self.return_values = return_values
+        self.uuid = uuid
 
     def as_dict(self):
         data = dict(self.__dict__)  # shallow copy
