@@ -162,12 +162,17 @@ def experiment_run():
             repeat = payload_json.pop("repeat", None)
             batch_size = payload_json.pop('batch_size', 1)
         else:
+            # Extract display name if present
+            display_name = request.form.get("display_name")
+            
             if "bo" in request.form:
                 bo_args = request.form.to_dict()
                 existing_data = bo_args.pop("existing_data")
+                bo_args.pop("display_name", None)
             if "online-config" in request.form:
                 config_args = request.form.to_dict()
                 config_args.pop("batch_size", None)
+                config_args.pop("display_name", None)
                 config = utils.web_config_entry_wrapper(config_args, config_list)
             batch_size = int(request.form.get('batch_size', 1))
             repeat = request.form.get('repeat', None)
@@ -192,10 +197,12 @@ def experiment_run():
                               logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                               output_path=datapath, compiled=compiled, history=existing_data,
                               current_app=current_app._get_current_object(), batch_size=batch_size,
-                              on_start=on_start_callback
+                              on_start=on_start_callback, display_name=display_name
                               )
-            if result == "queued":
-                flash(f"System busy. Task {run_name} added to queue.", "popup")
+
+            # remove queue flash, handled in html/js
+            # if result == "queued":
+            #     flash(f"System busy. Task {run_name} added to queue.", "popup")
             # else:
             #     flash(f"Task '{run_name}' started.")
             if utils.check_config_duplicate(config):
