@@ -10,6 +10,7 @@ Flask-SQLAlchemy
 SQLAlchemy-Utils~=0.41
 wtforms~=3.2.1
 flask-wtf
+pandas
 
 # connect to PostgreSQL
 # psycopg2-binary
