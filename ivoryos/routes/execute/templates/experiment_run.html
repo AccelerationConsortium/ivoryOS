@@ -108,6 +108,126 @@
 {# Include error modal #}
 {% include 'components/error_modal.html' %}
 
+<!-- Task Name Modal -->
+<div class="modal fade" id="taskNameModal" tabindex="-1" aria-labelledby="taskNameModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="taskNameModalLabel">System Busy - Queue Task</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="queueTaskName" class="form-label">Display Name</label>
+                    <input type="text" class="form-control" id="queueTaskName" placeholder="Name (optional)">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmQueueBtn">Add to Queue</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Select submit buttons for relevant forms
+        // We target buttons directly to preserve their name/value in submission
+        const runButtons = document.querySelectorAll(
+            'form[name="run"] button[type="submit"], ' +
+            'form[name="bo"] button[type="submit"], ' +
+            'button[type="submit"][form="online-config"]'
+        );
+
+        // Helper to check system busy status
+        async function isSystemBusy() {
+            try {
+                const response = await fetch("{{ url_for('execute.runner_status') }}");
+                const data = await response.json();
+                return data.busy;
+            } catch (error) {
+                console.error('Error checking system status:', error);
+                return false;
+            }
+        }
+
+        runButtons.forEach(btn => {
+            btn.addEventListener('click', async function (e) {
+                // If we already processed this click, let it propagate naturally
+                if (btn.dataset.processed === "true") {
+                    return;
+                }
+
+                e.preventDefault(); // Stop immediate submission
+                e.stopPropagation();
+
+                const busy = await isSystemBusy();
+                const form = btn.form;
+
+                if (busy) {
+                    // Check if Bootstrap is available
+                    if (typeof bootstrap !== 'undefined') {
+                        try {
+                            const modalElement = document.getElementById('taskNameModal');
+                            const modal = new bootstrap.Modal(modalElement);
+                            const taskNameInput = document.getElementById('queueTaskName');
+
+                            // Initialize input
+                            taskNameInput.value = "";
+
+                            modal.show();
+
+                            // Handle confirm click
+                            const confirmBtn = document.getElementById('confirmQueueBtn');
+                            // Remove old listener to avoid duplicates if multiple clicks
+                            const newConfirmBtn = confirmBtn.cloneNode(true);
+                            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+                            newConfirmBtn.addEventListener('click', function () {
+                                const customName = taskNameInput.value;
+                                if (customName) {
+                                    // Append custom name to form
+                                    let displayInput = form.querySelector('input[name="display_name"]');
+                                    if (!displayInput) {
+                                        displayInput = document.createElement('input');
+                                        displayInput.type = 'hidden';
+                                        displayInput.name = 'display_name';
+                                        form.appendChild(displayInput);
+                                    }
+                                    displayInput.value = customName;
+                                }
+
+                                modal.hide();
+                                btn.dataset.processed = "true";
+                                btn.click();
+                            });
+                        } catch (err) {
+                            console.error("Error showing modal:", err);
+                            // Fallback if modal fails
+                            if (confirm("System is busy. Add to queue?")) {
+                                btn.dataset.processed = "true";
+                                btn.click();
+                            }
+                        }
+                    } else {
+                        // Fallback if bootstrap missing
+                        if (confirm("System is busy. Add to queue? (Display name unavailable)")) {
+                            btn.dataset.processed = "true";
+                            btn.click();
+                        }
+                    }
+
+                } else {
+                    // System not busy, proceed normally
+                    btn.dataset.processed = "true";
+                    btn.click();
+                }
+            });
+        });
+    });
+</script>
+
 <script src="{{ url_for('static', filename='js/socket_handler.js') }}"></script>
 
 {% endblock %}

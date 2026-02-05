@@ -137,6 +137,12 @@ class ScriptRunner:
                 details["Additional Params"] = task.get("additional_params")
 
             info["details"] = details
+            
+            # Use display_name if available for the main "name" field
+            if task.get("display_name"):
+                 info["name"] = task.get("display_name")
+                 details["Run Name"] = task.get("run_name") # Keep internal name in details
+                 
             queue_status.append(info)
 
         return queue_status
@@ -241,7 +247,7 @@ class ScriptRunner:
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None,
                    output_path="", compiled=False, current_app=None, history=None, optimizer=None, batch_mode=None,
                    batch_size=1, objectives=None, parameters=None, constraints=None, steps=None, optimizer_cls=None,
-                   additional_params=None, on_start=None):
+                   additional_params=None, on_start=None, display_name=None):
 
 
         self.socketio = socketio
@@ -274,7 +280,8 @@ class ScriptRunner:
             "steps": steps,
             "optimizer_cls": optimizer_cls,
             "additional_params": additional_params,
-            "on_start": on_start
+            "on_start": on_start,
+            "display_name": display_name
         }
         
         self.execution_queue.append(task)
@@ -353,7 +360,7 @@ class ScriptRunner:
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, config,
                              output_path, current_app, compiled, history=None, optimizer=None, batch_mode=None,
                              batch_size=None, objectives=None, parameters=None, constraints=None, steps=None,
-                             optimizer_cls=None, additional_params=None, on_start=None):
+                             optimizer_cls=None, additional_params=None, on_start=None, display_name=None):
         if current_app:
             ctx = current_app.app_context()
             ctx.push()
