@@ -1,3 +1,13 @@
+1.5.13 (Feb 5th, 2026)
+- !104 [Bug] optional str argument input error in config
+- !103 [Bug] maximum design size bug, replace session with json
+- !102 [QoL] add a queue task view, check configs in pop up window
+- !101 [QoL] be able to add to name of queued tasks
+- !99 [Bug] code indent wrong when if statement used in nested workflow
+- !98 [Bug] inner workflow missing context value
+- !96 [QoL] be able to scroll the code preview
+- !95 [Bug] workflow with space in name returns immediately instead of being run
+
 1.5.12 (Jan 30th, 2026)
 - !94 [Bug] fix loaded csv doesn't auto update, show reset button next when data doesn't match
 - !93 [New] support **kwargs input
