@@ -1,4 +1,4 @@
-from flask import Blueprint, request, session, flash, redirect, url_for, jsonify, render_template, current_app
+from flask import Blueprint, request, flash, redirect, url_for, jsonify, render_template, current_app
 from flask_login import login_required
 
 from ivoryos.utils import utils
@@ -83,7 +83,7 @@ def save_step(uuid: int):
     except Exception as e:
         exec_string = {}
         warning = f"Compilation failed: {str(e)}"
-    session['python_code'] = exec_string
+    # session['python_code'] = exec_string
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
     return render_template("components/canvas_main.html",
                            script=script,
@@ -114,7 +114,7 @@ def delete_step(uuid: int):
     except Exception as e:
         exec_string = {}
         warning = f"Compilation failed: {str(e)}"
-    session['python_code'] = exec_string
+    # session['python_code'] = exec_string
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
     return render_template("components/canvas_main.html",
                                script=script,
@@ -144,7 +144,7 @@ def duplicate_action(uuid: int):
     except Exception as e:
         exec_string = {}
         warning = f"Compilation failed: {str(e)}"
-    session['python_code'] = exec_string
+    # session['python_code'] = exec_string
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
 
     return render_template("components/canvas_main.html",
@@ -177,7 +177,7 @@ def update_list():
     except Exception as e:
         exec_string = {}
         warning = f"Compilation failed: {str(e)}"
-    session['python_code'] = exec_string
+    # session['python_code'] = exec_string
 
     # Return the updated canvas HTML instead of JSON
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}

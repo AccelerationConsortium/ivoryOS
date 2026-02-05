@@ -96,7 +96,7 @@ def experiment_builder():
     except Exception as e:
         exec_string = {}
         flash(f"Error in Python script: {e}")
-    session['python_code'] = exec_string
+    # session['python_code'] = exec_string
 
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
 
@@ -292,7 +292,7 @@ def clear_draft():
     script = Script(deck=deck_name, author=current_user.get_id())
     utils.post_script_file(script)
     exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
-    session['python_code'] = exec_string
+    # session['python_code'] = exec_string
     return jsonify({'success': True})
 
 
@@ -517,7 +517,7 @@ def methods_handler(instrument: str = ''):
         exec_string = {}
         msg = f"Compilation failed: {str(e)}"
     # exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
-    session['python_code'] = exec_string
+    # session['python_code'] = exec_string
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
     html = render_template("components/canvas_main.html", script=script, buttons_dict=design_buttons)
     return jsonify({"html": html, "success": success, "error": msg})
