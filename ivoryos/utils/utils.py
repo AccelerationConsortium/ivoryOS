@@ -216,40 +216,43 @@ def _convert_by_str(args, arg_types):
     """
     if not isinstance(arg_types, list):
         arg_types = [arg_types]
+    can_be_str = False
     for arg_type in arg_types:
-        if not arg_type in ["str", "any"]:
-            try:
-                if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
-                    # Handle Enum conversion
-                    _, full_path = arg_type.split(":", 1)
-                    module_name, class_name = full_path.rsplit(".", 1)
-                    
-                    # Handle deck module resolution if needed, though usually it's set correctly
-                    # But if we are running in a context where deck is loaded as __main__ vs module
-                    # We try importlib.
-                    try:
-                        mod = importlib.import_module(module_name)
-                    except ImportError:
-                         # Fallback: check if it's the current deck
-                         from ivoryos.utils.global_config import GlobalConfig
-                         deck = GlobalConfig().deck
-                         if deck and (deck.__name__ == module_name or module_name == "__main__"): # or check filename?
-                             mod = deck
-                         else:
-                             raise
-                    
-                    enum_class = getattr(mod, class_name)
-                    return enum_class[args].value # args is the member name e.g. "Methanol"
-
-                args = eval(f'{arg_type}("{args}")') if type(args) is str else eval(f'{arg_type}({args})')
-                return args
-            except Exception:
-                if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
-                     # If Enum conversion fails (e.g. wrong member), we probably should fail explicitly 
-                     raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
+        if arg_type in ["str", "any"]:
+            can_be_str = True
+            continue
+        try:
+            if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
+                # Handle Enum conversion
+                _, full_path = arg_type.split(":", 1)
+                module_name, class_name = full_path.rsplit(".", 1)
                 
-                raise TypeError(f"Input type error: cannot convert '{args}' to {arg_type}.")
-    return args
+                # Handle deck module resolution if needed, though usually it's set correctly
+                # But if we are running in a context where deck is loaded as __main__ vs module
+                # We try importlib.
+                try:
+                    mod = importlib.import_module(module_name)
+                except ImportError:
+                        # Fallback: check if it's the current deck
+                        from ivoryos.utils.global_config import GlobalConfig
+                        deck = GlobalConfig().deck
+                        if deck and (deck.__name__ == module_name or module_name == "__main__"): # or check filename?
+                            mod = deck
+                        else:
+                            raise
+                
+                enum_class = getattr(mod, class_name)
+                return enum_class[args].value # args is the member name e.g. "Methanol"
+
+            converted_args = eval(f'{arg_type}("{args}")') if type(args) is str else eval(f'{arg_type}({args})')
+            return converted_args
+        except Exception:
+            continue
+            
+    if can_be_str:
+        return args
+        
+    raise TypeError(f"Input type error: cannot convert '{args}' to any of {arg_types}.")
 
 
 def _convert_by_class(args, arg_types):
@@ -291,7 +294,17 @@ def convert_config_type(args, arg_types, is_class: bool = False):
                     args[arg] = ast.literal_eval(args[arg])
                 except Exception:
                     pass
-                if type(args[arg]) is not arg_type and not type(args[arg]).__name__ == arg_type:
+                
+                # Check if current value already matches target type(s)
+                is_valid_type = False
+                if isinstance(arg_type, list):
+                    if type(args[arg]).__name__ in arg_type:
+                        is_valid_type = True
+                else:
+                    if type(args[arg]) is arg_type or type(args[arg]).__name__ == arg_type:
+                        is_valid_type = True
+
+                if not is_valid_type:
                     if is_class:
                         # if arg_type.__module__ == 'builtins':
                         args[arg] = _convert_by_class(args[arg], arg_type)
