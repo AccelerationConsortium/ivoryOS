@@ -12,7 +12,7 @@ from collections import Counter
 from enum import Enum
 
 import flask
-from flask import session
+from flask import current_app
 from flask_login import current_user
 from flask_socketio import SocketIO
 
@@ -20,26 +20,48 @@ from ivoryos.utils.db_models import Script
 from ivoryos.utils.decorators import BUILDING_BLOCKS
 
 def get_script_file():
-    """Get script from Flask session and returns the script"""
-    session_script = session.get("scripts")
-    if session_script:
-        s = Script()
-        s.__dict__.update(**session_script)
-        return s
+    """Get script from server-side file and returns the script"""
+    user_id = current_user.get_id()
+
+    draft_path = os.path.join(current_app.config['OUTPUT_FOLDER'], "scripts", "drafts", f"draft_{user_id}.json")
+    
+    if os.path.exists(draft_path):
+        try:
+            with open(draft_path, 'r') as f:
+                script_dict = json.load(f)
+                s = Script()
+                s.__dict__.update(**script_dict)
+                return s
+        except Exception as e:
+            print(f"Error loading draft script: {e}")
+            return Script(author=user_id)
     else:
-        return Script(author=current_user.get_id(),)
+        # Fallback to session if moving from old version or just return new
+        # But for now let's just return a new one if file doesn't exist
+        return Script(author=user_id)
 
 
 def post_script_file(script, is_dict=False):
     """
-    Post script to Flask. Script will be converted to a dict if it is a Script object
+    Post script to server-side file.
     :param script: Script to post
     :param is_dict: if the script is a dictionary,
     """
-    if is_dict:
-        session['scripts'] = script
-    else:
-        session['scripts'] = script.as_dict()
+    user_id = current_user.get_id()
+
+    draft_path = os.path.join(current_app.config['OUTPUT_FOLDER'], "scripts", "drafts", f"draft_{user_id}.json")
+    
+    data = script if is_dict else script.as_dict()
+    
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(draft_path), exist_ok=True)
+    
+    try:
+        sanitized_data = sanitize_for_json(data)
+        with open(draft_path, 'w') as f:
+            json.dump(sanitized_data, f)
+    except Exception as e:
+        print(f"Error saving draft script: {e}")
 
 
 def create_gui_dir(parent_path):
@@ -47,7 +69,7 @@ def create_gui_dir(parent_path):
     Creates folders for ivoryos data
     """
     os.makedirs(parent_path, exist_ok=True)
-    for path in ["config_csv", "scripts", "results", "pseudo_deck"]:
+    for path in ["config_csv", "scripts", "scripts/drafts", "results", "pseudo_deck"]:
         os.makedirs(os.path.join(parent_path, path), exist_ok=True)
 
 
