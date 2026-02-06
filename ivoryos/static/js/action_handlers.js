@@ -245,6 +245,10 @@ function addMethodToDesign(event, form) {
 }
 
 function editAction(uuid) {
+    if (window.isSorting) {
+        return;
+    }
+
     if (!uuid) {
         console.error('Invalid UUID');
         return;

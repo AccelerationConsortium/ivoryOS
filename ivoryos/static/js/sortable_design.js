@@ -56,12 +56,22 @@ const state = {
     dropTargetId: ""
 };
 
+window.isSorting = false;
+
 function initializeCanvas() {
     $("#list ul").sortable({
         cancel: ".unsortable",
         opacity: 0.8,
         cursor: "move",
         placeholder: "drop-placeholder",
+        start: function (event, ui) {
+            window.isSorting = true;
+        },
+        stop: function (event, ui) {
+            setTimeout(() => {
+                window.isSorting = false;
+            }, 100);
+        },
         update: function () {
             const item_order = $("ul.reorder li").map(function () {
                 return this.id;
