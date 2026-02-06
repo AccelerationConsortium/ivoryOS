@@ -59,8 +59,8 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     :param host: host address, defaults to 0.0.0.0
     :param port: port, defaults to None, and will use 8000
     :param debug: debug mode, defaults to None (True)
-    :param llm_server: llm server, defaults to None.
-    :param model: llm model, defaults to None. If None, app will run without text-to-code feature
+    :param llm_server: llm server, defaults to None. If None or incorrect, app will run without design-agent feature
+    :param model: llm model, defaults to None. If None or incorrect, app will run without design-agent feature
     :param config: config class, defaults to None
     :param logger: logger name of list of logger names, defaults to None
     :param logger_output_name: log file save name of logger, defaults to None, and will use "default.log"
@@ -110,16 +110,31 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
 
     else:
         app.config["OFF_LINE"] = True
+    
+    # --- Design agent ---
     if model:
-        app.config["ENABLE_LLM"] = True
         app.config["LLM_MODEL"] = model
         app.config["LLM_SERVER"] = llm_server
-        utils.install_and_import('openai')
         from ivoryos.utils.llm_agent import LlmAgent
-        global_config.agent = LlmAgent(host=llm_server, model=model,
-                                       output_path=app.config["OUTPUT_FOLDER"] if module is not None else None)
+        
+        try:
+            llm_agent = LlmAgent(
+                base_url=llm_server, 
+                model=model, 
+                output_path=app.config["OUTPUT_FOLDER"]
+            )
+            # lightweight request to verify LLM API connection
+            llm_agent.client.models.list() 
+            
+            global_config.agent = llm_agent
+            app.config["ENABLE_AGENT"] = True
+            
+        except Exception as e:
+            print(f"Failed to enable LLM Agent: {e}")
+            global_config.agent = None
+            app.config["ENABLE_AGENT"] = False
     else:
-        app.config["ENABLE_LLM"] = False
+        app.config["ENABLE_AGENT"] = False
 
 
     # --- Logger registration ---

@@ -22,7 +22,7 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv('IVORYOS_DB_URI') or os.getenv('DATABASE_URL') or f"sqlite:///{os.path.join(OUTPUT_FOLDER, 'ivoryos.db')}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    ENABLE_LLM = True if OPENAI_API_KEY else False
+    ENABLE_AGENT = True if OPENAI_API_KEY else False
     OFF_LINE = True
 
 

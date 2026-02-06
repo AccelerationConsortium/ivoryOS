@@ -200,15 +200,15 @@ hr.vertical {
     background-color: #b3dad9 !important;
 }
 
-.accordion-item.text-to-code .accordion-button.collapsed {
+.accordion-item.design-agent .accordion-button.collapsed {
     background-color: #cdc1f2 !important;
 }
 
-.accordion-item.text-to-code .accordion-button {
+.accordion-item.design-agent .accordion-button {
     background-color: #cdc1f2 !important;
 }
 
-.accordion-item.text-to-code .accordion-button:hover {
+.accordion-item.design-agent .accordion-button:hover {
     background-color: #b8afdc !important;
 }
 
@@ -220,7 +220,7 @@ hr.vertical {
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
     display: none;
-    z-index: 1000;
+    z-index: 2000;
     text-align: center;
     color: white;
     font-size: 24px;
