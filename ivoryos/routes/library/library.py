@@ -1,7 +1,7 @@
 from flask import Blueprint, redirect, url_for, flash, request, render_template, session, current_app, jsonify
 from flask_login import login_required, current_user
 
-from ivoryos.utils.db_models import Script, db, WorkflowRun, WorkflowStep
+from ivoryos.utils.db_models import Script, db
 from ivoryos.utils.utils import get_script_file, post_script_file
 
 library = Blueprint('library', __name__, template_folder='templates')
@@ -11,7 +11,6 @@ library = Blueprint('library', __name__, template_folder='templates')
 @library.route("/<string:script_name>", methods=["GET", "POST", "DELETE"])
 @login_required
 def workflow_script(script_name:str):
-    # todo: split this into two routes, one for GET and POST, another for DELETE
     """
     .. :quickref: Workflow Script Database; get, post, delete a workflow script
 
@@ -96,15 +95,38 @@ def load_from_database():
     session.pop('edit_action', None)  # reset cache
     query = Script.query
     search_term = request.args.get("keyword", None)
-    deck_name = request.args.get("deck", None)
+    deck_name = request.args.get("deck_name", "ALL")
+
     if search_term:
         query = query.filter(Script.name.like(f'%{search_term}%'))
-    if deck_name is None:
-        temp = Script.query.with_entities(Script.deck).distinct().all()
-        deck_list = [i[0] for i in temp]
-    else:
+
+    # always get full deck list
+    temp = Script.query.with_entities(Script.deck).distinct().all()
+    deck_list = ["ALL"] + [i[0] for i in temp]
+
+    if deck_name and deck_name != "ALL":
         query = query.filter(Script.deck == deck_name)
-        deck_list = ["ALL"]
+
+    sort_by = request.args.get('sort_by', 'modified')
+    order = request.args.get('order', 'desc')
+
+    sort_mapping = {
+        'name': Script.name,
+        'deck': Script.deck,
+        'status': Script.status,
+        'created': Script.time_created,
+        'modified': Script.last_modified,
+        'author': Script.author,
+        'registered': Script.registered
+    }
+
+    sort_column = sort_mapping.get(sort_by, Script.last_modified)
+
+    if order == 'asc':
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+
     page = request.args.get('page', default=1, type=int)
     per_page = 10
 
@@ -117,7 +139,8 @@ def load_from_database():
         })
     else:
         # return HTML
-        return render_template("library.html", scripts=scripts, deck_list=deck_list, deck_name=deck_name)
+        return render_template("library.html", scripts=scripts, deck_list=deck_list, current_deck_name=deck_name,
+                               current_sort_by=sort_by, current_order=order)
 
 
 
