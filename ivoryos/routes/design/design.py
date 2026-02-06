@@ -388,6 +388,7 @@ def methods_handler(instrument: str = ''):
             if form.validate_on_submit():
                 function_name = kwargs.pop("hidden_name")
                 batch_action = kwargs.pop("batch_action", False)
+                consolidate_batch_args = request.form.getlist("consolidate_batch_args")
                 save_data = kwargs.pop('return', '')
 
                 # validate return variable name
@@ -439,6 +440,7 @@ def methods_handler(instrument: str = ''):
                           'arg_types': primitive_arg_types,
                           "coroutine": coroutine,
                           "batch_action": batch_action,
+                          "consolidate_batch_args": consolidate_batch_args,
                           "arg_order": arg_order,  # Explicitly save order
                           }
                 script.add_action(action=action, insert_position=insert_position)
@@ -489,6 +491,7 @@ def methods_handler(instrument: str = ''):
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
             if form.validate_on_submit():
                 batch_action = kwargs.pop("batch_action", False)
+                consolidate_batch_args = request.form.getlist("consolidate_batch_args")
                 save_data = kwargs.pop('return', '')
                 kwargs.pop('workflow_name')
                 # validate return variable name
@@ -508,6 +511,7 @@ def methods_handler(instrument: str = ''):
                           "args": kwargs,
                           "return": save_data,
                           "batch_action": batch_action,
+                          "consolidate_batch_args": consolidate_batch_args,
                           'arg_types': primitive_arg_types,
                           "workflow": embedded_steps} # Embed steps
                 # print(action)
