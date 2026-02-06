@@ -107,7 +107,25 @@ def load_from_database():
     if deck_name and deck_name != "ALL":
         query = query.filter(Script.deck == deck_name)
 
-    query = query.order_by(Script.last_modified.desc())
+    sort_by = request.args.get('sort_by', 'modified')
+    order = request.args.get('order', 'desc')
+
+    sort_mapping = {
+        'name': Script.name,
+        'deck': Script.deck,
+        'status': Script.status,
+        'created': Script.time_created,
+        'modified': Script.last_modified,
+        'author': Script.author,
+        'registered': Script.registered
+    }
+
+    sort_column = sort_mapping.get(sort_by, Script.last_modified)
+
+    if order == 'asc':
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
 
     page = request.args.get('page', default=1, type=int)
     per_page = 10
@@ -121,7 +139,8 @@ def load_from_database():
         })
     else:
         # return HTML
-        return render_template("library.html", scripts=scripts, deck_list=deck_list, current_deck_name=deck_name)
+        return render_template("library.html", scripts=scripts, deck_list=deck_list, current_deck_name=deck_name,
+                               current_sort_by=sort_by, current_order=order)
 
 
 

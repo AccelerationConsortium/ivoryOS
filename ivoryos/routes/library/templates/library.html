@@ -38,21 +38,66 @@
 <table class="table table-hover align-middle" id="workflowLibrary">
     <thead class="table-light">
         <tr>
-            <th scope="col">Workflow name</th>
-            <th scope="col">Deck </th>
+            <th scope="col">
+                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='name', order='desc' if current_sort_by == 'name' and current_order == 'asc' else 'asc') }}"
+                    class="text-dark text-decoration-none">
+                    Workflow name {% if current_sort_by == 'name' %}<i
+                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                </a>
+            </th>
+            <th scope="col">
+                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='deck', order='desc' if current_sort_by == 'deck' and current_order == 'asc' else 'asc') }}"
+                    class="text-dark text-decoration-none">
+                    Deck {% if current_sort_by == 'deck' %}<i
+                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                </a>
+            </th>
             <th scope="col">Description</th>
-            <th scope="col">Status</th>
-            <th scope="col">Created</th>
-            <th scope="col">Modified</th>
-            <th scope="col">Author</th>
-            <th scope="col">Registered</th>
+            <th scope="col">
+                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='status', order='desc' if current_sort_by == 'status' and current_order == 'asc' else 'asc') }}"
+                    class="text-dark text-decoration-none">
+                    Status {% if current_sort_by == 'status' %}<i
+                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                </a>
+            </th>
+            <th scope="col">
+                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='created', order='asc' if current_sort_by == 'created' and current_order == 'desc' else 'desc') }}"
+                    class="text-dark text-decoration-none">
+                    Created {% if current_sort_by == 'created' %}<i
+                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                </a>
+            </th>
+            <th scope="col">
+                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='modified', order='asc' if current_sort_by == 'modified' and current_order == 'desc' else 'desc') }}"
+                    class="text-dark text-decoration-none">
+                    Modified {% if current_sort_by == 'modified' %}<i
+                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                </a>
+            </th>
+            <th scope="col">
+                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='author', order='desc' if current_sort_by == 'author' and current_order == 'asc' else 'asc') }}"
+                    class="text-dark text-decoration-none">
+                    Author {% if current_sort_by == 'author' %}<i
+                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                </a>
+            </th>
+            <th scope="col">
+                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='registered', order='asc' if current_sort_by == 'registered' and current_order == 'desc' else 'desc') }}"
+                    class="text-dark text-decoration-none">
+                    Registered {% if current_sort_by == 'registered' %}<i
+                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                </a>
+            </th>
             <th scope="col"></th>
         </tr>
     </thead>
     <tbody>
         {% for script in scripts %}
         <tr>
-            <td><a href="{{ url_for('library.workflow_script', script_name=script.name) }}">{{ script.name }}</a></td>
+            <td>
+                <a href="{{ url_for('library.workflow_script', script_name=script.name) }}" title="{{ script.name }}">{{
+                    script.name }}</a>
+            </td>
             <td>{{ script.deck }}</td>
             <td>{{ script.description }}</td>
             <td>{{ script.status }}</td>
@@ -81,13 +126,16 @@
 {# paging#}
 <div class="pagination justify-content-center">
     <div class="page-item {{ 'disabled' if not scripts.has_prev else '' }}">
-        <a class="page-link" href="{{ url_for('library.load_from_database', page=scripts.prev_num) }}">Previous</a>
+        <a class="page-link"
+            href="{{ url_for('library.load_from_database', page=scripts.prev_num, deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by=current_sort_by, order=current_order) }}">Previous</a>
     </div>
 
     {% for num in scripts.iter_pages() %}
     {% if num %}
     <div class="page-item {{ 'active' if num == scripts.page else '' }}">
-        <a class="page-link" href="{{ url_for('library.load_from_database', page=num) }}">{{ num }}</a>
+        <a class="page-link"
+            href="{{ url_for('library.load_from_database', page=num, deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by=current_sort_by, order=current_order) }}">{{
+            num }}</a>
     </div>
     {% else %}
     <div class="page-item disabled">
@@ -97,7 +145,8 @@
     {% endfor %}
 
     <div class="page-item {{ 'disabled' if not scripts.has_next else '' }}">
-        <a class="page-link" href="{{ url_for('library.load_from_database', page=scripts.next_num) }}">Next</a>
+        <a class="page-link"
+            href="{{ url_for('library.load_from_database', page=scripts.next_num, deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by=current_sort_by, order=current_order) }}">Next</a>
     </div>
 </div>
 <script src="{{ url_for('static', filename='js/db_delete.js') }}"></script>
