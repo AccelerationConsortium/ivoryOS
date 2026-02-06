@@ -114,7 +114,7 @@
                         action="{{url_for('execute.experiment_run')}}" class="d-flex flex-column h-100">
 
                         <!-- Table Wrapper with scroll -->
-                        <div class="table-responsive border-bottom">
+                        <div class="table-responsive border-bottom" style="width: 100%; overflow-x: auto;">
                             <table id="dataInputTable"
                                 class="table table-striped table-hover mb-0 table-sm align-middle">
                                 <thead class="table-light sticky-top" style="z-index: 5;">
@@ -122,7 +122,7 @@
                                         <th style="width: 30px;"></th>
                                         <th style="width: 40px;">#</th>
                                         {% for column in config_list %}
-                                        <th class="text-nowrap">{{ column }}</th>
+                                        <th class="text-nowrap" style="min-width: 100px;">{{ column }}</th>
                                         {% endfor %}
                                         <th style="width: 50px;"></th>
                                     </tr>
@@ -182,6 +182,30 @@
 
     .sortable-drag {
         opacity: 0.8;
+    }
+
+    /* Custom Scrollbar for Table */
+    .table-responsive::-webkit-scrollbar {
+        height: 12px;
+        /* Height of horizontal scrollbar */
+        width: 12px;
+        /* Width of vertical scrollbar */
+    }
+
+    .table-responsive::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+        border: 2px solid #f1f1f1;
+        /* Padding around thumb */
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
     }
 </style>
 
