@@ -1,10 +1,15 @@
 1.5.13 (Feb 5th, 2026)
+- !106 [QoL] workflow library display improvement + scroll bar in config window
+- !105 [QoL] clean up
 - !104 [Bug] optional str argument input error in config
 - !103 [Bug] maximum design size bug, replace session with json
 - !102 [QoL] add a queue task view, check configs in pop up window
 - !101 [QoL] be able to add to name of queued tasks
+- !100 [QoL] list consolidation in workflow designer
 - !99 [Bug] code indent wrong when if statement used in nested workflow
 - !98 [Bug] inner workflow missing context value
+- !97 [New] Design Agent Feature (Re-Implementation of 'Text-To-Code')
+ (credit to @ChemistryTobias)
 - !96 [QoL] be able to scroll the code preview
 - !95 [Bug] workflow with space in name returns immediately instead of being run
 
