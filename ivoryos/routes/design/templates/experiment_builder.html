@@ -2,8 +2,7 @@
 {% block title %}IvoryOS | Design{% endblock %}
 
 {% block body %}
-    {# overlay block for text-to-code gen #}
-
+    {# overlay block for design-agent gen #}
     <div id="overlay" class="overlay">
         <div>
             <h3 id="overlay-text">Generating design, please wait...</h3>
@@ -41,5 +40,5 @@
     <script src="{{ url_for('static', filename='js/action_handlers.js') }}"></script>
     <script src="{{ url_for('static', filename='js/script_metadata.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ui_state.js') }}"></script>
-
+    <script src="{{ url_for('static', filename='js/agent_overlay.js') }}"></script>
 {% endblock %}

@@ -17,7 +17,7 @@ pandas
 
 # LLM host
 # ollama
-# openai
+openai
 python-dotenv
 
 # hardware api (optional)

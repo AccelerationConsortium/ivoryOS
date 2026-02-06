@@ -1,0 +1,34 @@
+{# design-agent panel component #}
+<div class="accordion-item design-agent">
+    <h2 class="accordion-header">
+        <button class="accordion-button design-agent" type="button" data-bs-toggle="collapse" data-bs-target="#design-agent" aria-expanded="false" aria-controls="collapseExample">
+            Design Agent
+        </button>
+    </h2>
+    <div id="design-agent" class="accordion-collapse collapse show" data-bs-parent="#accordionActions">
+        <div class="accordion-body">
+            <form role="form" method='POST' name="generate" id="generate" action="{{url_for('design.design_agent.process_request')}}">
+                <textarea class="form-control" id="prompt" name="prompt" rows="6" aria-describedby="promptHelpBlock" placeholder="{{ session['prompt']['default'] if 'default' in session['prompt'] else 'Describe your experiment' }}" required></textarea>
+                <div id="promptHelpBlock" class="form-text">
+                    Generated actions will be appended.
+                </div>
+                <button type="submit" class="btn btn-dark" id="gen" name="gen">Generate</button>
+            </form>
+        </div>
+    </div>
+</div> 
+
+{# script for using Enter-key to submit prompt (exempt is Enter+Shift to add new line) #}
+<script>
+    const promptArea = document.getElementById('prompt');
+    const generateForm = document.getElementById('generate');
+
+    if (promptArea && generateForm) {
+        promptArea.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault(); 
+                generateForm.requestSubmit();
+            }
+        });
+    }
+</script>

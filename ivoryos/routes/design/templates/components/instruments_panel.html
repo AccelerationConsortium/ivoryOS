@@ -1,6 +1,9 @@
 {# Operations panel component #}
 <div style="margin-bottom: 4vh;"></div>
 <div class="accordion accordion-flush">
+    {% if design_agent_enabled %}
+    {% include 'components/design_agent_panel.html' %}
+    {% endif %}
     <div class="accordion-item design-control">
         <h5 class="accordion-header">
             <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#flow" role="button"

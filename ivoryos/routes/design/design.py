@@ -14,6 +14,7 @@ from ivoryos.utils.py_to_json import convert_to_cards, extract_functions_and_con
 # Import the new modular components
 from ivoryos.routes.design.design_file import files
 from ivoryos.routes.design.design_step import steps
+from ivoryos.routes.design.design_agent import agent
 
 
 design = Blueprint('design', __name__, template_folder='templates')
@@ -21,6 +22,7 @@ design = Blueprint('design', __name__, template_folder='templates')
 # Register sub-blueprints
 design.register_blueprint(files)
 design.register_blueprint(steps)
+design.register_blueprint(agent)
 
 global_config = GlobalConfig()
 
@@ -102,7 +104,8 @@ def experiment_builder():
 
     return render_template('experiment_builder.html', off_line=off_line, history=deck_list,
                            script=script, defined_variables=deck_variables, buttons_dict=design_buttons,
-                           local_variables=global_config.defined_variables, block_variables=global_config.building_blocks)
+                           local_variables=global_config.defined_variables, block_variables=global_config.building_blocks,
+                           design_agent_enabled=current_app.config.get("ENABLE_AGENT"))
 
 @design.route("/draft/code_preview", methods=["GET"])
 @login_required
@@ -243,7 +246,7 @@ def update_ui_state():
         deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
         html = render_template("components/sidebar.html", history=deck_list,
                                defined_variables=deck_variables, local_variables = global_config.defined_variables,
-                               block_variables=global_config.building_blocks)
+                               block_variables=global_config.building_blocks, design_agent_enabled=current_app.config.get("ENABLE_AGENT"))
         return jsonify({"html": html})
     return jsonify({"error": "Invalid request"}), 400
 
@@ -586,8 +589,8 @@ def get_operation_sidebar(instrument: str = ''):
                                defined_variables=deck_variables,
                                local_variables=global_config.defined_variables,
                                block_variables=global_config.building_blocks,
-                               script=script
-                               )
+                               script=script, 
+                               design_agent_enabled=current_app.config.get("ENABLE_AGENT"))
     return jsonify({"html": html})
 
 
