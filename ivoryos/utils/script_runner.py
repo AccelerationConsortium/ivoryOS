@@ -1013,7 +1013,7 @@ class ScriptRunner:
             finally:
                 step_db = db.session.get(WorkflowStep, step_id)
                 step_db.end_time = datetime.now()
-                step_db.output = utils.sanitize_for_json(context)
+                step_db.output = utils.sanitize_for_json(context) # todo if change so output doesnt include all input values as well then need to update ivoryos.routes.data.data.download_workflow_steps_data_csv
                 db.session.commit()
 
                 self.pause_event.wait()
