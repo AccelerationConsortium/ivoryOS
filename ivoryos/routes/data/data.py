@@ -164,6 +164,24 @@ def download_workflow_steps_data_csv(workflow_id: int):
     )
 
 
+@data.get("/executions/records/<int:workflow_id>/logs")
+@login_required
+def download_workflow_logs(workflow_id: int):
+    """
+    download logs by workflow id as .log file
+    """
+    workflow = db.session.get(WorkflowRun, workflow_id)
+    if not workflow:
+        return jsonify({"error": "Workflow record not found"}), 404
+
+    log_filename = f"{workflow.name}_{workflow.id}.log" # todo change to saving with start time?
+    log_path = os.path.join(current_app.config["LOG_FOLDER"], log_filename)
+    if not os.path.exists(log_path):
+        return jsonify({"error": "Log file not found on disk"}), 404
+
+    return send_file(os.path.abspath(log_path), as_attachment=True)
+
+
 @data.get("/executions/data/<int:workflow_id>")
 def workflow_phase_data(workflow_id: int):
     """

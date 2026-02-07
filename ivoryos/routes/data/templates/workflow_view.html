@@ -106,6 +106,14 @@
                 <i class="fas fa-download me-1"></i>
                 Download workflow steps
             </a>
+
+            {% if workflow.end_time %}
+            <a href="{{ url_for('data.download_workflow_logs', workflow_id=workflow.id) }}"
+                class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-file-alt me-1"></i>
+                Download logs
+            </a>
+            {% endif %}
         </div>
 
         <!-- Prep Phase -->
