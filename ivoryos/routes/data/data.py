@@ -1,6 +1,8 @@
 import os
+import csv
+import io
 
-from flask import Blueprint, redirect, url_for, request, render_template, current_app, jsonify, send_file
+from flask import Blueprint, redirect, url_for, request, render_template, current_app, jsonify, send_file, Response
 from flask_login import login_required
 
 from ivoryos.utils.db_models import db, WorkflowRun, WorkflowStep, WorkflowPhase
@@ -106,6 +108,59 @@ def workflow_logs(workflow_id:int):
         })
     else:
         return render_template("workflow_view.html", workflow=workflow, grouped=grouped)
+
+
+@data.get("/executions/records/<int:workflow_id>/steps_data_csv")
+@login_required
+def download_workflow_steps_data_csv(workflow_id: int):
+    """
+    download steps data by workflow id as CSV
+    """
+    workflow = db.session.get(WorkflowRun, workflow_id)
+    if not workflow:
+        return jsonify({"error": "Workflow not found"}), 404
+
+    base_data_path = workflow.data_path if workflow.data_path else f"{workflow.name}_{workflow.start_time.strftime('%Y-%m-%d %H-%M')}"
+
+    # Query all phases for this run
+    phases = WorkflowPhase.query.filter_by(run_id=workflow_id).order_by(WorkflowPhase.start_time).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Write header
+    writer.writerow(["Phase Name", "Phase Repeat Index",
+                     "Step Index", "Step Start Time", "Step End Time", "Step Run Error", "Step Method Name", "Step Output",
+                     ])
+
+    for phase in phases:
+        for step in phase.steps:
+            step_parameters = step.workflow_phases.parameters[0] if step.workflow_phases.parameters else {}
+            step_output = step.output  # at time of writing the output contains full context of action, so both input parameters, variables, and returns
+            if set(step_output) - set(step_parameters) == set():
+                # there is no difference between the step parameters and the step output -> no set variables/return values in the step
+                step_output = {}
+            else:
+                output_keys = set(step_output) - set(step_parameters)
+                step_output = {k: v for k, v in step_output.items() if k in output_keys}
+
+            writer.writerow([
+                phase.name,
+                phase.repeat_index,
+                step.step_index,
+                step.start_time,
+                step.end_time,
+                step.run_error,
+                step.method_name,
+                step_output,
+            ])
+
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-disposition": f"attachment; filename={base_data_path}_steps.csv"}
+    )
 
 
 @data.get("/executions/data/<int:workflow_id>")
