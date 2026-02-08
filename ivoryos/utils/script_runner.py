@@ -743,7 +743,7 @@ class ScriptRunner:
             elif instrument == "workflows":
                 # Recursively logic for nested workflows
                 # print(step.get("workflow", []))
-                workflow_steps = step.get("workflow", [])
+                workflow_steps = validate_and_nest_control_flow(step.get("workflow", []))
                 if workflow_steps:
                     if self.socketio:
                         self.socketio.emit('log', {'message': f"Entering workflow: {action} with args: {step.get('args', {})}"})
