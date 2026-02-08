@@ -1,3 +1,7 @@
+1.5.14 (Feb 8th, 2026)
+- !108 [Bug] fix nested workflow flow control (if/while) execution bug
+- !107 [New] save logs from data per run (credit to @Veronica)
+
 1.5.13 (Feb 5th, 2026)
 - !106 [QoL] workflow library display improvement + scroll bar in config window
 - !105 [QoL] clean up
