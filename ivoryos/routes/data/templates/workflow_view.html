@@ -91,6 +91,31 @@
             <i class="fas fa-project-diagram me-2"></i>Workflow: {{ workflow.name }}
         </h2>
 
+        <!-- Download Section -->
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            {% if workflow.data_path %}
+              <a href="{{ url_for('data.download_results', filename=workflow.data_path) }}"
+               class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-download me-1"></i>
+                Download workflow data
+            </a>
+            {% endif %}
+
+            <a href="{{ url_for('data.download_workflow_steps_data_csv', workflow_id=workflow.id) }}"
+               class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-download me-1"></i>
+                Download workflow steps
+            </a>
+
+            {% if workflow.end_time %}
+            <a href="{{ url_for('data.download_workflow_logs', workflow_id=workflow.id) }}"
+                class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-file-alt me-1"></i>
+                Download logs
+            </a>
+            {% endif %}
+        </div>
+
         <!-- Prep Phase -->
         {% if grouped.prep %}
             <div class="mb-4">

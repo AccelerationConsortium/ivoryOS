@@ -69,7 +69,7 @@ def create_gui_dir(parent_path):
     Creates folders for ivoryos data
     """
     os.makedirs(parent_path, exist_ok=True)
-    for path in ["config_csv", "scripts", "scripts/drafts", "results", "pseudo_deck"]:
+    for path in ["config_csv", "scripts", "scripts/drafts", "results", "pseudo_deck", "logs"]:
         os.makedirs(os.path.join(parent_path, path), exist_ok=True)
 
 
