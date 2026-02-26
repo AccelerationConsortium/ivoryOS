@@ -529,7 +529,13 @@ class ScriptRunner:
                     compiled = True
                 except Exception as e:
                     if self.logger:
-                        self.logger.error(e)
+                        if isinstance(e, SyntaxError):
+                            self.logger.error(f"Error in configuration data: {e.args}")
+                            self.logger.error(
+                                f"{e.msg} at line {e.lineno}, column {e.offset}: {e.text.strip()}"
+                            )
+                        else:
+                            self.logger.error(e)
                     compiled = False
                     break
         if compiled:

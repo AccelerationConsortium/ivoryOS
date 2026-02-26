@@ -176,6 +176,11 @@ class Script(db.Model):
                         _list = ''.join(args[arg]).split(',')
                         # convert_type = getattr(builtins, arg_types)  # Handle unknown types s
                         args[arg] = convert_type([s.strip() for s in _list])
+                    except SyntaxError:
+                        # get a syntax error if in the arg there is a space ' '. so 'a,b' -> ['a', 'b'] is fine, but
+                        # 'a b, c' will cause an error when trying to convert to a list of str. this will correctly
+                        # convert 'a b, c' -> ['a b', 'c']
+                        args[arg] = [item.strip() for item in args[arg].split(",") if item.strip()]
 
     @property
     def stypes(self):
