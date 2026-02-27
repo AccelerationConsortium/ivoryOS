@@ -69,6 +69,11 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     :param exclude_names: list[str] module names to exclude from parsing
     :param notification_handler: notification handler function
     """
+    # Prevent multiple IvoryOS instances from running simultaneously
+    if os.environ.get("IVORYOS_ACTIVE"):
+        return
+    os.environ["IVORYOS_ACTIVE"] = "1"
+
     app = create_app(config_class=config or get_config())  # Create app instance using factory function
 
     # plugins = load_installed_plugins(app, socketio)
