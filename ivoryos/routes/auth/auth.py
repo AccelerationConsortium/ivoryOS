@@ -35,22 +35,23 @@ def login():
         user = db.session.query(User).filter(User.username == username).first()
         input_password = password.encode('utf-8')
         # user.hashPassword might be bytes (SQLite) or string (Postgres)
-        user_hash = user.hashPassword
-        if isinstance(user_hash, str):
-            user_hash = user_hash.encode('utf-8')
+        if user:
+            user_hash = user.hashPassword
+            if isinstance(user_hash, str):
+                user_hash = user_hash.encode('utf-8')
 
-        if user and bcrypt.checkpw(input_password, user_hash):
-            # password.encode("utf-8")
-            # user = User(username, password.encode("utf-8"))
-            login_user(user)
-            # g.user = user
-            # session['user'] = username
-            script_file = Script(author=username)
-            session["script"] = script_file.as_dict()
-            session['hidden_functions'], session['card_order'], session['prompt'] = {}, {}, {}
-            session['autofill'] = False
-            post_script_file(script_file)
-            return redirect(url_for('main.index'))
+            if bcrypt.checkpw(input_password, user_hash):
+                # password.encode("utf-8")
+                # user = User(username, password.encode("utf-8"))
+                login_user(user)
+                # g.user = user
+                # session['user'] = username
+                script_file = Script(author=username)
+                session["script"] = script_file.as_dict()
+                session['hidden_functions'], session['card_order'], session['prompt'] = {}, {}, {}
+                session['autofill'] = False
+                post_script_file(script_file)
+                return redirect(url_for('main.index'))
         else:
             flash("Incorrect username or password")
             return redirect(url_for('auth.login'))
