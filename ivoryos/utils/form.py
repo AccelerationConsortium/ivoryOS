@@ -234,7 +234,7 @@ class FlexibleEnumField(StringField):
         self.script = script
         self.enum_class = self._resolve_enum(choices)
         self.choices = [e.name for e in self.enum_class]
-        # self.value_list = [e.name for e in self.enum_class]
+        self.value_list = [e.value for e in self.enum_class]
 
     def _resolve_enum(self, annotation):
         """Extract Enum from Enum or Optional[Enum]"""
@@ -273,9 +273,23 @@ class FlexibleEnumField(StringField):
                 if not self.script.editing_type == "script":
                     raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
                 self.data = key
+            elif isinstance(key, str):
+                # PATCH!! because enum returns are sanitized as str, if they are saved as a return variable
+                # from a different method then they cannot be input in and processed properly unless it is converted
+                # to enum instance again # todo this doesnt handle if the enum value is non-str
+                if key in self.value_list: # need to use self.value_list, using valuelist doesnt work
+                    # the key itself was sanitized into the enum str value, so convert it back into the Enum instance
+                    self.data = self.enum_class(key)
+                else:
+                    # todo can we assume if it isnt an enum value, that it is a non-dynamic variable in the script?
+                    # not in value list, so check if it is a non-dynamic variable in the script
+                    variable, variable_type = find_variable(key, self.script)
+                    if variable:
+                        self.data = variable
+                    else:
+                        raise ValidationError(f"Invalid choice: '{key}'. Must match one of {list(self.enum_class.__members__.keys())}")
             else:
-                raise ValidationError(
-                    f"Invalid choice: '{key}'. Must match one of {list(self.enum_class.__members__.keys())}")
+                raise ValidationError(f"Invalid choice: '{key}'. Must match one of {list(self.enum_class.__members__.keys())}")
 
 
 
