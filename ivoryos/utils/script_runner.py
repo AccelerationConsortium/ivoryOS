@@ -69,10 +69,12 @@ class ScriptRunner:
         """Toggles between pausing and resuming the script"""
         self.paused = not self.paused
         if self.pause_event.is_set():
+            self.logger.info('Pause script')
             self.pause_event.clear()  # Pause the script
             return "Paused"
         else:
             self.pause_event.set()  # Resume the script
+            self.logger.info('Resume script')
             return "Resumed"
 
     def pause_status(self):
@@ -228,14 +230,16 @@ class ScriptRunner:
     def abort_pending(self):
         """Abort the pending iteration after the current is finished"""
         self.stop_pending_event.set()
-        # print("Stop pending tasks")
+        self.logger.info("Abort pending tasks")
 
     def abort_cleanup(self):
         """Abort the pending iteration after the current is finished"""
         self.stop_cleanup_event.set()
+        self.logger.info("Abort cleanup")
 
     def stop_execution(self):
         """Force stop everything, including ongoing tasks."""
+        self.logger.info("Stop execution")
         self.stop_current_event.set()
         self.abort_pending()
         if not self.pause_event.is_set():
@@ -303,6 +307,9 @@ class ScriptRunner:
         # Get next task
         task = self.execution_queue.pop(0)
         self.current_task = task # Store current task details
+        # todo should check if stop event was set and then check with user to make sure
+        #  they want to continue with the queue or abort or pause the queue? in case they need to
+        #  manually fix something before continuing
         self.reset_stop_event()
 
         thread = threading.Thread(
@@ -934,7 +941,11 @@ class ScriptRunner:
             db.session.commit() # Commit early to release lock
             
             try:
-
+                # ensure stop pending event is not set before executing action
+                if self.stop_pending_event.is_set():
+                    # if self.logger:
+                        # self.logger.info(f'Stopping execution before executing action {instrument}.{action}')
+                    return context
                 if self.logger:
                     self.logger.info(f"Executing '{instrument}.{action}' with args {substituted_args}")
                 
