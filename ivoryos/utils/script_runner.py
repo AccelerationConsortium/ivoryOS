@@ -242,6 +242,7 @@ class ScriptRunner:
         self.logger.info("Stop execution")
         self.stop_current_event.set()
         self.abort_pending()
+        self.abort_cleanup()
         if not self.pause_event.is_set():
             self.pause_event.set()
         if self.lock.locked():
