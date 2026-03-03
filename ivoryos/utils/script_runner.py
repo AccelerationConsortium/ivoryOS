@@ -420,9 +420,8 @@ class ScriptRunner:
 
             # setup run-specific logging using run_id
             run_file_handler = None
-            log_filename = None
             if self.logger:
-                log_filename = f"{run_name}_{run_id}.log" # todo change to saving with start time? then need to update ivoryos.routes.data.data.download_workflow_logs
+                log_filename = f"{run_name}_{run.start_time.strftime('%Y-%m-%d %H-%M-%S')}.log"
                 log_path = os.path.join(current_app.config["LOG_FOLDER"], log_filename)
                 try:
                     import logging
