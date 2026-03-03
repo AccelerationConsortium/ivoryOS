@@ -388,7 +388,7 @@ class ScriptRunner:
         # _func_str = script.compile()
         # step_list_dict: dict = script.convert_to_lines(_func_str)
         self._emit_progress(1)
-        filename = None
+        filename = f"{run_name}_{datetime.now().strftime('%Y-%m-%d %H-%M')}.csv"
         error_flag = False
         # create a new run entry in the database
         repeat_mode = "batch" if config else "optimizer" if optimizer else "repeat"
@@ -416,6 +416,9 @@ class ScriptRunner:
             db.session.add(run)
             db.session.flush()
             run_id = run.id  # Save the ID
+            # overwrite filename with the run specific start time
+            filename = f"{run_name}_{run.start_time.strftime('%Y-%m-%d %H-%M-%S')}.csv"
+            run.data_path = filename
             db.session.commit()
 
             # setup run-specific logging using run_id
@@ -444,26 +447,20 @@ class ScriptRunner:
                     asyncio.run(
                         self._run_repeat_section(repeat_count, arg_type, output_list, script,
                                              run_name, return_list, compiled,
-                                             history, output_path, run_id=run_id, optimizer=optimizer,
+                                             history, output_path, run_id, filename, optimizer=optimizer,
                                              batch_mode=batch_mode, batch_size=batch_size, objectives=objectives)
                     )
                 elif config:
                     asyncio.run(
                         self._run_config_section(
-                            config, arg_type, output_list, script, run_name,
-                            run_id=run_id, compiled=compiled, batch_mode=batch_mode, batch_size=batch_size
+                            config, arg_type, output_list, script, run_name, run_id, filename, return_list, output_path,
+                            compiled=compiled, batch_mode=batch_mode, batch_size=batch_size
                         )
                     )
 
                 # Run "cleanup" section once
                 asyncio.run(self._run_actions(script, section_name="cleanup", run_id=run_id))
                 # Reset the running flag when done
-                # Save results if necessary
-                if not script.python_script: # and return_list:
-                    # save data even if there is no return list, as in the case values are saved as variables instead of returns
-                    # print(output_list)
-                    filename = self._save_results(run_name, arg_type, return_list, output_list, output_path)
-
 
             except Exception as e:
                 if self.logger:
@@ -492,7 +489,6 @@ class ScriptRunner:
                     self.logger.info("Error: Run not found in database.")
             else:
                 run.end_time = datetime.now()
-                run.data_path = filename
                 run.run_error = error_flag
                 db.session.commit()
 
@@ -527,7 +523,7 @@ class ScriptRunner:
         db.session.commit()
         return step_outputs
 
-    async def _run_config_section(self, config, arg_type, output_list, script, run_name, run_id,
+    async def _run_config_section(self, config, arg_type, output_list, script, run_name, run_id, filename, return_list, output_path,
                                   compiled=True, batch_mode=False, batch_size=1):
         if not compiled:
             for i in config:
@@ -577,11 +573,19 @@ class ScriptRunner:
                     phase.outputs = utils.sanitize_for_json(output)
                 phase.end_time = datetime.now()
                 db.session.commit()
+
+                # save results
+                if not script.python_script: # and return_list:
+                    if i == 0:
+                        self._save_results(filename, arg_type, return_list, output_list, output_path)
+                    else:
+                        self._save_results_last_row(filename, arg_type, return_list, output_list, output_path)
+
         return output_list
 
     async def _run_repeat_section(self, repeat_count, arg_types, output_list, script, run_name, return_list, compiled,
-                            history, output_path, run_id, optimizer=None, batch_mode=None,
-                            batch_size=None, objectives=None):
+                                  history, output_path, run_id, filename,
+                                  optimizer=None, batch_mode=None, batch_size=None, objectives=None):
 
         if optimizer and history:
             file_path = os.path.join(output_path, history)
@@ -676,6 +680,13 @@ class ScriptRunner:
             phase.end_time = datetime.now()
             db.session.commit()
 
+            # save results
+            if not script.python_script:  # and return_list:
+                if i_progress == 0:
+                    self._save_results(filename, arg_types, return_list, output_list, output_path)
+                else:
+                    self._save_results_last_row(filename, arg_types, return_list, output_list, output_path)
+
             if optimizer and self._check_early_stop(output, objectives):
                 if self.logger:
                     self.logger.info('Early stopping')
@@ -684,18 +695,34 @@ class ScriptRunner:
 
         return output_list
 
-    def _save_results(self, run_name, arg_type, return_list, output_list, output_path):
-        output_columns = list(arg_type.keys()) + list(return_list)
-
-        filename = run_name + "_" + datetime.now().strftime("%Y-%m-%d %H-%M") + ".csv"
+    def _save_results(self, filename, arg_type, return_list, output_list, output_path):
+        """Save the results to the filename"""
         file_path = os.path.join(output_path, filename)
         df = pd.DataFrame(output_list)
-        # df = df.loc[:, [c for c in output_columns if c in df.columns]]
+        # output_columns = list(arg_type.keys()) + list(return_list)
+        # df = df.reindex(columns=output_columns)
 
-        df. to_csv(file_path, index=False)
+        print(f'save df {df} to {file_path}')
+        df.to_csv(file_path, index=False)
+
         if self.logger:
             self.logger.info(f'Results saved to {file_path}')
-        return filename
+
+    def _save_results_last_row(self, filename, arg_type, return_list, output_list, output_path):
+        """
+        Save the last row to the filename. If the file does not exist, create it with header.
+        """
+        file_path = os.path.join(output_path, filename)
+        df = pd.DataFrame([output_list[-1]])
+
+        df.to_csv(file_path,
+                  mode="a",
+                  header=not os.path.exists(file_path),
+                  index=False,
+                  )
+
+        if self.logger:
+            self.logger.info(f'Append to results saved to {file_path}')
 
     def _emit_progress(self, progress):
         self.last_progress = progress
