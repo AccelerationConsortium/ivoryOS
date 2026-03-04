@@ -132,6 +132,7 @@ def download_workflow_steps_data_csv(workflow_id: int):
     # Write header
     writer.writerow(["Phase Name", "Phase Repeat Index",
                      "Step Index", "Step Start Time", "Step End Time", "Step Run Error", "Step Method Name", "Step Output",
+                     "Step Parameters"
                      ])
 
     for phase in phases:
@@ -154,6 +155,7 @@ def download_workflow_steps_data_csv(workflow_id: int):
                 step.run_error,
                 step.method_name,
                 step_output,
+                step_parameters,
             ])
 
     output.seek(0)

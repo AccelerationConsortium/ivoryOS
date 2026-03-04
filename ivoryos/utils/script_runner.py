@@ -5,6 +5,7 @@ import time
 import re
 from datetime import datetime
 from typing import List, Dict, Any
+import logging
 
 import pandas as pd
 
@@ -421,18 +422,22 @@ class ScriptRunner:
             run.data_path = filename
             db.session.commit()
 
-            # setup run-specific logging using run_id
-            run_file_handler = None
-            if self.logger:
-                log_filename = f"{run_name}_{run.start_time.strftime('%Y-%m-%d %H-%M-%S')}.log"
-                log_path = os.path.join(current_app.config["LOG_FOLDER"], log_filename)
+            # setup run-specific logging to a file using run_id
+            log_filename = f"{run_name}_{run.start_time.strftime('%Y-%m-%d %H-%M-%S')}.log"
+            log_path = os.path.join(current_app.config["LOG_FOLDER"], log_filename)
+            run_file_handler = logging.FileHandler(log_path)
+            run_file_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+            gui_logger = self.logger
+            app_loggers = current_app.config["LOGGERS"]
+            app_loggers = app_loggers if isinstance(app_loggers, list) else [app_loggers]
+            gui_and_app_loggers = [gui_logger, *app_loggers]
+            for logger in gui_and_app_loggers:
+                if isinstance(logger, str):
+                    logger = logging.getLogger(logger)
                 try:
-                    import logging
-                    run_file_handler = logging.FileHandler(log_path)
-                    run_file_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
-                    self.logger.addHandler(run_file_handler)
+                    logger.addHandler(run_file_handler)
                 except Exception as e:
-                    self.logger.error(f"Failed to setup run-specific log: {e}")
+                    self.logger.error(f"Failed to setup logger {logger}: {e}")
 
             try:
             # if True:
@@ -474,9 +479,11 @@ class ScriptRunner:
                 self.current_task = None # Clear current task
                 
                 # Close run-specific log handler
-                if run_file_handler:
-                    self.logger.removeHandler(run_file_handler)
-                    run_file_handler.close()
+                for logger in gui_and_app_loggers:
+                    if isinstance(logger, str):
+                        logger = logging.getLogger(logger)
+                    logger.removeHandler(run_file_handler)
+                run_file_handler.close()
 
                 # Check for next task in queue
                 self._process_queue()
@@ -532,7 +539,13 @@ class ScriptRunner:
                     compiled = True
                 except Exception as e:
                     if self.logger:
-                        self.logger.error(e)
+                        if isinstance(e, SyntaxError):
+                            self.logger.error(f"Error in configuration data: {e.args}")
+                            self.logger.error(
+                                f"{e.msg} at line {e.lineno}, column {e.offset}: {e.text.strip()}"
+                            )
+                        else:
+                            self.logger.error(e)
                     compiled = False
                     break
         if compiled:
@@ -1046,7 +1059,7 @@ class ScriptRunner:
                         # Store return value if specified
                 return_var = step.get("return", "")
                 if return_var and result is not None:
-                    result = utils.safe_dump(result)
+                    result = utils.safe_dump(result)  # sanitizes results to save to be json safe
                     context[return_var] = result
                     if arg_contexts:
                         arg_contexts[return_var] = result
