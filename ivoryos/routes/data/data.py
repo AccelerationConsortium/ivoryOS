@@ -176,7 +176,7 @@ def download_workflow_logs(workflow_id: int):
     if not workflow:
         return jsonify({"error": "Workflow record not found"}), 404
 
-    log_filename = f"{workflow.name}_{workflow.id}.log" # todo change to saving with start time?
+    log_filename = f"{workflow.name}_{workflow.start_time.strftime('%Y-%m-%d %H-%M-%S')}.log"
     log_path = os.path.join(current_app.config["LOG_FOLDER"], log_filename)
     if not os.path.exists(log_path):
         return jsonify({"error": "Log file not found on disk"}), 404
