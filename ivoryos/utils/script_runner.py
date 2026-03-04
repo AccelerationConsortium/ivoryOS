@@ -5,6 +5,7 @@ import time
 import re
 from datetime import datetime
 from typing import List, Dict, Any
+import logging
 
 import pandas as pd
 
@@ -410,19 +411,19 @@ class ScriptRunner:
             run_id = run.id  # Save the ID
             db.session.commit()
 
-            # setup run-specific logging using run_id
-            run_file_handler = None
-            log_filename = None
-            if self.logger:
-                log_filename = f"{run_name}_{run_id}.log" # todo change to saving with start time? then need to update ivoryos.routes.data.data.download_workflow_logs
-                log_path = os.path.join(current_app.config["LOG_FOLDER"], log_filename)
-                try:
-                    import logging
-                    run_file_handler = logging.FileHandler(log_path)
-                    run_file_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
-                    self.logger.addHandler(run_file_handler)
-                except Exception as e:
-                    self.logger.error(f"Failed to setup run-specific log: {e}")
+            # setup run-specific logging to a file using run_id
+            log_filename = f"{run_name}_{run_id}.log"  # todo change to saving with start time? then need to update ivoryos.routes.data.data.download_workflow_logs
+            log_path = os.path.join(current_app.config["LOG_FOLDER"], log_filename)
+            run_file_handler = logging.FileHandler(log_path)
+            run_file_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+            gui_logger = self.logger
+            app_loggers = current_app.config["LOGGERS"]
+            app_loggers = app_loggers if isinstance(app_loggers, list) else [app_loggers]
+            gui_and_app_loggers = [gui_logger, *app_loggers]
+            for logger in gui_and_app_loggers:
+                if isinstance(logger, str):
+                    logger = logging.getLogger(logger)
+                logger.addHandler(run_file_handler)
 
             try:
             # if True:
@@ -470,9 +471,11 @@ class ScriptRunner:
                 self.current_task = None # Clear current task
                 
                 # Close run-specific log handler
-                if run_file_handler:
-                    self.logger.removeHandler(run_file_handler)
-                    run_file_handler.close()
+                for logger in gui_and_app_loggers:
+                    if isinstance(logger, str):
+                        logger = logging.getLogger(logger)
+                    logger.removeHandler(run_file_handler)
+                run_file_handler.close()
 
                 # Check for next task in queue
                 self._process_queue()
