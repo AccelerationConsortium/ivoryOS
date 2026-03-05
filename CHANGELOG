@@ -1,3 +1,12 @@
+1.5.15 (March 5th, 2026)
+- !116 [Bug] fix so script will stop execution if error encountered and abort option selected (previously sometimes next step gets executed) and save workflow data so it can be downloaded after each iteration (instead of on stop/completion) in case of Python/script error
+- !115 [Bug] fix to improve editing enum arguments and using returned variables as method arguments
+- !114 [Bug] displaying when login with incorrect combo
+- !113 [Bug] no reload when checking syntax
+- !112 [QoL] record step input parameters in workflow steps data csv file
+- !111 [QoL] record all app loggers in the downloaded workflow specific logs CSV file
+- !110 [Bug] fix syntax error if there is a space in a string configuration parameter
+
 1.5.14 (Feb 8th, 2026)
 - !108 [Bug] fix nested workflow flow control (if/while) execution bug
 - !107 [New] save logs from data per run (credit to @Veronica)
