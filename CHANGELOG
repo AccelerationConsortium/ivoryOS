@@ -1,4 +1,6 @@
 1.5.15 (March 5th, 2026)
+- !119 [Bug] use `compile` instead of `exec` to avoid hardware code reloading and device connection issues
+- !118 [New] downgrade problematic packages to support 32-bit Python installation
 - !116 [Bug] fix so script will stop execution if error encountered and abort option selected (previously sometimes next step gets executed) and save workflow data so it can be downloaded after each iteration (instead of on stop/completion) in case of Python/script error
 - !115 [Bug] fix to improve editing enum arguments and using returned variables as method arguments
 - !114 [Bug] displaying when login with incorrect combo
