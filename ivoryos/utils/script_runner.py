@@ -780,7 +780,6 @@ class ScriptRunner:
                 "stop_current": self.stop_current_event.is_set(),
             }
 
-
     async def _execute_steps_batched(self, steps: List[Dict], contexts: List[Dict[str, Any]], phase_id, section_name, arg_contexts:List[Dict[str, Any]] = None):
         """
         Execute a list of steps for multiple samples, batching where appropriate.
@@ -791,27 +790,32 @@ class ScriptRunner:
             action_id = step["id"]
             if action == "if":
                 await self._execute_if_batched(step, contexts, phase_id=phase_id, step_index=action_id,
-                                               section_name=section_name)
+                                               section_name=section_name, arg_contexts=arg_contexts)
             elif action == "repeat":
                 await self._execute_repeat_batched(step, contexts, phase_id=phase_id, step_index=action_id,
-                                                   section_name=section_name)
+                                                   section_name=section_name, arg_contexts=arg_contexts)
             elif action == "while":
                 await self._execute_while_batched(step, contexts, phase_id=phase_id, step_index=action_id,
-                                                  section_name=section_name)
+                                                  section_name=section_name, arg_contexts=arg_contexts)
             elif instrument == "variable":
                 await self._execute_variable_batched(step, contexts, phase_id=phase_id, step_index=action_id,
-                                                     section_name=section_name)
+                                                     section_name=section_name, arg_contexts=arg_contexts)
                 # print("Variable executed", "current context", contexts)
             elif instrument == "math_variable":
                 await self._execute_variable_batched(step, contexts, phase_id=phase_id, step_index=action_id,
-                                                     section_name=section_name)
+                                                     section_name=section_name, arg_contexts=arg_contexts)
             elif instrument == "input":
                 await self._execute_variable_batched(step, contexts, phase_id=phase_id, step_index=action_id,
-                                                     section_name=section_name)
+                                                     section_name=section_name, arg_contexts=arg_contexts)
             elif instrument == "workflows":
+                # Prioritize fetching the latest version from the database
+                target_workflow = Script.query.filter_by(name=action).first()
+                if target_workflow:
+                    workflow_steps_list = target_workflow.script_dict.get('script', [])
+                else:
+                    workflow_steps_list = step.get("workflow", [])
                 # Recursively logic for nested workflows
-                # print(step.get("workflow", []))
-                workflow_steps = validate_and_nest_control_flow(step.get("workflow", []))
+                workflow_steps = validate_and_nest_control_flow(workflow_steps_list)
                 if workflow_steps:
                     if self.socketio:
                         self.socketio.emit('log', {'message': f"Entering workflow: {action} with args: {step.get('args', {})}"})
@@ -907,61 +911,86 @@ class ScriptRunner:
                                                        section_name=section_name)
                             self.pause_event.wait()
 
-
-
-    async def _execute_if_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index, section_name):
+    async def _execute_if_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index, section_name, arg_contexts: List[Dict[str, Any]] = None):
         """Execute if/else block for multiple samples."""
         # Evaluate condition for each sample
-        for context in contexts:
-            condition = self._evaluate_condition(step["args"]["statement"], context)
+        if arg_contexts:
+            iterable = zip(contexts, arg_contexts)
+        else:
+            iterable = zip(contexts, [None] * len(contexts))
+
+        for context, arg_context in iterable:
+            # Prioritize arg_context for condition evaluation if it exists? 
+            # Actually _evaluate_condition usually takes a single context.
+            # If we are inside a workflow, the 'statement' might refer to passed args.
+            condition = self._evaluate_condition(step["args"]["statement"], arg_context if arg_context else context)
             if self.logger:
                 self.logger.info(f"Evaluating if {step['args']['statement']}: {condition}")
+
+            _arg_contexts = [arg_context] if arg_context else None
             if condition:
-                await self._execute_steps_batched(step["if_block"], [context], phase_id=phase_id, section_name=section_name)
+                await self._execute_steps_batched(step["if_block"], [context], arg_contexts=_arg_contexts, phase_id=phase_id, section_name=section_name)
             else:
-                await self._execute_steps_batched(step["else_block"], [context], phase_id=phase_id, section_name=section_name)
+                await self._execute_steps_batched(step["else_block"], [context], arg_contexts=_arg_contexts, phase_id=phase_id, section_name=section_name)
 
-
-    async def _execute_repeat_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index, section_name):
+    async def _execute_repeat_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index, section_name, arg_contexts: List[Dict[str, Any]] = None):
         """Execute repeat block for multiple samples."""
-        for context in contexts:
-            times = step["args"].get("statement", 1)
+        if arg_contexts:
+            iterable = zip(contexts, arg_contexts)
+        else:
+            iterable = zip(contexts, [None] * len(contexts))
 
+        for context, arg_context in iterable:
+            times = step["args"].get("statement", 1)
+            
+            # Resolve times from correct context
+            eval_context = arg_context if arg_context else context
             if isinstance(times, str) and times.startswith("#"):
-                times = context.get(times[1:])
+                times = eval_context.get(times[1:])
             # print("repeat times", times, type(times))
             for i in range(times):
                 # Add repeat index to all contexts
                 # for context in contexts:
                 #     context["repeat_index"] = i
 
-                await self._execute_steps_batched(step["repeat_block"], [context], phase_id=phase_id, section_name=section_name)
+                await self._execute_steps_batched(step["repeat_block"], [context], arg_contexts=[arg_context] if arg_context else None, phase_id=phase_id, section_name=section_name)
 
-
-    async def _execute_while_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index, section_name):
+    async def _execute_while_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index, section_name, arg_contexts: List[Dict[str, Any]] = None):
         """Execute while block for multiple samples."""
         max_iterations = step["args"].get("max_iterations", 1000)
-        active_contexts = contexts.copy()
+        
+        # need to track active contexts and their corresponding arg_contexts
+        if arg_contexts:
+            active_pairs = list(zip(contexts, arg_contexts))
+        else:
+            active_pairs = [(ctx, None) for ctx in contexts]
+            
         iteration = 0
 
-        while active_contexts and self.stop_current_event.is_set() is False:
+        while active_pairs and self.stop_current_event.is_set() is False:
             # Filter contexts that still meet the condition
-            still_active = []
+            still_active_pairs = []
 
-            for context in active_contexts:
-                condition = self._evaluate_condition(step["args"]["statement"], context)
+            for context, arg_context in active_pairs:
+                eval_context = arg_context if arg_context else context
+                condition = self._evaluate_condition(step["args"]["statement"], eval_context)
                 if self.logger:
                     self.logger.info(f"Evaluating while {step['args']['statement']}: {condition}")
                 if condition:
                     context["while_index"] = iteration
-                    still_active.append(context)
+                    if arg_context:
+                        arg_context["while_index"] = iteration
+                    still_active_pairs.append((context, arg_context))
 
-            if not still_active:
+            if not still_active_pairs:
                 break
 
-            # Execute for contexts that are still active
-            await self._execute_steps_batched(step["while_block"], still_active, phase_id=phase_id, section_name=section_name)
-            active_contexts = still_active
+            # Execute for pairs (contexts) that are still active
+            current_contexts = [p[0] for p in still_active_pairs]
+            current_arg_contexts = [p[1] for p in still_active_pairs] if arg_contexts else None
+            
+            await self._execute_steps_batched(step["while_block"], current_contexts, arg_contexts=current_arg_contexts, phase_id=phase_id, section_name=section_name)
+            active_pairs = still_active_pairs
             iteration += 1
 
         # if iteration >= max_iterations:
@@ -1235,16 +1264,23 @@ class ScriptRunner:
         return result
 
     async def _execute_variable_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index,
-                                        section_name):
+                                        section_name, arg_contexts: List[Dict[str, Any]] = None):
         """Execute variable assignment for multiple samples."""
-        var_name = step["action"]  # "vial" in your example
+        var_name = step["action"]
         var_value = step["args"]["statement"]
         arg_type = step["arg_types"]["statement"]
 
-        for context in contexts:
+        if arg_contexts:
+            iterable = zip(contexts, arg_contexts)
+        else:
+            iterable = zip(contexts, [None] * len(contexts))
+
+        for context, arg_context in iterable:
             if step["instrument"] == "input":
                 value = self.prompt_user(var_value, arg_type)
                 context[var_name] = value
+                if arg_context is not None:
+                    arg_context[var_name] = value
                 continue
 
             # Substitute any variable references in the value
@@ -1252,7 +1288,8 @@ class ScriptRunner:
                 substituted_value = var_value
 
                 # Replace all variable references (with or without #) with their values
-                for key, val in context.items():
+                eval_context = arg_context if arg_context else context
+                for key, val in eval_context.items():
                     # Handle both #variable and variable (without #)
                     substituted_value = substituted_value.replace(f"#{key}", str(val))
                     # For expressions like "vial+10", replace variable name directly
@@ -1266,38 +1303,72 @@ class ScriptRunner:
                         # Evaluate as expression (e.g., "10.0+10" becomes 20.0)
                         result = eval(substituted_value, {"__builtins__": {}}, {})
                         context[var_name] = float(result)
+                        if arg_context is not None:
+                            arg_context[var_name] = float(result)
                     except:
                         # If eval fails, try direct conversion
                         context[var_name] = float(substituted_value)
+                        if arg_context is not None:
+                            arg_context[var_name] = float(substituted_value)
 
                 elif arg_type == "int":
                     try:
                         result = eval(substituted_value, {"__builtins__": {}}, {})
                         context[var_name] = int(result)
+                        if arg_context is not None:
+                            arg_context[var_name] = int(result)
                     except:
                         context[var_name] = int(substituted_value)
+                        if arg_context is not None:
+                            arg_context[var_name] = int(substituted_value)
 
                 elif arg_type == "bool":
                     try:
                         # Evaluate boolean expressions
                         result = eval(substituted_value, {"__builtins__": {}}, {})
-                        context[var_name] = bool(result)
+                        val = bool(result)
                     except:
-                        context[var_name] = substituted_value.lower() in ['true', '1', 'yes']
+                        val = substituted_value.lower() in ['true', '1', 'yes']
+                    context[var_name] = val
+                    if arg_context is not None:
+                        arg_context[var_name] = val
 
-                else:  # "str"
+                elif arg_type == "list":
+                    try:
+                        result = eval(substituted_value, {"__builtins__": {}}, {})
+                        context[var_name] = result
+                        if arg_context is not None:
+                            arg_context[var_name] = result
+                    except:
+                        context[var_name] = substituted_value
+                        if arg_context is not None:
+                            arg_context[var_name] = substituted_value
+
+                elif arg_type == "string":
+                    context[var_name] = substituted_value
+                    if arg_context is not None:
+                        arg_context[var_name] = substituted_value
+
+                else:  # Default to string if no specific type or expression
                     # For strings, check if it looks like an expression
                     if any(char in substituted_value for char in ['+', '-', '*', '/', '>', '<', '=', '(', ')']):
                         try:
                             # Try to evaluate as expression
                             result = eval(substituted_value, {"__builtins__": {}}, context)
                             context[var_name] = result
+                            if arg_context is not None:
+                                arg_context[var_name] = result
                         except:
                             # If eval fails, store as string
                             context[var_name] = substituted_value
+                            if arg_context is not None:
+                                arg_context[var_name] = substituted_value
                     else:
                         context[var_name] = substituted_value
+                        if arg_context is not None:
+                            arg_context[var_name] = substituted_value
             else:
                 # Direct numeric or boolean value
                 context[var_name] = var_value
-
+                if arg_context is not None:
+                    arg_context[var_name] = var_value

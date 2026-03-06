@@ -724,14 +724,13 @@ class Script(db.Model):
                     category = "workflow" # collapsible
                     
                     # Recursively parse children
-                    # Prioritize embedded workflow steps
-                    children_steps = action.get("workflow", [])
-                    if not children_steps:
-                        # Fallback to DB lookup if needed, though likely compilation ensures it's there
-                        # but safe to check
-                        wf_script = Script.query.filter_by(name=act).first()
-                        if wf_script:
-                            children_steps = wf_script.script_dict.get('script', [])
+                    # Prioritize latest DB version for UI preview
+                    wf_script = Script.query.filter_by(name=act).first()
+                    if wf_script:
+                        children_steps = wf_script.script_dict.get('script', [])
+                    else:
+                        # Fallback to embedded workflow steps
+                        children_steps = action.get("workflow", [])
 
                     children_nodes = parse_block(children_steps, current_id, indent + 1)
                     
@@ -1145,16 +1144,15 @@ class Script(db.Model):
 
         if instrument == 'workflows':
             # This is a call to another registered workflow
-            # Check for embedded steps first, otherwise fetch
-            if workflow_steps is not None:
-                # Use embedded steps (already a list of dicts)
+            # Prioritize fetching the latest version from the database
+            workflow_script = Script.query.get(action)
+            if workflow_script:
+                script_actions = workflow_script.script_dict.get('script', [])
+            elif workflow_steps is not None:
+                # Fallback to embedded steps if not found in DB
                 script_actions = workflow_steps
             else:
-                 workflow_script = Script.query.get(action)
-                 if workflow_script:
-                     script_actions = workflow_script.script_dict.get('script', [])
-                 else:
-                     script_actions = []
+                script_actions = []
 
             if script_actions:
                 output_code = self.indent(indent_unit) + f"# Begin Workflow: {action}"
