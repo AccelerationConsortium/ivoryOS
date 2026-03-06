@@ -76,13 +76,15 @@ def experiment_run():
     try:
         # Handle both string and dict exec_string
         if isinstance(exec_string, dict):
-            import_str = script.get_required_imports()
-            if import_str:
-                exec(import_str, globals())
+            # import_str = script.get_required_imports()
+            # if import_str:
+            #     compile(import_str, '<imports>', 'exec')
             for key, func_str in exec_string.items():
-                exec(func_str)
+                compile(func_str, f'<function_{key}>', 'exec')
 
         else:
+            if isinstance(exec_string, str):
+                compile(exec_string, '<script>', 'exec')
             # Handle string case - you might need to adjust this based on your needs
             line_collection = {}
     except Exception as e:
