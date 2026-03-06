@@ -79,6 +79,22 @@ From PyPI:
 pip install ivoryos
 ```
 
+### 32-bit Windows Installation
+If you are deploying IvoryOS to a 32-bit Windows environment (common for older hardware compatibility), `pip` may not find pre-compiled 32-bit binaries for certain modern packages (like `greenlet`, `pandas`, `numpy`) on PyPI. 
+
+You can use a package manager like [Miniconda](https://docs.conda.io/en/latest/miniconda.html) / Anaconda to easily install pre-compiled 32-bit dependencies, or acquire compatible 32-bit wheels manually. For example, in a 32-bit conda environment you could run:
+
+```bash
+# 1. Install older versions of pandas and numpy that still have 32-bit wheels on PyPI
+pip install "pandas<2.0" "numpy<2.0" "Flask-Session<0.7"
+
+# 2. Install greenlet from conda-forge (32-bit PyPI wheels are no longer available)
+conda install -c conda-forge greenlet -y
+
+# 3. Finally, install IvoryOS
+pip install ivoryos
+```
+
 [//]: # (From source:)
 
 [//]: # (```bash)
