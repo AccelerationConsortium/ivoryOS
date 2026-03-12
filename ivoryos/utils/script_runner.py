@@ -367,13 +367,18 @@ class ScriptRunner:
         if not self.execution_queue:
             self.lock.release()
             return "empty"
-            
-        # Get next task
-        task = self.execution_queue.pop(0)
-        self.current_task = task # Store current task details
+
         # todo should check if stop event was set and then check with user to make sure
         #  they want to continue with the queue or abort or pause the queue? in case they need to
         #  manually fix something before continuing
+        if self.stop_current_event.is_set() or self.stop_pending_event.is_set():
+            # todo what to do here?
+            print('todo something? have higher level queue pause/resume button and toggle that?')
+            input('press enter to continue queue')
+
+        # Get next task
+        task = self.execution_queue.pop(0)
+        self.current_task = task # Store current task details
         self.reset_stop_event()
 
         thread = threading.Thread(
@@ -1062,8 +1067,9 @@ class ScriptRunner:
             db.session.commit() # Commit early to release lock
             
             try:
-                # ensure stop pending event is not set before executing action
-                if self.stop_pending_event.is_set():
+                # ensure stop current action is not set before executing action, but ensures it should stop after
+                # the iteration is done that the action will continue
+                if self.stop_current_event.is_set():
                     # if self.logger:
                         # self.logger.info(f'Stopping execution before executing action {instrument}.{action}')
                     return context
