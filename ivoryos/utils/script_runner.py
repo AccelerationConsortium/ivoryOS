@@ -832,11 +832,11 @@ class ScriptRunner:
             self.last_iteration = kwargs['iteration']
         if 'total' in kwargs:
             self.last_total = kwargs['total']
-            
+
         if progress == 100 or progress == 0:
             self.last_iteration = None
             self.last_total = None
-            
+
         payload = {'progress': progress}
         payload.update(kwargs)
         self.socketio.emit('progress', payload)
