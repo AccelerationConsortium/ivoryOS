@@ -421,6 +421,21 @@ def get_queue_task_details(task_id):
     return jsonify({"error": "Task not found"}), 404
 
 
+@execute.route("/executions/queue/task/rename", methods=["POST"])
+@login_required
+def rename_queue_task():
+    """
+    Rename a task in the queue
+    """
+    try:
+        data = request.get_json()
+        task_id = data.get("id")
+        new_name = data.get("new_name")
+        if runner.update_task_name(task_id, new_name):
+            return jsonify({"status": "ok"})
+        return jsonify({"error": "Failed to rename task"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @execute.route("/executions/status", methods=["GET"])
