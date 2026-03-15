@@ -3,6 +3,9 @@
   <div class="d-flex justify-content-between align-items-center flex-shrink-0">
     <h5>Progress：<span id="iteration-display" class="ms-2 fs-6 text-muted"></span></h5>
     <div class="d-flex gap-2 ms-auto">
+      <button id="pause-resume-queue" class="btn btn-secondary text-white" title="Pause Queue">
+        <i class="bi bi-pause-btn"></i>
+      </button>
       <button id="view-current-config" class="btn btn-secondary text-white" title="View Current Run Configuration">
         <i class="bi bi-info-circle"></i>
       </button>
@@ -274,11 +277,11 @@
   function cancelEditTaskName(id, originalName) {
       document.getElementById('task-name-display-' + id).classList.remove('d-none');
       document.getElementById('edit-task-name-btn-' + id).classList.remove('d-none');
-      
+
       const input = document.getElementById('task-name-input-' + id);
       input.classList.add('d-none');
       input.value = originalName; // reset to original
-      
+
       document.getElementById('save-task-name-btn-' + id).classList.add('d-none');
       document.getElementById('cancel-task-name-btn-' + id).classList.add('d-none');
   }
@@ -299,7 +302,7 @@
             document.getElementById('task-name-input-' + id).value = newName;
             // update original name parameter dynamically
             document.getElementById('cancel-task-name-btn-' + id).setAttribute("onclick", `cancelEditTaskName(${id}, '${newName.replace(/'/g, "\\'")}')`);
-            
+
             cancelEditTaskName(id, newName); // return to non-edit mode using the new name
             updateQueue(); // Refresh background queue rendering
         } else {
@@ -326,16 +329,16 @@
   function saveTaskName(id) {
       const newName = document.getElementById('task-name-input-' + id).value.trim();
       const oldName = document.getElementById('task-name-display-' + id).innerText;
-      
+
       if (!newName || newName === oldName) {
           cancelEditTaskName(id, oldName); // Do nothing if blank or unchanged
           return;
       }
-      
+
       const saveBtn = document.getElementById('save-task-name-btn-' + id);
       saveBtn.disabled = true;
       saveBtn.innerText = "Saving...";
-      
+
       renameTask(id, newName);
   }
 
@@ -453,7 +456,7 @@
     window.queueInterval = setInterval(updateQueue, 2000);
   }
   updateQueue(); // Initial call
-  
+
   // Current Run Configuration Logic
   document.getElementById('view-current-config').addEventListener('click', function() {
     fetch("{{ url_for('execute.get_current_task_details') }}")
