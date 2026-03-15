@@ -9,6 +9,7 @@ runner = ScriptRunner()
 def abort_pending():
     runner.abort_pending()
     socketio.emit('log', {'message': "aborted pending iterations, move on to cleanup"})
+    socketio.emit('queue_pause_status', {'paused': True})
 
 def abort_cleanup():
     runner.abort_cleanup()
@@ -18,6 +19,7 @@ def abort_cleanup():
 def abort_current():
     runner.stop_execution()
     socketio.emit('log', {'message': "stopped next task"})
+    socketio.emit('queue_pause_status', {'paused': True})
 
 def pause():
     runner.retry = False
@@ -47,6 +49,16 @@ def handle_abort_current():
 def handle_pause():
     pause()
 
+def pause_queue():
+    msg = runner.toggle_queue_pause()
+    socketio.emit('log', {'message': msg})
+    socketio.emit('queue_pause_status', {'paused': runner.queue_paused})
+    return msg
+
+@socketio.on('pause_queue')
+def handle_pause_queue():
+    pause_queue()
+
 @socketio.on('retry')
 def handle_retry():
     retry()
@@ -71,3 +83,6 @@ def handle_connect():
         socketio.emit('progress', {'progress': runner.last_progress})
         if runner.last_execution_section:
             socketio.emit('execution', {'section': runner.last_execution_section}) 
+            
+    # Emit queue pause status
+    socketio.emit('queue_pause_status', {'paused': runner.queue_paused})
