@@ -105,6 +105,26 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    // Handle Queue Pause/Resume Button
+    document.getElementById('pause-resume-queue').addEventListener('click', function () {
+        socket.emit('pause_queue');
+        console.log('Queue Pause/Resume is toggled.');
+    });
+
+    socket.on('queue_pause_status', function(data) {
+        var button = document.getElementById('pause-resume-queue');
+        var icon = button.querySelector("i");
+        if (data.paused) {
+            icon.classList.remove("bi-pause-btn");
+            icon.classList.add("bi-play-btn");
+            button.setAttribute("title", "Resume Queue");
+        } else {
+            icon.classList.remove("bi-play-btn");
+            icon.classList.add("bi-pause-btn");
+            button.setAttribute("title", "Pause Queue");
+        }
+    });
+
     // Handle Modal Buttons
     document.getElementById('continue-btn').addEventListener('click', function () {
         socket.emit('pause');  // Resume execution
