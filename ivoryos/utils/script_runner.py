@@ -59,6 +59,7 @@ class ScriptRunner:
         self.waiting_for_input = False
         self.input_value = None
         self.current_task = None
+        self.queue_paused = False
 
     def handle_input_submission(self, value):
         """Resume execution with user input"""
@@ -83,6 +84,15 @@ class ScriptRunner:
     def pause_status(self):
         """Toggles between pausing and resuming the script"""
         return self.paused
+
+    def toggle_queue_pause(self):
+        """Toggles the queue execution pause state"""
+        self.queue_paused = not self.queue_paused
+        if not self.queue_paused and not self.lock.locked():
+            # If we unpaused and the runner isn't busy, process the queue
+            self.reset_stop_event()
+            self._process_queue()
+        return "Queue Paused" if self.queue_paused else "Queue Resumed"
 
     def reset_stop_event(self):
         """Resets the stop event"""
@@ -233,6 +243,7 @@ class ScriptRunner:
     def abort_pending(self):
         """Abort the pending iteration after the current is finished"""
         self.stop_pending_event.set()
+        self.queue_paused = True
         self.logger.info("Abort pending tasks")
 
     def abort_cleanup(self):
@@ -244,6 +255,7 @@ class ScriptRunner:
         """Force stop everything, including ongoing tasks."""
         self.logger.info("Stop execution")
         self.stop_current_event.set()
+        self.queue_paused = True
         self.abort_pending()
         self.abort_cleanup()
         if not self.pause_event.is_set():
@@ -308,13 +320,11 @@ class ScriptRunner:
             self.lock.release()
             return "empty"
 
-        # todo should check if stop event was set and then check with user to make sure
-        #  they want to continue with the queue or abort or pause the queue? in case they need to
-        #  manually fix something before continuing
-        if self.stop_current_event.is_set() or self.stop_pending_event.is_set():
-            # todo what to do here?
-            print('todo something? have higher level queue pause/resume button and toggle that?')
-            input('press enter to continue queue')
+        # check if stop is set or stop pending is set or the queue is paused -> do not continue with the queue
+        if self.stop_current_event.is_set() or self.stop_pending_event.is_set() or self.queue_paused:
+            self.queue_paused = True # ensure queue gets paused on stop as well, to prevent auto-continuation
+            self.lock.release()
+            return "paused"
 
         # Get next task
         task = self.execution_queue.pop(0)
@@ -781,6 +791,7 @@ class ScriptRunner:
             return {
                 "is_running": self.lock.locked(),
                 "paused": self.paused,
+                "queue_paused": self.queue_paused,
                 "stop_pending": self.stop_pending_event.is_set(),
                 "stop_current": self.stop_current_event.is_set(),
             }
