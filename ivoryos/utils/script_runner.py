@@ -203,6 +203,7 @@ class ScriptRunner:
             if 0 <= task_index < len(self.execution_queue):
                 task = self.execution_queue[task_index]
                 details = {}
+                details["Task Name"] = task.get("display_name") or task.get("run_name", "untitled")
                 if task.get("repeat_count"):
                     details["Mode"] = "Repeated Execution"
                     details["Repeat Count"] = task.get("repeat_count")
@@ -241,6 +242,21 @@ class ScriptRunner:
             if self.logger:
                 self.logger.error(f"Error getting task details: {e}")
         return None
+
+    def update_task_name(self, task_index, new_name):
+        """Updates the display name of a task in the queue"""
+        try:
+            task_index = int(task_index)
+            if 0 <= task_index < len(self.execution_queue):
+                task = self.execution_queue[task_index]
+                task["display_name"] = new_name
+                if self.logger:
+                    self.logger.info(f"Updated task {task_index} name to: {new_name}")
+                return True
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error updating task name: {e}")
+        return False
 
     def remove_task(self, task_index):
         """Removes a task from the queue"""

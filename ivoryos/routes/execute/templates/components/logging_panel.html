@@ -166,7 +166,24 @@
       th.innerText = key;
       const td = document.createElement('td');
 
-      if (typeof value === 'object' && value !== null) {
+      if (key === 'Task Name') {
+          // Add edit button for name
+          td.innerHTML = `
+              <div class="d-flex align-items-center">
+                  <span id="task-name-display-${currentTaskId}" class="me-2">${value}</span>
+                  <input type="text" id="task-name-input-${currentTaskId}" class="form-control form-control-sm d-none w-auto" value="${value}">
+                  <button class="btn btn-sm btn-outline-primary ms-2" id="edit-task-name-btn-${currentTaskId}" onclick="toggleEditTaskName(${currentTaskId})">
+                      <i class="bi bi-pencil"></i>
+                  </button>
+                  <button class="btn btn-sm btn-success d-none ms-2" id="save-task-name-btn-${currentTaskId}" onclick="saveTaskName(${currentTaskId})">
+                      Save
+                  </button>
+                  <button class="btn btn-sm btn-secondary d-none ms-1" id="cancel-task-name-btn-${currentTaskId}" onclick="cancelEditTaskName(${currentTaskId}, '${value.replace(/'/g, "\\'")}')">
+                      Cancel
+                  </button>
+              </div>
+          `;
+      } else if (typeof value === 'object' && value !== null) {
         td.innerHTML = `<pre class="m-0" style="max-height: 200px; overflow: auto;">${JSON.stringify(value, null, 2)}</pre>`;
       } else {
         td.innerText = value;
@@ -254,6 +271,74 @@
       });
   }
 
+  function cancelEditTaskName(id, originalName) {
+      document.getElementById('task-name-display-' + id).classList.remove('d-none');
+      document.getElementById('edit-task-name-btn-' + id).classList.remove('d-none');
+      
+      const input = document.getElementById('task-name-input-' + id);
+      input.classList.add('d-none');
+      input.value = originalName; // reset to original
+      
+      document.getElementById('save-task-name-btn-' + id).classList.add('d-none');
+      document.getElementById('cancel-task-name-btn-' + id).classList.add('d-none');
+  }
+
+  function renameTask(id, newName) {
+    fetch("{{ url_for('execute.rename_queue_task') }}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ id: id, new_name: newName })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'ok') {
+            // Update successful, refresh queue and update modal UI
+            document.getElementById('task-name-display-' + id).innerText = newName;
+            document.getElementById('task-name-input-' + id).value = newName;
+            // update original name parameter dynamically
+            document.getElementById('cancel-task-name-btn-' + id).setAttribute("onclick", `cancelEditTaskName(${id}, '${newName.replace(/'/g, "\\'")}')`);
+            
+            cancelEditTaskName(id, newName); // return to non-edit mode using the new name
+            updateQueue(); // Refresh background queue rendering
+        } else {
+          console.error('Rename failed:', data.error);
+          alert('Failed to rename task: ' + data.error);
+          cancelEditTaskName(id, document.getElementById('task-name-display-' + id).innerText);
+        }
+      })
+      .catch(error => {
+          console.error('Error renaming task:', error);
+          cancelEditTaskName(id, document.getElementById('task-name-display-' + id).innerText);
+      });
+  }
+
+  function toggleEditTaskName(id) {
+      document.getElementById('task-name-display-' + id).classList.add('d-none');
+      document.getElementById('edit-task-name-btn-' + id).classList.add('d-none');
+      document.getElementById('task-name-input-' + id).classList.remove('d-none');
+      document.getElementById('save-task-name-btn-' + id).classList.remove('d-none');
+      document.getElementById('cancel-task-name-btn-' + id).classList.remove('d-none');
+      document.getElementById('task-name-input-' + id).focus();
+  }
+
+  function saveTaskName(id) {
+      const newName = document.getElementById('task-name-input-' + id).value.trim();
+      const oldName = document.getElementById('task-name-display-' + id).innerText;
+      
+      if (!newName || newName === oldName) {
+          cancelEditTaskName(id, oldName); // Do nothing if blank or unchanged
+          return;
+      }
+      
+      const saveBtn = document.getElementById('save-task-name-btn-' + id);
+      saveBtn.disabled = true;
+      saveBtn.innerText = "Saving...";
+      
+      renameTask(id, newName);
+  }
+
   function updateQueue() {
     // Add timestamp to prevent caching
     const timestamp = new Date().getTime();
@@ -293,7 +378,12 @@
           item.appendChild(infoDiv);
 
           const controlsDiv = document.createElement('div');
+          // Important: sanitize the task.name for inline JS string
+          const safeName = task.name.replace(/'/g, "\\'");
           controlsDiv.innerHTML = `
+              <button class="btn btn-sm btn-outline-primary" onclick="promptRenameTask(${index}, '${safeName}')">
+                <i class="bi bi-pencil"></i>
+              </button>
               <button class="btn btn-sm btn-outline-secondary" onclick="reorderTask(${index}, 'up')" ${index === 0 ? 'disabled' : ''}>
                 <i class="bi bi-arrow-up"></i>
               </button>
@@ -348,6 +438,13 @@
         }
       })
       .catch(error => console.error('Error reordering task:', error));
+  }
+
+  function promptRenameTask(id, currentName) {
+      const newName = prompt("Enter a new name for this task:", currentName);
+      if (newName !== null && newName.trim() !== '' && newName.trim() !== currentName) {
+          renameTask(id, newName.trim());
+      }
   }
 
   // Poll queue status every 2 seconds
