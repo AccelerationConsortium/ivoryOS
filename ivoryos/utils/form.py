@@ -255,6 +255,8 @@ class FlexibleEnumField(StringField):
         """Return empty string for None values instead of 'None'"""
         if self.data is None:
             return ''
+        if isinstance(self.data, Enum):
+            return self.data.name
         return str(self.data)
 
     def process_formdata(self, valuelist):
