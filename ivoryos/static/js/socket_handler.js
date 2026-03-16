@@ -9,6 +9,8 @@ document.addEventListener("DOMContentLoaded", function () {
         
         if (data.iteration && data.total) {
             document.getElementById('iteration-display').innerText = `(Iteration ${data.iteration}/${data.total})`;
+        } else {
+            document.getElementById('iteration-display').innerText = 'Currently not running any tasks';
         }
 
         // Update the progress bar's width and appearance
@@ -26,8 +28,6 @@ document.addEventListener("DOMContentLoaded", function () {
             // Remove animation and set green color when 100% is reached
             progressBar.classList.remove('progress-bar-animated');
             progressBar.classList.add('bg-success'); // Bootstrap class for green color
-
-            document.getElementById('iteration-display').innerText = 'Currently not running any tasks';
 
             // Clear all execution highlights
             document.querySelectorAll('pre code').forEach(el => el.style.backgroundColor = '');

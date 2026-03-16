@@ -53,6 +53,8 @@ class ScriptRunner:
         self.paused = False
         self.current_app = None
         self.last_progress = 0
+        self.last_iteration = None
+        self.last_total = None
         self.last_execution_section = None
         self.waiting_for_input = False
         self.input_value = None
@@ -739,6 +741,15 @@ class ScriptRunner:
 
     def _emit_progress(self, progress, **kwargs):
         self.last_progress = progress
+        if 'iteration' in kwargs:
+            self.last_iteration = kwargs['iteration']
+        if 'total' in kwargs:
+            self.last_total = kwargs['total']
+            
+        if progress == 100 or progress == 0:
+            self.last_iteration = None
+            self.last_total = None
+            
         payload = {'progress': progress}
         payload.update(kwargs)
         self.socketio.emit('progress', payload)
