@@ -115,6 +115,17 @@ class ProxyGenerator:
         """Generate the base _call method for API communication."""
         return '''    def _call(self, payload):
         """Make API call with error handling."""
+        def sanitize(obj):
+            if isinstance(obj, Enum):
+                return obj.value
+            elif isinstance(obj, list):
+                return [sanitize(item) for item in obj]
+            elif isinstance(obj, dict):
+                return {k: sanitize(v) for k, v in obj.items()}
+            return obj
+
+        payload = sanitize(payload)
+
         res = session.post(self.url, json=payload, allow_redirects=False)
             # Handle 302 redirect (likely auth issue)
         if res.status_code == 302:
