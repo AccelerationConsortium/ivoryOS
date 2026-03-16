@@ -122,7 +122,7 @@ class ProxyGenerator:
                 self._auth()
                 res = session.post(self.url, json=payload, allow_redirects=False)
             except Exception as e:
-                raise AuthenticationError(
+                raise Exception(
                     "Authentication failed during re-attempt. "
                     "Please check your credentials or connection."
                 ) from e
