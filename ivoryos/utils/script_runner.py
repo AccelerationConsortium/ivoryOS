@@ -73,12 +73,14 @@ class ScriptRunner:
         """Toggles between pausing and resuming the script"""
         self.paused = not self.paused
         if self.pause_event.is_set():
-            self.logger.info('Pause script')
+            if self.logger:
+                self.logger.info('Pause script')
             self.pause_event.clear()  # Pause the script
             return "Paused"
         else:
             self.pause_event.set()  # Resume the script
-            self.logger.info('Resume script')
+            if self.logger:
+                self.logger.info('Resume script')
             return "Resumed"
 
     def pause_status(self):
@@ -740,7 +742,8 @@ class ScriptRunner:
                     parameters = optimizer.suggest(n=batch_size)
 
                     if parameters is None or len(parameters) == 0:
-                        self.logger.info("No parameters suggested by optimizer.")
+                        if self.logger:
+                            self.logger.info("No parameters suggested by optimizer.")
                         raise ValueError("No parameters suggested by optimizer.")
 
                     if self.logger:
@@ -1163,14 +1166,16 @@ class ScriptRunner:
                         arg_contexts[return_var] = result
 
             except HumanInterventionRequired as e:
-                self.logger.warning(f"Human intervention required: {e}")
+                if self.logger:
+                    self.logger.warning(f"Human intervention required: {e}")
                 self.socketio.emit('human_intervention', {'message': str(e)})
                 # Instead of auto-resume, explicitly stay paused until user action
                 # step.run_error = False
                 self.toggle_pause()
 
             except Exception as e:
-                self.logger.error(f"Error during script execution: {e}")
+                if self.logger:
+                    self.logger.error(f"Error during script execution: {e}")
                 self.socketio.emit('error', {'message': str(e)})
                 
                 # Update error status in a fresh transaction
