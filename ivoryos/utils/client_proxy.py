@@ -115,6 +115,17 @@ class ProxyGenerator:
         """Generate the base _call method for API communication."""
         return '''    def _call(self, payload):
         """Make API call with error handling."""
+        def sanitize(obj):
+            if isinstance(obj, Enum):
+                return obj.value
+            elif isinstance(obj, list):
+                return [sanitize(item) for item in obj]
+            elif isinstance(obj, dict):
+                return {k: sanitize(v) for k, v in obj.items()}
+            return obj
+
+        payload = sanitize(payload)
+
         res = session.post(self.url, json=payload, allow_redirects=False)
             # Handle 302 redirect (likely auth issue)
         if res.status_code == 302:
@@ -152,13 +163,18 @@ class ProxyGenerator:
         # Remove __main__. prefix from types
         str_signature = str_signature.replace("__main__.", "")
         
-        # Also clean up any other module prefixes for collected enums (optional, but good practice)
-        for enum_name in self.collected_enums:
-             # This regex matches "somemodule.EnumName" but not just "EnumName"
-             # It's a bit risky if EnumName is common, but sufficient for now.
-             # Actually, simple string replacement for module paths found in the enum might be better if we tracked them.
-             # For now, just handling __main__ is the primary request.
-             pass
+        # Also clean up any other module prefixes and correct default value repr for collected enums
+        for enum_name, enum_cls in self.collected_enums.items():
+            # Replace full module path with just the enum name, e.g. from "somemodule.EnumName" to just "EnumName"
+            # since Enums are re-defined at the top of the generated proxy
+            module_name = getattr(enum_cls, '__module__', '')
+            if module_name and module_name != '__main__':
+                str_signature = str_signature.replace(f"{module_name}.{enum_name}", enum_name)
+            
+            # Replace any default Enum repr (e.g. <Solvent.Methanol: 'Methanol'>) with code syntax (Solvent.Methanol) so
+            # there are no syntax errors in the generated client .py script
+            for member in enum_cls:
+                str_signature = str_signature.replace(repr(member), f"{enum_name}.{member.name}")
 
         docstring = details.get("docstring", "")
 
