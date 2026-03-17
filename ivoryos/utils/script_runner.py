@@ -53,6 +53,8 @@ class ScriptRunner:
         self.paused = False
         self.current_app = None
         self.last_progress = 0
+        self.last_iteration = None
+        self.last_total = None
         self.last_execution_section = None
         self.waiting_for_input = False
         self.input_value = None
@@ -561,7 +563,7 @@ class ScriptRunner:
                 if self.logger:
                     self.logger.info(f'Executing {i + 1} of {len(nested_list)} with kwargs = {kwargs_list}')
                 progress = ((i + 1) * 100 / len(nested_list)) - 0.1
-                self._emit_progress(progress)
+                self._emit_progress(progress, iteration=i + 1, total=len(nested_list))
 
                 phase = WorkflowPhase(
                     run_id=run_id,
@@ -647,7 +649,7 @@ class ScriptRunner:
             if self.logger:
                 self.logger.info(f'Executing {run_name} experiment: {i_progress + 1}/{int(repeat_count)}')
             progress = (i_progress + 1) * 100 / int(repeat_count) - 0.1
-            self._emit_progress(progress)
+            self._emit_progress(progress, iteration=i_progress + 1, total=int(repeat_count))
 
             # Optimizer for UI
             if optimizer:
@@ -737,9 +739,20 @@ class ScriptRunner:
         if self.logger:
             self.logger.info(f'Append to results saved to {file_path}')
 
-    def _emit_progress(self, progress):
+    def _emit_progress(self, progress, **kwargs):
         self.last_progress = progress
-        self.socketio.emit('progress', {'progress': progress})
+        if 'iteration' in kwargs:
+            self.last_iteration = kwargs['iteration']
+        if 'total' in kwargs:
+            self.last_total = kwargs['total']
+            
+        if progress == 100 or progress == 0:
+            self.last_iteration = None
+            self.last_total = None
+            
+        payload = {'progress': progress}
+        payload.update(kwargs)
+        self.socketio.emit('progress', payload)
 
     def safe_sleep(self, duration: float):
         interval = 1  # check every 1 second

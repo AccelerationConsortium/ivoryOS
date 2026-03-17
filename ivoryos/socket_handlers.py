@@ -68,6 +68,12 @@ def handle_connect():
 
     # Emit last known progress and last known execution section
     if 0 < runner.last_progress < 100:
-        socketio.emit('progress', {'progress': runner.last_progress})
+        payload = {'progress': runner.last_progress}
+        if getattr(runner, 'last_iteration', None) is not None:
+            payload['iteration'] = runner.last_iteration
+        if getattr(runner, 'last_total', None) is not None:
+            payload['total'] = runner.last_total
+        socketio.emit('progress', payload)
+        
         if runner.last_execution_section:
             socketio.emit('execution', {'section': runner.last_execution_section}) 
