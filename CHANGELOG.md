@@ -20,7 +20,7 @@
 
 ## 1.5.14 (February 8th, 2026)
 - !108 **[Bug]** fix nested workflow flow control (if/while) execution bug
-- !107 **[New]** save logs from data per run (credit to @Veronica)
+- !107 **[New]** save logs from data per run (credit to Veronica)
 
 ## 1.5.13 (February 5th, 2026)
 - !106 **[QoL]** workflow library display improvement + scroll bar in config window
@@ -32,7 +32,7 @@
 - !100 **[QoL]** list consolidation in workflow designer
 - !99 **[Bug]** code indent wrong when if statement used in nested workflow
 - !98 **[Bug]** inner workflow missing context value
-- !97 **[New]** Design Agent Feature (re-implementation of "Text-To-Code") (credit to @ChemistryTobias)
+- !97 **[New]** Design Agent Feature (re-implementation of "Text-To-Code") (credit to ChemistryTobias)
 - !96 **[QoL]** be able to scroll the code preview
 - !95 **[Bug]** workflow with space in name returns immediately instead of being run
 
@@ -91,14 +91,14 @@ Happy New Year from the IvoryOS team! 🎉
 - !67 **[QoL]** always save CSV regardless of output
 
 ## 1.5.3 (December 20th, 2025)
-- !66 **[New]** human-in-the-loop user input (@Yusuke)
-- !65 **[New]** additional user log (@Veronica)
+- !66 **[New]** human-in-the-loop user input (Yusuke)
+- !65 **[New]** additional user log (Veronica)
 - !64 **[New]** setter/getter support
 - !63 **[Bug]** deduplicate in Ax custom strategy
 - !62 **[QoL]** always-on progress bar
 
 ## 1.5.2 (December 15th, 2025)
-- **[Bug]** fix Ax step range input conversion bug (@Yusuke)
+- **[Bug]** fix Ax step range input conversion bug (Yusuke)
 
 ## 1.5.1 (December 14th, 2025)
 - **[Bug]** fix progress HTML
@@ -107,23 +107,23 @@ Happy New Year from the IvoryOS team! 🎉
 - **[New]** finalize the design as workflow step (beta)
 
 ## 1.4.16 (December 12th, 2025)
-- **[Bug]** config list input conversion fix (@Leo)
+- **[Bug]** config list input conversion fix (Leo)
 
 ## 1.4.15 (December 12th, 2025)
-- **[Bug]** list input type conversion fix (@Ryan, @Leo)
-- **[New]** introduce math variable (credit: @Veronica)
+- **[Bug]** list input type conversion fix (Ryan, Leo)
+- **[New]** introduce math variable (credit: Veronica)
 
 ## 1.4.14 (December 12th, 2025)
 - **[New]** add NIMO 2.0.5 append historical data
 - **[New]** additional parameters for NIMO
 
 ## 1.4.13 (December 11th, 2025)
-- **[Bug]** remove action return value save when `None` return type hinted (@Veronica)
-- **[New]** support `Optional[Enum]` type hinting (@Veronica)
+- **[Bug]** remove action return value save when `None` return type hinted (Veronica)
+- **[New]** support `Optional[Enum]` type hinting (Veronica)
 
 ## 1.4.12 (December 5th, 2025)
-- **[Bug]** temp fix for property in form loading (@Ryan, @Yusuke)
-- **[Bug]** JSON-safe data check (@Yusuke)
+- **[Bug]** temp fix for property in form loading (Ryan, Yusuke)
+- **[Bug]** JSON-safe data check (Yusuke)
 - **[Bug]** fix temp connection method call in script
 
 ## 1.4.11 (December 3rd, 2025)
@@ -135,30 +135,30 @@ Happy New Year from the IvoryOS team! 🎉
 - **[Bug]** fix Ax `num_trials=0` error
 
 ## 1.4.9 (November 27th, 2025)
-- **[Bug]** step order sorting bug (@everyone)
+- **[Bug]** step order sorting bug (everyone)
 
 ## 1.4.8 (November 25th, 2025)
-- **[New]** stop-pending no longer prompts to continue cleanup (@Veronica)
-- **[New]** description field in script — add a description when saving (@Veronica)
+- **[New]** stop-pending no longer prompts to continue cleanup (Veronica)
+- **[New]** description field in script — add a description when saving (Veronica)
 
 ## 1.4.7 (November 23rd, 2025)
-- **[QoL]** reorder parameter sweep entries (@Irene, @Maria, @Ekaterina)
-- **[New]** gracefully stop pending iterations, move to cleanup steps (@Veronica)
+- **[QoL]** reorder parameter sweep entries (Irene, Maria, Ekaterina)
+- **[New]** gracefully stop pending iterations, move to cleanup steps (Veronica)
 - **[Bug]** Ax optimizer: fix bug when using reserved words (e.g. "test", "yield", "product") as objective name
-- **[New]** Ax optimizer: allow failed trials — marked as Failed when missing objective(s) (@SDL2)
-- **[Bug]** fix handling of `None` values; empty string is now treated as `None` (@Veronica)
-- **[Bug]** fix type hint extraction when using `from __future__ import annotations` (@SDL2)
+- **[New]** Ax optimizer: allow failed trials — marked as Failed when missing objective(s) (SDL2)
+- **[Bug]** fix handling of `None` values; empty string is now treated as `None` (Veronica)
+- **[Bug]** fix type hint extraction when using `from __future__ import annotations` (SDL2)
 
 ## 1.4.6 (November 19th, 2025)
-- **[Bug]** fix error when leading number in str input (@Irene, @Maria, @Ekaterina)
+- **[Bug]** fix error when leading number in str input (Irene, Maria, Ekaterina)
 
 ## 1.4.5 (November 19th, 2025)
-- **[Bug]** proxy authentication failing message fix (@Maria Politi)
+- **[Bug]** proxy authentication failing message fix (Maria Politi)
 - **[Bug]** proxy class won't initialize if username/password combination is wrong
 - **[Bug]** faulty display of single/batch code
 
 ## 1.4.4 (November 16th, 2025)
-- **[Bug]** variable and function return bug (@Veronica Lai)
+- **[Bug]** variable and function return bug (Veronica Lai)
 - **[Bug]** handle Ax not accepting "test" as objective name
 - **[QoL]** move optimizer init to thread
 - Minor bug fixes
@@ -172,13 +172,13 @@ Minor user interface changes:
 - **[Bug]** fix stop button not working
 
 ## 1.4.2 (November 12th, 2025)
-- **[New]** add floating help icon (credit to @Veronica Lai)
-- **[Bug]** fix type conversion for args with no type hint (credit to @Maria Politi)
+- **[New]** add floating help icon (credit to Veronica Lai)
+- **[Bug]** fix type conversion for args with no type hint (credit to Maria Politi)
 
 ## 1.4.1 (November 5th, 2025)
 - **[New]** update optimizer API call
 - **[New]** PoC plot for NIMO optimizer
-- **[Bug]** minor bugs — device tab display error (credit to @Finn Bork)
+- **[Bug]** minor bugs — device tab display error (credit to Finn Bork)
 
 ## 1.4.0 (November 2nd, 2025)
 - **[New]** introduce batch execution, step-wise repeat per batch
@@ -197,8 +197,8 @@ Minor user interface changes:
 ## 1.3.5 (October 2nd, 2025)
 - **[Bug]** fix output list
 - **[New]** allow async
-- **[Bug]** variable not found in execution (credit: @Jenny Zhou)
-- **[New]** missing variable alert (credit: @Jenny Zhou)
+- **[Bug]** variable not found in execution (credit: Jenny Zhou)
+- **[New]** missing variable alert (credit: Jenny Zhou)
 - **[Bug]** minor fix in `__init__` and add optional installs
 
 ## 1.3.4 (September 18th, 2025)
@@ -219,7 +219,7 @@ Minor user interface changes:
 
 ## 1.3.1
 - **[Bug]** fix socketio in demos
-- **[Bug]** `time.sleep()` execution error in Python 3.7 (credit: @Maria Politi)
+- **[Bug]** `time.sleep()` execution error in Python 3.7 (credit: Maria Politi)
 
 ## 1.3.0
 - **[New]** refactor the workflow record db to support visualization (old workflow db backed up and dropped)
@@ -228,7 +228,7 @@ Minor user interface changes:
 
 ## 1.2.8
 - **[New]** add human intervention (pause) to flow control
-- **[New]** add `@block` decorator for Python functions
+- **[New]** add `block` decorator for Python functions
 - **[QoL]** move `run()` from `__init__.py` to `server.py`
 - **[QoL]** optimize drag/drop — no drag when selecting text
 - **[Bug]** fix type conversion error for "any" type
