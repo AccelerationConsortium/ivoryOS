@@ -434,12 +434,15 @@ class ScriptRunner:
             app_loggers = app_loggers if isinstance(app_loggers, list) else [app_loggers]
             gui_and_app_loggers = [gui_logger, *app_loggers]
             for logger in gui_and_app_loggers:
+                if not logger:
+                    continue
                 if isinstance(logger, str):
                     logger = logging.getLogger(logger)
                 try:
                     logger.addHandler(run_file_handler)
                 except Exception as e:
-                    self.logger.error(f"Failed to setup logger {logger}: {e}")
+                    if self.logger:
+                        self.logger.error(f"Failed to setup logger {logger}: {e}")
 
             try:
             # if True:
@@ -482,13 +485,18 @@ class ScriptRunner:
                 
                 # Close run-specific log handler
                 for logger in gui_and_app_loggers:
+                    if not logger:
+                        continue
                     if isinstance(logger, str):
                         logger = logging.getLogger(logger)
-                    logger.removeHandler(run_file_handler)
-                run_file_handler.close()
+                    try:
+                        logger.removeHandler(run_file_handler)
+                    except Exception:
+                        pass
+                    run_file_handler.close()
 
-                # Check for next task in queue
-                self._process_queue()
+                    # Check for next task in queue
+                    self._process_queue()
 
 
         with current_app.app_context():
