@@ -3,6 +3,7 @@
 
 # Flask and SQL
 bcrypt==4.0.1
+flask[async]
 Flask-Login
 Flask-Session
 Flask-SocketIO
