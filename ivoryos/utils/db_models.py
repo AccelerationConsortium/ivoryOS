@@ -956,7 +956,7 @@ class Script(db.Model):
                 body += self.indent(indent_unit) + f"return {return_str}"
         return body
 
-    def _process_action(self, indent_unit, action, index, stype, batch=False, mode="sample", snapshot=None):
+    def _process_action(self, indent_unit, action, index, stype, batch=False, mode="sample", snapshot=None, action_list=None):
         """
         Process each action within the script dictionary.
         """
@@ -970,7 +970,7 @@ class Script(db.Model):
         action_name = action['action']
         batch_action = action.get("batch_action", False)
 
-        next_action = self._get_next_action(stype, index)
+        next_action = self._get_next_action(stype, index, action_list)
         # print(args)
         if instrument == 'if':
             return self._process_if(indent_unit, action_name, statement, next_action)
@@ -1149,16 +1149,6 @@ class Script(db.Model):
             if workflow_steps is not None:
                 # Use embedded steps (already a list of dicts)
                 script_actions = workflow_steps
-                # Create a temporary Script object just to use its context/methods if needed? 
-                # Actually we can use 'self' but we need to ensure the methods called inside are generic.
-                # _process_action uses self.script_dict etc. 
-                # Wait, if we recurse, we need to be careful.
-                # Let's inspect logic below.
-                
-                # We need a context for the inner workflow?
-                # Using 'self' is fine for _process_action as long as it doesn't depend on self.script_dict for the *current* action being processed (it's passed in).
-                # But _process_action requires 'stype' which is usually 'script'.
-                pass # placeholder for logic logic
             else:
                  workflow_script = Script.query.get(action)
                  if workflow_script:
@@ -1188,7 +1178,7 @@ class Script(db.Model):
                 # Prerequisite: _process_action is stateless regarding the script content list.
                 # It seems so.
                 for i, inner_action in enumerate(script_actions):
-                     text, indent_unit = self._process_action(indent_unit, inner_action, i, 'script', batch, mode="sample")
+                     text, indent_unit = self._process_action(indent_unit, inner_action, i, 'script', batch, mode="sample", action_list=script_actions)
                      expanded_body += text
                 
                 output_code += expanded_body
@@ -1298,12 +1288,15 @@ class Script(db.Model):
              items.append(f"'{k}': {val_str}")
         return "{" + ", ".join(items) + "}"
 
-    def _get_next_action(self, stype, index):
+    def _get_next_action(self, stype, index, action_list=None):
         """
         Get the next action in the sequence if it exists.
+        Uses action_list if provided (e.g. for embedded workflow steps),
+        otherwise falls back to self.script_dict[stype].
         """
-        if index < (len(self.script_dict[stype]) - 1):
-            return self.script_dict[stype][index + 1]
+        lst = action_list if action_list is not None else self.script_dict[stype]
+        if index < (len(lst) - 1):
+            return lst[index + 1]
         return None
 
     def _is_variable(self, arg):
@@ -1319,11 +1312,8 @@ class Script(db.Model):
         for stype in self.stypes:
             for action in self.script_dict[stype]:
                 arg_types = action.get('arg_types', {})
-                if not arg_types: continue
-                # Handle direct arg_types dict or nested structures if any?
-                # arg_types is usually flat dict: {'arg': 'type'}
-                # Wait, earlier code showed arg_types could be string in some cases?
-                # But here we iterate items().
+                if not arg_types: 
+                    continue
                 if isinstance(arg_types, dict):
                     for key, type_str in arg_types.items():
                         enum_strs = []
