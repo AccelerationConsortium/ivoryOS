@@ -420,7 +420,16 @@ def get_queue_task_details(task_id):
         return jsonify(details)
     return jsonify({"error": "Task not found"}), 404
 
-
+@execute.route("/executions/current_task", methods=["GET"])
+@login_required
+def get_current_task_details():
+    """
+    Get full details for the currently running task
+    """
+    details = runner.get_current_task_details()
+    if details:
+        return details
+    return jsonify({"error": "No task currently running"}), 404
 
 
 @execute.route("/executions/status", methods=["GET"])
