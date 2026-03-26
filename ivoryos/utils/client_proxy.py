@@ -1,6 +1,7 @@
 import os
 import re
 import inspect
+from urllib.parse import urlparse
 from enum import Enum
 from typing import Dict, Set, Any, Optional, Type, Union
 
@@ -28,6 +29,9 @@ class ProxyGenerator:
             api_path_template: Template for API paths, with {class_name} placeholder
         """
         self.base_url = base_url.rstrip('/')
+        parsed_url = urlparse(self.base_url)
+        self.host = parsed_url.hostname
+        self.port = parsed_url.port
         self.api_path_template = api_path_template
         self.used_typing_symbols: Set[str] = set()
         self.collected_enums: Dict[str, Type[Enum]] = {}
@@ -89,11 +93,13 @@ class ProxyGenerator:
             String containing the complete class definition
         """
         capitalized_name = class_name.capitalize()
-        api_url = f"{self.base_url}/{self.api_path_template.format(class_name=class_name)}"
+        api_url = f"http://{{host}}:{{port}}/{self.api_path_template.format(class_name=class_name)}"
 
         class_template = f"class {capitalized_name}:\n"
         class_template += f'    """Auto-generated API client for {class_name} operations."""\n'
-        class_template += f'    url = "{api_url}"\n\n'
+        class_template += f'    global host\n'
+        class_template += f'    global port\n'
+        class_template += f'    url = f"{api_url}"\n\n'
 
         # Add the __init__ with auth
         class_template += self._generate_init()
@@ -216,6 +222,22 @@ class ProxyGenerator:
                     f.write(f"    {member.name} = {value}\n")
             f.write("\n")
 
+    def _write_host_and_port_setters(self, f):
+        """Write setter methods for host and port"""
+        f.write("# Global host and port\n")
+        f.write(f"host = '{self.host}'\n")
+        f.write(f"port = '{self.port}'\n\n")
+        f.write("# Host and port setters\n")
+        setters = """
+        def set_host(self, value):
+            global host
+            host = value
+    
+        def set_port(self, value):
+            global port
+            port = value\n\n\n"""
+        f.write(setters)
+
     def _extract_parameters(self, signature: Union[str, inspect.Signature]) -> list:
         """
         Extract parameter names from a function signature.
@@ -325,6 +347,9 @@ class ProxyGenerator:
             # Write Enum definitions
             self._write_enum_definitions(f)
 
+            # Write methods for setting host and port
+            self._write_host_and_port_setters(f)
+
             # Write class definitions
             for class_name, class_def in class_definitions.items():
                 f.write(class_def)
@@ -368,20 +393,21 @@ class ProxyGenerator:
 
 '''
 
-
     def _generate_auth(self):
         return f"""    def _auth(self):
+        global host
+        global port
         username = self.username or 'admin'
         password = self.password or 'admin'
-        res = session.get('{self.base_url}/ivoryos/', allow_redirects=False)
+        res = session.get(f'http://{{host}}:{{port}}/ivoryos/', allow_redirects=False)
         if res.status_code == 200:
             return
         else:
             session.post(
-                '{self.base_url}/ivoryos/auth/login',
+                f'http://{{host}}:{{port}}/ivoryos/auth/login',
                 data={{"username": username, "password": password}}
             )
-            res = session.get('{self.base_url}/ivoryos/', allow_redirects=False)
+            res = session.get(f'http://{{host}}:{{port}}/ivoryos/', allow_redirects=False)
             if res.status_code != 200:
                 raise Exception("Authentication failed")
                     
