@@ -26,7 +26,7 @@
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
-        <div class= "container">
+        <div class="container-fluid px-4">
             <a class="navbar-brand" href="{{ url_for('main.index') }}">
                 {% if current_user.is_authenticated %}
                 {% if current_user.settings.logo_mode == 'replace' and current_user.settings.logo_filename %}
@@ -76,9 +76,11 @@
                     </li>
                     {% if plugins %}
                         {% for plugin in plugins %}
+                            {% if plugin.type == 'tab' or plugin.type is undefined %}
                             <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for(plugin+'.main') }}">{{ plugin.capitalize() }}</a>
+                                <a class="nav-link" href="{{ url_for(plugin.name+'.main') }}">{{ plugin.name.capitalize() }}</a>
                             </li>
+                            {% endif %}
                         {% endfor %}
                     {% endif %}
                 </ul>
@@ -103,7 +105,26 @@
         </div>
     </nav>
 
-    <div class= "container">
+    {% set ns = namespace(left_plugin=none) %}
+    {% if plugins %}
+        {% for p in plugins %}
+            {% if p.type == 'left_panel' and not ns.left_plugin %}
+                {% set ns.left_plugin = p %}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+
+    {% if ns.left_plugin %}
+    <div class="row m-0" style="width: 100%; flex-wrap: nowrap;">
+        <div class="col-3 p-0 border-end bg-light" style="height: calc(100vh - 80px); position: sticky; top: 80px; align-self: start;">
+            <iframe src="{{ url_for(ns.left_plugin.name+'.widget') }}" width="100%" height="100%" frameBorder="0" style="display: block;"></iframe>
+        </div>
+        <div class="col-9 p-0" style="min-width: 0;">
+            <div class="container-fluid px-2">
+    {% else %}
+    <div class="container">
+    {% endif %}
+
         <div class="flash">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
@@ -127,7 +148,14 @@
             {% endwith %}
         </div>
         {% block body %}{% endblock %}
+
+    {% if ns.left_plugin %}
+            </div>
+        </div>
     </div>
+    {% else %}
+    </div>
+    {% endif %}
 
     <!-- Flash Message Modal -->
     <div class="modal fade" id="flashModal" tabindex="-1" aria-labelledby="flashModalLabel" aria-hidden="true">
