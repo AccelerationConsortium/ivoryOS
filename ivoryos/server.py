@@ -185,16 +185,21 @@ def load_plugins(blueprints: Union[list, Blueprint], app, socketio):
     :param blueprints: Union[list, Blueprint] list of Blueprint objects or a single Blueprint object
     :param app: Flask application instance
     :param socketio: Flask-SocketIO instance
-    :return: list of plugin names
+    :return: list of plugin dicts with name and type
     """
-    plugin_names = []
+    plugin_list = []
     if not isinstance(blueprints, list):
         blueprints = [blueprints]
     for blueprint in blueprints:
         # If the plugin has an `init_socketio()` function, pass socketio
         if hasattr(blueprint, 'init_socketio'):
             blueprint.init_socketio(socketio)
-        plugin_names.append(blueprint.name)
+        
+        plugin_info = {
+            "name": blueprint.name,
+            "type": getattr(blueprint, "plugin_type", "tab")
+        }
+        plugin_list.append(plugin_info)
         app.register_blueprint(blueprint, url_prefix=f"{url_prefix}/{blueprint.name}")
-    return plugin_names
+    return plugin_list
 
