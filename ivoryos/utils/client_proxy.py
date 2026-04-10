@@ -228,15 +228,12 @@ class ProxyGenerator:
         f.write(f"host = '{self.host}'\n")
         f.write(f"port = '{self.port}'\n\n")
         f.write("# Host and port setters\n")
-        setters = """
-        def set_host(self, value):
-            global host
-            host = value
-    
-        def set_port(self, value):
-            global port
-            port = value\n\n\n"""
-        f.write(setters)
+        f.write("def set_host(self, value):\n")
+        f.write("    global host\n")
+        f.write("    host = value\n\n")
+        f.write("def set_port(self, value):\n")
+        f.write("    global port\n")
+        f.write("    port = value\n\n\n")
 
     def _extract_parameters(self, signature: Union[str, inspect.Signature]) -> list:
         """
