@@ -639,8 +639,10 @@ def create_form_from_action(action: dict, script=None, design=True):
         setattr(DynamicForm, name, field)
 
     if design:
-        if "batch_action" in action:
-            batch_action = BooleanField(label='run once per batch', default=bool(action["batch_action"]))
+        # if "batch_action" in action:
+        # TODO for future, no need to have `or instrument in ['wait']`
+        if "batch_action" in action or instrument in ['wait']:
+            batch_action = BooleanField(label='run once per batch', default=bool(action.get("batch_action", False)))
             setattr(DynamicForm, 'batch_action', batch_action)
         return_value = StringField(label='Save value as', default=f"{save_as}", render_kw={"placeholder": "Optional"})
         setattr(DynamicForm, 'return', return_value)
@@ -682,7 +684,6 @@ def create_builtin_form(logic_type, script):
     """
     class BuiltinFunctionForm(FlaskForm):
         pass
-
     placeholder_text = {
         'wait': 'Enter second',
         'repeat': 'Enter an integer',
@@ -731,7 +732,6 @@ def create_builtin_form(logic_type, script):
         )
         setattr(BuiltinFunctionForm, "variable", variable_field)
         setattr(BuiltinFunctionForm, "variable_type", type_field)
-
     elif logic_type == "math":
         math_variable_field = VariableOrStringField(
             label="save_to",
@@ -741,6 +741,10 @@ def create_builtin_form(logic_type, script):
             script=script
         )
         setattr(BuiltinFunctionForm, "math_variable", math_variable_field)
+
+    if logic_type in ['wait']:
+        batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})
+        setattr(BuiltinFunctionForm, 'batch_action', batch_action)
 
     hidden_field = HiddenField(name=f'builtin_name', render_kw={"value": f'{logic_type}'})
     setattr(BuiltinFunctionForm, "builtin_name", hidden_field)

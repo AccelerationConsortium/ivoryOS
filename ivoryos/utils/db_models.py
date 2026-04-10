@@ -408,7 +408,7 @@ class Script(db.Model):
                                 pass
         return kwargs
 
-    def add_logic_action(self, logic_type: str, statement, insert_position=None):
+    def add_logic_action(self, logic_type: str, statement, insert_position=None, **kwargs):
         current_len = len(self.currently_editing_script)
         uid = uuid.uuid4().fields[-1]
         logic_dict = {
@@ -435,7 +435,8 @@ class Script(db.Model):
                 [
                     {"id": current_len + 1, "instrument": 'wait', "action": "wait",
                      "args": {"statement": 1 if statement == '' else statement},
-                     "return": '', "uuid": uid, "arg_types": {"statement": "float"}},
+                     "return": '', "uuid": uid, "arg_types": {"statement": "float"},
+                     "batch_action": kwargs.get("batch_action", False)},
                 ],
             "repeat":
                 [
@@ -1022,7 +1023,7 @@ class Script(db.Model):
         elif instrument == 'wait':
             if isinstance(statement, str) and statement.startswith("#"):
                 statement = statement[1:]
-            if batch:
+            if batch and not batch_action:
                 return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit+1)}time.sleep({statement})", indent_unit
             return f"{self.indent(indent_unit)}time.sleep({statement})", indent_unit
         elif instrument == 'repeat':
