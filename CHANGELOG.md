@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.17 (April 10th, 2026)
+- !132 **[New]** allow an always-on side plugin panel
+- !130 **[New]** be able to view current run configuration
+- !129 **[Bug]** fix undefined display name
+- !128 **[New]** be able to do wait in a batch action
+- !123 **[QoL]** be able to rename tasks in queue
+
 ## 1.5.16 (March 17th, 2026)
 - !127 **[Bug]** fix logger removeHandler error on workflow completion
 - !126 **[Bug]** fix compile error when if block has no actions (empty if block)
