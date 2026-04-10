@@ -147,6 +147,8 @@ def create_app(config_class=None):
                 session["demo_user_id"] = f"demo_{str(uuid.uuid4())[:8]}"
 
             class SessionDemoUser(AnonymousUserMixin):
+                settings = {}
+                
                 @property
                 def is_authenticated(self):
                     return True
