@@ -639,6 +639,8 @@ def create_form_from_action(action: dict, script=None, design=True):
         setattr(DynamicForm, name, field)
 
     if design:
+        # if "batch_action" in action:
+        # TODO for future, no need to have `or instrument in ['wait']`
         if "batch_action" in action or instrument in ['wait']:
             batch_action = BooleanField(label='run once per batch', default=bool(action.get("batch_action", False)))
             setattr(DynamicForm, 'batch_action', batch_action)
