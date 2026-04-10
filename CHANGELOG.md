@@ -1,5 +1,5 @@
 # Changelog
-## 1.5.17 (April 10th, 2026)
+## 1.5.18 (April 10th, 2026)
 - !133 **[Bug]** fix demo error
 
 ## 1.5.17 (April 10th, 2026)
