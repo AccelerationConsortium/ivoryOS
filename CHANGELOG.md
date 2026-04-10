@@ -1,4 +1,6 @@
 # Changelog
+## 1.5.17 (April 10th, 2026)
+- !133 **[Bug]** fix demo error
 
 ## 1.5.17 (April 10th, 2026)
 - !132 **[New]** allow an always-on side plugin panel
