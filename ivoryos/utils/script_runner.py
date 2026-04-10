@@ -152,6 +152,50 @@ class ScriptRunner:
 
         return queue_status
 
+    def get_current_task_details(self):
+        """Returns the full details for the currently executing task"""
+        try:
+            if self.current_task:
+                task = self.current_task
+                details = {}
+                if task.get("repeat_count"):
+                    details["Mode"] = "Repeated Execution"
+                    details["Repeat Count"] = task.get("repeat_count")
+
+                if task.get("config"):
+                    details["Mode"] = "Configuration List"
+                    details["Config Entries"] = len(task.get("config"))
+                    details["Full Config"] = task.get("config")
+
+                if task.get("batch_size"):
+                    details["Batch Size"] = task.get("batch_size")
+
+                if task.get("history"):
+                    details["History File"] = task.get("history")
+
+                # Optimization details
+                if task.get("optimizer_cls"):
+                    details["Mode"] = "Bayesian Optimization"
+                    details["Optimizer"] = task.get("optimizer_cls").__name__
+
+                if task.get("objectives"):
+                    details["Objectives"] = task.get("objectives")
+
+                if task.get("parameters"):
+                    details["Parameters"] = task.get("parameters")
+
+                if task.get("constraints"):
+                    details["Constraints"] = task.get("constraints")
+
+                if task.get("additional_params"):
+                    details["Additional Params"] = task.get("additional_params")
+
+                return details
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error getting current task details: {e}")
+        return None
+
     def get_task_details(self, task_index):
         """Returns the full details for a specific task"""
         try:

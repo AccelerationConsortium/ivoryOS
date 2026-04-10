@@ -3,6 +3,9 @@
   <div class="d-flex justify-content-between align-items-center flex-shrink-0">
     <h5>Progress：<span id="iteration-display" class="ms-2 fs-6 text-muted"></span></h5>
     <div class="d-flex gap-2 ms-auto">
+      <button id="view-current-config" class="btn btn-secondary text-white" title="View Current Run Configuration">
+        <i class="bi bi-info-circle"></i>
+      </button>
       <button id="pause-resume" class="btn btn-info text-white">
         {% if pause_status %}
         <i class="bi bi-play-circle"></i>
@@ -210,6 +213,10 @@
   function showQueueDetails(details, taskId) {
     currentTaskId = taskId;
     renderTaskDetails(details);
+    const modalHeader = document.querySelector('#queueDetailsModal .modal-title');
+    if (modalHeader) {
+        modalHeader.innerText = "Task Details";
+    }
     const modal = new bootstrap.Modal(document.getElementById('queueDetailsModal'));
     modal.show();
   }
@@ -349,4 +356,31 @@
     window.queueInterval = setInterval(updateQueue, 2000);
   }
   updateQueue(); // Initial call
+  
+  // Current Run Configuration Logic
+  document.getElementById('view-current-config').addEventListener('click', function() {
+    fetch("{{ url_for('execute.get_current_task_details') }}")
+      .then(response => {
+          if (!response.ok) {
+              return response.json().then(data => { throw new Error(data.error || "Failed to fetch current config"); });
+          }
+          return response.json();
+      })
+      .then(data => {
+          // Prepare the modal with 'data'
+          // Using existing renderTaskDetails function meant for queued tasks
+          const fullConfig = data["Full Config"] || null;
+          renderTaskDetails(data, fullConfig);
+          // Update modal title logic
+          const modalHeader = document.querySelector('#queueDetailsModal .modal-title');
+          if (modalHeader) {
+              modalHeader.innerText = "Current Run Details";
+          }
+          const modal = new bootstrap.Modal(document.getElementById('queueDetailsModal'));
+          modal.show();
+      })
+      .catch(error => {
+          alert('Error: ' + error.message);
+      });
+  });
 </script>
