@@ -483,6 +483,7 @@ def runner_status():
                     current_step = latest_step.as_dict()
                 status["workflow_status"] = {"workflow_info": workflow.as_dict(), "runner_status": runner.get_status()}
     status["current_task"] = current_step
+    status["queue_paused"] = runner.queue_paused
     return jsonify(status), 200
 
 
