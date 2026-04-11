@@ -53,6 +53,8 @@ class ScriptRunner:
         self.paused = False
         self.current_app = None
         self.last_progress = 0
+        self.last_iteration = None
+        self.last_total = None
         self.last_execution_section = None
         self.waiting_for_input = False
         self.input_value = None
@@ -449,12 +451,15 @@ class ScriptRunner:
             app_loggers = app_loggers if isinstance(app_loggers, list) else [app_loggers]
             gui_and_app_loggers = [gui_logger, *app_loggers]
             for logger in gui_and_app_loggers:
+                if not logger:
+                    continue
                 if isinstance(logger, str):
                     logger = logging.getLogger(logger)
                 try:
                     logger.addHandler(run_file_handler)
                 except Exception as e:
-                    self.logger.error(f"Failed to setup logger {logger}: {e}")
+                    if self.logger:
+                        self.logger.error(f"Failed to setup logger {logger}: {e}")
 
             try:
             # if True:
@@ -497,13 +502,18 @@ class ScriptRunner:
                 
                 # Close run-specific log handler
                 for logger in gui_and_app_loggers:
+                    if not logger:
+                        continue
                     if isinstance(logger, str):
                         logger = logging.getLogger(logger)
-                    logger.removeHandler(run_file_handler)
-                run_file_handler.close()
+                    try:
+                        logger.removeHandler(run_file_handler)
+                    except Exception:
+                        pass
+                    run_file_handler.close()
 
-                # Check for next task in queue
-                self._process_queue()
+                    # Check for next task in queue
+                    self._process_queue()
 
 
         with current_app.app_context():
@@ -578,7 +588,7 @@ class ScriptRunner:
                 if self.logger:
                     self.logger.info(f'Executing {i + 1} of {len(nested_list)} with kwargs = {kwargs_list}')
                 progress = ((i + 1) * 100 / len(nested_list)) - 0.1
-                self._emit_progress(progress)
+                self._emit_progress(progress, iteration=i + 1, total=len(nested_list))
 
                 phase = WorkflowPhase(
                     run_id=run_id,
@@ -664,7 +674,7 @@ class ScriptRunner:
             if self.logger:
                 self.logger.info(f'Executing {run_name} experiment: {i_progress + 1}/{int(repeat_count)}')
             progress = (i_progress + 1) * 100 / int(repeat_count) - 0.1
-            self._emit_progress(progress)
+            self._emit_progress(progress, iteration=i_progress + 1, total=int(repeat_count))
 
             # Optimizer for UI
             if optimizer:
@@ -755,9 +765,20 @@ class ScriptRunner:
         if self.logger:
             self.logger.info(f'Append to results saved to {file_path}')
 
-    def _emit_progress(self, progress):
+    def _emit_progress(self, progress, **kwargs):
         self.last_progress = progress
-        self.socketio.emit('progress', {'progress': progress})
+        if 'iteration' in kwargs:
+            self.last_iteration = kwargs['iteration']
+        if 'total' in kwargs:
+            self.last_total = kwargs['total']
+            
+        if progress == 100 or progress == 0:
+            self.last_iteration = None
+            self.last_total = None
+            
+        payload = {'progress': progress}
+        payload.update(kwargs)
+        self.socketio.emit('progress', payload)
 
     def safe_sleep(self, duration: float):
         interval = 1  # check every 1 second

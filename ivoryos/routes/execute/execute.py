@@ -154,6 +154,7 @@ def experiment_run():
     if request.method == "POST":
         # bo_args = None
         compiled = False
+        display_name = None
         if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
             payload_json = request.get_json()
             compiled = True

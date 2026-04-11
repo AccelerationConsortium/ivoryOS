@@ -6,6 +6,13 @@ document.addEventListener("DOMContentLoaded", function () {
     socket.on('progress', function (data) {
         var progress = data.progress;
         console.log(progress);
+        
+        if (data.iteration && data.total) {
+            document.getElementById('iteration-display').innerText = `(Iteration ${data.iteration}/${data.total})`;
+        } else {
+            document.getElementById('iteration-display').innerText = 'Currently not running any tasks';
+        }
+
         // Update the progress bar's width and appearance
         var progressBar = document.getElementById('progress-bar-inner');
         progressBar.style.width = progress + '%';
