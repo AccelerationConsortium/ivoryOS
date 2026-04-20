@@ -15,7 +15,7 @@ from ivoryos.routes.auth.auth import login_manager
 from ivoryos.routes.control.control import global_config
 from ivoryos.socket_handlers import socketio
 from ivoryos.utils import utils
-from ivoryos.utils.db_models import db, User
+from ivoryos.utils.db_models import db, User, Script
 
 
 url_prefix = os.getenv('URL_PREFIX', "/ivoryos")
@@ -39,6 +39,82 @@ def load_user(user_id):
     return db.session.get(User, user_id)
 
 
+def import_templates_from_dir(dir_path: str):
+    """
+    Import templates (JSON files) from a directory into the local database.
+    """
+    import json
+    
+    if not os.path.exists(dir_path):
+        print(f"Directory {dir_path} does not exist.")
+        return
+
+    # Check if we are already inside a Flask app context
+    from flask import current_app
+    app_ctx = None
+    if not current_app:
+        app = create_app()
+        app_ctx = app.app_context()
+        app_ctx.push()
+
+    try:
+        if sys.argv and sys.argv[0]:
+            deck_name = os.path.splitext(os.path.basename(sys.argv[0]))[0]
+        else:
+            deck_name = "main"
+
+        for filename in os.listdir(dir_path):
+            if not filename.endswith(".json"):
+                continue
+
+            file_path = os.path.join(dir_path, filename)
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON template in {filename}: {e}")
+                continue
+            except Exception as e:
+                print(f"Error reading template {filename}: {e}")
+                continue
+
+            name = data.get("name")
+            if not name:
+                name = os.path.splitext(filename)[0]
+                data["name"] = name
+                
+            data["deck"] = deck_name
+            if "author" not in data or not data["author"]:
+                data["author"] = "admin"
+
+            try:
+                exist_script = db.session.get(Script, name)
+                data.pop('_sa_instance_state', None)
+                
+                if exist_script:
+                    for k, v in data.items():
+                        if hasattr(exist_script, k):
+                            setattr(exist_script, k, v)
+                else:
+                    new_script = Script()
+                    for k, v in data.items():
+                        if hasattr(new_script, k):
+                            setattr(new_script, k, v)
+                    db.session.add(new_script)
+                
+                db.session.commit()
+                # print(f"Successfully imported template: {name}")
+            except Exception as db_err:
+                db.session.rollback()
+                print(f"Database error while importing {name} from {filename}: {db_err}")
+                
+    except Exception as e:
+        print(f"Error importing templates from {dir_path}: {e}")
+    finally:
+        if app_ctx:
+            app_ctx.pop()
+
+
 
 
 
@@ -51,6 +127,7 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
         exclude_names: list = [],
         notification_handler=None,
         optimizer_registry: dict = None,
+        templates_dir: str = "templates",
         ):
     """
     Start ivoryOS app server.
@@ -68,6 +145,7 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     :param blueprint_plugins: Union[list[Blueprint], Blueprint] custom Blueprint pages
     :param exclude_names: list[str] module names to exclude from parsing
     :param notification_handler: notification handler function
+    :param templates_dir: directory to import templates from, defaults to "templates"
     """
     # Prevent multiple IvoryOS instances from running simultaneously
     if os.environ.get("IVORYOS_ACTIVE"):
@@ -75,6 +153,15 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     os.environ["IVORYOS_ACTIVE"] = "1"
 
     app = create_app(config_class=config or get_config())  # Create app instance using factory function
+
+    if templates_dir:
+        resolved_templates_dir = templates_dir
+        if module and not os.path.isabs(templates_dir):
+            if module in sys.modules and hasattr(sys.modules[module], "__file__"):
+                caller_dir = os.path.dirname(os.path.abspath(sys.modules[module].__file__))
+                resolved_templates_dir = os.path.join(caller_dir, templates_dir)
+        with app.app_context():
+            import_templates_from_dir(resolved_templates_dir)
 
     # plugins = load_installed_plugins(app, socketio)
     plugins = []
