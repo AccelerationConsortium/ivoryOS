@@ -1,4 +1,9 @@
 # Changelog
+## 1.5.19 (April 20th, 2026)
+- !136 **[New]** only display available optimizers based on installed packages; auto-select optimizer when only one is available
+- !135 **[Bug]** stop pending now correctly completes the current iteration before stopping, and always runs the cleanup section
+- !134 **[New]** auto-import workflow templates from a directory on startup (`ivoryos.run(templates_dir=...)`)
+
 ## 1.5.18 (April 10th, 2026)
 - !133 **[Bug]** fix demo error
 
