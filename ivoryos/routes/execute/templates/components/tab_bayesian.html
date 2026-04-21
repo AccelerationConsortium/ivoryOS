@@ -90,9 +90,12 @@
                     </div>
                     <div class="card-body">
                         <select class="form-select form-select-sm" id="optimizer_type" name="optimizer_type">
+                            {% if optimizer_schema|length != 1 %}
                             <option value="">-- Select Strategy --</option>
+                            {% endif %}
                             {% for optimizer_name, optimizer_info in optimizer_schema.items() %}
                             <option value="{{ optimizer_name }}"
+                                {% if optimizer_schema|length == 1 %}selected{% endif %}
                                 data-multiobjective="{{ optimizer_info.multiple_objectives }}"
                                 data-parameter-types="{{ optimizer_info.parameter_types|join(',') }}"
                                 data-optimizer-config="{{ optimizer_info.optimizer_config|tojson|e }}">
@@ -665,6 +668,12 @@
 
         // Restore
         restoreState();
+
+        // If only one optimizer available, it's already pre-selected server-side;
+        // trigger info update immediately so config panels populate on load.
+        if (optimizerSelect && optimizerSelect.value) {
+            updateOptimizerInfo();
+        }
 
         // Window unload
         window.addEventListener('beforeunload', saveFormData);
