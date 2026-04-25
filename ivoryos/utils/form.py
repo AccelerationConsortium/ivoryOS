@@ -672,7 +672,7 @@ def create_form_from_action(action: dict, script=None, design=True):
 
 def create_all_builtin_forms(script):
     all_builtin_forms = {}
-    for logic_name in ['if', 'while', 'variable', 'input', 'wait', 'repeat', 'pause', 'math', 'comment']:
+    for logic_name in ['if', 'while', 'for', 'variable', 'input', 'wait', 'repeat', 'pause', 'math', 'comment']:
         # signature = info.get('signature', {})
         form_class = create_builtin_form(logic_name, script)
         all_builtin_forms[logic_name] = form_class()
@@ -690,11 +690,13 @@ def create_builtin_form(logic_type, script):
         'pause': 'Human Intervention Message',
         'comment': 'Enter comment to log',
         'input': 'Enter prompt message',
-        'math': 'Enter math expression, e.g. #x + 5 * (#y - 2)'
+        'math': 'Enter math expression, e.g. #x + 5 * (#y - 2)',
+        'for': 'Enter list or iterable'
     }.get(logic_type, 'Enter statement')
     description_text = {
         'variable': 'Your variable can be numbers, boolean (True or False) or text ("text")',
         'math': "Enter a math expression using #variables, numbers, or returned variables",
+        'for': "List or iterable to loop over",
     }.get(logic_type, '')
     field_class = {
         'wait': VariableOrFloatField,
@@ -741,6 +743,15 @@ def create_builtin_form(logic_type, script):
             script=script
         )
         setattr(BuiltinFunctionForm, "math_variable", math_variable_field)
+    elif logic_type == 'for':
+        variable_field = VariableOrStringField(
+            label='variable', 
+            validators=[InputRequired()],
+            description="Variable name for the loop item",
+            render_kw={"placeholder": "item"}, 
+            script=script
+        )
+        setattr(BuiltinFunctionForm, "variable", variable_field)
 
     if logic_type in ['wait']:
         batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})
@@ -864,6 +875,7 @@ def _action_button(action: dict, variables: dict):
         "repeat": "background-color: lightsteelblue",
         "if": "background-color: mistyrose",
         "while": "background-color: #a8b5a2",
+        "for": "background-color: lavender",
         "pause": "background-color: palegoldenrod",
         "comment": "background-color: lightgoldenrodyellow",
         "input": "background-color: lightcyan",
@@ -873,6 +885,11 @@ def _action_button(action: dict, variables: dict):
 
     if action['instrument'] in ['if', 'while', 'repeat']:
         text = f"{action['action']} {action['args'].get('statement', '')}"
+    elif action['instrument'] == 'for':
+        if action['action'] == 'for':
+            text = f"for {action['args'].get('variable', 'item')} in {action['args'].get('statement', '')}:"
+        else:
+            text = "endfor"
     elif action['instrument'] in ('variable', 'math_variable'):
         text = f"{action['action']} = {action['args'].get('statement')}"
     else:

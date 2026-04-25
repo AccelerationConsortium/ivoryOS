@@ -309,6 +309,8 @@ class Script(db.Model):
                 vars_dict[action["action"]] = action["arg_types"]["statement"]
             elif action["instrument"] == "math_variable":
                 vars_dict[action["action"]] = action["arg_types"]["statement"]
+            elif action["instrument"] == "for":
+                vars_dict[action["args"].get("variable", "item")] = "any"
             
             # Check for embedded workflow steps
             if "workflow" in action and isinstance(action["workflow"], list):
@@ -428,6 +430,14 @@ class Script(db.Model):
                      "args": {"statement": 'False' if statement == '' else statement}, "return": '', "uuid": uid,
                      "arg_types": {"statement": ''}},
                     {"id": current_len + 2, "instrument": 'while', "action": 'endwhile', "args": {}, "return": '',
+                     "uuid": uid},
+                ],
+            "for":
+                [
+                    {"id": current_len + 1, "instrument": 'for', "action": 'for',
+                     "args": {"statement": '[]' if statement == '' else statement, "variable": kwargs.get("variable", "item")},
+                     "return": '', "uuid": uid, "arg_types": {"statement": 'list', 'variable': 'str'}},
+                    {"id": current_len + 2, "instrument": 'for', "action": 'endfor', "args": {}, "return": '',
                      "uuid": uid},
                 ],
 
@@ -632,7 +642,7 @@ class Script(db.Model):
                     lines.append("    " * indent + f"else:")
                     indent += 1
 
-                elif act in ("endif", "endwhile"):
+                elif act in ("endif", "endwhile", "endfor"):
                     if stack:
                         stack.pop()
                     indent = max(indent - 1, 0)
@@ -643,6 +653,15 @@ class Script(db.Model):
                     lines.append("    " * indent + f"while {stmt}:")
                     indent += 1
                     stack.append("while")
+
+                elif act == "for":
+                    stmt = action["args"].get("statement", "[]")
+                    var_name = action["args"].get("variable", "item")
+                    if isinstance(stmt, str) and stmt.startswith("#"):
+                        stmt = stmt[1:]
+                    lines.append("    " * indent + f"for {var_name} in {stmt}:")
+                    indent += 1
+                    stack.append("for")
 
                 elif act == "wait":
                     stmt = action["args"].get("statement", "")
@@ -760,11 +779,17 @@ class Script(db.Model):
                         # else is tricky because it belongs to previous if, but structurally it's a sibling in the list? 
                         # actually in the JSON list, else is likely a sibling.
                          line_code = "    " * (indent -1) + f"else:" if indent > 0 else "else:"
-                    elif act in ("endif", "endwhile"):
+                    elif act in ("endif", "endwhile", "endfor"):
                          line_code = "    " * (indent -1) + f"# {act}" if indent > 0 else f"# {act}"
                     elif act == "while":
                         stmt = action["args"].get("statement", "")
                         line_code = "    " * indent + f"while {stmt}:"
+                    elif act == "for":
+                        stmt = action["args"].get("statement", "[]")
+                        var_name = action["args"].get("variable", "item")
+                        if isinstance(stmt, str) and stmt.startswith("#"):
+                             stmt = stmt[1:]
+                        line_code = "    " * indent + f"for {var_name} in {stmt}:"
                     elif act == "wait":
                         stmt = action["args"].get("statement", "")
                         if isinstance(stmt, str) and stmt.startswith("#"):
@@ -970,16 +995,19 @@ class Script(db.Model):
         save_data = action['return']
         action_name = action['action']
         batch_action = action.get("batch_action", False)
+        apply_batch = batch and (indent_unit == 1)
 
         next_action = self._get_next_action(stype, index, action_list)
         # print(args)
         if instrument == 'if':
-            return self._process_if(indent_unit, action_name, statement, next_action)
+            return self._process_if(indent_unit, action_name, statement, next_action, batch=batch)
         elif instrument == 'while':
-            return self._process_while(indent_unit, action_name, statement, next_action)
+            return self._process_while(indent_unit, action_name, statement, next_action, batch=batch)
+        elif instrument == 'for':
+            return self._process_for(indent_unit, action_name, action['args'], next_action, batch=batch)
         elif instrument == 'variable':
             clean_stmt = re.sub(r'#(\w+)', r'\1', statement) if isinstance(statement, str) else statement
-            if batch:
+            if apply_batch:
                 if isinstance(statement, str) and statement.startswith("#") and len(statement) > 1 and statement[1:].isalnum():
                     return '', indent_unit
                 return self.indent(indent_unit) + "for param in param_list:" + self.indent(
@@ -1013,7 +1041,7 @@ class Script(db.Model):
             else:
                 expr = input_call
                 
-            if batch:
+            if apply_batch:
                 return self.indent(indent_unit) + "for param in param_list:" + \
                        self.indent(indent_unit + 1) + f"param['{var_name}'] = {expr}", indent_unit
             else:
@@ -1022,11 +1050,11 @@ class Script(db.Model):
         elif instrument == 'wait':
             if isinstance(statement, str) and statement.startswith("#"):
                 statement = statement[1:]
-            if batch and not batch_action:
+            if apply_batch and not batch_action:
                 return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit+1)}time.sleep({statement})", indent_unit
             return f"{self.indent(indent_unit)}time.sleep({statement})", indent_unit
         elif instrument == 'repeat':
-            return self._process_repeat(indent_unit, action_name, statement, next_action)
+            return self._process_repeat(indent_unit, action_name, statement, next_action, batch=batch)
         elif instrument == 'comment':
             if isinstance(statement, str) and statement.startswith("#"):
                 statement = statement[1:]
@@ -1035,7 +1063,7 @@ class Script(db.Model):
                 # Use repr to safely escape string with quotes
                 out_stmt = f"print({repr(statement)})"
 
-            if batch:
+            if apply_batch:
                 return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit + 1)}{out_stmt}", indent_unit
             return f"{self.indent(indent_unit)}{out_stmt}", indent_unit
         elif instrument == 'pause':
@@ -1045,12 +1073,12 @@ class Script(db.Model):
             else:
                 # cases like "text with a backslash \"
                 statement = statement.encode('unicode_escape').decode()
-            if batch:
+            if apply_batch:
                 return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit+1)}pause('''{statement}''')", indent_unit
             return f"{self.indent(indent_unit)}pause('''{statement}''')", indent_unit
         elif instrument == "math_variable":
             math_expression = self._process_math(statement)
-            if batch:
+            if apply_batch:
                 return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit + 1)}param['{action_name}'] = {math_expression}", indent_unit
             else:
                 return f"{self.indent(indent_unit)}{action_name} = {math_expression}", indent_unit
@@ -1072,60 +1100,111 @@ class Script(db.Model):
             return args[1:]
         return args
 
-    def _process_if(self, indent_unit, action, args, next_action):
+    def _process_if(self, indent_unit, action, args, next_action, batch=False):
         """
-        Process 'if' and 'else' actions.
+        Process 'if', 'else', and 'endif' actions.
         """
         exec_string = ""
+        is_top_level = (indent_unit == 1)
+        
+        if isinstance(args, str) and args.startswith("#"):
+            args = args[1:]
         if action == 'if':
-            if isinstance(args, str) and args.startswith("#"):
-                args = args[1:]
+            if batch and is_top_level:
+                exec_string += self.indent(indent_unit) + "for param in param_list:"
+                indent_unit += 1
+                exec_string += self.indent(indent_unit) + f"{args} = param.get('{args}')"
             exec_string += self.indent(indent_unit) + f"if {args}:"
             indent_unit += 1
-            if next_action and next_action['instrument'] == 'if' and next_action['action'] == 'else':
+            if next_action and next_action['instrument'] == 'if':
                 exec_string += self.indent(indent_unit) + "pass"
-            # else:
-
         elif action == 'else':
-            indent_unit -= 1
-            exec_string += self.indent(indent_unit) + "else:"
-            indent_unit += 1
-            if next_action and next_action['instrument'] == 'if' and next_action['action'] == 'endif':
+            exec_string += self.indent(indent_unit - 1) + "else:"
+            if next_action and next_action['instrument'] == 'if':
                 exec_string += self.indent(indent_unit) + "pass"
-        else:
+        elif action == 'endif':
             indent_unit -= 1
+            if batch and indent_unit == 2:
+                indent_unit -= 1
         return exec_string, indent_unit
 
-    def _process_while(self, indent_unit, action, args, next_action):
+    def _process_while(self, indent_unit, action, args, next_action, batch=False):
         """
         Process 'while' and 'endwhile' actions.
         """
         exec_string = ""
+        is_top_level = (indent_unit == 1)
+        
         if action == 'while':
             if isinstance(args, str) and args.startswith("#"):
                 args = args[1:]
+            
+            if batch and is_top_level:
+                exec_string += self.indent(indent_unit) + "for param in param_list:"
+                indent_unit += 1
+                exec_string += self.indent(indent_unit) + f"{args} = param.get('{args}')"
+                
             exec_string += self.indent(indent_unit) + f"while {args}:"
             indent_unit += 1
             if next_action and next_action['instrument'] == 'while':
                 exec_string += self.indent(indent_unit) + "pass"
         elif action == 'endwhile':
             indent_unit -= 1
+            if batch and indent_unit == 2:
+                indent_unit -= 1
         return exec_string, indent_unit
 
-    def _process_repeat(self, indent_unit, action, args, next_action):
+    def _process_for(self, indent_unit, action, args, next_action, batch=False):
         """
-        Process 'while' and 'endwhile' actions.
+        Process 'for' and 'endfor' actions.
         """
         exec_string = ""
+        is_top_level = (indent_unit == 1)
+        
+        if action == 'for':
+            statement = args.get("statement", "[]") 
+            var_name = args.get("variable", "item")
+            if isinstance(statement, str) and statement.startswith("#"):
+                statement = statement[1:]
+                
+            if batch and is_top_level:
+                exec_string += self.indent(indent_unit) + "for param in param_list:"
+                indent_unit += 1
+                exec_string += self.indent(indent_unit) + f"{statement} = param.get('{statement}')"
+                
+            exec_string += self.indent(indent_unit) + f"for {var_name} in {statement}:"
+            indent_unit += 1
+            if next_action and next_action['instrument'] == 'for':
+                exec_string += self.indent(indent_unit) + "pass"
+        elif action == 'endfor':
+            indent_unit -= 1
+            if batch and indent_unit == 2:
+                indent_unit -= 1
+        return exec_string, indent_unit
+
+    def _process_repeat(self, indent_unit, action, args, next_action, batch=False):
+        """
+        Process 'repeat' and 'endrepeat' actions.
+        """
+        exec_string = ""
+        is_top_level = (indent_unit == 1)
+        
         if isinstance(args, str) and args.startswith("#"):
             args = args[1:]
         if action == 'repeat':
+            if batch and is_top_level:
+                exec_string += self.indent(indent_unit) + "for param in param_list:"
+                indent_unit += 1
+                exec_string += self.indent(indent_unit) + f"{args} = param.get('{args}')"
+                
             exec_string += self.indent(indent_unit) + f"for _ in range({args}):"
             indent_unit += 1
             if next_action and next_action['instrument'] == 'repeat':
                 exec_string += self.indent(indent_unit) + "pass"
         elif action == 'endrepeat':
             indent_unit -= 1
+            if batch and indent_unit == 2:
+                indent_unit -= 1
         return exec_string, indent_unit
 
     def _process_math(self, expr: str) -> str:

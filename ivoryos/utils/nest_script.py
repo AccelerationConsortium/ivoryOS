@@ -33,7 +33,7 @@ def validate_and_nest_control_flow(flat_steps):
         action = step["action"]
 
         # Check for misplaced closing/middle statements
-        if action in ["else", "endif", "endrepeat", "endwhile"]:
+        if action in ["else", "endif", "endrepeat", "endwhile", "endfor"]:
             raise ConditionalStructureError(
                 f"Found '{action}' at position {i} without matching opening statement. "
                 f"UUID: {step.get('uuid')}"
@@ -54,6 +54,12 @@ def validate_and_nest_control_flow(flat_steps):
         # Handle WHILE statements
         elif action == "while":
             nested_step, steps_consumed = process_while_block(flat_steps, i)
+            nested_steps.append(nested_step)
+            i += steps_consumed
+
+        # Handle FOR statements
+        elif action == "for":
+            nested_step, steps_consumed = process_for_block(flat_steps, i)
             nested_steps.append(nested_step)
             i += steps_consumed
 
@@ -146,6 +152,17 @@ def process_if_block(flat_steps, start_index):
                     f"Error in nested while starting at position {i}: {str(e)}"
                 )
 
+        elif current_action == "for":
+            # Nested for - process it
+            try:
+                nested_step, steps_consumed = process_for_block(flat_steps, i)
+                current_block.append(nested_step)
+                i += steps_consumed
+            except ConditionalStructureError as e:
+                raise ConditionalStructureError(
+                    f"Error in nested for starting at position {i}: {str(e)}"
+                )
+
         else:
             # Regular step
             current_block.append(current_step)
@@ -221,6 +238,17 @@ def process_repeat_block(flat_steps, start_index):
             except ConditionalStructureError as e:
                 raise ConditionalStructureError(
                     f"Error in nested while starting at position {i}: {str(e)}"
+                )
+
+        elif current_action == "for":
+            # Nested for - process it
+            try:
+                nested_step, steps_consumed = process_for_block(flat_steps, i)
+                repeat_block.append(nested_step)
+                i += steps_consumed
+            except ConditionalStructureError as e:
+                raise ConditionalStructureError(
+                    f"Error in nested for starting at position {i}: {str(e)}"
                 )
 
         else:
@@ -299,6 +327,17 @@ def process_while_block(flat_steps, start_index):
                     f"Error in nested while starting at position {i}: {str(e)}"
                 )
 
+        elif current_action == "for":
+            # Nested for - process it
+            try:
+                nested_step, steps_consumed = process_for_block(flat_steps, i)
+                while_block.append(nested_step)
+                i += steps_consumed
+            except ConditionalStructureError as e:
+                raise ConditionalStructureError(
+                    f"Error in nested for starting at position {i}: {str(e)}"
+                )
+
         else:
             # Regular step
             while_block.append(current_step)
@@ -310,5 +349,79 @@ def process_while_block(flat_steps, start_index):
         )
 
     step["while_block"] = while_block
+
+    return step, i - start_index
+
+
+def process_for_block(flat_steps, start_index):
+    """
+    Process a for/endfor block starting at start_index.
+
+    Returns:
+        tuple: (nested_step_with_block, total_steps_consumed)
+    """
+    step = flat_steps[start_index].copy()
+    for_uuid = step["uuid"]
+    for_block = []
+    found_endfor = False
+    i = start_index + 1
+
+    while i < len(flat_steps):
+        current_step = flat_steps[i]
+        current_action = current_step["action"]
+
+        if current_action == "endfor":
+            if current_step["uuid"] == for_uuid:
+                found_endfor = True
+                i += 1
+                break
+            else:
+                raise ConditionalStructureError(
+                    f"Found 'endfor' with UUID {current_step['uuid']} at position {i}, "
+                    f"but expecting endfor for for loop with UUID {for_uuid}"
+                )
+
+        elif current_action == "if":
+            try:
+                nested_step, steps_consumed = process_if_block(flat_steps, i)
+                for_block.append(nested_step)
+                i += steps_consumed
+            except ConditionalStructureError as e:
+                raise ConditionalStructureError(f"Error in nested if starting at position {i}: {str(e)}")
+
+        elif current_action == "repeat":
+            try:
+                nested_step, steps_consumed = process_repeat_block(flat_steps, i)
+                for_block.append(nested_step)
+                i += steps_consumed
+            except ConditionalStructureError as e:
+                raise ConditionalStructureError(f"Error in nested repeat starting at position {i}: {str(e)}")
+
+        elif current_action == "while":
+            try:
+                nested_step, steps_consumed = process_while_block(flat_steps, i)
+                for_block.append(nested_step)
+                i += steps_consumed
+            except ConditionalStructureError as e:
+                raise ConditionalStructureError(f"Error in nested while starting at position {i}: {str(e)}")
+
+        elif current_action == "for":
+            try:
+                nested_step, steps_consumed = process_for_block(flat_steps, i)
+                for_block.append(nested_step)
+                i += steps_consumed
+            except ConditionalStructureError as e:
+                raise ConditionalStructureError(f"Error in nested for starting at position {i}: {str(e)}")
+
+        else:
+            for_block.append(current_step)
+            i += 1
+
+    if not found_endfor:
+        raise ConditionalStructureError(
+            f"Missing 'endfor' for for loop with UUID {for_uuid} starting at position {start_index}"
+        )
+
+    step["for_block"] = for_block
 
     return step, i - start_index

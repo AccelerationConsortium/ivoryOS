@@ -862,6 +862,9 @@ class ScriptRunner:
             elif action == "while":
                 await self._execute_while_batched(step, contexts, phase_id=phase_id, step_index=action_id,
                                                   section_name=section_name)
+            elif action == "for":
+                await self._execute_for_batched(step, contexts, phase_id=phase_id, step_index=action_id,
+                                                section_name=section_name)
             elif instrument == "variable":
                 await self._execute_variable_batched(step, contexts, phase_id=phase_id, step_index=action_id,
                                                      section_name=section_name)
@@ -1030,6 +1033,45 @@ class ScriptRunner:
 
         # if iteration >= max_iterations:
         #     raise RuntimeError(f"While loop exceeded max iterations ({max_iterations})")
+
+    async def _execute_for_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index, section_name):
+        """Execute for block for multiple samples."""
+        for context in contexts:
+            iterable_expr = step["args"].get("statement", "[]")
+            var_name = step["args"].get("variable", "item")
+
+            try:
+                if isinstance(iterable_expr, str) and iterable_expr.startswith("#"):
+                    # Extract list from context directly if it's a variable reference e.g. #my_list
+                    iterable = context.get(iterable_expr[1:], [])
+                elif isinstance(iterable_expr, str):
+                    substituted = self._substitute_params({"stmt": iterable_expr}, context)["stmt"]
+                    try:
+                        iterable = eval(substituted, {"__builtins__": {}}, context)
+                    except NameError:
+                        # Fallback for plain strings
+                        try:
+                            # Might be just a comma separated string
+                            iterable = [x.strip() for x in substituted.split(",")]
+                        except:
+                            iterable = [substituted]
+                else:
+                    iterable = iterable_expr
+
+                # Make sure it's iterable
+                if not hasattr(iterable, '__iter__') or isinstance(iterable, str):
+                    iterable = [iterable]
+
+            except Exception as e:
+                if self.logger:
+                    self.logger.error(f"Error evaluating iterable '{iterable_expr}': {e}")
+                iterable = []
+
+            for item in iterable:
+                if self.stop_current_event.is_set():
+                    break
+                context[var_name] = item
+                await self._execute_steps_batched(step["for_block"], [context], phase_id=phase_id, section_name=section_name)
 
     async def _execute_action(self, step: Dict, context: Dict[str, Any], arg_contexts: Dict[str, Any]=None, phase_id=1, step_index=1, section_name=None, override_args=None):
         """Execute a single action with parameter substitution."""
