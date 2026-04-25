@@ -978,15 +978,14 @@ class Script(db.Model):
         elif instrument == 'while':
             return self._process_while(indent_unit, action_name, statement, next_action)
         elif instrument == 'variable':
+            clean_stmt = re.sub(r'#(\w+)', r'\1', statement) if isinstance(statement, str) else statement
             if batch:
-                if isinstance(statement, str) and statement.startswith("#"):
+                if isinstance(statement, str) and statement.startswith("#") and len(statement) > 1 and statement[1:].isalnum():
                     return '', indent_unit
                 return self.indent(indent_unit) + "for param in param_list:" + self.indent(
-                    indent_unit + 1) + f"param['{action_name}'] = {statement}", indent_unit
+                    indent_unit + 1) + f"param['{action_name}'] = {clean_stmt}", indent_unit
             else:
-                if isinstance(statement, str) and statement.startswith("#"):
-                    statement = statement[1:]
-                return self.indent(indent_unit) + f"{action_name} = {statement}", indent_unit
+                return self.indent(indent_unit) + f"{action_name} = {clean_stmt}", indent_unit
         elif instrument == 'input':
             var_name = args.get('variable')
             var_type = args.get('variable_type', 'str')
