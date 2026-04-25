@@ -593,9 +593,10 @@ class ScriptRunner:
             self.logger.info(f'Executing {section_name} steps')
 
         # V1.4.8 stop cleanup is optional, credit @Veronica
-        if self.stop_cleanup_event.is_set():
+        # Only skip cleanup section when explicitly requested via stop_cleanup_event
+        if section_name == "cleanup" and self.stop_cleanup_event.is_set():
             if self.logger:
-                self.logger.info(f"Stopping execution during {section_name} section.")
+                self.logger.info(f"Skipping cleanup section due to stop signal.")
             return None
 
         phase = WorkflowPhase(
