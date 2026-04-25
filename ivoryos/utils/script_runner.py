@@ -369,7 +369,7 @@ class ScriptRunner:
         if not self.execution_queue:
             self.lock.release()
             return "empty"
-            
+
         # Get next task
         task = self.execution_queue.pop(0)
         self.current_task = task # Store current task details
@@ -1391,7 +1391,8 @@ class ScriptRunner:
 
                 else:  # "str"
                     # For strings, check if it looks like an expression (including f-strings)
-                    if any(char in substituted_value for char in ['+', '-', '*', '/', '>', '<', '=', '(', ')', '{', '}']) \
+                    # todo add to the list '{', '}' if want those to show up in the string
+                    if any(char in substituted_value for char in ['+', '-', '*', '/', '>', '<', '=', '(', ')']) \
                             or substituted_value.startswith('f"') or substituted_value.startswith("f'") \
                             or substituted_value.startswith('"') or substituted_value.startswith("'"):
                         try:
