@@ -1343,8 +1343,11 @@ class ScriptRunner:
                         context[var_name] = substituted_value.lower() in ['true', '1', 'yes']
 
                 else:  # "str"
-                    # For strings, check if it looks like an expression
-                    if any(char in substituted_value for char in ['+', '-', '*', '/', '>', '<', '=', '(', ')']):
+                    # For strings, check if it looks like an expression (including f-strings)
+                    # todo add to the list '{', '}' if want those to show up in the string, but then fstring logic might not work? needs testing
+                    if any(char in substituted_value for char in ['+', '-', '*', '/', '>', '<', '=', '(', ')']) \
+                            or substituted_value.startswith('f"') or substituted_value.startswith("f'") \
+                            or substituted_value.startswith('"') or substituted_value.startswith("'"):
                         try:
                             # Try to evaluate as expression
                             result = eval(substituted_value, {"__builtins__": {}}, context)
