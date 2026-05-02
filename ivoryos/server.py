@@ -255,12 +255,12 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
                 raise TypeError(f"Handler {handler} is not callable.")
             global_config.register_notification(handler)
 
-    # TODO in case Python 3.12 or higher doesn't log URL
-    # if sys.version_info >= (3, 12):
-    #     ip = utils.get_local_ip()
-    #     print(f"Server running at http://localhost:{port}")
-    #     if not ip == "127.0.0.1":
-    #         print(f"Server running at http://{ip}:{port}")
+    # always print server
+    ip = utils.get_local_ip()
+    print(f"Server running at http://{host}:{port}")
+    print(f"Server running at http://127.0.0.1:{port}")
+    if not ip == "127.0.0.1":
+        print(f"Server running at http://{ip}:{port}")
     socketio.run(app, host=host, port=port, debug=debug, use_reloader=False, allow_unsafe_werkzeug=True)
     # return app
 
