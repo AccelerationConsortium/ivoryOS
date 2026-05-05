@@ -79,7 +79,7 @@ async def deck_controllers(instrument: str = None):
 
         # Extract kwargs
         if request.is_json:
-            kwargs = {k: v for k, v in payload.items() if k not in ["csrf_token", "hidden_wait"]}
+            kwargs = {k: v for k, v in payload.items() if k not in ["csrf_token", "hidden_wait", "override_busy"]}
         else:
             if not form.validate_on_submit():
                 flash(f"Run Error! {form.errors}", "error")
@@ -93,13 +93,15 @@ async def deck_controllers(instrument: str = None):
                     session=session
                 )
             else:
-                kwargs = {field.name: field.data for field in form if field.name not in ["csrf_token", "hidden_name"]}
+                kwargs = {field.name: field.data for field in form if field.name not in ["csrf_token", "hidden_name", "override_busy"]}
 
         wait = str(payload.get("hidden_wait", "true")).lower() == "true"
+        override_busy = str(payload.get("override_busy", "false")).lower() == "true"
 
         output = await runner.run_single_step(
             component=instrument, method=method_name, kwargs=kwargs, wait=wait,
-            current_app=current_app._get_current_object()
+            current_app=current_app._get_current_object(),
+            override_busy=override_busy
         )
 
         if request.is_json:

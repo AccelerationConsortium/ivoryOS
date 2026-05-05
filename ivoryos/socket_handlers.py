@@ -1,23 +1,26 @@
 import os
+import uuid
 from flask import current_app
 from flask_socketio import SocketIO
 from ivoryos.utils.script_runner import ScriptRunner
 
+SERVER_BOOT_ID = str(uuid.uuid4())
+
 socketio = SocketIO(cors_allowed_origins="*")
 runner = ScriptRunner()
 
-def abort_pending():
-    runner.abort_pending()
-    socketio.emit('log', {'message': "aborted pending iterations, move on to cleanup"})
+def abort_pending(continue_queue=True):
+    runner.abort_pending(continue_queue)
+    socketio.emit('log', {'message': f"aborted pending iterations, move on to cleanup. continue_queue={continue_queue}"})
 
 def abort_cleanup():
     runner.abort_cleanup()
     socketio.emit('log', {'message': "aborted cleanup"})
 
 
-def abort_current():
-    runner.stop_execution()
-    socketio.emit('log', {'message': "stopped next task"})
+def abort_current(continue_queue=True):
+    runner.stop_execution(continue_queue)
+    socketio.emit('log', {'message': f"stopped next task. continue_queue={continue_queue}"})
 
 def pause():
     runner.retry = False
@@ -32,16 +35,22 @@ def retry():
 
 # Socket.IO Event Handlers
 @socketio.on('abort_pending')
-def handle_abort_pending(data):
+def handle_abort_pending(data=None):
+    if data is None:
+        data = {}
     cleanup = data.get("cleanup", True)
-    abort_pending()
+    continue_queue = data.get("continue_queue", True)
+    abort_pending(continue_queue)
     if not cleanup:
         abort_cleanup()
 
 
 @socketio.on('abort_current')
-def handle_abort_current():
-    abort_current()
+def handle_abort_current(data=None):
+    if data is None:
+        data = {}
+    continue_queue = data.get('continue_queue', True)
+    abort_current(continue_queue)
 
 @socketio.on('pause')
 def handle_pause():
@@ -59,6 +68,10 @@ def handle_input_submission(data):
 
 @socketio.on('connect')
 def handle_connect():
+    socketio.emit('server_boot_id', {'boot_id': SERVER_BOOT_ID})
+    runner._emit_busy_status()
+    socketio.emit('pause_status', {'paused': runner.paused or runner.queue_paused})
+    
     # Fetch log messages from local file
     filename = os.path.join(current_app.config["OUTPUT_FOLDER"], current_app.config["LOGGERS_PATH"])
     with open(filename, 'r') as log_file:

@@ -1,8 +1,172 @@
 document.addEventListener("DOMContentLoaded", function () {
     var socket = io();
+
+    window.platformState = { is_running: false, is_paused: false };
+    let retryInFlight = false;
+
+    function getProgressBar() {
+        return document.getElementById('progress-bar-inner');
+    }
+
+    function setProgressBarClasses(addClasses, removeClasses) {
+        const progressBar = getProgressBar();
+        if (!progressBar) return;
+
+        if (removeClasses && removeClasses.length) {
+            progressBar.classList.remove(...removeClasses);
+        }
+        if (addClasses && addClasses.length) {
+            progressBar.classList.add(...addClasses);
+        }
+    }
+
+    function updateGlobalStatus() {
+        const activeErrorStr = localStorage.getItem('active_error');
+        const icon = document.getElementById('global-status-icon');
+        
+        if (icon) {
+            icon.style.display = 'flex'; // always visible
+            if (activeErrorStr) {
+                icon.style.backgroundColor = '#dc3545'; // red
+                icon.setAttribute('title', 'View active error');
+                icon.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-white fs-5"></i> <span>Error</span>';
+                icon.style.cursor = 'pointer';
+            } else if (window.platformState.is_paused) {
+                icon.style.backgroundColor = '#fd7e14'; // orange
+                icon.setAttribute('title', 'Platform is paused');
+                icon.innerHTML = '<span>Paused</span>';
+                icon.style.cursor = 'default';
+            } else if (window.platformState.is_running) {
+                icon.style.backgroundColor = '#198754'; // green
+                icon.setAttribute('title', 'Platform is running');
+                icon.innerHTML = '<span>Running</span>';
+                icon.style.cursor = 'default';
+            } else {
+                icon.style.backgroundColor = '#6c757d'; // grey
+                icon.setAttribute('title', 'Platform is idle');
+                icon.innerHTML = '<span>Idle</span>';
+                icon.style.cursor = 'default';
+            }
+        }
+    }
+
+    function checkActiveError() {
+        const activeErrorStr = localStorage.getItem('active_error');
+        const progressBar = getProgressBar();
+        
+        updateGlobalStatus();
+
+        if (activeErrorStr) {
+            if (progressBar) {
+                try {
+                    const activeError = JSON.parse(activeErrorStr);
+                    progressBar.classList.remove('bg-primary', 'bg-warning', 'bg-danger');
+                    if (activeError.type === 'error') {
+                        progressBar.classList.add('bg-danger');
+                    } else if (activeError.type === 'warning' || activeError.type === 'human_intervention') {
+                        progressBar.classList.add('bg-warning');
+                    }
+                } catch (e) {
+                    console.error("Failed to parse active_error", e);
+                }
+            }
+        } else {
+            if (progressBar) {
+                progressBar.classList.remove('bg-warning', 'bg-danger');
+                if (!progressBar.classList.contains('bg-primary')) {
+                    progressBar.classList.add('bg-primary');
+                }
+
+            }
+        }
+    }
+
+    window.restoreErrorModal = function() {
+        const activeErrorStr = localStorage.getItem('active_error');
+        if (!activeErrorStr) return;
+        
+        let activeError;
+        try {
+            activeError = JSON.parse(activeErrorStr);
+        } catch (e) {
+            console.error("Failed to parse active_error", e);
+            localStorage.removeItem('active_error');
+            checkActiveError();
+            return;
+        }
+        const errorModalEl = document.getElementById('error-modal');
+        if (!errorModalEl) return;
+        
+        var errorModal = bootstrap.Modal.getInstance(errorModalEl) || new bootstrap.Modal(errorModalEl, {
+            backdrop: 'static',
+            keyboard: false
+        });
+        
+        document.getElementById('errorModalLabel').innerText = activeError.title;
+        document.getElementById('error-message').innerText = activeError.message;
+        
+        if (activeError.type === 'error') {
+            const retryBtn = document.getElementById('retry-btn');
+            if (retryBtn) retryBtn.style.display = "inline-block";
+        } else {
+            const retryBtn = document.getElementById('retry-btn');
+            if (retryBtn) retryBtn.style.display = "none";
+        }
+        
+        const continueBtn = document.getElementById('continue-btn');
+        if (continueBtn) continueBtn.style.display = "inline-block";
+        
+        const stopBtn = document.getElementById('stop-btn');
+        if (stopBtn) stopBtn.style.display = "inline-block";
+        
+        errorModal.show();
+        
+        const icon = document.getElementById('error-restore-icon');
+        if (icon) icon.style.display = 'none';
+    };
+
+    window.clearActiveError = function() {
+        localStorage.removeItem('active_error');
+        checkActiveError();
+        
+        const errorModalEl = document.getElementById('error-modal');
+        if (errorModalEl) {
+            var errorModal = bootstrap.Modal.getInstance(errorModalEl);
+            if (errorModal) {
+                errorModal.hide();
+            }
+        }
+    };
+
+    checkActiveError();
+
+    const errorModalEl = document.getElementById('error-modal');
+    if (errorModalEl) {
+        errorModalEl.addEventListener('hidden.bs.modal', function () {
+            checkActiveError();
+        });
+    }
+
     socket.on('connect', function () {
         console.log('Connected');
     });
+
+    socket.on('server_boot_id', function (data) {
+        let lastBootId = localStorage.getItem('server_boot_id');
+        if (lastBootId && lastBootId !== data.boot_id) {
+            console.log("Server restart detected. Clearing old errors.");
+            if (typeof window.clearActiveError === "function") {
+                window.clearActiveError();
+            }
+        }
+        localStorage.setItem('server_boot_id', data.boot_id);
+    });
+
+    socket.on('busy_status', function(data) {
+        window.platformState.is_running = data.is_running;
+        updateGlobalStatus();
+    });
+
     socket.on('progress', function (data) {
         var progress = data.progress;
         console.log(progress);
@@ -15,153 +179,229 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Update the progress bar's width and appearance
         var progressBar = document.getElementById('progress-bar-inner');
-        progressBar.style.width = progress + '%';
-        progressBar.setAttribute('aria-valuenow', progress);
-        const runPanel = document.getElementById("run-panel");
-        const codePanel = document.getElementById("code-panel");
-        if (progress === 1) {
-            progressBar.classList.remove('bg-success');
-            progressBar.classList.remove('bg-danger');
-            progressBar.classList.add('progress-bar-animated');
-        }
-        if (progress === 100) {
-            // Remove animation and set green color when 100% is reached
-            progressBar.classList.remove('progress-bar-animated');
-            progressBar.classList.add('bg-success'); // Bootstrap class for green color
-
-            // Clear all execution highlights
-            document.querySelectorAll('pre code').forEach(el => el.style.backgroundColor = '');
-
-            // Reset config container height logic removed based on user request
-            // const configContainer = document.getElementById('config-container');
-            // if (configContainer) {
-            //     configContainer.style.height = '70vh';
-            //     // console.log(configContainer.style.height);
-            // }
+        if (progressBar) {
+            progressBar.style.width = progress + '%';
+            progressBar.setAttribute('aria-valuenow', progress);
+            
+            if (progress === 1) {
+                progressBar.classList.remove('bg-success', 'bg-danger');
+                progressBar.classList.add('progress-bar-animated');
+            }
+            if (progress === 100) {
+                progressBar.classList.remove('progress-bar-animated');
+                progressBar.classList.add('bg-success');
+                
+                document.querySelectorAll('pre code').forEach(el => el.style.backgroundColor = '');
+            }
         }
     });
 
     socket.on('error', function (errorData) {
         console.error("Error received:", errorData);
-        var progressBar = document.getElementById('progress-bar-inner');
+        retryInFlight = false;
 
-        progressBar.classList.remove('bg-success', 'bg-warning');
-        progressBar.classList.add('bg-danger');
+        setProgressBarClasses(['bg-danger'], ['bg-success', 'bg-warning']);
 
-        var errorModal = new bootstrap.Modal(document.getElementById('error-modal'));
-        document.getElementById('errorModalLabel').innerText = "Error Detected";
-        document.getElementById('error-message').innerText =
-            "An error occurred: " + errorData.message;
+        localStorage.setItem('active_error', JSON.stringify({
+            type: 'error',
+            title: "Error Detected",
+            message: "An error occurred: " + errorData.message
+        }));
 
-        // Show all buttons again
-        document.getElementById('retry-btn').style.display = "inline-block";
-        document.getElementById('continue-btn').style.display = "inline-block";
-        document.getElementById('stop-btn').style.display = "inline-block";
+        if (errorModalEl) {
+            var errorModal = bootstrap.Modal.getInstance(errorModalEl) || new bootstrap.Modal(errorModalEl, {
+                backdrop: 'static',
+                keyboard: false
+            });
+            document.getElementById('errorModalLabel').innerText = "Error Detected";
+            document.getElementById('error-message').innerText = "An error occurred: " + errorData.message;
 
-        errorModal.show();
-    });
+            const retryBtn = document.getElementById('retry-btn');
+            if (retryBtn) retryBtn.style.display = "inline-block";
+            const continueBtn = document.getElementById('continue-btn');
+            if (continueBtn) continueBtn.style.display = "inline-block";
+            const stopBtn = document.getElementById('stop-btn');
+            if (stopBtn) stopBtn.style.display = "inline-block";
 
-
-    socket.on('human_intervention', function (data) {
-        console.warn("Human intervention required:", data);
-        var progressBar = document.getElementById('progress-bar-inner');
-
-        // Set progress bar to yellow
-        progressBar.classList.remove('bg-success', 'bg-danger');
-        progressBar.classList.add('bg-warning');
-
-        // Reuse error modal but update content
-        var errorModal = new bootstrap.Modal(document.getElementById('error-modal'));
-        document.getElementById('errorModalLabel').innerText = "Human Intervention Required";
-        document.getElementById('error-message').innerText =
-            "Workflow paused: " + (data.message || "Please check and manually resume.");
-
-        // Optionally: hide retry button, since it may not apply
-        document.getElementById('retry-btn').style.display = "none";
-        document.getElementById('continue-btn').style.display = "inline-block";
-        document.getElementById('stop-btn').style.display = "inline-block";
-
-        errorModal.show();
-    });
-
-    // Handle Pause/Resume Button
-    document.getElementById('pause-resume').addEventListener('click', function () {
-        socket.emit('pause');
-        console.log('Pause/Resume is toggled.');
-        var button = this;
-        var icon = button.querySelector("i");
-
-        // Toggle Pause and Resume
-        if (icon.classList.contains("bi-pause-circle")) {
-            icon.classList.remove("bi-pause-circle");
-            icon.classList.add("bi-play-circle");
-            button.innerHTML = '<i class="bi bi-play-circle"></i>';
-            button.setAttribute("title", "Resume execution");
-        } else {
-            icon.classList.remove("bi-play-circle");
-            icon.classList.add("bi-pause-circle");
-            button.innerHTML = '<i class="bi bi-pause-circle"></i>';
-            button.setAttribute("title", "Pause execution");
+            errorModal.show();
         }
     });
 
-    // Handle Modal Buttons
-    document.getElementById('continue-btn').addEventListener('click', function () {
-        socket.emit('pause');  // Resume execution
-        console.log("Execution resumed.");
+    socket.on('human_intervention', function (data) {
+        console.warn("Human intervention required:", data);
 
-        // Reset progress bar color to running (blue)
-        var progressBar = document.getElementById('progress-bar-inner');
-        progressBar.classList.remove('bg-danger', 'bg-warning');
-        progressBar.classList.add('bg-primary');
+        // Set progress bar to yellow
+        setProgressBarClasses(['bg-warning'], ['bg-success', 'bg-danger']);
+
+        localStorage.setItem('active_error', JSON.stringify({
+            type: 'human_intervention',
+            title: "Human Intervention Required",
+            message: "Workflow paused: " + (data.message || "Please check and manually resume.")
+        }));
+
+        if (errorModalEl) {
+            var errorModal = bootstrap.Modal.getInstance(errorModalEl) || new bootstrap.Modal(errorModalEl, {
+                backdrop: 'static',
+                keyboard: false
+            });
+            document.getElementById('errorModalLabel').innerText = "Human Intervention Required";
+            document.getElementById('error-message').innerText = "Workflow paused: " + (data.message || "Please check and manually resume.");
+
+            const retryBtn = document.getElementById('retry-btn');
+            if (retryBtn) retryBtn.style.display = "none";
+            const continueBtn = document.getElementById('continue-btn');
+            if (continueBtn) continueBtn.style.display = "inline-block";
+            const stopBtn = document.getElementById('stop-btn');
+            if (stopBtn) stopBtn.style.display = "inline-block";
+
+            errorModal.show();
+        }
     });
 
-    document.getElementById('retry-btn').addEventListener('click', function () {
-        socket.emit('retry');  // Resume execution
-        console.log("Execution resumed, retrying.");
+    socket.on('error_resolved', function () {
+        retryInFlight = false;
+        window.clearActiveError();
     });
 
-    document.getElementById('stop-btn').addEventListener('click', function () {
-        socket.emit('pause');  // Resume execution
-        socket.emit('abort_current');  // Stop execution
-        console.log("Execution stopped.");
+    const pauseBtn = document.getElementById('pause-resume');
+    if (pauseBtn) {
+        pauseBtn.addEventListener('click', function () {
+            socket.emit('pause');
+            console.log('Pause/Resume action requested.');
+        });
+    }
 
-        console.log("Execution stopped.");
+    socket.on('pause_status', function (data) {
+        window.platformState.is_paused = data.paused;
+        updateGlobalStatus();
+
+        if (pauseBtn) {
+            var icon = pauseBtn.querySelector("i");
+            if (data.paused) {
+                icon.classList.remove("bi-pause-circle");
+                icon.classList.add("bi-play-circle");
+                pauseBtn.innerHTML = '<i class="bi bi-play-circle"></i>';
+                pauseBtn.setAttribute("title", "Resume execution");
+            } else {
+                icon.classList.remove("bi-play-circle");
+                icon.classList.add("bi-pause-circle");
+                pauseBtn.innerHTML = '<i class="bi bi-pause-circle"></i>';
+                pauseBtn.setAttribute("title", "Pause execution");
+            }
+        }
+        
+        // If the platform resumed (not paused anymore), clear any active human intervention error modals
+        if (!data.paused) {
+            if (!retryInFlight && typeof window.clearActiveError === "function") {
+                window.clearActiveError();
+            }
+        }
     });
+
+    const continueBtn = document.getElementById('continue-btn');
+    if (continueBtn) {
+        continueBtn.addEventListener('click', function () {
+            window.clearActiveError();
+            socket.emit('pause');
+            console.log("Execution resumed.");
+
+            setProgressBarClasses(['bg-primary'], ['bg-danger', 'bg-warning']);
+        });
+    }
+
+    const retryBtn = document.getElementById('retry-btn');
+    if (retryBtn) {
+        retryBtn.addEventListener('click', function () {
+            retryInFlight = true;
+            socket.emit('retry');
+            console.log("Execution resumed, retrying.");
+        });
+    }
+
+    const stopBtn = document.getElementById('stop-btn');
+    if (stopBtn) {
+        stopBtn.addEventListener('click', function () {
+            window.clearActiveError();
+            // socket.emit('pause');
+            socket.emit('abort_current');
+            console.log("Execution stopped.");
+        });
+    }
 
     socket.on('log', function (data) {
         var logMessage = data.message;
         console.log(logMessage);
-        $('#logging-panel').append(logMessage + "<br>");
-        $('#logging-panel').scrollTop($('#logging-panel')[0].scrollHeight);
-    });
-
-    document.getElementById('abort-pending').addEventListener('click', function () {
-        var modal = new bootstrap.Modal(document.getElementById('abortPendingModal'));
-        modal.show();
-    });
-
-    // When user presses confirm
-    document.getElementById('abortPendingConfirm').addEventListener('click', function () {
-        const doCleanup = document.getElementById('cleanup-checkbox').checked;
-
-        socket.emit('abort_pending', { cleanup: doCleanup });
-        console.log("Abort pending sent. Cleanup:", doCleanup);
-
-        // Close modal
-        bootstrap.Modal.getInstance(document.getElementById('abortPendingModal')).hide();
-    });
-
-    document.getElementById('abort-current').addEventListener('click', function () {
-        var confirmation = confirm("Are you sure you want to stop after this step?");
-        if (confirmation) {
-            socket.emit('abort_current');
-            console.log('Stop action sent to server.');
+        var logPanel = $('#logging-panel');
+        if (logPanel.length) {
+            logPanel.append(logMessage + "<br>");
+            logPanel.scrollTop(logPanel[0].scrollHeight);
         }
     });
 
-    socket.on('execution', function (data) {
+    const abortPendingBtn = document.getElementById('abort-pending');
+    if (abortPendingBtn) {
+        abortPendingBtn.addEventListener('click', function () {
+            var modal = new bootstrap.Modal(document.getElementById('abortPendingModal'));
+            modal.show();
+        });
+    }
 
+    const abortPendingConfirm = document.getElementById('abortPendingConfirm');
+    if (abortPendingConfirm) {
+        abortPendingConfirm.addEventListener('click', function () {
+            const cleanupEl = document.getElementById('cleanup-checkbox');
+            const doCleanup = cleanupEl ? cleanupEl.checked : false;
+            
+            const continueQueueEl = document.getElementById('continueQueuePendingCheckbox');
+            const continueQueue = continueQueueEl ? continueQueueEl.checked : false;
+
+            socket.emit('abort_pending', { cleanup: doCleanup, continue_queue: continueQueue });
+            console.log("Abort pending sent. Cleanup:", doCleanup, "Continue queue:", continueQueue);
+
+            var modalEl = document.getElementById('abortPendingModal');
+            if (modalEl) {
+                var modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            }
+        });
+    }
+
+    const abortCurrentBtn = document.getElementById('abort-current');
+    if (abortCurrentBtn) {
+        abortCurrentBtn.addEventListener('click', function () {
+            const modalEl = document.getElementById('stopWorkflowModal');
+            const continueQueueEl = document.getElementById('continueQueueCheckbox');
+
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                if (continueQueueEl) continueQueueEl.checked = false;
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            } else {
+                var confirmation = confirm("Are you sure you want to stop after this step?");
+                if (confirmation) {
+                    socket.emit('abort_current', { continue_queue: true });
+                    console.log('Stop action sent to server.');
+                }
+            }
+        });
+    }
+
+    const stopWorkflowConfirmBtn = document.getElementById('stopWorkflowConfirmBtn');
+    if (stopWorkflowConfirmBtn) {
+        stopWorkflowConfirmBtn.addEventListener('click', function() {
+            const continueQueueEl = document.getElementById('continueQueueCheckbox');
+            const continueQueue = continueQueueEl ? continueQueueEl.checked : false;
+            const modalEl = document.getElementById('stopWorkflowModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            }
+            socket.emit('abort_current', { continue_queue: continueQueue });
+            console.log('Stop action sent to server. Continue queue:', continueQueue);
+        });
+    }
+
+    socket.on('execution', function (data) {
         // Remove highlighting from all lines
         document.querySelectorAll('pre code').forEach(el => el.style.backgroundColor = '');
 
@@ -204,55 +444,65 @@ document.addEventListener("DOMContentLoaded", function () {
                     // fallback if the template doesn't have the id wrapper (e.g. just children)
                     currentCodePanel.innerHTML = data.progress_panel_html;
                 }
-                hljs.highlightAll();
+                if (typeof hljs !== 'undefined') hljs.highlightAll();
             }
         }
     });
 
     socket.on('request_input', function (data) {
         console.log("Request input:", data);
-        var inputModal = new bootstrap.Modal(document.getElementById('inputModal'));
-        document.getElementById('input-prompt').innerText = data.prompt;
+        var inputModalEl = document.getElementById('inputModal');
+        if (!inputModalEl) return;
+        var inputModal = new bootstrap.Modal(inputModalEl);
+        
+        var promptEl = document.getElementById('input-prompt');
+        if (promptEl) promptEl.innerText = data.prompt;
 
         var container = document.getElementById('input-container');
-        container.innerHTML = ''; // Clear previous
+        if (container) {
+            container.innerHTML = '';
 
-        var inputField;
-        if (data.type === 'bool') {
-            inputField = document.createElement('div');
-            inputField.className = 'form-check';
-            inputField.innerHTML = `
-                <input class="form-check-input" type="checkbox" id="user-input-value">
-                <label class="form-check-label" for="user-input-value">Check for True</label>
-             `;
-        } else {
-            inputField = document.createElement('input');
-            inputField.className = 'form-control';
-            inputField.id = 'user-input-value';
-            if (data.type === 'int' || data.type === 'float') {
-                inputField.type = 'number';
-                if (data.type === 'float') inputField.step = 'any';
+            var inputField;
+            if (data.type === 'bool') {
+                inputField = document.createElement('div');
+                inputField.className = 'form-check';
+                inputField.innerHTML = `
+                    <input class="form-check-input" type="checkbox" id="user-input-value">
+                    <label class="form-check-label" for="user-input-value">Check for True</label>
+                 `;
             } else {
-                inputField.type = 'text';
+                inputField = document.createElement('input');
+                inputField.className = 'form-control';
+                inputField.id = 'user-input-value';
+                if (data.type === 'int' || data.type === 'float') {
+                    inputField.type = 'number';
+                    if (data.type === 'float') inputField.step = 'any';
+                } else {
+                    inputField.type = 'text';
+                }
             }
+            container.appendChild(inputField);
         }
-        container.appendChild(inputField);
 
         inputModal.show();
 
-        // Handle Submit
-        document.getElementById('submit-input-btn').onclick = function () {
-            var val;
-            var inputEl = document.getElementById('user-input-value');
-            if (data.type === 'bool') {
-                val = inputEl.checked;
-            } else {
-                val = inputEl.value;
-                if (data.type === 'int') val = parseInt(val);
-                if (data.type === 'float') val = parseFloat(val);
-            }
-            socket.emit('submit_input', { value: val });
-            inputModal.hide();
-        };
+        const submitBtn = document.getElementById('submit-input-btn');
+        if (submitBtn) {
+            submitBtn.onclick = function () {
+                var val;
+                var inputEl = document.getElementById('user-input-value');
+                if (inputEl) {
+                    if (data.type === 'bool') {
+                        val = inputEl.checked;
+                    } else {
+                        val = inputEl.value;
+                        if (data.type === 'int') val = parseInt(val);
+                        if (data.type === 'float') val = parseFloat(val);
+                    }
+                    socket.emit('submit_input', { value: val });
+                }
+                inputModal.hide();
+            };
+        }
     });
 });

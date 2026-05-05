@@ -460,7 +460,7 @@ def runner_status():
 
     """
     # runner = global_config.runner
-    runner_busy = global_config.runner_lock.locked()
+    runner_busy = global_config.runner_lock.locked() or len(runner.execution_queue) > 0
     status = {"busy": runner_busy}
     task_status = global_config.runner_status
     current_step = {}

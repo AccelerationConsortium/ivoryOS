@@ -67,6 +67,37 @@
     </div>
   </div>
 </div>
+
+<!-- Stop Current Workflow Modal -->
+<div class="modal fade" id="stopWorkflowModal" tabindex="-1" aria-labelledby="stopWorkflowModalLabel"
+  aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger" id="stopWorkflowModalLabel">
+          <i class="bi bi-stop-circle-fill me-2"></i>Stop Workflow
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <p>This will gracefully stop execution after the current step finishes.</p>
+        <div class="form-check mt-3">
+          <input class="form-check-input" type="checkbox" value="" id="continueQueueCheckbox">
+          <label class="form-check-label" for="continueQueueCheckbox">
+            <strong>Continue execution queue</strong>
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="stopWorkflowConfirmBtn">Stop Workflow</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Abort Pending Modal -->
 <div class="modal fade" id="abortPendingModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
@@ -77,11 +108,17 @@
       </div>
 
       <div class="modal-body">
-        <p>Do you want to stop after this iteration?</p>
+        <p>This will gracefully stop after this iteration finishes.</p>
         <div class="form-check">
           <input class="form-check-input" type="checkbox" id="cleanup-checkbox">
           <label class="form-check-label" for="cleanup-checkbox">
             Proceed to cleanup steps
+          </label>
+        </div>
+        <div class="form-check mt-3">
+          <input class="form-check-input" type="checkbox" id="continueQueuePendingCheckbox">
+          <label class="form-check-label" for="continueQueuePendingCheckbox">
+            <strong>Continue execution queue</strong>
           </label>
         </div>
       </div>
