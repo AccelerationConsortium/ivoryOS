@@ -143,11 +143,14 @@
         async function isSystemBusy() {
             try {
                 const response = await fetch("{{ url_for('execute.runner_status') }}");
+                if (!response.ok) {
+                    throw new Error(`Status check failed: ${response.status}`);
+                }
                 const data = await response.json();
                 return data.busy;
             } catch (error) {
                 console.error('Error checking system status:', error);
-                return false;
+                return Boolean(window.platformState && window.platformState.is_running);
             }
         }
 

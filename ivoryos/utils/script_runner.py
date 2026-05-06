@@ -93,7 +93,7 @@ class ScriptRunner:
 
     def pause_status(self):
         """Toggles between pausing and resuming the script"""
-        return self.paused
+        return self.paused or self.queue_paused
 
     def reset_stop_event(self):
         """Resets the stop event"""
@@ -384,29 +384,39 @@ class ScriptRunner:
             "on_start": on_start,
             "display_name": display_name
         }
-        
+        # handle status when workflow queued during single task execution
+        was_busy = self.lock.locked() or self.queue_paused
         self.execution_queue.append(task)
         if self.logger:
             self.logger.info(f"Added task to queue: {run_name}")
-            
-        # Explicitly running a new task should unpause the queue if it was paused
-        self.paused = False
-        self.queue_paused = False
-        self.pause_event.set()
-        if self.socketio:
-            self.socketio.emit('pause_status', {'paused': False})
+
+        if was_busy:
+            self.queue_paused = True
+            if self.socketio:
+                self.socketio.emit('pause_status', {'paused': True})
+        else:
+            # Start immediately when the runner is idle.
+            self.paused = False
+            self.queue_paused = False
+            self.pause_event.set()
+            if self.socketio:
+                self.socketio.emit('pause_status', {'paused': False})
             
         return self._process_queue()
         
     def _emit_busy_status(self):
         """Emit the current execution busy status to frontend"""
         if self.socketio:
-            self.socketio.emit('busy_status', {'is_running': self.lock.locked()})
+            self.socketio.emit('busy_status', {
+                'is_running': self.lock.locked(),
+                'queue_length': len(self.execution_queue)
+            })
 
     def _process_queue(self):
         """Process the next task in the queue if the runner is free"""
         # Try to acquire lock without blocking
         if not self.lock.acquire(blocking=False):
+            self._emit_busy_status()
             return "queued"
 
         if not self.execution_queue:

@@ -471,16 +471,19 @@ def runner_status():
         if task_type == "task":
             # todo
             step = SingleStep.query.get(task_id)
-            current_step = step.as_dict()
+            if step is not None:
+                current_step = step.as_dict()
         if task_type == "workflow":
             workflow = WorkflowRun.query.get(task_id)
             if workflow is not None:
                 phases = WorkflowPhase.query.filter_by(run_id=workflow.id).order_by(WorkflowPhase.start_time).all()
-                current_phase = phases[-1]
-                latest_step = WorkflowStep.query.filter_by(phase_id=current_phase.id).order_by(
-                    WorkflowStep.start_time.desc()).first()
-                if latest_step is not None:
-                    current_step = latest_step.as_dict()
+                latest_step = None
+                if phases:
+                    current_phase = phases[-1]
+                    latest_step = WorkflowStep.query.filter_by(phase_id=current_phase.id).order_by(
+                        WorkflowStep.start_time.desc()).first()
+                    if latest_step is not None:
+                        current_step = latest_step.as_dict()
                 status["workflow_status"] = {"workflow_info": workflow.as_dict(), "runner_status": runner.get_status()}
     status["current_task"] = current_step
     return jsonify(status), 200
