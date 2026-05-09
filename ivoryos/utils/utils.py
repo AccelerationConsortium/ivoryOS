@@ -10,6 +10,10 @@ import subprocess
 import sys
 from collections import Counter
 from enum import Enum
+try:
+    from typing import get_args, get_origin
+except ImportError:
+    from typing_extensions import get_args, get_origin
 
 import flask
 from flask import current_app
@@ -386,6 +390,148 @@ def get_arg_type(args, parameters):
         for arg in args:
             arg_types[arg] = _get_type_from_parameters(arg, parameters)
     return arg_types
+
+
+def get_return_type(function_data):
+    """Return lightweight metadata from a function signature's return annotation."""
+    signature = function_data.get("signature") if isinstance(function_data, dict) else function_data
+    if not isinstance(signature, inspect.Signature):
+        return {"kind": "none", "types": [], "annotation": ""}
+
+    annotation = signature.return_annotation
+    if annotation in (inspect.Signature.empty, inspect._empty, None):
+        return {"kind": "none", "types": [], "annotation": ""}
+
+    if isinstance(annotation, str):
+        return _get_return_type_from_string(annotation)
+
+    origin = get_origin(annotation)
+    args = get_args(annotation)
+    annotation_str = str(annotation)
+
+    if annotation is tuple or origin is tuple:
+        variable_length = len(args) == 2 and args[1] is Ellipsis
+        return {
+            "kind": "tuple",
+            "types": [_resolve_type_string(arg) for arg in args if arg is not Ellipsis],
+            "annotation": annotation_str,
+            "variable_length": variable_length,
+            "arity": None if variable_length else len(args),
+        }
+
+    if annotation is dict or origin is dict:
+        return {
+            "kind": "dict",
+            "types": [_resolve_type_string(arg) for arg in args],
+            "annotation": annotation_str,
+        }
+
+    return {
+        "kind": "scalar",
+        "types": [_resolve_type_string(annotation)],
+        "annotation": annotation_str,
+    }
+
+
+def _split_annotation_args(annotation_args):
+    args = []
+    depth = 0
+    start = 0
+    for index, char in enumerate(annotation_args):
+        if char == "[":
+            depth += 1
+        elif char == "]":
+            depth -= 1
+        elif char == "," and depth == 0:
+            args.append(annotation_args[start:index].strip())
+            start = index + 1
+    final_arg = annotation_args[start:].strip()
+    if final_arg:
+        args.append(final_arg)
+    return args
+
+
+def _get_return_type_from_string(annotation):
+    annotation = annotation.strip().strip("'\"")
+    parse_annotation = annotation[7:] if annotation.lower().startswith("typing.") else annotation
+    normalized = parse_annotation.lower()
+
+    if normalized in ("", "none"):
+        return {"kind": "none", "types": [], "annotation": annotation}
+
+    for prefix in ("tuple[", "tuple("):
+        if normalized.startswith(prefix) and parse_annotation.endswith(("]", ")")):
+            args = _split_annotation_args(parse_annotation[len(prefix):-1])
+            variable_length = len(args) == 2 and args[1] == "..."
+            return {
+                "kind": "tuple",
+                "types": [arg for arg in args if arg != "..."],
+                "annotation": annotation,
+                "variable_length": variable_length,
+                "arity": None if variable_length else len(args),
+            }
+
+    for prefix in ("dict[", "dict("):
+        if normalized.startswith(prefix) and parse_annotation.endswith(("]", ")")):
+            return {
+                "kind": "dict",
+                "types": _split_annotation_args(parse_annotation[len(prefix):-1]),
+                "annotation": annotation,
+            }
+
+    return {"kind": "scalar", "types": [annotation], "annotation": annotation}
+
+
+def extract_return_variables(form_data, validate_function_name=None):
+    """
+    Pull scalar or tuple return save names out of submitted form data.
+
+    Scalar/dict returns use "return"; tuple returns use "return_0", "return_1", ...
+    Empty tuple slots are preserved so runtime indexing stays aligned with the annotation.
+    """
+    save_data = form_data.pop("return", "")
+    tuple_returns = []
+
+    for key in list(form_data.keys()):
+        if key.startswith("return_") and key[7:].isdigit():
+            tuple_returns.append((int(key[7:]), form_data.pop(key, "")))
+
+    def clean(name):
+        if isinstance(name, str):
+            name = name.strip()
+        if name and validate_function_name:
+            return validate_function_name(name)
+        return name or ""
+
+    if tuple_returns:
+        return [clean(value) for _, value in sorted(tuple_returns)]
+
+    return clean(save_data)
+
+
+def store_return_value(context, arg_contexts, return_var, result):
+    """Store a function result in the script context, supporting tuple item saves."""
+    if not return_var or result is None:
+        return
+
+    if isinstance(return_var, list):
+        for index, name in enumerate(return_var):
+            if not name:
+                continue
+            try:
+                value = result[index]
+            except (IndexError, TypeError, KeyError):
+                raise ValueError(f"Cannot save return value {index} as '{name}'; result is not indexable at that position.")
+            value = safe_dump(value)
+            context[name] = value
+            if arg_contexts:
+                arg_contexts[name] = value
+        return
+
+    result = safe_dump(result)
+    context[return_var] = result
+    if arg_contexts:
+        arg_contexts[return_var] = result
 
 
 def install_and_import(package, package_name=None):

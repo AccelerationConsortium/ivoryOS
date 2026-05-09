@@ -389,10 +389,6 @@ def methods_handler(instrument: str = ''):
                 function_name = kwargs.pop("hidden_name")
                 batch_action = kwargs.pop("batch_action", False)
                 consolidate_batch_args = request.form.getlist("consolidate_batch_args")
-                save_data = kwargs.pop('return', '')
-
-                # validate return variable name
-                save_data = script.validate_function_name(save_data)
 
                 function_data = functions.get(function_name)
                 # Handle virtual property setters
@@ -418,6 +414,9 @@ def methods_handler(instrument: str = ''):
                     # Fallback or error handling
                     function_data = {}
 
+                return_format = utils.get_return_type(function_data)
+                save_data = utils.extract_return_variables(kwargs, script.validate_function_name)
+
                 # Save arg_order from signature to exclude dynamic args
                 if function_data and 'signature' in function_data:
                     sig = function_data['signature']
@@ -442,6 +441,7 @@ def methods_handler(instrument: str = ''):
                           "batch_action": batch_action,
                           "consolidate_batch_args": consolidate_batch_args,
                           "arg_order": arg_order,  # Explicitly save order
+                          "return_format": return_format,
                           }
                 script.add_action(action=action, insert_position=insert_position)
             else:
@@ -492,10 +492,8 @@ def methods_handler(instrument: str = ''):
             if form.validate_on_submit():
                 batch_action = kwargs.pop("batch_action", False)
                 consolidate_batch_args = request.form.getlist("consolidate_batch_args")
-                save_data = kwargs.pop('return', '')
                 kwargs.pop('workflow_name')
-                # validate return variable name
-                save_data = script.validate_function_name(save_data)
+                save_data = utils.extract_return_variables(kwargs, script.validate_function_name)
 
                 primitive_arg_types = utils.get_arg_type(kwargs, functions[unique_key])
                 script.eval_list(kwargs, primitive_arg_types)

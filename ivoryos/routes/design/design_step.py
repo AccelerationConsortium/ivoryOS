@@ -57,9 +57,7 @@ def save_step(uuid: int):
         forms = create_form_from_action(action, script=script)
         kwargs = {field.name: field.data for field in forms if field.name != 'csrf_token'}
         if forms and forms.validate_on_submit():
-            save_data = kwargs.pop('return', '')
-            # validate return variable name
-            save_data = script.validate_function_name(save_data)
+            save_data = utils.extract_return_variables(kwargs, script.validate_function_name)
 
             batch_action = kwargs.pop('batch_action', False)
             consolidate_batch_args = request.form.getlist('consolidate_batch_args')

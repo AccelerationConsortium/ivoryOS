@@ -39,12 +39,12 @@ class AbstractSDL(ABC):
         self.logger = logging.getLogger(f"logger_name")
 
     # @prefect.task
-    def analyze(self, param_1:int, param_2:int):
+    def analyze(self, param_1:int, param_2:int) -> tuple[float, float]:
         """analyze current chemical"""
         self.logger.info("analyze")
         print("analyzing")
         time.sleep(1)
-        return random.random()
+        return random.random(), random.random()
 
     # @prefect.task
     def dose_solid(self, amount_in_mg: float = 5,
