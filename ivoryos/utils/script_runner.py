@@ -1202,10 +1202,7 @@ class ScriptRunner:
                         # Store return value if specified
                 return_var = step.get("return", "")
                 if return_var and result is not None:
-                    result = utils.safe_dump(result)  # sanitizes results to save to be json safe
-                    context[return_var] = result
-                    if arg_contexts:
-                        arg_contexts[return_var] = result
+                    utils.store_return_value(context, arg_contexts, return_var, result)
 
             except HumanInterventionRequired as e:
                 self.logger.warning(f"Human intervention required: {e}")

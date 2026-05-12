@@ -324,8 +324,8 @@ class Script(db.Model):
     def _collect_output_variables(self, script_list):
         output_vars = {}
         for action in script_list:
-            if action.get("return"):
-                 output_vars[action["return"]] = "function_output"
+            for output_name in self._return_names(action.get("return")):
+                output_vars[output_name] = "function_output"
             
             # Check for embedded workflow steps
             if "workflow" in action and isinstance(action["workflow"], list):
@@ -338,6 +338,19 @@ class Script(db.Model):
         output_variables.update(added_variables)
 
         return output_variables
+
+    @staticmethod
+    def _return_names(return_value):
+        if isinstance(return_value, list):
+            return [name for name in return_value if name]
+        return [return_value] if return_value else []
+
+    @staticmethod
+    def _format_return_target(return_value):
+        if isinstance(return_value, list):
+            names = [name if name else "_" for name in return_value]
+            return ", ".join(names) if any(name != "_" for name in names) else ""
+        return return_value or ""
 
     def get_autocomplete_variables(self, before_id: int = None) -> list:
         variables = self.get_variables(before_id=before_id)
@@ -672,8 +685,9 @@ class Script(db.Model):
                     args = render_args(action.get("args", {}))
                     ret = action.get("return")
                     line = "    " * indent
-                    if ret:
-                        line += f"{ret} = {instr}.{act}({args})"
+                    ret_target = self._format_return_target(ret)
+                    if ret_target:
+                        line += f"{ret_target} = {instr}.{act}({args})"
                     else:
                         line += f"{instr}.{act}({args})"
                     lines.append(line)
@@ -718,8 +732,9 @@ class Script(db.Model):
                     args = render_args(action.get("args", {}))
                     ret = action.get("return")
                     line_code = "    " * indent
-                    if ret:
-                        line_code += f"{ret} = "
+                    ret_target = self._format_return_target(ret)
+                    if ret_target:
+                        line_code += f"{ret_target} = "
                     line_code += f"{act}({args})"
                     
                     category = "workflow" # collapsible
@@ -820,13 +835,15 @@ class Script(db.Model):
                                  arg_val = arg_val[1:]
                              line_code += f"{instrument}.{property_name} = {arg_val}"
                         elif is_property_getter:
-                             if ret:
-                                 line_code += f"{ret} = {instrument}.{property_name}"
+                             ret_target = self._format_return_target(ret)
+                             if ret_target:
+                                 line_code += f"{ret_target} = {instrument}.{property_name}"
                              else:
                                  line_code += f"{instrument}.{property_name}"
                         else:
-                            if ret:
-                                line_code += f"{ret} = {instrument}.{act}({args})"
+                            ret_target = self._format_return_target(ret)
+                            if ret_target:
+                                line_code += f"{ret_target} = {instrument}.{act}({args})"
                             else:
                                 line_code += f"{instrument}.{act}({args})"
                     
@@ -1236,8 +1253,6 @@ class Script(db.Model):
             single_line = f"{async_str}{function_call}()"
 
 
-        save_data_str = save_data + " = " if save_data else ''
-
         if batch and not batch_action:
             arg_list = [args[arg][1:] for arg in args if isinstance(args[arg], str) and args[arg].startswith("#")]
             param_str = [f"param['{arg_list}']" for arg_list in arg_list if arg_list]
@@ -1246,11 +1261,29 @@ class Script(db.Model):
                 for_string = self.indent(indent_unit) + "for param in param_list:" + args_str
             else:
                 for_string = self.indent(indent_unit) + "for i in range(n):"
-            output_code = for_string + self.indent(indent_unit + 1) + save_data_str + single_line
-            if save_data:
-                output_code = output_code + self.indent(indent_unit + 1) + f"param['{save_data}'] = {save_data}"
+            if isinstance(save_data, list):
+                output_code = for_string + self.indent(indent_unit + 1) + f"__ivoryos_result = {single_line}"
+                for index, name in enumerate(save_data):
+                    if name:
+                        output_code += self.indent(indent_unit + 1) + f"{name} = __ivoryos_result[{index}]"
+                        output_code += self.indent(indent_unit + 1) + f"param['{name}'] = {name}"
+            else:
+                save_data_str = save_data + " = " if save_data else ''
+                output_code = for_string + self.indent(indent_unit + 1) + save_data_str + single_line
+                if save_data:
+                    output_code = output_code + self.indent(indent_unit + 1) + f"param['{save_data}'] = {save_data}"
         else:
-            output_code = self.indent(indent_unit) + save_data_str + single_line
+            if isinstance(save_data, list):
+                if any(save_data):
+                    output_code = self.indent(indent_unit) + f"__ivoryos_result = {single_line}"
+                    for index, name in enumerate(save_data):
+                        if name:
+                            output_code += self.indent(indent_unit) + f"{name} = __ivoryos_result[{index}]"
+                else:
+                    output_code = self.indent(indent_unit) + single_line
+            else:
+                save_data_str = save_data + " = " if save_data else ''
+                output_code = self.indent(indent_unit) + save_data_str + single_line
 
         return output_code, indent_unit
 

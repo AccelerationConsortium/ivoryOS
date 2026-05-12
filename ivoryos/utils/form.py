@@ -19,6 +19,7 @@ import importlib
 
 from ivoryos.utils.db_models import Script
 from ivoryos.utils.global_config import GlobalConfig
+from ivoryos.utils import utils
 
 def is_list_type(ann):
     if ann is list: return True
@@ -472,11 +473,18 @@ def create_add_form(attr, attr_name, autofill: bool, script=None, design: bool =
     """
     signature = attr.get('signature', {})
     docstring = attr.get('docstring', "")
-    return_type = signature.return_annotation
+    return_type = utils.get_return_type(attr)
     # print(signature, docstring)
     dynamic_form = create_form_for_method(signature, autofill, script, design)
     if design:
-        if return_type is not None:
+        if return_type["kind"] == "tuple" and return_type.get("arity") and return_type["arity"] > 1:
+            for index, item_type in enumerate(return_type["types"]):
+                return_value = StringField(
+                    label=f"Save item {index + 1} as",
+                    render_kw={"placeholder": item_type or "Optional"}
+                )
+                setattr(dynamic_form, f'return_{index}', return_value)
+        elif return_type["kind"] != "none":
             return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
             setattr(dynamic_form, 'return', return_value)
         batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})
@@ -647,8 +655,20 @@ def create_form_from_action(action: dict, script=None, design=True):
         if "batch_action" in action or instrument in ['wait']:
             batch_action = BooleanField(label='run once per batch', default=bool(action.get("batch_action", False)))
             setattr(DynamicForm, 'batch_action', batch_action)
-        return_value = StringField(label='Save value as', default=f"{save_as}", render_kw={"placeholder": "Optional"})
-        setattr(DynamicForm, 'return', return_value)
+        if isinstance(save_as, list):
+            return_format = action.get("return_format", {})
+            return_types = return_format.get("types") or []
+            for index, value in enumerate(save_as):
+                placeholder = return_types[index] if index < len(return_types) else "Optional"
+                return_value = StringField(
+                    label=f"Save item {index + 1} as",
+                    default=value,
+                    render_kw={"placeholder": placeholder}
+                )
+                setattr(DynamicForm, f'return_{index}', return_value)
+        else:
+            return_value = StringField(label='Save value as', default=f"{save_as or ''}", render_kw={"placeholder": "Optional"})
+            setattr(DynamicForm, 'return', return_value)
     
     # Attach arg_types for UI
     setattr(DynamicForm, 'arg_types', arg_types)
@@ -880,7 +900,8 @@ def _action_button(action: dict, variables: dict):
         text = f"{action['action']} = {action['args'].get('statement')}"
     else:
         # regular action button
-        prefix = f"{action['return']} = " if action['return'] else ""
+        return_target = Script._format_return_target(action.get('return'))
+        prefix = f"{return_target} = " if return_target else ""
         action_text = f"{action['instrument'].split('.')[-1] if action['instrument'].startswith('deck') else action['instrument']}.{action['action']}"
         arg_string = ""
         if action['args']:
