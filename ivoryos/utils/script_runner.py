@@ -51,6 +51,7 @@ class ScriptRunner:
         self.is_running = False
         self.lock = global_config.runner_lock
         self.paused = False
+        self.queue_paused = False
         self.current_app = None
         self.last_progress = 0
         self.last_iteration = None
@@ -70,19 +71,29 @@ class ScriptRunner:
 
     def toggle_pause(self):
         """Toggles between pausing and resuming the script"""
-        self.paused = not self.paused
-        if self.pause_event.is_set():
-            self.logger.info('Pause script')
-            self.pause_event.clear()  # Pause the script
-            return "Paused"
-        else:
+        if self.paused or self.queue_paused:
+            self.paused = False
+            self.queue_paused = False
             self.pause_event.set()  # Resume the script
-            self.logger.info('Resume script')
+            if self.logger:
+                self.logger.info('Resume script')
+            if self.socketio:
+                self.socketio.emit('pause_status', {'paused': False})
+            self._process_queue()
             return "Resumed"
+        else:
+            self.paused = True
+            self.queue_paused = True
+            if self.logger:
+                self.logger.info('Pause script')
+            self.pause_event.clear()  # Pause the script
+            if self.socketio:
+                self.socketio.emit('pause_status', {'paused': True})
+            return "Paused"
 
     def pause_status(self):
         """Toggles between pausing and resuming the script"""
-        return self.paused
+        return self.paused or self.queue_paused
 
     def reset_stop_event(self):
         """Resets the stop event"""
@@ -290,26 +301,48 @@ class ScriptRunner:
         return False
 
 
-    def abort_pending(self):
+    def abort_pending(self, continue_queue=True):
         """Abort the pending iteration after the current is finished"""
         self.stop_pending_event.set()
-        self.logger.info("Abort pending tasks")
+        if self.logger:
+            self.logger.info("Abort pending tasks")
+            
+        if not continue_queue:
+            self.queue_paused = True
+            if self.socketio:
+                self.socketio.emit('pause_status', {'paused': True})
+        else:
+            self.queue_paused = False
+            # self.paused = False
+            if not self.pause_event.is_set():
+                self.pause_event.set()
+            if self.socketio:
+                self.socketio.emit('pause_status', {'paused': False})
 
     def abort_cleanup(self):
         """Abort the pending iteration after the current is finished"""
         self.stop_cleanup_event.set()
         self.logger.info("Abort cleanup")
 
-    def stop_execution(self):
+    def stop_execution(self, continue_queue=True):
         """Force stop everything, including ongoing tasks."""
-        self.logger.info("Stop execution")
+        if self.logger:
+            self.logger.info("Stop execution")
         self.stop_current_event.set()
         self.abort_pending()
         self.abort_cleanup()
-        if not self.pause_event.is_set():
-            self.pause_event.set()
-        if self.lock.locked():
-            self.lock.release()
+        
+        if continue_queue:
+            self.queue_paused = False
+            # self.paused = False
+            if not self.pause_event.is_set():
+                self.pause_event.set()
+            if self.socketio:
+                self.socketio.emit('pause_status', {'paused': False})
+        else:
+            self.queue_paused = True
+            if self.socketio:
+                self.socketio.emit('pause_status', {'paused': True})
 
 
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None,
@@ -351,22 +384,48 @@ class ScriptRunner:
             "on_start": on_start,
             "display_name": display_name
         }
-        
+        # handle status when workflow queued during single task execution
+        was_busy = self.lock.locked() or self.queue_paused
         self.execution_queue.append(task)
         if self.logger:
             self.logger.info(f"Added task to queue: {run_name}")
+
+        if was_busy:
+            self.queue_paused = True
+            if self.socketio:
+                self.socketio.emit('pause_status', {'paused': True})
+        else:
+            # Start immediately when the runner is idle.
+            self.paused = False
+            self.queue_paused = False
+            self.pause_event.set()
+            if self.socketio:
+                self.socketio.emit('pause_status', {'paused': False})
             
         return self._process_queue()
         
+    def _emit_busy_status(self):
+        """Emit the current execution busy status to frontend"""
+        if self.socketio:
+            self.socketio.emit('busy_status', {
+                'is_running': self.lock.locked(),
+                'queue_length': len(self.execution_queue)
+            })
+
     def _process_queue(self):
         """Process the next task in the queue if the runner is free"""
         # Try to acquire lock without blocking
         if not self.lock.acquire(blocking=False):
+            self._emit_busy_status()
             return "queued"
 
         if not self.execution_queue:
             self.lock.release()
             return "empty"
+            
+        if self.paused or self.queue_paused:
+            self.lock.release()
+            return "paused"
             
         # Get next task
         task = self.execution_queue.pop(0)
@@ -380,6 +439,7 @@ class ScriptRunner:
             target=self._run_with_stop_check,
             kwargs=task
         )
+        self._emit_busy_status()
         thread.start()
         return thread
 
@@ -540,6 +600,7 @@ class ScriptRunner:
                 self._emit_progress(100)
                 if self.lock.locked():
                     self.lock.release()
+                self._emit_busy_status()
                 
                 self.current_task = None # Clear current task
                 
@@ -555,8 +616,8 @@ class ScriptRunner:
                         pass
                     run_file_handler.close()
 
-                    # Check for next task in queue
-                    self._process_queue()
+                # Check for next task in queue
+                self._process_queue()
 
 
         with current_app.app_context():
@@ -1176,6 +1237,8 @@ class ScriptRunner:
                 if step_db.run_error:
                     self.retry = False
                     continue
+                if self.socketio:
+                    self.socketio.emit('error_resolved')
                 self.retry = False
             
             break

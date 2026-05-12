@@ -105,8 +105,7 @@
     });
 </script>
 
-{# Include error modal #}
-{% include 'components/error_modal.html' %}
+
 
 <!-- Task Name Modal -->
 <div class="modal fade" id="taskNameModal" tabindex="-1" aria-labelledby="taskNameModalLabel" aria-hidden="true">
@@ -144,11 +143,14 @@
         async function isSystemBusy() {
             try {
                 const response = await fetch("{{ url_for('execute.runner_status') }}");
+                if (!response.ok) {
+                    throw new Error(`Status check failed: ${response.status}`);
+                }
                 const data = await response.json();
                 return data.busy;
             } catch (error) {
                 console.error('Error checking system status:', error);
-                return false;
+                return Boolean(window.platformState && window.platformState.is_running);
             }
         }
 
@@ -220,6 +222,9 @@
 
                 } else {
                     // System not busy, proceed normally
+                    if (typeof window.clearActiveError === "function") {
+                        window.clearActiveError();
+                    }
                     btn.dataset.processed = "true";
                     btn.click();
                 }
@@ -227,7 +232,5 @@
         });
     });
 </script>
-
-<script src="{{ url_for('static', filename='js/socket_handler.js') }}"></script>
 
 {% endblock %}

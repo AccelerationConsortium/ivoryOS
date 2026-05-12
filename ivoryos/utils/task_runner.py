@@ -23,28 +23,31 @@ class TaskRunner:
         self.globals_dict = globals_dict
         self.lock = global_config.runner_lock
 
-    async def run_single_step(self, component, method, kwargs, wait=True, current_app=None):
+    async def run_single_step(self, component, method, kwargs, wait=True, current_app=None, override_busy=False):
         global deck
         if deck is None:
             deck = global_config.deck
 
         # Try to acquire lock without blocking
-        if not self.lock.acquire(blocking=False):
-            current_status = global_config.runner_status
-            current_status["status"] = "busy"
-            current_status["output"] = "busy"
-            return current_status
+        acquired = False
+        if not override_busy:
+            if not self.lock.acquire(blocking=False):
+                current_status = global_config.runner_status or {}
+                current_status["status"] = "busy"
+                current_status["output"] = "busy"
+                return current_status
+            acquired = True
 
         if wait:
-            output = await self._run_single_step(component, method, kwargs, current_app)
+            output = await self._run_single_step(component, method, kwargs, current_app, override_busy=override_busy, acquired=acquired)
         else:
             # Create background task properly
             async def background_runner():
-                await self._run_single_step(component, method, kwargs, current_app)
+                await self._run_single_step(component, method, kwargs, current_app, override_busy=override_busy, acquired=acquired)
 
             asyncio.create_task(background_runner())
             await asyncio.sleep(0.1)  # Change time.sleep to await asyncio.sleep
-            output = {"status": "task started", "task_id": global_config.runner_status.get("id")}
+            output = {"status": "task started", "task_id": global_config.runner_status.get("id") if global_config.runner_status else None}
 
         return output
 
@@ -98,12 +101,13 @@ class TaskRunner:
         function_executable = getattr(instrument, method)
         return function_executable
 
-    async def _run_single_step(self, component, method, kwargs, current_app=None):
+    async def _run_single_step(self, component, method, kwargs, current_app=None, override_busy=False, acquired=False):
         try:
             function_executable = self._get_executable(component, deck, method)
             method_name = f"{component}.{method}"
         except Exception as e:
-            self.lock.release()
+            if acquired:
+                self.lock.release()
             return {"status": "error", "msg": str(e)}
 
         # Flask context is NOT async → just use normal "with"
@@ -116,7 +120,9 @@ class TaskRunner:
             )
             db.session.add(step)
             db.session.flush()
-            global_config.runner_status = {"id": step.id, "type": "task"}
+            
+            if not override_busy:
+                global_config.runner_status = {"id": step.id, "type": "task"}
 
             try:
                 kwargs = self._convert_kwargs_type(kwargs, function_executable)
@@ -136,7 +142,8 @@ class TaskRunner:
                 output = str(e)
             finally:
                 db.session.commit()
-                self.lock.release()
+                if acquired:
+                    self.lock.release()
 
             return dict(success=success, output=output)
 

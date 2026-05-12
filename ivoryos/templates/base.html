@@ -84,10 +84,12 @@
                         {% endfor %}
                     {% endif %}
                 </ul>
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav ms-auto align-items-center">
                     {% if current_user.is_authenticated %}
                         <div class="dropdown">
-                            <li class="nav-item " aria-expanded="false"><i class="bi bi-person-circle"></i> {{ current_user.get_id() }}</li>
+                            <li class="nav-item dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
+                                <i class="bi bi-person-circle"></i> {{ current_user.get_id() }}
+                            </li>
                             <ul class="dropdown-menu">
                                 <li><a class="dropdown-item" href="{{ url_for("auth.change_password") }}" role="button" aria-expanded="false">Change Password</a></li>
                                 <li><a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#logoModal" role="button" aria-expanded="false">Customize Logo</a></li>
@@ -212,7 +214,7 @@
                                 <label class="form-check-label" for="dismiss">Don't remind me</label>
                             </div>
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> Close </button>
-                            <button type="submit"  class="btn btn-primary"> Save </button>
+                            <button type="submit" class="btn btn-primary"> Save </button>
                         </div>
                     </div>
                 </form>
@@ -261,5 +263,20 @@
         </div>
     </div>
 
+
+    {# Include global error modal #}
+    {% include 'components/error_modal.html' %}
+
+    {# Floating system status / error restore icon (bottom left) #}
+    <div id="global-status-icon" class="position-fixed shadow" 
+         style="bottom: 20px; left: 20px; z-index: 9999; display: flex; cursor: pointer; border-radius: 20px; height: 35px; padding: 0 15px; background-color: #6c757d; align-items: center; justify-content: center; gap: 8px; color: white; font-weight: 500;"
+         title="Platform is idle"
+         onclick="if(localStorage.getItem('active_error')) restoreErrorModal()">
+         <span id="global-status-text">Idle</span>
+    </div>
+
+    <!-- Socket.io for global events (like error modals) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+    <script src="{{ url_for('static', filename='js/socket_handler.js') }}"></script>
 </body>
 </html>

@@ -219,6 +219,9 @@
           }
         });
       </script>
+      <script>
+        const STATUS_URL = "{{ url_for('execute.runner_status') }}";
+      </script>
       <script src="{{ url_for('static', filename='js/sortable_card.js') }}"></script>
       <script src="{{ url_for('static', filename='js/overlay.js') }}"></script>
       {% else %}
