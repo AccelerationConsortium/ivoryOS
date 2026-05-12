@@ -363,6 +363,11 @@ class ScriptRunner:
         # time.sleep(1)  # Optional: may help ensure deck readiness
 
         
+        # Clear residual config for simple repeat runs, but preserve it for 
+        # Bayesian optimization which might use both repeat_count and config in the future
+        if repeat_count and not optimizer_cls and not optimizer:
+            config = None
+
         task = {
             "script": script,
             "repeat_count": repeat_count,
