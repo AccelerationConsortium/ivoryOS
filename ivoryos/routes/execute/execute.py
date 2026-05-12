@@ -279,8 +279,10 @@ def run_bo():
         optimizer_type = payload_json.pop("optimizer_type", None)
         existing_data = payload_json.pop("existing_data", None)
         additional_params = payload_json.pop("additional_params", None)
+        display_name = payload_json.pop("display_name", None)
     else:
         payload = request.form.to_dict()
+        display_name = payload.pop("display_name", None)
         repeat = payload.pop("repeat", None)
         optimizer_type = payload.pop("optimizer_type", None)
         existing_data = payload.pop("existing_data", None)
@@ -341,7 +343,7 @@ def run_bo():
                           current_app=current_app._get_current_object(), batch_size=int(batch_size),
                           objectives=objectives, parameters=parameters, constraints=constraints, steps=steps,
                           optimizer_cls=Optimizer, additional_params=additional_params,
-                          on_start=on_start_callback
+                          on_start=on_start_callback, display_name=display_name
                           )
         if result == "queued":
             flash(f"System busy. Optimization {run_name} added to queue.")
