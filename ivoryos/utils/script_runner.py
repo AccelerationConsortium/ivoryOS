@@ -567,6 +567,10 @@ class ScriptRunner:
             else:
                 run.end_time = datetime.now()
                 run.run_error = error_flag
+
+                # remove data_path from db record
+                if not any(output_list):
+                    run.data_path = None
                 db.session.commit()
 
 
@@ -659,7 +663,7 @@ class ScriptRunner:
                 db.session.commit()
 
                 # save results
-                if not script.python_script: # and return_list:
+                if not script.python_script and any(output_list):
                     if i == 0:
                         self._save_results(filename, arg_type, return_list, output_list, output_path)
                     else:
@@ -765,7 +769,7 @@ class ScriptRunner:
             db.session.commit()
 
             # save results
-            if not script.python_script:  # and return_list:
+            if not script.python_script and any(output_list):
                 if i_progress == 0:
                     self._save_results(filename, arg_types, return_list, output_list, output_path)
                 else:
@@ -786,7 +790,7 @@ class ScriptRunner:
         # output_columns = list(arg_type.keys()) + list(return_list)
         # df = df.reindex(columns=output_columns)
 
-        print(f'save df {df} to {file_path}')
+        # print(f'save df {df} to {file_path}')
         df.to_csv(file_path, index=False)
 
         if self.logger:
