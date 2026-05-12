@@ -272,7 +272,8 @@ class FlexibleEnumField(StringField):
                 # Convert the string key to Enum instance
                 self.data = self.enum_class[key].value
             elif key.startswith("#"):
-                if not self.script.editing_type == "script":
+                # Script variable reference — only valid when a script context exists
+                if self.script is None or not self.script.editing_type == "script":
                     raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
                 self.data = key
             elif isinstance(key, str):
@@ -285,11 +286,13 @@ class FlexibleEnumField(StringField):
                 else:
                     # todo can we assume if it isnt an enum value, that it is a non-dynamic variable in the script?
                     # not in value list, so check if it is a non-dynamic variable in the script
-                    variable, variable_type = find_variable(key, self.script)
-                    if variable:
-                        self.data = variable
-                    else:
-                        raise ValidationError(f"Invalid choice: '{key}'. Must match one of {list(self.enum_class.__members__.keys())}")
+                    # Guard: script is None in control-panel context (design=False)
+                    if self.script is not None:
+                        variable, variable_type = find_variable(key, self.script)
+                        if variable:
+                            self.data = variable
+                            return
+                    raise ValidationError(f"Invalid choice: '{key}'. Must match one of {list(self.enum_class.__members__.keys())}")
             else:
                 raise ValidationError(f"Invalid choice: '{key}'. Must match one of {list(self.enum_class.__members__.keys())}")
 
