@@ -650,7 +650,7 @@ class ScriptRunner:
         phase = WorkflowPhase(
             run_id=run_id,
             name=section_name,
-            repeat_index=0,
+            repeat_index=1,
             start_time=datetime.now()
         )
         db.session.add(phase)
@@ -702,7 +702,7 @@ class ScriptRunner:
                 phase = WorkflowPhase(
                     run_id=run_id,
                     name="main",
-                    repeat_index=i,
+                    repeat_index=i + 1,
                     parameters=utils.sanitize_for_json(kwargs_list),
                     start_time=datetime.now()
                 )
@@ -772,7 +772,7 @@ class ScriptRunner:
             phase = WorkflowPhase(
                 run_id=run_id,
                 name="main",
-                repeat_index=i_progress,
+                repeat_index=i_progress + 1,
                 start_time=datetime.now()
             )
             db.session.add(phase)
