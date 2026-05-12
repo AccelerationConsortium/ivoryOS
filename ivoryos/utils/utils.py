@@ -477,14 +477,19 @@ def create_deck_snapshot(deck, save: bool = False, output_path: str = '', exclud
 
     def print_deck_snapshot(deck_summary):
         def print_section(title, items):
-            print(f"\n=== {title} ({len(items)}) ===")
+            try:
+                print(f"\n=== {title} ({len(items)}) ===")
+            except UnicodeEncodeError:
+                # Windows cp1252 console can't encode emoji — strip to ASCII
+                safe_title = title.encode("ascii", errors="replace").decode("ascii")
+                print(f"\n=== {safe_title} ({len(items)}) ===")
             if not items:
                 return
             for name, class_type in items.items():
                 print(f"  {name}: {class_type}")
 
-        print_section("✅ INCLUDED MODULES", deck_summary["included"])
-        print_section("❌ FAILED MODULES", deck_summary["failed"])
+        print_section("INCLUDED MODULES [ok]", deck_summary["included"])
+        print_section("FAILED MODULES [err]", deck_summary["failed"])
         print("\n")
 
     print_deck_snapshot(deck_summary)
