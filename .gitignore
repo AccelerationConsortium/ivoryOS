@@ -122,3 +122,4 @@ dmypy.json
 ivoryos_data/
 
 *pkl
+community/examples/abstract_sdl_example/ivoryos_data/pseudo_deck/abstract_sdl.pkl

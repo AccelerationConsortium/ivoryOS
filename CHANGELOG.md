@@ -1,4 +1,14 @@
 # Changelog
+## 1.5.20 (May 13th, 2026)
+- !146 **[Bug]** fix setting task name for optimization runs doesn't work
+- !145 **[Bug]** fix csv configuration applied for repeat run in queue
+- !144 **[QoL]** change iteration count to start at 1 instead of 0
+- !143 **[QoL]** remove emoji in printout
+- !142 **[Bug]** fix error during direct control function calling
+- !141 **[New]** support multiple output in single function
+- !140 **[QoL]** prevent saving empty .csv
+- !139 **[New]** allow popups to be minimized or brought back, fix queue pause behavior
+
 ## 1.5.19 (April 20th, 2026)
 - !136 **[New]** only display available optimizers based on installed packages; auto-select optimizer when only one is available
 - !135 **[Bug]** stop pending now correctly completes the current iteration before stopping, and always runs the cleanup section
