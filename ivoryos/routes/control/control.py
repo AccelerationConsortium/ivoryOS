@@ -1,16 +1,16 @@
 import copy
 
-from flask import Blueprint, redirect, flash, request, render_template, session, current_app, jsonify
+from flask import Blueprint, flash, request, render_template, session, current_app, jsonify
 from flask_login import login_required
 
 from ivoryos.routes.control.control_file import control_file
 from ivoryos.routes.control.control_new_device import control_temp
 from ivoryos.routes.control.utils import post_session_by_instrument, get_session_by_instrument, find_instrument_by_name
-from ivoryos.utils.global_config import GlobalConfig
-from ivoryos.utils.form import create_form_from_module, create_form_from_pseudo
-from ivoryos.utils.task_runner import TaskRunner
+from ivoryos.forms.dynamic_forms import create_form_from_module, create_form_from_pseudo
+from ivoryos.runtime.task_runner import TaskRunner
+from ivoryos.runtime.state import GlobalState
 
-global_config = GlobalConfig()
+global_state = GlobalState()
 runner = TaskRunner()
 
 control = Blueprint('control', __name__, template_folder='templates')
@@ -31,15 +31,15 @@ async def deck_controllers(instrument: str = None):
 
     .. http:get:: /instruments
 
-        get all instruments for home page
+        Get all available instruments for the control home page.
 
     .. http:get:: /instruments/<string:instrument>
 
-        get all methods of the given <instrument>
+        Get all methods and their interface schema for the specified <instrument>.
 
     .. http:post:: /instruments/<string:instrument>
 
-        send POST request to run a method of the given <instrument>
+        Execute a specific method on the specified <instrument>.
 
     :param instrument: instrument name, if not provided, list all instruments
     :type instrument: str
@@ -53,7 +53,7 @@ async def deck_controllers(instrument: str = None):
         if instrument.startswith("blocks"):
             forms = create_form_from_pseudo(pseudo=inst_object, autofill=False, design=False)
         elif instrument.startswith("deck"):
-            forms = create_form_from_pseudo(pseudo=global_config.deck_snapshot[instrument], autofill=False, design=False)
+            forms = create_form_from_pseudo(pseudo=global_state.interface_schema[instrument], autofill=False, design=False)
         else:
             #TODO
             forms = create_form_from_module(sdl_module=inst_object, autofill=False, design=False)
@@ -85,9 +85,9 @@ async def deck_controllers(instrument: str = None):
                 flash(f"Run Error! {form.errors}", "error")
                 return render_template(
                     "controllers.html",
-                    defined_variables=global_config.deck_snapshot.keys(),
-                    block_variables=global_config.building_blocks.keys(),
-                    temp_variables=global_config.defined_variables.keys(),
+                    defined_variables=global_state.interface_schema.keys(),
+                    block_variables=global_state.building_blocks.keys(),
+                    temp_variables=global_state.defined_variables.keys(),
                     instrument=instrument,
                     forms=forms,
                     session=session
@@ -112,22 +112,22 @@ async def deck_controllers(instrument: str = None):
             else:
                 flash(f"Run Error! {output.get('output', 'Unknown error occurred.')}", "error")
 
-    # GET request → render web form or return snapshot for API
+    # GET request → render web form or return interface_schema for API
     if request.is_json or request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
-        # 1.3.2 fix snapshot copy, add building blocks to snapshots
-        snapshot = copy.deepcopy(global_config.deck_snapshot)
-        building_blocks = copy.deepcopy(global_config.building_blocks)
-        snapshot.update(building_blocks)
-        for instrument_key, instrument_data in snapshot.items():
+        # 1.3.2 fix interface_schema copy, add building blocks to interface_schemas
+        interface_schema = copy.deepcopy(global_state.interface_schema)
+        building_blocks = copy.deepcopy(global_state.building_blocks)
+        interface_schema.update(building_blocks)
+        for instrument_key, instrument_data in interface_schema.items():
             for function_key, function_data in instrument_data.items():
                 function_data["signature"] = str(function_data["signature"])
-        return jsonify(snapshot)
+        return jsonify(interface_schema)
 
     return render_template(
         "controllers.html",
-        defined_variables=global_config.deck_snapshot.keys(),
-        block_variables=global_config.building_blocks.keys(),
-        temp_variables=global_config.defined_variables.keys(),
+        defined_variables=global_state.interface_schema.keys(),
+        block_variables=global_state.building_blocks.keys(),
+        temp_variables=global_state.defined_variables.keys(),
         instrument=instrument,
         forms=forms,
         session=session
@@ -136,12 +136,16 @@ async def deck_controllers(instrument: str = None):
 @control.route('/<string:instrument>/actions/order', methods=['POST'])
 def save_order(instrument: str):
     """
-    .. :quickref: Control Customization; Save functions' order
+    .. :quickref: Control Customization; Save method order
+
+    **Save Order**
 
     .. http:post:: instruments/<string:instrument>/actions/order
 
-    save function drag and drop order for the given <instrument>
+    Save the custom drag-and-drop order for the methods of a specific instrument.
 
+    :param instrument: The name of the instrument.
+    :status 204: Order saved successfully.
     """
     # Save the new order for the specified group to session
     data = request.json
@@ -151,12 +155,18 @@ def save_order(instrument: str):
 @control.route('/<string:instrument>/actions/<string:function>', methods=["PATCH"])
 def hide_function(instrument: str, function: str):
     """
-    .. :quickref: Control Customization; Toggle function visibility
+    .. :quickref: Control Customization; Toggle method visibility
 
-    .. http:patch:: /instruments/<instrument>/actions/<function>
+    **Hide Function**
 
-    Toggle visibility for the given <instrument> and <function>
+    .. http:patch:: /instruments/<string:instrument>/actions/<string:function>
 
+    Toggle the visibility of a specific method for an instrument in the control UI.
+
+    :param instrument: The name of the instrument.
+    :param function: The name of the method to hide/show.
+    :json bool hidden: Whether the method should be hidden.
+    :status 200: Visibility updated successfully.
     """
     back = request.referrer
     data = request.get_json()

@@ -44,7 +44,6 @@ class OptimizerBase(ABC):
         observe
         :param results: {"objective_name": "value"}
         """
-        pass
 
     @abstractmethod
     def append_existing_data(self, existing_data, file_path: str = None):

@@ -3,7 +3,7 @@ import re
 import inspect
 from urllib.parse import urlparse
 from enum import Enum
-from typing import Dict, Set, Any, Optional, Type, Union
+from typing import Dict, Set, Any, Type, Union
 
 
 class ProxyGenerator:
@@ -266,14 +266,14 @@ class ProxyGenerator:
         return result
 
     def generate_proxy_file(self,
-                            snapshot: Dict[str, Dict[str, Any]],
+                            interface_schema: Dict[str, Dict[str, Any]],
                             output_path: str,
                             filename: str = "generated_proxy.py") -> str:
         """
-        Generate the complete proxy file from a snapshot of instruments.
+        Generate the complete proxy file from a interface_schema of instruments.
 
         Args:
-            snapshot: Dictionary containing instrument data with functions
+            interface_schema: Dictionary containing instrument data with functions
             output_path: Directory to write the output file
             filename: Name of the output file
 
@@ -285,14 +285,14 @@ class ProxyGenerator:
         self.collected_enums.clear()
 
         # First pass: collect all types and Enums
-        for instrument_key, instrument_data in snapshot.items():
+        for instrument_key, instrument_data in interface_schema.items():
             for function_key, function_data in instrument_data.items():
                 sig = function_data.get('signature')
                 if isinstance(sig, inspect.Signature):
                    self._collect_types_from_signature(sig)
 
-        # Process each instrument in the snapshot
-        for instrument_key, instrument_data in snapshot.items():
+        # Process each instrument in the interface_schema
+        for instrument_key, instrument_data in interface_schema.items():
             # Convert function signatures to strings if needed
             for function_key, function_data in instrument_data.items():
                 if 'signature' in function_data:
@@ -361,14 +361,14 @@ class ProxyGenerator:
         return filepath
 
     def generate_from_flask_route(self,
-                                  snapshot: Dict[str, Dict[str, Any]],
+                                  interface_schema: Dict[str, Dict[str, Any]],
                                   request_url_root: str,
                                   output_folder: str) -> str:
         """
         Convenience method that matches the original Flask route behavior.
 
         Args:
-            snapshot: The deck snapshot from global_config
+            interface_schema: The deck interface_schema from global_state
             request_url_root: The URL root from Flask request
             output_folder: Output folder path from app config
 
@@ -379,7 +379,7 @@ class ProxyGenerator:
         self.base_url = request_url_root.rstrip('/')
 
         # Generate the proxy file
-        return self.generate_proxy_file(snapshot, output_folder)
+        return self.generate_proxy_file(interface_schema, output_folder)
 
     def _generate_init(self):
         return '''    def __init__(self, username=None, password=None):

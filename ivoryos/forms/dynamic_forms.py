@@ -1,25 +1,26 @@
 import uuid
 from enum import Enum, EnumMeta
 from typing import Union, Any
+import inspect
+import importlib
+
+from wtforms.fields.choices import SelectField
+from wtforms.fields.core import Field
+from wtforms.validators import InputRequired, ValidationError, Optional
+from wtforms.widgets.core import TextInput
+from flask_wtf import FlaskForm
+from wtforms import StringField, FloatField, HiddenField, BooleanField, IntegerField
+
+from ivoryos.script import Script, ScriptEditor
+from ivoryos.runtime.state import GlobalState
+from ivoryos.parsers.introspection import get_return_type
+
 try:
     from typing import get_origin, get_args
 except ImportError:
     # For Python versions = 3.7, use typing_extensions
     from typing_extensions import get_origin, get_args
 
-from wtforms.fields.choices import SelectField
-from wtforms.fields.core import Field
-from wtforms.validators import InputRequired, ValidationError, Optional
-from wtforms.widgets.core import TextInput
-
-from flask_wtf import FlaskForm
-from wtforms import StringField, FloatField, HiddenField, BooleanField, IntegerField
-import inspect
-import importlib
-
-from ivoryos.utils.db_models import Script
-from ivoryos.utils.global_config import GlobalConfig
-from ivoryos.utils import utils
 
 def is_list_type(ann):
     if ann is list: return True
@@ -42,7 +43,7 @@ def is_list_type(ann):
 
     return False
 
-global_config = GlobalConfig()
+global_state = GlobalState()
 
 def find_variable(data, script):
     """
@@ -50,7 +51,7 @@ def find_variable(data, script):
     :param data: string of input variable name
     :param script:Script object
     """
-    variables: dict[str, str] = script.get_variables()
+    variables: dict[str, str] = ScriptEditor(script).get_variables()
     for variable_name, variable_type in variables.items():
         if variable_name == data:
             return data, variable_type  # variable_type int float str or "function_output"
@@ -366,8 +367,7 @@ def create_form_for_method(method, autofill, script=None, design=True):
         field_kwargs = {
             "label": param.name,
             "default": default_value,
-            "validators": [InputRequired()] if param.default is param.empty else [Optional()],
-            **({"script": script} if (autofill or design) else {})
+            "validators": [InputRequired()] if param.default is param.empty else [Optional()]
         }
         if _is_enum_type(param.annotation):
             enum_class = _unwrap_enum_type(param.annotation)
@@ -395,6 +395,10 @@ def create_form_for_method(method, autofill, script=None, design=True):
                 field_kwargs["validators"] = [InputRequired()] if param.default is param.empty else [Optional()]
 
         render_kwargs = {"placeholder": placeholder_text}
+
+        # Add script to kwargs if supported by field_class or in design mode
+        if script and (design or field_class is FlexibleEnumField):
+            field_kwargs["script"] = script
 
         # Create the field with additional rendering kwargs for placeholder text
         field = field_class(**field_kwargs, render_kw=render_kwargs, **extra_kwargs)
@@ -473,7 +477,7 @@ def create_add_form(attr, attr_name, autofill: bool, script=None, design: bool =
     """
     signature = attr.get('signature', {})
     docstring = attr.get('docstring', "")
-    return_type = utils.get_return_type(attr)
+    return_type = get_return_type(attr)
     # print(signature, docstring)
     dynamic_form = create_form_for_method(signature, autofill, script, design)
     if design:
@@ -606,10 +610,9 @@ def create_form_from_action(action: dict, script=None, design=True):
         field_kwargs = {
             "label": name,
             "default": value,
-            # todo get optional/required from snapshot
+            # todo get optional/required from interface_schema
             "validators": [],
-            "filters": [lambda x: x if x != '' else None],
-            **({"script": script})
+            "filters": [lambda x: x if x != '' else None]
         }
         if type(param_type) is list:
             none_type = param_type[1]
@@ -645,6 +648,10 @@ def create_form_from_action(action: dict, script=None, design=True):
 
         render_kwargs = {"placeholder": placeholder_text}
 
+        # Add script to kwargs if supported by field_class or in design mode
+        if script and (design or field_class is FlexibleEnumField):
+            field_kwargs["script"] = script
+
         # Create the field with additional rendering kwargs for placeholder text
         field = field_class(**field_kwargs, render_kw=render_kwargs, **extra_kwargs)
         setattr(DynamicForm, name, field)
@@ -679,7 +686,7 @@ def create_form_from_action(action: dict, script=None, design=True):
             # Try to resolve instrument method to check if it has kwargs
             if instrument and instrument.startswith("deck."):
                 module_name = instrument.split(".")[1]
-                deck = GlobalConfig().deck
+                deck = GlobalState().deck
                 if deck:
                     inst = getattr(deck, module_name, None)
                     if inst:
@@ -812,7 +819,7 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
             # Backfill UUID if missing (persistent check)
             if not workflow.uuid:
                 workflow.uuid = str(uuid.uuid4())
-                from ivoryos.utils.db_models import db
+                from ivoryos.models import db
                 db.session.add(workflow)
                 db.session.commit()
 
@@ -862,7 +869,7 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
             # Log error or skip this workflow
             # print(f"Error loading workflow {workflow_name}: {e}")
             pass
-    global_config.registered_workflows = RegisteredWorkflows
+    global_state.registered_workflows = RegisteredWorkflows
     return functions, workflow_forms
 
 
@@ -873,7 +880,7 @@ def create_action_button(script, stype=None):
     :param stype: script type (script, prep, cleanup)
     """
     stype = stype or script.editing_type
-    variables = script.get_variables()
+    variables = ScriptEditor(script).get_variables()
     return [_action_button(i, variables) for i in script.get_script(stype)]
 
 
@@ -900,7 +907,7 @@ def _action_button(action: dict, variables: dict):
         text = f"{action['action']} = {action['args'].get('statement')}"
     else:
         # regular action button
-        return_target = Script._format_return_target(action.get('return'))
+        return_target = ScriptEditor._format_return_target(action.get('return'))
         prefix = f"{return_target} = " if return_target else ""
         action_text = f"{action['instrument'].split('.')[-1] if action['instrument'].startswith('deck') else action['instrument']}.{action['action']}"
         arg_string = ""

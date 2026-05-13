@@ -1,16 +1,15 @@
 import ast
-import json
 import uuid
 
 
-from ivoryos.utils.global_config import GlobalConfig
+from ivoryos.runtime.state import GlobalState
 
-global_config = GlobalConfig()
+global_state = GlobalState()
 
-if global_config.building_blocks:
+if global_state.building_blocks:
     building_blocks = {
         inner_key: f"{block_key}.{inner_key}"
-        for block_key, block_value in global_config.building_blocks.items()
+        for block_key, block_value in global_state.building_blocks.items()
         for inner_key in block_value.keys()
     }
 else:
@@ -186,12 +185,12 @@ def convert_to_cards(source_code: str):
                 instrument = building_blocks.get(func_parts[-1])
                 action = func_parts[-1]
             else:
-                # Try to see if the first part is a known instrument in deck_snapshot
+                # Try to see if the first part is a known instrument in interface_schema
                 # This covers cases like 'sdl.dose' where 'sdl' is the instrument
                 if len(func_parts) >= 2:
                     possible_instrument = ".".join(func_parts[:-1])
                     possible_action = func_parts[-1]
-                    if f"deck.{possible_instrument}" in global_config.deck_snapshot:
+                    if f"deck.{possible_instrument}" in global_state.interface_schema:
                         instrument = f"deck.{possible_instrument}"
                         action = possible_action
                     else:
@@ -199,9 +198,9 @@ def convert_to_cards(source_code: str):
                 else:
                     return
 
-            # # Validate that the instrument (if not a block or time) exists in deck_snapshot
+            # # Validate that the instrument (if not a block or time) exists in interface_schema
             # if not instrument.startswith("blocks.") and instrument != "time":
-            #      if instrument not in global_config.deck_snapshot:
+            #      if instrument not in global_state.interface_schema:
             #          return # Not a valid instrument call for this deck
             #
 
@@ -238,9 +237,9 @@ def convert_to_cards(source_code: str):
             sig_params = []
             func_def = None
 
-            # 1. Check in deck_snapshot
-            if instrument in global_config.deck_snapshot:
-                func_info = global_config.deck_snapshot[instrument].get(action)
+            # 1. Check in interface_schema
+            if instrument in global_state.interface_schema:
+                func_info = global_state.interface_schema[instrument].get(action)
                 if func_info and 'signature' in func_info:
                     sig_params = list(func_info['signature'].parameters.keys())
                     sig_params.remove("self")
@@ -252,8 +251,8 @@ def convert_to_cards(source_code: str):
             if not sig_params:
                 # Check if instrument is a block name e.g. "blocks.general"
                 if instrument.startswith("blocks."):
-                    if instrument in global_config.building_blocks:
-                        func_info = global_config.building_blocks[instrument].get(action)
+                    if instrument in global_state.building_blocks:
+                        func_info = global_state.building_blocks[instrument].get(action)
                         if func_info and 'signature' in func_info:
                             sig_params = list(func_info['signature'].parameters.keys())
 
@@ -338,40 +337,3 @@ def extract_functions_and_convert(source_code: str):
                  cards = convert_to_cards(func_source)
                  results[node.name] = {"cards": cards, "source": func_source}
     return results
-
-
-if __name__ == "__main__":
-    test = '''def workflow_dynamic(solid_amount_mg, methanol_amount_ml):
-    """
-    SDL workflow: dose solid, add methanol, equilibrate, and analyze
-    
-    Args:
-        solid_amount_mg (float): Amount of solid to dose in mg
-        methanol_amount_ml (float): Amount of methanol to dose in ml
-    
-    Returns:
-        dict: Results containing analysis data
-    """
-    # Step 1: Dose solid material
-    deck.sdl.dose_solid(solid_amount_mg)
-    
-    # Step 2: Add methanol solvent
-    deck.sdl.dose_solvent(solvent_name='Methanol', amount_in_ml=methanol_amount_ml)
-    
-    # Step 3: Equilibrate at room temperature (assuming ~23°C) for 20 seconds
-    deck.sdl.equilibrate(temp=23.0, duration=20.0)
-    
-    # Step 4: Analyze the sample
-    analysis_results = deck.sdl.analyze(param_1=1, param_2=2)
-    
-    # test block 
-    result = blocks.general.test(**{'a': 1, 'b': 2})
-    
-    # Brief pause for system stability
-    time.sleep(1.0)
-    
-    # Return only analysis results
-    return {'analysis_results': analysis_results}
-    '''
-    from pprint import pprint
-    pprint(json.dumps(convert_to_cards(test)))

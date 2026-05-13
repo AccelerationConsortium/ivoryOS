@@ -3,26 +3,30 @@ import os
 import time
 import importlib
 
+
+
 from flask import Blueprint, redirect, url_for, flash, jsonify, request, render_template, session, \
     current_app, g, send_file
 from flask_login import login_required
-
-from ivoryos.routes.execute.execute_file import files
-from ivoryos.utils import utils
-from ivoryos.utils.bo_campaign import parse_optimization_form
-from ivoryos.utils.db_models import SingleStep, WorkflowRun, WorkflowStep, WorkflowPhase
-from ivoryos.utils.global_config import GlobalConfig
-from ivoryos.utils.form import create_action_button
-
 from werkzeug.utils import secure_filename
 
+from ivoryos.routes.execute.execute_file import files
+from ivoryos.services.draft_service import get_script_file
+from ivoryos.services.connection_history import import_history
+from ivoryos.parsers.type_conversions import check_config_duplicate, web_config_entry_wrapper
+from ivoryos.parsers.bo_campaign import parse_optimization_form
+from ivoryos.models import SingleStep, WorkflowRun, WorkflowStep, WorkflowPhase
+from ivoryos.runtime.state import GlobalState
+from ivoryos.forms.dynamic_forms import create_action_button
+from ivoryos.script import ScriptEditor, ScriptRenderer
 from ivoryos.socket_handlers import runner, retry, pause, abort_pending, abort_current
+
 
 execute = Blueprint('execute', __name__, template_folder='templates')
 
 execute.register_blueprint(files)
 # Register sub-blueprints
-global_config = GlobalConfig()
+global_state = GlobalState()
 
 
 @execute.route("/executions/config", methods=['GET', 'POST'])
@@ -39,23 +43,24 @@ def experiment_run():
 
     Start workflow execution with experiment configuration.
 
+    :status 200: Successfully loaded the config page or started the task.
     """
-    deck = global_config.deck
-    script = utils.get_script_file()
-    # runner = global_config.runner
+    deck = global_state.deck
+    script = get_script_file()
+    # runner = global_state.runner
     existing_data = None
-    # script.sort_actions() # handled in update list
+    # ScriptEditor(script).sort_actions() # handled in update list
     off_line = current_app.config["OFF_LINE"]
-    deck_list = utils.import_history(os.path.join(current_app.config["OUTPUT_FOLDER"], 'deck_history.txt'))
-    optimizers_schema = {k: v.get_schema() for k, v in global_config.optimizers.items()}
+    deck_list = import_history(os.path.join(current_app.config["OUTPUT_FOLDER"], 'deck_history.txt'))
+    optimizers_schema = {k: v.get_schema() for k, v in global_state.optimizers.items()}
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
     config_preview = []
     config_file_list = [i for i in os.listdir(current_app.config["CSV_FOLDER"]) if not i == ".gitkeep"]
 
     try:
-        snapshot = global_config.deck_snapshot
-        exec_string = script.python_script if script.python_script else script.compile(
-            current_app.config['SCRIPT_FOLDER'], snapshot=snapshot)
+        interface_schema = global_state.interface_schema
+        exec_string = script.python_script if script.python_script else ScriptRenderer(script).compile(
+            current_app.config['SCRIPT_FOLDER'], interface_schema=interface_schema)
     except Exception as e:
         flash(e.__str__())
         if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
@@ -100,16 +105,16 @@ def experiment_run():
     if runner.current_task and runner.current_task.get("script"):
         current_lines_script = runner.current_task["script"]
         
-    line_collection = current_lines_script.render_nested_script_lines(current_lines_script.script_dict, snapshot=snapshot)
+    line_collection = ScriptRenderer(current_lines_script).render_nested_script_lines(current_lines_script.script_dict, interface_schema=interface_schema)
 
     run_name = script.name if script.name else "untitled"
 
     dismiss = session.get("dismiss", None)
-    # script = utils.get_script_file() 
+    # script = get_script_file() 
     no_deck_warning = False
 
-    _, return_list = script.config_return()
-    config_list, config_type_list = script.config("script")
+    _, return_list = ScriptEditor(script).config_return()
+    config_list, config_type_list = ScriptEditor(script).config("script")
 
     for key, type_str in config_type_list.items():
         # Handle Optional/Union types which come as lists
@@ -176,20 +181,20 @@ def experiment_run():
                 config_args = request.form.to_dict()
                 config_args.pop("batch_size", None)
                 config_args.pop("display_name", None)
-                config = utils.web_config_entry_wrapper(config_args, config_list)
+                config = web_config_entry_wrapper(config_args, config_list)
             batch_size = int(request.form.get('batch_size', 1))
             repeat = request.form.get('repeat', None)
 
         try:
         # if True:
             datapath = current_app.config["DATA_FOLDER"]
-            run_name = script.validate_function_name(run_name)
+            run_name = ScriptEditor.validate_function_name(run_name)
             
             socketio_instance = g.socketio
             def on_start_callback():
                 # This runs inside the thread with app context pushed
-                snapshot = global_config.deck_snapshot
-                line_collection = script.render_nested_script_lines(script.script_dict, snapshot=snapshot)
+                interface_schema = global_state.interface_schema
+                line_collection = ScriptRenderer(script).render_nested_script_lines(script.script_dict, interface_schema=interface_schema)
                 progress_panel_html = render_template('components/progress_panel.html', line_collection=line_collection)
                 socketio_instance.emit('start_task', {
                     'run_name': run_name,
@@ -208,7 +213,7 @@ def experiment_run():
             #     flash(f"System busy. Task {run_name} added to queue.", "popup")
             # else:
             #     flash(f"Task '{run_name}' started.")
-            if utils.check_config_duplicate(config):
+            if check_config_duplicate(config):
                 flash(f"WARNING: Duplicate in config entries.")
         except Exception as e:
             if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
@@ -218,9 +223,9 @@ def experiment_run():
 
     if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
         # wait to get a workflow ID
-        while not global_config.runner_status:
+        while not global_state.runner_status:
             time.sleep(1)
-        return jsonify({"status": "task started", "task_id": global_config.runner_status.get("id")})
+        return jsonify({"status": "task started", "task_id": global_state.runner_status.get("id")})
     else:
         # todo if want to be able to optimize more then add something called objectives_list instead, and add that to the tab_bayesian.html, and add in
         #  more than just the return_list in there; e.g. be able to use math or normal or human input variables as objectives
@@ -231,18 +236,31 @@ def experiment_run():
                                no_deck_warning=no_deck_warning, dismiss=dismiss, design_buttons=design_buttons,
                                history=deck_list, pause_status=runner.pause_status(), optimizer_schema=optimizers_schema)
 
+
 @execute.route("/executions/optimizer_schema", methods=["POST"])
 def optimizer_schema():
+    """
+    .. :quickref: Workflow Execution; Get optimizer schema
+
+    **Optimizer Schema**
+
+    .. http:post:: /executions/optimizer_schema
+
+    Retrieve the parameter and configuration schema for a specific optimizer or all available optimizers.
+
+    :json optimizer_type: Optional name of the optimizer to get the schema for.
+    :status 200: Returns the requested schema as JSON.
+    """
     if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
         payload_json = request.get_json()
         optimizer_type = payload_json.pop("optimizer_type", None)
         if optimizer_type:
-            _schema = global_config.optimizers.get(optimizer_type, None)
+            _schema = global_state.optimizers.get(optimizer_type, None)
             if _schema is None:
                 return jsonify({"error": f"Optimizer {optimizer_type} is not supported or not found."})
             return jsonify(_schema.get_schema())
         else:
-            optimizers_schema = {k: v.get_schema() for k, v in global_config.optimizers.items()}
+            optimizers_schema = {k: v.get_schema() for k, v in global_state.optimizers.items()}
             return jsonify(optimizers_schema)
     return None
 
@@ -251,21 +269,22 @@ def optimizer_schema():
 @login_required
 def run_bo():
     """
-    .. :quickref: Workflow Execution; run Bayesian Optimization
+    .. :quickref: Workflow Execution; Run Bayesian Optimization campaign
 
     Run Bayesian Optimization with the given parameters and objectives.
 
     .. http:post:: /executions/campaign
 
-    :form repeat: number of iterations to run
-    :form optimizer_type: type of optimizer to use
-    :form existing_data: existing data to use for optimization
-    :form parameters: parameters for optimization
-    :form objectives: objectives for optimization
+    Start a Bayesian Optimization (BO) campaign using the specified optimizer, parameters, and objectives.
 
-    TODO: merge to experiment_run or not, add more details about the form fields and their expected values.
+    :form repeat: The number of iterations/repeats to run.
+    :form optimizer_type: The name of the optimizer to use (e.g., 'GPyOpt').
+    :form existing_data: Path to an existing CSV file for warm-starting the optimization.
+    :form parameters: The search space configuration for parameters.
+    :form objectives: The return values to optimize.
+    :status 302: Redirects to the execution config page after starting.
     """
-    script = utils.get_script_file()
+    script = get_script_file()
     run_name = script.name if script.name else "untitled"
 
     if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
@@ -321,16 +340,16 @@ def run_bo():
     # if True:
     try:
         datapath = current_app.config["DATA_FOLDER"]
-        run_name = script.validate_function_name(run_name)
-        Optimizer = global_config.optimizers.get(optimizer_type, None)
+        run_name = ScriptEditor.validate_function_name(run_name)
+        Optimizer = global_state.optimizers.get(optimizer_type, None)
         if not Optimizer:
             raise ValueError(f"Optimizer {optimizer_type} is not supported or not found.")
 
         socketio_instance = g.socketio
         def on_start_callback():
             # This runs inside the thread with app context pushed
-            snapshot = global_config.deck_snapshot
-            line_collection = script.render_nested_script_lines(script.script_dict, snapshot=snapshot)
+            interface_schema = global_state.interface_schema
+            line_collection = ScriptRenderer(script).render_nested_script_lines(script.script_dict, interface_schema=interface_schema)
             progress_panel_html = render_template('components/progress_panel.html', line_collection=line_collection)
             socketio_instance.emit('start_task', {
                 'run_name': run_name,
@@ -360,6 +379,18 @@ def run_bo():
 @execute.route("/executions/latest_plot")
 @login_required
 def get_optimizer_plot():
+    """
+    .. :quickref: Workflow Execution; Get latest optimization plot
+
+    **Optimizer Plot**
+
+    .. http:get:: /executions/latest_plot
+
+    Retrieve the most recently generated visualization plot from the active Bayesian Optimization campaign.
+
+    :status 200: Returns the plot image (PNG).
+    :status 404: No plots found.
+    """
 
     optimizer = current_app.config.get("LAST_OPTIMIZER")
     if optimizer is not None:
@@ -379,6 +410,7 @@ def get_queue():
     Get the current execution queue
     """
     return jsonify(runner.get_queue_status())
+
 
 @execute.route("/executions/queue/delete", methods=["POST"])
 @login_required
@@ -411,6 +443,7 @@ def reorder_queue_task():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @execute.route("/executions/queue/task/<int:task_id>", methods=["GET"])
 @login_required
 def get_queue_task_details(task_id):
@@ -422,6 +455,7 @@ def get_queue_task_details(task_id):
         return jsonify(details)
     return jsonify({"error": "Task not found"}), 404
 
+
 @execute.route("/executions/current_task", methods=["GET"])
 @login_required
 def get_current_task_details():
@@ -432,6 +466,7 @@ def get_current_task_details():
     if details:
         return details
     return jsonify({"error": "No task currently running"}), 404
+
 
 @execute.route("/executions/queue/task/rename", methods=["POST"])
 @login_required
@@ -453,18 +488,20 @@ def rename_queue_task():
 @execute.route("/executions/status", methods=["GET"])
 def runner_status():
     """
-    .. :quickref: Workflow Execution Control; backend runner status
+    .. :quickref: Workflow Execution Control; Get backend runner status
 
-    get is system is busy and current task
+    **Runner Status**
 
     .. http:get:: /executions/status
 
+    Check if the system is currently busy and retrieve details about the active task or workflow.
 
+    :status 200: Returns a JSON object containing the 'busy' state and current task details.
     """
-    # runner = global_config.runner
-    runner_busy = global_config.runner_lock.locked() or len(runner.execution_queue) > 0
+    # runner = global_state.runner
+    runner_busy = global_state.runner_lock.locked() or len(runner.execution_queue) > 0
     status = {"busy": runner_busy}
-    task_status = global_config.runner_status
+    task_status = global_state.runner_status
     current_step = {}
 
     if task_status is not None:

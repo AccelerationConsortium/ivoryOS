@@ -1,19 +1,26 @@
 import threading
 
 
-class GlobalConfig:
+class GlobalState:
+    """Process-wide runtime registry.
+
+    This object intentionally keeps the active deck/platform reachable across
+    routes, parsers, and runners. Keep it focused on runtime state; avoid
+    caching the deck again in individual modules.
+    """
+
     _instance = None
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
-            cls._instance = super(GlobalConfig, cls).__new__(cls, *args, **kwargs)
+            cls._instance = super(GlobalState, cls).__new__(cls, *args, **kwargs)
             cls._instance._deck = None
-            cls._instance._building_blocks = None
-            cls._instance._registered_workflows = None
+            cls._instance._building_blocks = {}
+            cls._instance._registered_workflows = []
             cls._instance._agent = None
             cls._instance._defined_variables = {}
             cls._instance._api_variables = set()
-            cls._instance._deck_snapshot = {}
+            cls._instance._interface_schema = {}
             cls._instance._runner_lock = threading.Lock()
             cls._instance._runner_status = None
             cls._instance._optimizers = {}
@@ -27,8 +34,15 @@ class GlobalConfig:
 
     @deck.setter
     def deck(self, value):
+        if self._deck is not None and self._deck is not value:
+            raise RuntimeError("Deck is already configured.")
+        self._deck = value
+
+    def require_deck(self):
+        """Return the active deck or fail with a clear runtime error."""
         if self._deck is None:
-            self._deck = value
+            raise RuntimeError("No deck is configured.")
+        return self._deck
 
     def register_notification(self, handler):
         if not callable(handler):
@@ -59,12 +73,12 @@ class GlobalConfig:
 
 
     @property
-    def deck_snapshot(self):
-        return self._deck_snapshot
+    def interface_schema(self):
+        return self._interface_schema
 
-    @deck_snapshot.setter
-    def deck_snapshot(self, value):
-        self._deck_snapshot = value
+    @interface_schema.setter
+    def interface_schema(self, value):
+        self._interface_schema = value
 
 
     @property
@@ -118,3 +132,6 @@ class GlobalConfig:
             self._optimizers = value
         else:
             raise ValueError("Optimizers must be a dictionary.")
+
+# Initialize global state instance
+global_state = GlobalState()

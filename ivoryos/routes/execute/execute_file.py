@@ -1,9 +1,11 @@
 import csv
-import json
 import os
 from flask import Blueprint, send_file, request, flash, redirect, url_for, session, current_app
 from werkzeug.utils import secure_filename
-from ivoryos.utils import utils
+
+from ivoryos.services.draft_service import get_script_file
+from ivoryos.script import ScriptEditor
+
 
 files = Blueprint('execute_files', __name__)
 
@@ -18,13 +20,13 @@ def download_empty_config():
     :form file: workflow design CSV file
     :status 302: load pseudo deck and then redirects to :http:get:`/ivoryos/executions/config`
     """
-    script = utils.get_script_file()
+    script = get_script_file()
     run_name = script.name if script.name else "untitled"
 
     filepath = os.path.join(current_app.config['SCRIPT_FOLDER'], f"{run_name}_config.csv")
     with open(filepath, 'w', newline='') as f:
         writer = csv.writer(f)
-        cfg, cfg_types = script.config("script")
+        cfg, cfg_types = ScriptEditor(script).config("script")
         writer.writerow(cfg)
         writer.writerow(list(cfg_types.values()))
     return send_file(os.path.abspath(filepath), as_attachment=True)

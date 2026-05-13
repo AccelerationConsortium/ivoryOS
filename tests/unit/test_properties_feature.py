@@ -6,11 +6,11 @@ import pytest
 from flask import Flask
 from wtforms import StringField, FloatField
 
-from ivoryos.utils import utils
-from ivoryos.utils.db_models import Script
-from ivoryos.utils.form import create_form_from_pseudo
-from ivoryos.utils.task_runner import TaskRunner
-from ivoryos.utils.utils import _inspect_class
+from ivoryos.parsers.introspection import _inspect_class, get_arg_type
+from ivoryos.script.models import Script
+from ivoryos.script.renderer import ScriptRenderer
+from ivoryos.forms.dynamic_forms import create_form_from_pseudo
+from ivoryos.runtime.task_runner import TaskRunner
 
 
 # --- Fixtures & Helpers ---
@@ -29,7 +29,7 @@ def mock_app():
 
 @pytest.fixture
 def runner_with_mock_db():
-    with patch('ivoryos.utils.task_runner.db') as mock_db:
+    with patch('ivoryos.runtime.task_runner.db') as mock_db:
         runner = TaskRunner()
         yield runner
 
@@ -49,7 +49,7 @@ class MockDeck:
     def __init__(self):
         self.inst = MockInstrument()
 
-class TestDevice:
+class MockDevice:
     def __init__(self):
         self._temp = 25.0
 
@@ -77,7 +77,7 @@ class TestPropertyIntrospection:
     """Tests from test_utils_properties.py"""
     
     def test_inspect_class_properties(self):
-        device = TestDevice()
+        device = MockDevice()
         result = _inspect_class(device)
         
         # Check regular method
@@ -152,7 +152,8 @@ class TestPropertyCompilation:
         # We expect 'my_inst.temperature = 30.5' and 'my_inst.connect()'
         # And 'temp_val = my_inst.temperature' (getter, no parens)
         
-        exec_str_collection = script.compile(snapshot=snapshot)
+        renderer = ScriptRenderer(script)
+        exec_str_collection = renderer.compile(interface_schema=snapshot)
         script_code = exec_str_collection['script']
         
         print(script_code)
@@ -194,7 +195,8 @@ class TestPropertyCompilation:
             'cleanup': []
         }
         
-        exec_str_collection = script.compile(snapshot=snapshot)
+        renderer = ScriptRenderer(script)
+        exec_str_collection = renderer.compile(interface_schema=snapshot)
         script_code = exec_str_collection['script']
         print(script_code)
         
@@ -240,7 +242,7 @@ class TestDesignPropertyHandler:
         assert sig.parameters['value'].annotation == float
         
         # Verify get_arg_type works with this synthesized data
-        arg_types = utils.get_arg_type(kwargs, function_data)
+        arg_types = get_arg_type(kwargs, function_data)
         # create_form_from_pseudo uses 'value' as parameter name
         assert arg_types['value'] == 'float'
 
@@ -295,8 +297,8 @@ class TestPropertyExecution:
         deck = MockDeck()
         
         # Setup global config
-        from ivoryos.utils.global_config import GlobalConfig
-        gc = GlobalConfig()
+        from ivoryos.runtime.state import global_state
+        gc = global_state
         gc.defined_variables['my_inst'] = deck.inst
         gc.deck = deck
         

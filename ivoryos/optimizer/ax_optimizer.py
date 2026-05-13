@@ -1,12 +1,9 @@
-# optimizers/ax_optimizer.py
-
 from pandas import DataFrame
 
 from ivoryos.optimizer.base_optimizer import OptimizerBase
-from ivoryos.utils.utils import install_and_import
 
 # hardcoded blacklist for Ax objective names from SymPy
-AX_OBJ_BLACKLIST = ["test", "factor", "range", "product", "sum", "type", "yield"]
+AX_OBJ_BLACKLIST = ["test", "factor", "range", "product", "prod", "sum", "type", "yield"]
 
 class AxOptimizer(OptimizerBase):
     def __init__(self, experiment_name, parameter_space, objective_config, optimizer_config=None,
@@ -15,8 +12,10 @@ class AxOptimizer(OptimizerBase):
         try:
             from ax.api.client import Client
         except ImportError as e:
-            install_and_import("ax", "ax-platform")
-            raise ImportError("Please install Ax with pip install ax-platform to use AxOptimizer. Attempting to install Ax...")
+            raise ImportError(
+                "AxOptimizer requires the optional Ax dependency. "
+                "Install it with `pip install ax-platform`."
+            ) from e
         super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, parameter_constraints,
                          additional_params)
 

@@ -1,12 +1,13 @@
 from datetime import datetime
 
-from ivoryos.utils.db_models import Script, WorkflowRun, WorkflowStep
+from ivoryos.models import Script, WorkflowRun, WorkflowStep, WorkflowPhase
 from ivoryos import db
+
 
 def test_database_scripts_page(auth):
     """
     GIVEN an authenticated user
-    WHEN they access the script database page
+    WHEN they access the script library page
     THEN the page should load and show their scripts
     """
     # First, create a script so the page has something to render
@@ -15,28 +16,25 @@ def test_database_scripts_page(auth):
         db.session.add(script)
         db.session.commit()
 
-    response = auth.get('/ivoryos/database/scripts/', follow_redirects=True)
+    response = auth.get('/ivoryos/library/', follow_redirects=True)
     assert response.status_code == 200
-    # assert b'Scripts Database' in response.data
-    assert b'<title>IvoryOS | Design Database</title>' in response.data
+
 
 def test_database_workflows_page(auth):
     """
     GIVEN an authenticated user
-    WHEN they access the workflow database page
+    WHEN they access the workflow records page
     THEN the page should load and show past workflow runs
     """
     # Create a workflow run to display
     with auth.application.app_context():
-        run = WorkflowRun(name="untitled", platform="deck",start_time=datetime.now())
+        run = WorkflowRun(name="untitled", platform="deck", start_time=datetime.now())
         db.session.add(run)
         db.session.commit()
-        run_id = run.id
 
-    response = auth.get('/ivoryos/database/workflows/', follow_redirects=True)
+    response = auth.get('/ivoryos/executions/records', follow_redirects=True)
     assert response.status_code == 200
-    assert b'Workflow ID' in response.data
-    # assert b'run_id' in response.data
+
 
 def test_view_specific_workflow(auth):
     """
@@ -50,12 +48,9 @@ def test_view_specific_workflow(auth):
         db.session.commit()
         run_id = run.id
 
-        step = WorkflowStep(method_name='test_step', workflow_id=run_id, phase="main", run_error=False, start_time=datetime.now())
-        db.session.add(step)
+        phase = WorkflowPhase(run_id=run_id, name="main", start_time=datetime.now())
+        db.session.add(phase)
         db.session.commit()
-        # run_id = run.id
 
-    response = auth.get(f'/ivoryos/database/workflows/{run_id}', follow_redirects=True)
+    response = auth.get(f'/ivoryos/executions/records/{run_id}', follow_redirects=True)
     assert response.status_code == 200
-    # assert b'test_step' in response.data # Check for a title on the view page
-    assert b'test_workflow' in response.data

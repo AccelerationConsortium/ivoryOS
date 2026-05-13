@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
     var socket = io();
+    window.socket = socket;
 
     window.platformState = { is_running: false, is_paused: false };
     let retryInFlight = false;
@@ -164,6 +165,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     socket.on('busy_status', function(data) {
         window.platformState.is_running = data.is_running;
+        if (data.paused !== undefined) {
+            window.platformState.is_paused = data.paused;
+        }
         updateGlobalStatus();
     });
 
