@@ -59,7 +59,7 @@ def test_duplicate_user_signup(client, init_database):
         assert len(users) == 1
 
 
-def test_failed_login(client):
+def test_failed_login(client, init_database):
     """
     GIVEN a client and invalid login credentials
     WHEN a POST request is made to /ivoryos/auth/login
