@@ -2,7 +2,7 @@ import os
 import uuid
 from flask import current_app
 from flask_socketio import SocketIO
-from ivoryos.utils.script_runner import ScriptRunner
+from ivoryos.runtime.script_runner import ScriptRunner
 
 SERVER_BOOT_ID = str(uuid.uuid4())
 
@@ -70,6 +70,7 @@ def handle_input_submission(data):
 def handle_connect():
     socketio.emit('server_boot_id', {'boot_id': SERVER_BOOT_ID})
     runner._emit_busy_status()
+    runner._emit_queue_status()
     socketio.emit('pause_status', {'paused': runner.paused or runner.queue_paused})
     
     # Fetch log messages from local file

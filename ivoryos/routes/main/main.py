@@ -3,7 +3,8 @@ import os
 from flask import Blueprint, render_template, current_app, request, url_for
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename, redirect
-from ivoryos.utils.db_models import db
+
+from ivoryos.models import db
 from ivoryos.version import __version__ as ivoryos_version
 
 main = Blueprint('main', __name__, template_folder='templates')
@@ -49,6 +50,19 @@ def help_info():
 @main.route('/customize-logo', methods=['POST'])
 @login_required
 def customize_logo():
+    """
+    .. :quickref: Settings; Customize application logo
+
+    **Customize Logo**
+
+    .. http:post:: /customize-logo
+
+    Upload a custom logo image and set the display mode for the application interface.
+
+    :form logo: The image file to upload.
+    :form mode: The logo display mode (e.g., 'dark', 'light').
+    :status 302: Redirects to the homepage after updating settings.
+    """
     if request.method == 'POST':
         file = request.files.get('logo')
         mode = request.form.get('mode')

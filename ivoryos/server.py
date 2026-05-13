@@ -1,21 +1,21 @@
 import os
-import sqlite3
 import sys
 from typing import Union
 
+import sqlite3
 from flask import Blueprint
-
 from sqlalchemy import Engine, event
 
-# from ivoryos import BUILDING_BLOCKS
 from ivoryos.app import create_app
 from ivoryos.config import Config, get_config
 from ivoryos.optimizer.registry import OPTIMIZER_REGISTRY
 from ivoryos.routes.auth.auth import login_manager
-from ivoryos.routes.control.control import global_config
+from ivoryos.routes.control.control import global_state
 from ivoryos.socket_handlers import socketio
-from ivoryos.utils import utils
-from ivoryos.utils.db_models import db, User, Script
+from ivoryos.utils.logger import start_logger
+from ivoryos.models import db, User
+from ivoryos.script import Script
+from ivoryos.parsers.introspection import create_module_interface_schema, generate_interface_schema, generate_block_schema
 
 
 url_prefix = os.getenv('URL_PREFIX', "/ivoryos")
@@ -185,20 +185,20 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     logger_path = os.path.join(app.config["OUTPUT_FOLDER"], app.config["LOGGERS_PATH"])
     dummy_deck_path = os.path.join(app.config["OUTPUT_FOLDER"], app.config["DUMMY_DECK"])
     if optimizer_registry:
-        global_config.optimizers = optimizer_registry
+        global_state.optimizers = optimizer_registry
     else:
-        global_config.optimizers = OPTIMIZER_REGISTRY
+        global_state.optimizers = OPTIMIZER_REGISTRY
     if module:
         app.config["MODULE"] = module
         app.config["OFF_LINE"] = False
-        global_config.deck = sys.modules[module]
-        global_config.building_blocks = utils.create_block_snapshot()
-        global_config.deck_snapshot = utils.create_deck_snapshot(global_config.deck,
+        global_state.deck = sys.modules[module]
+        global_state.building_blocks = generate_block_schema()
+        global_state.interface_schema = generate_interface_schema(global_state.deck,
                                                                  output_path=dummy_deck_path,
                                                                  save=True,
                                                                  exclude_names=exclude_names
                                                                  )
-        global_config.api_variables = utils.create_module_snapshot(global_config.deck)
+        global_state.api_variables = create_module_interface_schema(global_state.deck)
 
     else:
         app.config["OFF_LINE"] = True
@@ -207,7 +207,7 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     if model:
         app.config["LLM_MODEL"] = model
         app.config["LLM_SERVER"] = llm_server
-        from ivoryos.utils.llm_agent import LlmAgent
+        from ivoryos.services.llm_agent import LlmAgent
         
         try:
             llm_agent = LlmAgent(
@@ -218,12 +218,12 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
             # lightweight request to verify LLM API connection
             llm_agent.client.models.list() 
             
-            global_config.agent = llm_agent
+            global_state.agent = llm_agent
             app.config["ENABLE_AGENT"] = True
             
         except Exception as e:
             print(f"Failed to enable LLM Agent: {e}")
-            global_config.agent = None
+            global_state.agent = None
             app.config["ENABLE_AGENT"] = False
     else:
         app.config["ENABLE_AGENT"] = False
@@ -237,7 +237,7 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
             raise TypeError("logger must be a string or a list of strings.")
 
         for log_name in logger:
-            utils.start_logger(socketio, log_filename=logger_path, logger_name=log_name)
+            start_logger(socketio, log_filename=logger_path, logger_name=log_name)
 
     # --- Notification handler registration ---
     if notification_handler:
@@ -253,14 +253,9 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
         for handler in notification_handler:
             if not callable(handler):
                 raise TypeError(f"Handler {handler} is not callable.")
-            global_config.register_notification(handler)
+            global_state.register_notification(handler)
 
     # TODO in case Python 3.12 or higher doesn't log URL
-    # if sys.version_info >= (3, 12):
-    #     ip = utils.get_local_ip()
-    #     print(f"Server running at http://localhost:{port}")
-    #     if not ip == "127.0.0.1":
-    #         print(f"Server running at http://{ip}:{port}")
     socketio.run(app, host=host, port=port, debug=debug, use_reloader=False, allow_unsafe_werkzeug=True)
     # return app
 
@@ -289,4 +284,3 @@ def load_plugins(blueprints: Union[list, Blueprint], app, socketio):
         plugin_list.append(plugin_info)
         app.register_blueprint(blueprint, url_prefix=f"{url_prefix}/{blueprint.name}")
     return plugin_list
-

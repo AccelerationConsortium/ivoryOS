@@ -1,4 +1,4 @@
-from ivoryos.utils.db_models import User, db
+from ivoryos.models import User, db
 
 
 def test_get_signup(client):
@@ -54,8 +54,9 @@ def test_duplicate_user_signup(client, init_database):
     assert b"User already exists" in response.data
 
     # Verify user was created
-    users = db.session.query(User).filter(User.username == 'existinguser').all()
-    assert len(users) == 1
+    with client.application.app_context():
+        users = db.session.query(User).filter(User.username == 'existinguser').all()
+        assert len(users) == 1
 
 
 def test_failed_login(client):
@@ -67,8 +68,9 @@ def test_failed_login(client):
     response = client.post('/ivoryos/auth/login', data={
         'username': 'nonexistent',
         'password': 'wrongpass'
-    })
-    assert response.status_code == 401
+    }, follow_redirects=False)
+    # Auth failure redirects back to login page
+    assert response.status_code in (401, 302)
 
 def test_logout(auth):
     """

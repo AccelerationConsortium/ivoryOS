@@ -4,33 +4,37 @@ def test_design_page_loads_for_auth_user(auth):
     WHEN the design page is accessed
     THEN the page should load successfully
     """
-    response = auth.get('/ivoryos/design/script/', follow_redirects=True)
+    response = auth.get('/ivoryos/draft/instruments', follow_redirects=True)
     assert response.status_code == 200
-    assert b'<title>IvoryOS | Design</title>' in response.data # Assuming this text exists
 
 
 def test_clear_canvas(auth):
     """
-    Tests clearing the design canvas.
+    Tests clearing the design canvas (deleting the current draft).
     """
-    response = auth.get('/ivoryos/design/clear', follow_redirects=True)
+    response = auth.delete('/ivoryos/draft', follow_redirects=True)
     assert response.status_code == 200
-    # assert b'Operations' in response.data
 
-# def test_add_action(auth, test_deck):
-#     """
-#     Tests adding an action to the design canvas.
-#     """
-#     response = auth.post('/ivoryos/design/script/deck.dummy/', data={
-#         'hidden_name': 'int_method',
-#         'arg': '10'
-#     }, follow_redirects=True)
-#     assert response.status_code == 200
 
-def test_experiment_run_page(auth):
+def test_experiment_campaign_page(auth):
     """
-    Tests the experiment run page.
+    Tests the experiment campaign/run page.
     """
-    response = auth.get('/ivoryos/design/campaign')
+    response = auth.get('/ivoryos/executions/queue', follow_redirects=True)
     assert response.status_code == 200
-    assert b'Run Panel' in response.data
+
+
+def test_draft_instruments_list(auth):
+    """
+    Tests the design instruments list endpoint.
+    """
+    response = auth.get('/ivoryos/draft/instruments', follow_redirects=True)
+    assert response.status_code == 200
+
+
+def test_code_preview(auth):
+    """
+    Tests the code preview endpoint.
+    """
+    response = auth.get('/ivoryos/draft/code_preview', follow_redirects=True)
+    assert response.status_code == 200

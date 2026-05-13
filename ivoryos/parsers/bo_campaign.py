@@ -2,6 +2,10 @@ import ast
 from typing import Dict
 import re
 
+"""
+This module is responsible for parsing the campaign configuration input, 
+which is expected to be a dict that defines a variable named `campaign_config`. 
+"""
 
 def normalize_value(v: str):
     """

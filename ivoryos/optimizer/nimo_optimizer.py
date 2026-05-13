@@ -31,6 +31,14 @@ class NIMOOptimizer(OptimizerBase):
             "step_2": {"model": "PDC"}
         }
         """
+        try:
+            import nimo
+        except ImportError as e:
+            raise ImportError(
+                "NIMOOptimizer requires the optional NIMO dependency. "
+                "Install it with `pip install nimo`."
+            ) from e
+
         self.current_step = 0
         self.experiment_name = experiment_name
         self.parameter_space = parameter_space

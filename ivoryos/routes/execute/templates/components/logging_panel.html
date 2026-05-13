@@ -338,7 +338,7 @@
             document.getElementById('cancel-task-name-btn-' + id).setAttribute("onclick", `cancelEditTaskName(${id}, '${newName.replace(/'/g, "\\'")}')`);
             
             cancelEditTaskName(id, newName); // return to non-edit mode using the new name
-            updateQueue(); // Refresh background queue rendering
+            // No need to call updateQueue() here as the server will emit queue_status
         } else {
           console.error('Rename failed:', data.error);
           alert('Failed to rename task: ' + data.error);
@@ -376,66 +376,65 @@
       renameTask(id, newName);
   }
 
+  function renderQueue(data) {
+    const queueList = document.getElementById('queue-list');
+    if (!queueList) return;
+
+    queueList.innerHTML = '';
+    if (data.length === 0) {
+      queueList.innerHTML = '<div class="list-group-item text-center text-muted">No pending tasks</div>';
+      return;
+    }
+    data.forEach((task, index) => {
+      const item = document.createElement('div');
+      item.className = 'list-group-item d-flex justify-content-between align-items-center';
+
+      const infoDiv = document.createElement('div');
+      infoDiv.style.cursor = 'pointer';
+      infoDiv.setAttribute('title', 'Click to view details');
+
+      let batchBadge = '';
+      if (task.details && task.details['Batch Size']) {
+        batchBadge = `<span class="badge bg-info text-dark ms-2">Batch: ${task.details['Batch Size']}</span>`;
+      }
+
+      infoDiv.innerHTML = `
+          <span class="badge bg-secondary me-2">#${index + 1}</span>
+          <span class="fw-bold">${task.name}</span>
+          ${batchBadge}
+          <br>
+          <small class="text-muted ms-4">${task.args}</small>
+      `;
+      infoDiv.onclick = () => showQueueDetails(task.details, index); 
+      item.appendChild(infoDiv);
+
+      const controlsDiv = document.createElement('div');
+      const safeName = task.name.replace(/'/g, "\\'");
+      controlsDiv.innerHTML = `
+          <button class="btn btn-sm btn-outline-primary" onclick="promptRenameTask(${index}, '${safeName}')">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="reorderTask(${index}, 'up')" ${index === 0 ? 'disabled' : ''}>
+            <i class="bi bi-arrow-up"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="reorderTask(${index}, 'down')" ${index === data.length - 1 ? 'disabled' : ''}>
+            <i class="bi bi-arrow-down"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${index})">
+            <i class="bi bi-trash"></i>
+          </button>
+      `;
+      item.appendChild(controlsDiv);
+      queueList.appendChild(item);
+    });
+  }
+
   function updateQueue() {
-    // Add timestamp to prevent caching
+    // Initial fetch or manual refresh
     const timestamp = new Date().getTime();
     fetch("{{ url_for('execute.get_queue') }}?t=" + timestamp)
       .then(response => response.json())
-      .then(data => {
-        const queueList = document.getElementById('queue-list');
-        // If element doesn't exist (e.g. if tabs are switched or hidden?), return
-        if (!queueList) return;
-
-        queueList.innerHTML = '';
-        if (data.length === 0) {
-          queueList.innerHTML = '<div class="list-group-item text-center text-muted">No pending tasks</div>';
-          return;
-        }
-        data.forEach((task, index) => {
-          const item = document.createElement('div');
-          item.className = 'list-group-item d-flex justify-content-between align-items-center';
-
-          const infoDiv = document.createElement('div');
-          infoDiv.style.cursor = 'pointer';
-          infoDiv.setAttribute('title', 'Click to view details');
-
-          let batchBadge = '';
-          if (task.details && task.details['Batch Size']) {
-            batchBadge = `<span class="badge bg-info text-dark ms-2">Batch: ${task.details['Batch Size']}</span>`;
-          }
-
-          infoDiv.innerHTML = `
-              <span class="badge bg-secondary me-2">#${index + 1}</span>
-              <span class="fw-bold">${task.name}</span>
-              ${batchBadge}
-              <br>
-              <small class="text-muted ms-4">${task.args}</small>
-          `;
-          infoDiv.onclick = () => showQueueDetails(task.details, index); // Use index as ID for now, backend uses index
-          item.appendChild(infoDiv);
-
-          const controlsDiv = document.createElement('div');
-          // Important: sanitize the task.name for inline JS string
-          const safeName = task.name.replace(/'/g, "\\'");
-          controlsDiv.innerHTML = `
-              <button class="btn btn-sm btn-outline-primary" onclick="promptRenameTask(${index}, '${safeName}')">
-                <i class="bi bi-pencil"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="reorderTask(${index}, 'up')" ${index === 0 ? 'disabled' : ''}>
-                <i class="bi bi-arrow-up"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="reorderTask(${index}, 'down')" ${index === data.length - 1 ? 'disabled' : ''}>
-                <i class="bi bi-arrow-down"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${index})">
-                <i class="bi bi-trash"></i>
-              </button>
-          `;
-          item.appendChild(controlsDiv);
-
-          queueList.appendChild(item);
-        });
-      })
+      .then(data => renderQueue(data))
       .catch(error => console.error('Error fetching queue:', error));
   }
 
@@ -449,9 +448,7 @@
     })
       .then(response => response.json())
       .then(data => {
-        if (data.status === 'ok') {
-          updateQueue();
-        } else {
+        if (data.status !== 'ok') {
           console.error('Delete failed:', data.error);
         }
       })
@@ -468,9 +465,7 @@
     })
       .then(response => response.json())
       .then(data => {
-        if (data.status === 'ok') {
-          updateQueue();
-        } else {
+        if (data.status !== 'ok') {
           console.error('Reorder failed:', data.error);
         }
       })
@@ -484,11 +479,18 @@
       }
   }
 
-  // Poll queue status every 2 seconds
-  // Store interval ID to potentially clear it if needed
-  if (!window.queueInterval) {
-    window.queueInterval = setInterval(updateQueue, 2000);
-  }
+  // Listen for queue updates via WebSocket
+  document.addEventListener('DOMContentLoaded', () => {
+    const checkSocket = setInterval(() => {
+        if (window.socket) {
+            clearInterval(checkSocket);
+            window.socket.on('queue_status', (data) => {
+                console.log("Queue status update received via socket");
+                renderQueue(data);
+            });
+        }
+    }, 100);
+  });
   updateQueue(); // Initial call
   
   // Current Run Configuration Logic

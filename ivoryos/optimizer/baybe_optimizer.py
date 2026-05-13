@@ -1,9 +1,5 @@
-### Directory: ivoryos/optimizers/baybe_optimizer.py
-from typing import Dict
-
 from pandas import DataFrame
 
-from ivoryos.utils.utils import install_and_import
 from ivoryos.optimizer.base_optimizer import OptimizerBase
 
 class BaybeOptimizer(OptimizerBase):
@@ -11,9 +7,11 @@ class BaybeOptimizer(OptimizerBase):
                  parameter_constraints:list=None, datapath=None, additional_params:dict=None):
         try:
             from baybe import Campaign
-        except ImportError:
-            install_and_import("baybe")
-            print("Please install Baybe with pip install baybe to before register BaybeOptimizer.")
+        except ImportError as e:
+            raise ImportError(
+                "BaybeOptimizer requires the optional BayBE dependency. "
+                "Install it with `pip install baybe`."
+            ) from e
 
         super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, parameter_constraints, additional_params)
         self._trial_id = 0
@@ -106,7 +104,7 @@ class BaybeOptimizer(OptimizerBase):
         :return: A Baybe objective configuration.
         """
         from baybe.targets import NumericalTarget
-        from baybe.objectives import SingleTargetObjective, DesirabilityObjective, ParetoObjective
+        from baybe.objectives import SingleTargetObjective, ParetoObjective
         targets = []
         weights = []
         for obj in objective_config:

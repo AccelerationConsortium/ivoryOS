@@ -1,8 +1,9 @@
 from flask import Blueprint, redirect, url_for, flash, request, render_template, session, current_app, jsonify
 from flask_login import login_required, current_user
 
-from ivoryos.utils.db_models import Script, db
-from ivoryos.utils.utils import get_script_file, post_script_file
+from ivoryos.models import db
+from ivoryos.script import Script, ScriptRenderer
+from ivoryos.services.draft_service import get_script_file, post_script_file
 
 library = Blueprint('library', __name__, template_folder='templates')
 
@@ -52,7 +53,7 @@ def workflow_script(script_name:str):
         if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
             return jsonify({
                 "script": script.as_dict(),
-                "python_script": script.compile(),
+                "python_script": ScriptRenderer(script).compile(),
             })
         return redirect(url_for('design.experiment_builder'))
     if request.method == "POST":

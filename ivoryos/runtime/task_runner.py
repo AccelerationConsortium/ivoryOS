@@ -1,18 +1,17 @@
+
+from ivoryos.parsers.serialize import sanitize_for_json
+import inspect
+
 import inspect
 import asyncio
-import threading
-import time
 import ast
 from datetime import datetime
 
-from ivoryos.utils import utils
 from ivoryos.utils.decorators import BUILDING_BLOCKS
-from ivoryos.utils.db_models import db, SingleStep
-from ivoryos.utils.global_config import GlobalConfig
+from ivoryos.models import db, SingleStep
+from ivoryos.runtime.state import GlobalState
 
-global_config = GlobalConfig()
-global deck
-deck = None
+global_state = GlobalState()
 
 
 class TaskRunner:
@@ -21,18 +20,14 @@ class TaskRunner:
         if globals_dict is None:
             globals_dict = globals()
         self.globals_dict = globals_dict
-        self.lock = global_config.runner_lock
+        self.lock = global_state.runner_lock
 
     async def run_single_step(self, component, method, kwargs, wait=True, current_app=None, override_busy=False):
-        global deck
-        if deck is None:
-            deck = global_config.deck
-
         # Try to acquire lock without blocking
         acquired = False
         if not override_busy:
             if not self.lock.acquire(blocking=False):
-                current_status = global_config.runner_status or {}
+                current_status = global_state.runner_status or {}
                 current_status["status"] = "busy"
                 current_status["output"] = "busy"
                 return current_status
@@ -47,19 +42,21 @@ class TaskRunner:
 
             asyncio.create_task(background_runner())
             await asyncio.sleep(0.1)  # Change time.sleep to await asyncio.sleep
-            output = {"status": "task started", "task_id": global_config.runner_status.get("id") if global_config.runner_status else None}
+            output = {"status": "task started", "task_id": global_state.runner_status.get("id") if global_state.runner_status else None}
 
         return output
 
     def _get_executable(self, component, deck, method):
         if component.startswith("deck."):
             component = component.split(".")[1]
+            if deck is None:
+                deck = global_state.require_deck()
             instrument = getattr(deck, component)
         elif component.startswith("blocks."):
             component = component.split(".")[1]
             return BUILDING_BLOCKS[component][method]["func"]
         else:
-            temp_connections = global_config.defined_variables
+            temp_connections = global_state.defined_variables
             instrument = temp_connections.get(component)
         
         # Check for property setter convention: "<prop>_(setter)"
@@ -103,7 +100,7 @@ class TaskRunner:
 
     async def _run_single_step(self, component, method, kwargs, current_app=None, override_busy=False, acquired=False):
         try:
-            function_executable = self._get_executable(component, deck, method)
+            function_executable = self._get_executable(component, global_state.deck, method)
             method_name = f"{component}.{method}"
         except Exception as e:
             if acquired:
@@ -114,7 +111,7 @@ class TaskRunner:
         with current_app.app_context():
             step = SingleStep(
                 method_name=method_name,
-                kwargs=utils.sanitize_for_json(kwargs),
+                kwargs=sanitize_for_json(kwargs),
                 run_error=None,
                 start_time=datetime.now()
             )
@@ -122,7 +119,7 @@ class TaskRunner:
             db.session.flush()
             
             if not override_busy:
-                global_config.runner_status = {"id": step.id, "type": "task"}
+                global_state.runner_status = {"id": step.id, "type": "task"}
 
             try:
                 kwargs = self._convert_kwargs_type(kwargs, function_executable)
@@ -131,7 +128,7 @@ class TaskRunner:
                     output = await function_executable(**kwargs)
                 else:
                     output = function_executable(**kwargs)
-                output = utils.sanitize_for_json(output)
+                output = sanitize_for_json(output)
                 step.output = output
                 step.end_time = datetime.now()
                 success = True
