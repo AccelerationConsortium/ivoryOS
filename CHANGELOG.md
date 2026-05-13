@@ -1,4 +1,7 @@
 # Changelog
+## 1.5.21 (May 13th, 2026)
+- **[Patch]** fix the paused queue when submitting
+
 ## 1.5.20 (May 13th, 2026)
 - !146 **[Bug]** fix setting task name for optimization runs doesn't work
 - !145 **[Bug]** fix csv configuration applied for repeat run in queue
