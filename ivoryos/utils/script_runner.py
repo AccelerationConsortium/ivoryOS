@@ -395,11 +395,7 @@ class ScriptRunner:
         if self.logger:
             self.logger.info(f"Added task to queue: {run_name}")
 
-        if was_busy:
-            self.queue_paused = True
-            if self.socketio:
-                self.socketio.emit('pause_status', {'paused': True})
-        else:
+        if not was_busy:
             # Start immediately when the runner is idle.
             self.paused = False
             self.queue_paused = False
