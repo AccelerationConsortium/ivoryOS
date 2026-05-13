@@ -11,7 +11,7 @@ from wtforms.widgets.core import TextInput
 from flask_wtf import FlaskForm
 from wtforms import StringField, FloatField, HiddenField, BooleanField, IntegerField
 
-from ivoryos.script import Script, ScriptEditor
+from ivoryos.script import Script, ScriptEditor, ScriptRenderer
 from ivoryos.runtime.state import GlobalState
 from ivoryos.parsers.introspection import get_return_type
 
@@ -826,12 +826,12 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
             # Use UUID for only for html field id
             unique_key = workflow.uuid
 
-            compiled_strs = workflow.compile().get('script', "")
+            compiled_strs = ScriptRenderer(workflow).compile().get('script', "")
             if not compiled_strs:
                 continue
             
             # Add imports so Enums are defined
-            import_str = workflow.get_required_imports() or ""
+            import_str = ScriptRenderer(workflow).get_required_imports() or ""
             full_code = f"{import_str}\n{compiled_strs}"
             
             method = get_method_from_workflow(full_code, func_name=workflow.name)
@@ -867,7 +867,7 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
             workflow_forms[unique_key] = form_class()
         except Exception as e:
             # Log error or skip this workflow
-            # print(f"Error loading workflow {workflow_name}: {e}")
+            print(f"Error loading workflow {workflow.name if workflow else 'unknown'}: {e}")
             pass
     global_state.registered_workflows = RegisteredWorkflows
     return functions, workflow_forms
