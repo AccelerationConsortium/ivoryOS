@@ -176,8 +176,9 @@ def update_list():
     """
     order = request.form['order']
     script = get_script_file()
-    script.currently_editing_order = order.split(",", len(script.currently_editing_script))
-    ScriptEditor(script).sort_actions()
+    editor = ScriptEditor(script)
+    editor.currently_editing_order = order.split(",", len(editor.currently_editing_script))
+    editor.sort_actions()
     warning = None
 
     post_script_file(script)
