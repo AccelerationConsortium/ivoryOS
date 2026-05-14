@@ -1,3 +1,5 @@
+import bcrypt
+
 from ivoryos.models import User, db
 
 
@@ -80,3 +82,27 @@ def test_logout(auth):
     """
     response = auth.get('/ivoryos/auth/logout')
     assert response.status_code == 302  # Redirect to login
+
+
+def test_change_password_rejects_wrong_current_password(auth):
+    response = auth.post('/ivoryos/auth/change-password', data={
+        'old_password': 'wrong',
+        'new_password': 'new-password',
+    })
+
+    assert response.status_code == 302
+    with auth.application.app_context():
+        user = db.session.query(User).filter(User.username == 'testuser').first()
+        assert bcrypt.checkpw(b'password', user.hashPassword.encode('utf-8'))
+
+
+def test_change_password_updates_password_hash(auth):
+    response = auth.post('/ivoryos/auth/change-password', data={
+        'old_password': 'password',
+        'new_password': 'new-password',
+    })
+
+    assert response.status_code == 302
+    with auth.application.app_context():
+        user = db.session.query(User).filter(User.username == 'testuser').first()
+        assert bcrypt.checkpw(b'new-password', user.hashPassword.encode('utf-8'))

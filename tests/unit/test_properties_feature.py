@@ -292,8 +292,7 @@ class TestPropertyForms:
 class TestPropertyExecution:
     """Tests from test_task_runner_properties.py"""
 
-    @pytest.mark.asyncio
-    async def test_task_runner_properties(self, mock_app, runner_with_mock_db):
+    def test_task_runner_properties(self, mock_app, runner_with_mock_db):
         deck = MockDeck()
         
         # Setup global config
@@ -303,11 +302,20 @@ class TestPropertyExecution:
         gc.deck = deck
         
         # Test Getter
-        res = await runner_with_mock_db.run_single_step("my_inst", "temperature", {}, current_app=mock_app)
+        res = asyncio.run(
+            runner_with_mock_db.run_single_step("my_inst", "temperature", {}, current_app=mock_app)
+        )
         assert res['success'] is True, f"Getter failed: {res.get('output')}"
         assert res['output'] == 25.0
 
         # Test Setter
-        res_set = await runner_with_mock_db.run_single_step("my_inst", "temperature_(setter)", {"value": 30.0}, current_app=mock_app)
+        res_set = asyncio.run(
+            runner_with_mock_db.run_single_step(
+                "my_inst",
+                "temperature_(setter)",
+                {"value": 30.0},
+                current_app=mock_app,
+            )
+        )
         assert res_set['success'] is True, f"Setter failed: {res_set.get('output')}"
         assert deck.inst.temperature == 30.0

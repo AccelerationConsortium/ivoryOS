@@ -2,22 +2,17 @@ image: python:3.10-slim  # Specify the Docker image with Python
 
 # Define stages
 stages:
-  - install
+  - test
   - build
   - deploy
 
-# Install dependencies stage
-install_dependencies:
-  stage: install
+# Run the test suite before building or deploying a release.
+test:
+  stage: test
   script:
-    - echo "installing"
-#    - python -m venv venv  # Create a virtual environment
-#    - . venv/bin/activate  # Activate the virtual environment
-#    - pip install -r requirements.txt  # Install dependencies from requirements.txt
-#    - pip install gunicorn==20.1.0
-  artifacts:
-    paths:
-      - venv/  # Store the virtual environment as an artifact (optional)
+    - python -m pip install --upgrade pip
+    - python -m pip install -e ".[dev]"
+    - python -m pytest
 
 # Job to build the package
 build_package:

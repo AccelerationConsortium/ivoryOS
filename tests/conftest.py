@@ -1,4 +1,5 @@
 from enum import Enum
+import os
 
 import bcrypt
 import pytest
@@ -11,9 +12,20 @@ from ivoryos.parsers.introspection import generate_interface_schema
 
 
 @pytest.fixture(scope='session')
-def app():
+def app(tmp_path_factory):
     """Create a new app instance for the test session."""
-    _app = create_app(get_config('testing'))
+    config = get_config('testing')
+    output_folder = tmp_path_factory.mktemp("ivoryos_data")
+    config.OUTPUT_FOLDER = str(output_folder)
+    config.CSV_FOLDER = os.path.join(config.OUTPUT_FOLDER, "config_csv")
+    config.SCRIPT_FOLDER = os.path.join(config.OUTPUT_FOLDER, "scripts")
+    config.DATA_FOLDER = os.path.join(config.OUTPUT_FOLDER, "results")
+    config.LOG_FOLDER = os.path.join(config.OUTPUT_FOLDER, "logs")
+    config.DUMMY_DECK = os.path.join(config.OUTPUT_FOLDER, "pseudo_deck")
+    config.LLM_OUTPUT = os.path.join(config.OUTPUT_FOLDER, "llm_output")
+    config.DECK_HISTORY = os.path.join(config.OUTPUT_FOLDER, "deck_history.txt")
+    config.LOGGERS_PATH = "default.log"
+    _app = create_app(config)
     return _app
 
 @pytest.fixture(scope='function')
@@ -30,7 +42,7 @@ def init_database(app):
         
         # Seed test user
         password = 'password'
-        bcrypt_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+        bcrypt_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         user = User(username='testuser', password=bcrypt_password)
         _db.session.add(user)
         _db.session.commit()

@@ -1,7 +1,7 @@
 import unittest
 from enum import Enum
 
-from ivoryos.parsers.type_conversions import convert_config_type
+from ivoryos.parsers.type_conversions import check_config_duplicate, convert_config_type, web_config_entry_wrapper
 
 
 class MockEnum(Enum):
@@ -131,6 +131,32 @@ class TestConversion(unittest.TestCase):
         types = {"val": ["int", "NoneType"]}
         convert_config_type(data, types)
         self.assertIsNone(data["val"])
+
+    def test_class_and_enum_conversions(self):
+        data = {"val": "42"}
+        types = {"val": int}
+        convert_config_type(data, types, is_class=True)
+        self.assertEqual(data["val"], 42)
+
+        data = {"choice": "OptionB"}
+        types = {"choice": "Enum:tests.unit.test_utils_conversion.MockEnum"}
+        convert_config_type(data, types)
+        self.assertEqual(data["choice"], "OptionB")
+
+    def test_duplicate_and_web_config_helpers(self):
+        self.assertTrue(check_config_duplicate([{"x": 1}, {"x": 1}]))
+        self.assertFalse(check_config_duplicate([{"x": 1}, {"x": 2}]))
+
+        wrapped = web_config_entry_wrapper(
+            {
+                "name[0]": "alpha",
+                "value[0]": "1",
+                "name[1]": "incomplete",
+                "value[2]": "",
+            },
+            ["name", "value"],
+        )
+        self.assertEqual(wrapped, [{"name": "alpha", "value": "1"}])
 
 if __name__ == "__main__":
     unittest.main()

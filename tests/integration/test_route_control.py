@@ -41,3 +41,42 @@ def test_control_get_json(auth, test_deck):
     )
     assert response.status_code == 200
     assert b'dummy' in response.data
+
+
+def test_control_save_order_persists_per_instrument_session(auth):
+    response = auth.post(
+        '/ivoryos/instruments/deck.dummy/actions/order',
+        json={'order': ['float_method', 'int_method']},
+    )
+
+    assert response.status_code == 204
+    with auth.session_transaction() as session:
+        assert session['card_order']['deck.dummy'] == ['float_method', 'int_method']
+
+
+def test_control_hide_and_show_function_updates_session(auth):
+    auth.post(
+        '/ivoryos/instruments/deck.dummy/actions/order',
+        json={'order': ['float_method', 'int_method']},
+    )
+
+    hide_response = auth.patch(
+        '/ivoryos/instruments/deck.dummy/actions/int_method',
+        json={'hidden': True},
+    )
+
+    assert hide_response.status_code == 200
+    assert hide_response.get_json()['success'] is True
+    with auth.session_transaction() as session:
+        assert session['hidden_functions']['deck.dummy'] == ['int_method']
+        assert session['card_order']['deck.dummy'] == ['float_method']
+
+    show_response = auth.patch(
+        '/ivoryos/instruments/deck.dummy/actions/int_method',
+        json={'hidden': False},
+    )
+
+    assert show_response.status_code == 200
+    with auth.session_transaction() as session:
+        assert session['hidden_functions']['deck.dummy'] == []
+        assert session['card_order']['deck.dummy'] == ['float_method', 'int_method']
