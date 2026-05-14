@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 from abstract_balance import AbstractBalance
 from abstract_pump import AbstractPump
-# import prefect
+
 
 class Solvent(Enum):
     Methanol = "Methanol"
@@ -38,7 +38,7 @@ class AbstractSDL(ABC):
         self.balance = balance
         self.logger = logging.getLogger(f"logger_name")
 
-    # @prefect.task
+
     def analyze(self, param_1:int, param_2:int):
         """analyze current chemical"""
         self.logger.info("analyze")
@@ -46,7 +46,7 @@ class AbstractSDL(ABC):
         time.sleep(1)
         return random.random()
 
-    # @prefect.task
+
     def dose_solid(self, amount_in_mg: float = 5,
                    solid_name: str = "acetaminophen",):
         """dose current chemical"""
@@ -58,7 +58,7 @@ class AbstractSDL(ABC):
         self.logger.info(f"dosing solid {amount_in_mg}")
         return 1
 
-    # @prefect.task
+
     def dose_solvent(self,
                      solvent_name: Optional[Solvent] = None,
                      amount_in_ml: float = 5,
@@ -75,15 +75,16 @@ class AbstractSDL(ABC):
         time.sleep(1)
         return 1
 
-    # @prefect.task
+
     def equilibrate(self, temp: float, duration: float):
         print("equilibrate")
         time.sleep(1)
         self.logger.info(f"equilibrate at {temp} for {duration}")
 
-    # @prefect.task
+
     def simulate_error(self):
         raise ValueError("some error")
+
 
     def _send_command(self):
         """helper function"""
