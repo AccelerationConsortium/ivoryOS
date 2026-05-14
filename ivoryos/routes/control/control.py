@@ -140,7 +140,7 @@ def save_order(instrument: str):
 
     **Save Order**
 
-    .. http:post:: instruments/<string:instrument>/actions/order
+    .. http:post:: /instruments/<string:instrument>/actions/order
 
     Save the custom drag-and-drop order for the methods of a specific instrument.
 

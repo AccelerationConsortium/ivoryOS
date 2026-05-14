@@ -407,7 +407,13 @@ def get_optimizer_plot():
 @login_required
 def get_queue():
     """
-    Get the current execution queue
+    .. :quickref: Workflow Execution Queue; Get queued tasks
+
+    .. http:get:: /executions/queue
+
+    Retrieve the current execution queue and queue state.
+
+    :status 200: Returns queue status as JSON.
     """
     return jsonify(runner.get_queue_status())
 
@@ -416,7 +422,15 @@ def get_queue():
 @login_required
 def delete_queue_task():
     """
-    Delete a task from the queue
+    .. :quickref: Workflow Execution Queue; Delete queued task
+
+    .. http:post:: /executions/queue/delete
+
+    Remove a pending task from the execution queue.
+
+    :json id: Queue task ID to remove.
+    :status 200: Task removed.
+    :status 400: Task could not be removed.
     """
     try:
         data = request.get_json()
@@ -431,7 +445,16 @@ def delete_queue_task():
 @login_required
 def reorder_queue_task():
     """
-    Reorder a task in the queue
+    .. :quickref: Workflow Execution Queue; Reorder queued task
+
+    .. http:post:: /executions/queue/reorder
+
+    Move a pending task up or down in the execution queue.
+
+    :json id: Queue task ID to move.
+    :json direction: Direction to move the task.
+    :status 200: Task reordered.
+    :status 400: Task could not be reordered.
     """
     try:
         data = request.get_json()
@@ -448,7 +471,15 @@ def reorder_queue_task():
 @login_required
 def get_queue_task_details(task_id):
     """
-    Get full details for a queued task
+    .. :quickref: Workflow Execution Queue; Get queued task details
+
+    .. http:get:: /executions/queue/task/<int:task_id>
+
+    Retrieve the full payload for a queued task.
+
+    :param task_id: Queue task ID.
+    :status 200: Returns task details.
+    :status 404: Task not found.
     """
     details = runner.get_task_details(task_id)
     if details:
@@ -460,7 +491,14 @@ def get_queue_task_details(task_id):
 @login_required
 def get_current_task_details():
     """
-    Get full details for the currently running task
+    .. :quickref: Workflow Execution Queue; Get current task details
+
+    .. http:get:: /executions/current_task
+
+    Retrieve details for the currently running task.
+
+    :status 200: Returns current task details.
+    :status 404: No task currently running.
     """
     details = runner.get_current_task_details()
     if details:
@@ -472,7 +510,16 @@ def get_current_task_details():
 @login_required
 def rename_queue_task():
     """
-    Rename a task in the queue
+    .. :quickref: Workflow Execution Queue; Rename queued task
+
+    .. http:post:: /executions/queue/task/rename
+
+    Update the display name for a queued task.
+
+    :json id: Queue task ID to rename.
+    :json new_name: New display name.
+    :status 200: Task renamed.
+    :status 400: Task could not be renamed.
     """
     try:
         data = request.get_json()
@@ -535,7 +582,7 @@ def api_abort_pending():
 
     finish the current iteration and stop pending workflow iterations
 
-    .. http:get:: /executions/abort/next-iteration
+    .. http:post:: /executions/abort/next-iteration
 
     """
     abort_pending()
@@ -549,7 +596,7 @@ def api_abort_current():
 
     finish the current task and stop all pending tasks or iterations
 
-    .. http:get:: /executions/abort/next-task
+    .. http:post:: /executions/abort/next-task
 
     """
     abort_current()
@@ -563,7 +610,7 @@ def api_pause():
 
     pause workflow iterations or resume workflow iterations
 
-    .. http:get:: /executions/pause-resume
+    .. http:post:: /executions/pause-resume
 
     """
     msg = pause()
@@ -577,7 +624,7 @@ def api_retry():
 
     retry the failed workflow execution step.
 
-    .. http:get:: /executions/retry
+    .. http:post:: /executions/retry
 
     """
     retry()

@@ -44,14 +44,15 @@ By default, all logs will be save to `default.log`. Alternatively, one can creat
 .. code-block:: python
 
   from datetime import datetime
-  ivoryos.run(__name__, logger_output_name =f"log_{datetime.today().strftime("%Y-%m-%d")}.log")
+  ivoryos.run(__name__, logger_output_name=f"log_{datetime.today().strftime('%Y-%m-%d')}.log")
 
 
 Add Notification Handler(s)
-------------------------
+---------------------------
 To add notification handler(s) that can send out notifications (e.g., email, SMS, Slack, etc.) when using `Pause` in workflows.
 
 .. code-block:: python
+
   def slack_bot(message: str):
       # send message to slack channel
       pass

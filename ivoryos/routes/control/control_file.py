@@ -21,7 +21,7 @@ def download_proxy():
 
     download proxy Python interface
 
-    .. http:get:: /files/proxy
+    .. http:get:: /instruments/files/proxy
     """
     generator = ProxyGenerator(request.url_root)
     interface_schema = deepcopy(global_state.interface_schema)

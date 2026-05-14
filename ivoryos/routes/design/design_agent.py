@@ -18,7 +18,7 @@ def process_request():
     """
     .. :quickref: Workflow Design; process natural language input to automatically generate actions.
 
-    .. http:patch:: /agent/process_request
+    .. http:post:: /agent/process_request
 
     A user prompt is processed, with the most likely actions are appended at the end of the workflow design.
     The arguments and their parameter are automatically extracted from the user request. 

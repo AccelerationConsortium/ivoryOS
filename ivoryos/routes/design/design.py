@@ -560,9 +560,15 @@ def get_operation_sidebar(instrument: str = ''):
     """
     .. :quickref: Workflow Design; handle methods of a specific instrument
 
+    .. http:get:: /draft/instruments
+
+       Get all available instruments, variables, building blocks, and workflow controls for the design sidebar.
+
     .. http:get:: /draft/instruments/<string:instrument>
 
-    :param instrument: The name of the instrument to handle methods for.
+       Get the action forms for a specific instrument or workflow source.
+
+    :param instrument: Optional instrument or workflow source name.
     :type instrument: str
 
     :status 200: Render the methods for the specified instrument.
@@ -730,8 +736,14 @@ def confirm_import_python():
 @login_required
 def get_available_variables():
     """
-    Get available variables for the current script state.
-    Optional query param: before_id (int) - filter variables available before this step ID.
+    .. :quickref: Workflow Design; Get available workflow variables
+
+    .. http:get:: /draft/variables
+
+    Return variables available for autocomplete in the current script state.
+
+    :query before_id: Optional step UUID. When provided, only variables available before that step are returned.
+    :status 200: Returns a JSON object with available variable names.
     """
     script = get_script_file()
     before_id = request.args.get('before_id')

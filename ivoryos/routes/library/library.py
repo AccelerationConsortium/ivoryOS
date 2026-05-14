@@ -15,19 +15,19 @@ def workflow_script(script_name:str):
     """
     .. :quickref: Workflow Script Database; get, post, delete a workflow script
 
-    .. http:get:: /library/<string: script_name>
+    .. http:get:: /library/<string:script_name>
 
     :param script_name: script name
     :type script_name: str
     :status 302: redirect to :http:get:`/ivoryos/draft`
 
-    .. http:post:: /library/<string: script_name>
+    .. http:post:: /library/<string:script_name>
 
     :param script_name: script name
     :type script_name: str
     :status 200: json response with success status
 
-    .. http:delete:: /library/<string: script_name>
+    .. http:delete:: /library/<string:script_name>
 
     :param script_name: script name
     :type script_name: str

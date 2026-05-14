@@ -109,10 +109,12 @@ def new_controller(instrument:str=None):
 
     .. http:get:: /instruments/new/
 
+    .. http:get:: /instruments/new/<string:instrument>
+
     :param instrument: instrument name
     :type instrument: str
 
-    .. http:post:: /instruments/new/
+    .. http:post:: /instruments/new/<string:instrument>
 
     :form device_name: module instance name (e.g. my_instance = MyClass())
     :form kwargs: dynamic module initialization kwargs fields

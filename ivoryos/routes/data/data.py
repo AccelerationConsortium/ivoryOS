@@ -122,7 +122,15 @@ def workflow_logs(workflow_id:int):
 @login_required
 def download_workflow_steps_data_csv(workflow_id: int):
     """
-    download steps data by workflow id as CSV
+    .. :quickref: Workflow Data Database; Download workflow step data CSV
+
+    .. http:get:: /executions/records/<int:workflow_id>/steps_data_csv
+
+    Download a CSV export of step inputs, outputs, and timing for a workflow run.
+
+    :param workflow_id: The unique ID of the workflow run.
+    :status 200: Returns a CSV file.
+    :status 404: Workflow record not found.
     """
     workflow = db.session.get(WorkflowRun, workflow_id)
     if not workflow:
@@ -178,7 +186,15 @@ def download_workflow_steps_data_csv(workflow_id: int):
 @login_required
 def download_workflow_logs(workflow_id: int):
     """
-    download logs by workflow id as .log file
+    .. :quickref: Workflow Data Database; Download workflow log file
+
+    .. http:get:: /executions/records/<int:workflow_id>/logs
+
+    Download the log file associated with a workflow run.
+
+    :param workflow_id: The unique ID of the workflow run.
+    :status 200: Returns a log file.
+    :status 404: Workflow record or log file not found.
     """
     workflow = db.session.get(WorkflowRun, workflow_id)
     if not workflow:
@@ -261,6 +277,7 @@ def delete_workflow_record(workflow_id: int):
 
     :param workflow_id: The unique ID of the workflow run.
     :status 200: Returns success on deletion.
+    :status 404: Workflow record not found.
     """
     run = db.session.get(WorkflowRun, workflow_id)
     if run is None:

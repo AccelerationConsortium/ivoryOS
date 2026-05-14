@@ -36,7 +36,7 @@ def upload():
     """
     .. :quickref: Workflow Files; upload a workflow config file (.CSV)
 
-    .. http:post:: /files/execution-configs
+    .. http:post:: /files/batch-configs
 
     :form file: workflow CSV config file
     :status 302: save csv file and then redirects to :http:get:`/ivoryos/executions/config`
