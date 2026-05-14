@@ -25,10 +25,10 @@ def infer_type(value):
         return "int"
     elif isinstance(value, float):
         return "float"
+    elif isinstance(value, str) and value.startswith("#"):
+        return "any"
     elif isinstance(value, str):
         return "str"
-    elif isinstance(value, (ast.Name, str)) and str(value).startswith("#"):
-        return "float"  # default fallback for variables
     else:
         return "unknown"
 
@@ -57,6 +57,15 @@ def convert_to_cards(source_code: str):
         def __init__(self):
             self.defined_types = {}  # <-- always exists
 
+        def value_and_type_from_node(self, node):
+            if isinstance(node, ast.Constant):
+                value = node.value
+                return value, infer_type(value)
+            if isinstance(node, ast.Name):
+                value = f"#{node.id}"
+                return value, self.defined_types.get(node.id, infer_type(value))
+            value = ast.unparse(node)
+            return value, infer_type(value)
 
         def visit_FunctionDef(self, node):
             self.defined_types = {
@@ -136,6 +145,7 @@ def convert_to_cards(source_code: str):
             if is_supported_assignment(node):
                 var_name = node.targets[0].id
                 value = node.value.value
+                self.defined_types[var_name] = infer_type(value)
                 add_card({
                     "action": var_name,
                     "arg_types": {"statement": infer_type(value)},
@@ -208,18 +218,14 @@ def convert_to_cards(source_code: str):
             # --- special case for time.sleep ---
             if instrument == "time" and action == "sleep":
                 wait_value = None
+                wait_type = "any"
                 if node.args:
                     arg_node = node.args[0]
-                    if isinstance(arg_node, ast.Constant):
-                        wait_value = arg_node.value
-                    elif isinstance(arg_node, ast.Name):
-                        wait_value = f"#{arg_node.id}"
-                    else:
-                        wait_value = ast.unparse(arg_node)
+                    wait_value, wait_type = self.value_and_type_from_node(arg_node)
 
                 add_card({
                     "action": "wait",
-                    "arg_types": {"statement": infer_type(wait_value)},
+                    "arg_types": {"statement": wait_type},
                     "args": {"statement": wait_value},
                     "id": new_id(),
                     "instrument": "wait",
@@ -264,42 +270,23 @@ def convert_to_cards(source_code: str):
                     # Fallback if we have more args than parameters or no signature found
                     arg_name = f"arg_{i}"
 
-                if isinstance(arg_node, ast.Constant):
-                    value = arg_node.value
-                elif isinstance(arg_node, ast.Name):
-                    value = f"#{arg_node.id}"
-                else:
-                    value = ast.unparse(arg_node)
+                value, value_type = self.value_and_type_from_node(arg_node)
 
                 args[arg_name] = value
-                arg_types[arg_name] = infer_type(value)
+                arg_types[arg_name] = value_type
 
 
             for kw in node.keywords:
                 if kw.arg is None and isinstance(kw.value, ast.Dict):
                     for k_node, v_node in zip(kw.value.keys, kw.value.values):
                         key = k_node.value if isinstance(k_node, ast.Constant) else ast.unparse(k_node)
-                        if isinstance(v_node, ast.Constant):
-                            value = v_node.value
-                        elif isinstance(v_node, ast.Name):
-                            value = f"#{v_node.id}"
-                        else:
-                            value = ast.unparse(v_node)
+                        value, value_type = self.value_and_type_from_node(v_node)
                         args[key] = value
-                        arg_types[key] = infer_type(value)
+                        arg_types[key] = value_type
                 else:
-                    if isinstance(kw.value, ast.Constant):
-                        value = kw.value.value
-                    elif isinstance(kw.value, ast.Name):
-                        value = f"#{kw.value.id}"
-                    else:
-                        value = ast.unparse(kw.value)
+                    value, value_type = self.value_and_type_from_node(kw.value)
                     args[kw.arg] = value
-                    arg_types[kw.arg] = (
-                        self.defined_types.get(kw.value.id, "float")
-                        if isinstance(kw.value, ast.Name)
-                        else infer_type(value)
-                    )
+                    arg_types[kw.arg] = value_type
 
             card = {
                 "action": action,

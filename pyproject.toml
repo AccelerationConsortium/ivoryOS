@@ -61,3 +61,6 @@ exclude = ["community*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "ivoryos.version.__version__"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

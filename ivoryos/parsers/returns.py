@@ -45,11 +45,11 @@ def store_return_value(context, arg_contexts, return_var, result):
                 )
             value = safe_dump(value)
             context[name] = value
-            if arg_contexts:
+            if arg_contexts is not None:
                 arg_contexts[name] = value
         return
 
     result = safe_dump(result)
     context[return_var] = result
-    if arg_contexts:
+    if arg_contexts is not None:
         arg_contexts[return_var] = result
