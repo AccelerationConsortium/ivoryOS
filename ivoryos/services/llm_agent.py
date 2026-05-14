@@ -1,12 +1,20 @@
 import os
 import json
-from openai import OpenAI
 import re
 
 class LlmAgent:
     def __init__(self, base_url, model, output_path=None):
+        try:
+            from openai import OpenAI
+        except ImportError as exc:
+            raise ImportError(
+                "The LLM design agent requires the optional 'llm' extra. "
+                "Install it with: pip install 'ivoryos[llm]'"
+            ) from exc
+
         self.base_url = base_url
         self.model = model
+        self.output_path = None
         if output_path is not None:
             self.output_path = os.path.join(output_path, "llm_output")
             os.makedirs(self.output_path, exist_ok=True)

@@ -31,6 +31,7 @@ optimizer-ax = ["ax-platform"]
 optimizer-baybe = ["baybe"]
 optimizer-nimo = ["nimo"]
 db = ["psycopg2-binary"]
+llm = ["openai"]
 
 optimizers = [
     "ax-platform>=1.1.2",
@@ -40,7 +41,8 @@ optimizers = [
 doc = [
     "sphinx",
     "sphinx-rtd-theme",
-    "sphinxcontrib-httpdomain"
+    "sphinxcontrib-httpdomain",
+    "requests"
 ]
 dev = ["pytest"]
 
