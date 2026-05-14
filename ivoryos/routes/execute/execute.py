@@ -15,7 +15,7 @@ from ivoryos.services.draft_service import get_script_file
 from ivoryos.services.connection_history import import_history
 from ivoryos.parsers.type_conversions import check_config_duplicate, web_config_entry_wrapper
 from ivoryos.parsers.bo_campaign import parse_optimization_form
-from ivoryos.models import SingleStep, WorkflowRun, WorkflowStep, WorkflowPhase
+from ivoryos.models import db, SingleStep, WorkflowRun, WorkflowStep, WorkflowPhase
 from ivoryos.runtime.state import GlobalState
 from ivoryos.forms.dynamic_forms import create_action_button
 from ivoryos.script import ScriptEditor, ScriptRenderer
@@ -509,11 +509,11 @@ def runner_status():
         task_id = task_status["id"]
         if task_type == "task":
             # todo
-            step = SingleStep.query.get(task_id)
+            step = db.session.get(SingleStep, task_id)
             if step is not None:
                 current_step = step.as_dict()
         if task_type == "workflow":
-            workflow = WorkflowRun.query.get(task_id)
+            workflow = db.session.get(WorkflowRun, task_id)
             if workflow is not None:
                 phases = WorkflowPhase.query.filter_by(run_id=workflow.id).order_by(WorkflowPhase.start_time).all()
                 latest_step = None

@@ -1,7 +1,6 @@
 import ast
 import re
-import inspect
-from typing import Dict
+
 try:
     from ast import unparse as ast_unparse
 except ImportError:
@@ -10,6 +9,7 @@ except ImportError:
 
 from ivoryos.script.models import Script
 from ivoryos.script.editor import ScriptEditor
+from ivoryos.models.base import db
 
 class ScriptRenderer:
     def __init__(self, script: Script):
@@ -482,7 +482,7 @@ class ScriptRenderer:
             if workflow_steps is not None:
                 script_actions = workflow_steps
             else:
-                 workflow_script = Script.query.get(action)
+                 workflow_script = db.session.get(Script, action)
                  if workflow_script:
                      script_actions = workflow_script.script_dict.get('script', [])
                  else:

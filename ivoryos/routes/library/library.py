@@ -34,7 +34,7 @@ def workflow_script(script_name:str):
     :status 302: redirect to :http:get:`/ivoryos/draft`
 
     """
-    row = Script.query.get(script_name)
+    row = db.session.get(Script, script_name)
     if request.method == "DELETE":
         if not row:
             return jsonify(success=False)
@@ -69,7 +69,7 @@ def publish():
         script.author = current_user.get_id()
     if not script.name or not script.deck:
         return {"success": False, "error": "Deck cannot be empty, try to re-submit deck configuration on the left panel"}
-    row = Script.query.get(script.name)
+    row = db.session.get(Script, script.name)
     if row and row.status == "finalized":
         return {"success": False, "error": "This is a protected script, use save as to rename."}
 

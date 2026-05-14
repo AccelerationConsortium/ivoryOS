@@ -262,7 +262,10 @@ def delete_workflow_record(workflow_id: int):
     :param workflow_id: The unique ID of the workflow run.
     :status 200: Returns success on deletion.
     """
-    run = WorkflowRun.query.get(workflow_id)
+    run = db.session.get(WorkflowRun, workflow_id)
+    if run is None:
+        return jsonify(success=False, error="Workflow run not found"), 404
+
     db.session.delete(run)
     db.session.commit()
     return jsonify(success=True)

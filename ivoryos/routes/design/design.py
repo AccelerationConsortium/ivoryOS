@@ -177,7 +177,7 @@ def update_script_meta():
     script = get_script_file()
     if 'name' in data:
         run_name = data.get("name")
-        exist_script = Script.query.get(run_name)
+        exist_script = db.session.get(Script, run_name)
         if exist_script is None:
             _, return_list = ScriptEditor(script).config_return()
             script.return_values = list(return_list)
@@ -643,7 +643,7 @@ def import_python_file():
 
         duplicates = []
         for name in workflows.keys():
-            if Script.query.get(name):
+            if db.session.get(Script, name):
                 duplicates.append(name)
 
         return jsonify({
@@ -688,7 +688,7 @@ def confirm_import_python():
             cards = content.get("cards", [])
             source = content.get("source", "")
 
-            exist_script = Script.query.get(name)
+            exist_script = db.session.get(Script, name)
 
             if exist_script:
                 if name in overwrite:
