@@ -216,7 +216,7 @@ Local version in [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/m
 ## Release Notes
 
 - Version-by-version changes are tracked in `CHANGELOG.md`.
-- Larger implementation notes for recent architecture work are summarized in `REFACTOR_SUMMARY.md`.
+- Larger implementation notes for recent architecture work are summarized in `docs/source/developers/refactor-summary.md`.
 - For future releases, keep user-facing changes in the changelog and use a short architecture note when an update changes module boundaries, runtime behavior, or migration expectations.
 
 ---

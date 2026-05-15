@@ -59,4 +59,3 @@ Design Agent Docs
 .. autoflask:: ivoryos:app
    :blueprints: design.design_agent
    :endpoints:
-

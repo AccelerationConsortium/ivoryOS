@@ -4,7 +4,7 @@ Workflow Library
 
 Interface Screenshot
 ------------------------
-.. image:: ../_static/database.png
+.. image:: ../_static/library.png
    :alt: database
 
 
@@ -20,4 +20,3 @@ Docs
 .. autoflask:: ivoryos:app
    :blueprints: library
    :endpoints:
-

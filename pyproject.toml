@@ -39,10 +39,10 @@ optimizers = [
     "nimo>=2.0.5"
 ]
 doc = [
-    "sphinx",
+    "sphinx<8",
+    "myst-parser>=2,<4",
     "sphinx-rtd-theme",
-    "sphinxcontrib-httpdomain",
-    "requests"
+    "sphinxcontrib-httpdomain"
 ]
 dev = ["pytest"]
 

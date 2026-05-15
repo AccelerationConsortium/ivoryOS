@@ -16,4 +16,3 @@ Docs
 .. autoflask:: ivoryos:app
    :blueprints: main
    :endpoints:
-
