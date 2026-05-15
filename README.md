@@ -7,12 +7,13 @@
 [![Published](https://img.shields.io/badge/Nature_Comm.-paper-blue)](https://www.nature.com/articles/s41467-025-60514-w)
 [![Community](https://img.shields.io/discord/1313641159356059770?label=Discord&logo=discord&color=5865F2)](https://discord.gg/3KdjhUmsYA)
 
-![ivoryos_logo.png](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/ivoryos_logo.png)
+<img src="https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/ivoryos_logo.png" alt="IvoryOS logo" width="100">
 
-# [IvoryOS](https://ivoryos.ai): interoperable orchestrator for self-driving laboratories (SDLs) 
+# [IvoryOS](https://ivoryos.ai): open-source orchestrator for self-driving labs
 
-A **plug-and-play** web interface for flexible, modular SDLs —
-you focus on developing protocols, IvoryOS handles the rest.
+IvoryOS turns existing Python automation code into interactive controls, drag-and-drop workflows, and optimization-ready experiments.
+
+Build for fast-changing R&D environments, and make Python-based lab automation accessible and scalable.
 
 ![code_launch_design.png](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/code_to_ui.gif)
 
@@ -25,32 +26,27 @@ Join our [Discord](https://discord.gg/3KdjhUmsYA) or [Slack](https://join.slack.
 ---
 
 ## Table of Contents
-- [What IvoryOS does](#what-ivoryos-does)
-- [System requirements](#system-requirements)
+
 - [Installation](#installation)
+- [System requirements](#system-requirements)
 - [Features](#features)
 - [Demo](#demo)
 - [Roadmap](#roadmap)
-- [Release notes](#release-notes)
 - [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
 
----
-## What IvoryOS Does
-- Turns Python modules into UIs by dynamically inspecting your hardware APIs, functions, and workflows.
-- Standardizes optimization inputs/outputs, making any optimizer plug-and-play.
-- Provides a visual workflow builder for designing and running experiments.
-- Adds natural-language control for creating and executing workflows, see [IvoryOS MCP](https://gitlab.com/heingroup/ivoryos-suite/ivoryos-mcp) for more details.
+
+## Installation
+From PyPI:
+```bash
+pip install ivoryos
+```
 
 ----
 ## System Requirements
 
 **Platforms:** Compatible with Linux, macOS, and Windows (developed/tested on Windows).  
-**Python:**  
-- Recommended: Python ≥3.10  
-- Minimum: Python ≥3.7 (without Ax optimizer support) 
-
-**Dependencies:** Core runtime dependencies are declared in `pyproject.toml` and installed automatically with `pip install ivoryos`. Optional features are exposed as package extras.
+**Python:** Python ≥3.10  
 
 <details>
 <summary>Dependency groups</summary>
@@ -62,16 +58,10 @@ Join our [Discord](https://discord.gg/3KdjhUmsYA) or [Slack](https://join.slack.
 - Development: `dev` for running the test suite.
 </details>
 
----
 
+<details>
+<summary>Optional feature installs</summary>
 
-## Installation
-From PyPI:
-```bash
-pip install ivoryos
-```
-
-Optional feature installs:
 ```bash
 pip install "ivoryos[optimizers]"       # all optimizer adapters
 pip install "ivoryos[optimizer-ax]"     # Ax only
@@ -86,6 +76,7 @@ From a local source checkout:
 pip install -e ".[dev]"
 pytest
 ```
+</details>
 
 <details>
 <summary>32-bit Windows installation notes</summary>
@@ -107,18 +98,6 @@ pip install ivoryos
 ```
 
 </details>
-
-[//]: # (From source:)
-
-[//]: # (```bash)
-
-[//]: # (git clone https://gitlab.com/heingroup/ivoryos.git)
-
-[//]: # (cd ivoryos)
-
-[//]: # (pip install -e .)
-
-[//]: # (```)
 
 
 ## Quick start
@@ -143,19 +122,20 @@ direct function calling _Devices_ tab
   - **Design Library**: manage workflow scripts in _Library_ tab.
   - **Workflow Data**: Execution records are in _Data_ tab.
 
-[//]: # (### Offline mode)
+<details>
+<summary>Logging</summary>
 
-[//]: # (after one successful connection, a blueprint will be automatically saved and made accessible without hardware connection. In a new Python script in the same directory, use `ivoryos.run&#40;&#41;` to start offline mode.)
-
-
-
-### Logging
 Add single or multiple loggers:
 ```python
 ivoryos.run(__name__, logger="logger name")
 ivoryos.run(__name__, logger=["logger 1", "logger 2"])
 ```
-### Human-in-the-loop
+
+</details>
+
+<details>
+<summary>Human-in-the-loop</summary>
+
 Use `pause` in flow control to pause the workflow and send a notification with custom message handler(s). 
 When run into `pause`, it will pause, send a message, and wait for human's response. Example of a Slack bot:
 ```python
@@ -179,10 +159,8 @@ ivoryos.run(__name__, notification_handler=slack_bot)
 ```
 Use `Input` in flow control to get human input during workflow execution. Example:
 
+</details>
 
-### Directory Structure
-
-Created automatically in the same working directory on the first run:
 <details>
 <summary>click to see the data folder structure</summary>
 
@@ -204,12 +182,10 @@ Local version in [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/m
 ---
 
 ## Roadmap
-- [x] Python property support (setter/getter)
+Check out our [Work Items](https://gitlab.com/heingroup/ivoryos/issues) for upcoming features and improvements.
 - [ ] Support dataclass input
-- [x] Support **kwargs input
-- [x] dropdown input 
-- [ ] snapshot version control
-- [ ] check batch-config file compatibility
+- [ ] Introspection version control
+- [ ] Check config file compatibility
 
 ---
 
