@@ -74,6 +74,16 @@ body,
     border-bottom: 1px solid rgba(255, 255, 255, 0.14);
 }
 
+.wy-side-nav-search:before {
+    content: '';
+    display: block;
+    background: url('../_static/ivoryos_logo.png') no-repeat center center;
+    background-size: contain;
+    width: 100%;
+    height: 56px;
+    margin-bottom: 0.7rem;
+}
+
 .wy-side-nav-search > a {
     color: #ffffff;
     font-size: 1.25rem;

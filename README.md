@@ -14,7 +14,7 @@
 A **plug-and-play** web interface for flexible, modular SDLs —
 you focus on developing protocols, IvoryOS handles the rest.
 
-![code_launch_design.png](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/code_launch_design.png)
+![code_launch_design.png](https://gitlab.com/heingroup/ivoryos/raw/main/docs/source/_static/code_to_ui.gif)
 
 ## Join our community!
 IvoryOS is an open-source project under active development. We welcome feedback, feature ideas, and contributions 
