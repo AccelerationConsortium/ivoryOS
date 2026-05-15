@@ -4,10 +4,10 @@ from copy import deepcopy
 from flask import Blueprint,  request,current_app, send_file
 from flask_login import login_required
 
-from ivoryos.utils.client_proxy import ProxyGenerator
-from ivoryos.utils.global_config import GlobalConfig
+from ivoryos.services.client_proxy import ProxyGenerator
+from ivoryos.runtime.state import GlobalState
 
-global_config = GlobalConfig()
+global_state = GlobalState()
 
 control_file = Blueprint('file', __name__)
 
@@ -21,12 +21,12 @@ def download_proxy():
 
     download proxy Python interface
 
-    .. http:get:: /files/proxy
+    .. http:get:: /instruments/files/proxy
     """
     generator = ProxyGenerator(request.url_root)
-    snapshot = deepcopy(global_config.deck_snapshot)
+    interface_schema = deepcopy(global_state.interface_schema)
     filepath = generator.generate_from_flask_route(
-        snapshot,
+        interface_schema,
         request.url_root,
         current_app.config["OUTPUT_FOLDER"]
     )

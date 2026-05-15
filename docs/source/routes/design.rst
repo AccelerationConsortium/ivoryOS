@@ -28,6 +28,12 @@ Design File Management Routes
    :blueprints: design.design_files
    :endpoints:
 
+Design Agent Routes
+----------------------
+.. qrefflask:: ivoryos:app
+   :blueprints: design.design_agent
+   :endpoints:
+
 Design Docs
 ----------------
 .. autoflask:: ivoryos:app
@@ -48,5 +54,8 @@ Design File Management Docs
    :blueprints: design.design_files
    :endpoints:
 
-
-
+Design Agent Docs
+----------------------
+.. autoflask:: ivoryos:app
+   :blueprints: design.design_agent
+   :endpoints:

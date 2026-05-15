@@ -31,6 +31,7 @@ Join our [Discord](https://discord.gg/3KdjhUmsYA) or [Slack](https://join.slack.
 - [Features](#features)
 - [Demo](#demo)
 - [Roadmap](#roadmap)
+- [Release notes](#release-notes)
 - [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
 
@@ -49,25 +50,16 @@ Join our [Discord](https://discord.gg/3KdjhUmsYA) or [Slack](https://join.slack.
 - Recommended: Python ≥3.10  
 - Minimum: Python ≥3.7 (without Ax optimizer support) 
 
-**Core Dependencies:**
+**Dependencies:** Core runtime dependencies are declared in `pyproject.toml` and installed automatically with `pip install ivoryos`. Optional features are exposed as package extras.
+
 <details>
-<summary>Click to expand</summary>
+<summary>Dependency groups</summary>
 
-- bcrypt~=4.0  
-- Flask-Login~=0.6  
-- Flask-Session~=0.8  
-- Flask-SocketIO~=5.3  
-- Flask-SQLAlchemy~=3.1  
-- SQLAlchemy-Utils~=0.41  
-- Flask-WTF~=1.2  
-- python-dotenv==1.0.1  
-- pandas
-
-**Optional:**
-- ax-platform==1.1.2
-- baybe==0.14.0
-- nimo
-- slack-sdk
+- Core: Flask, Flask-Login, Flask-Session, Flask-SocketIO, Flask-SQLAlchemy, Flask-WTF, WTForms, SQLAlchemy-Utils, bcrypt, python-dotenv, pandas.
+- Optimizers: `optimizer-ax`, `optimizer-baybe`, `optimizer-nimo`, or `optimizers` for all supported optimizer adapters.
+- Database: `db` for PostgreSQL support.
+- LLM design agent: `llm` for the optional in-app text-to-workflow feature.
+- Development: `dev` for running the test suite.
 </details>
 
 ---
@@ -79,20 +71,42 @@ From PyPI:
 pip install ivoryos
 ```
 
-### 32-bit Windows Installation
-If you are deploying IvoryOS to a 32-bit Windows environment, `pip` may not find pre-compiled 32-bit binaries for certain modern packages (like `greenlet`, `pandas`, ``) on PyPI. 
+Optional feature installs:
+```bash
+pip install "ivoryos[optimizers]"       # all optimizer adapters
+pip install "ivoryos[optimizer-ax]"     # Ax only
+pip install "ivoryos[optimizer-baybe]"  # BayBE only
+pip install "ivoryos[optimizer-nimo]"   # NIMO only
+pip install "ivoryos[db]"               # PostgreSQL support
+pip install "ivoryos[llm]"              # optional text-to-workflow design agent
+```
+
+From a local source checkout:
+```bash
+pip install -e ".[dev]"
+pytest
+```
+
+<details>
+<summary>32-bit Windows installation notes</summary>
+
+Prefer 64-bit Python when possible. If you must deploy IvoryOS on 32-bit Windows, `pip` may not find pre-built 32-bit wheels for modern packages such as `greenlet`, `pandas`, or newer `Flask-Session` releases.
 
 ```bash
-# 1. Install Flask-Session<0.7 (that doesn't depend on msgspec) and pandas (some pandas versions are not compatible with 32-bit Windows)
-pip install Flask-Session<0.7
+# 1. Use a Flask-Session release before the msgspec dependency.
+pip install "Flask-Session<0.7"
+
+# 2. Install a pandas wheel compatible with the local 32-bit Python environment.
 pip install pandas --user --only-binary=:all:
 
-# 2. Install greenlet from conda-forge (32-bit PyPI wheels are no longer available)
+# 3. Install greenlet from conda-forge if PyPI has no compatible wheel.
 conda install -c conda-forge greenlet -y
 
-# 3. Finally, install IvoryOS
+# 4. Install IvoryOS.
 pip install ivoryos
 ```
+
+</details>
 
 [//]: # (From source:)
 
@@ -192,12 +206,13 @@ Local version in [abstract_sdl.py](https://gitlab.com/heingroup/ivoryos/-/blob/m
 ## Roadmap
 - [x] Python property support (setter/getter)
 - [ ] Support dataclass input
-- [ ] Support **kwargs input
+- [x] Support **kwargs input
 - [x] dropdown input 
 - [ ] snapshot version control
 - [ ] check batch-config file compatibility
 
 ---
+
 
 ## Contributing
 

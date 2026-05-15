@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
     var socket = io();
+    window.socket = socket;
 
     window.platformState = { is_running: false, is_paused: false };
     let retryInFlight = false;
@@ -18,6 +19,16 @@ document.addEventListener("DOMContentLoaded", function () {
         if (addClasses && addClasses.length) {
             progressBar.classList.add(...addClasses);
         }
+    }
+
+    function clearStepHighlights() {
+        document.querySelectorAll('.executing-step').forEach(el => {
+            el.classList.remove('executing-step');
+        });
+        // Also clear any legacy inline background colors
+        document.querySelectorAll('pre code').forEach(el => {
+            el.style.backgroundColor = '';
+        });
     }
 
     function updateGlobalStatus() {
@@ -164,6 +175,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     socket.on('busy_status', function(data) {
         window.platformState.is_running = data.is_running;
+        if (data.paused !== undefined) {
+            window.platformState.is_paused = data.paused;
+        }
         updateGlobalStatus();
     });
 
@@ -191,7 +205,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 progressBar.classList.remove('progress-bar-animated');
                 progressBar.classList.add('bg-success');
                 
-                document.querySelectorAll('pre code').forEach(el => el.style.backgroundColor = '');
+                clearStepHighlights();
             }
         }
     });
@@ -403,16 +417,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     socket.on('execution', function (data) {
         // Remove highlighting from all lines
-        document.querySelectorAll('pre code').forEach(el => el.style.backgroundColor = '');
+        clearStepHighlights();
 
         // Highlight current step and all parent workflows
         let currentId = data.section;
         while (currentId.includes('-')) {
             let executingLine = document.getElementById(currentId);
             if (executingLine) {
-                executingLine.style.backgroundColor = '#cce5ff'; // Highlight
-                executingLine.style.transition = 'background-color 0.3s ease-in-out';
-
+                executingLine.classList.add('executing-step');
             }
             // Move up to parent ID (e.g., script-1-2 -> script-1)
             let lastIndex = currentId.lastIndexOf('-');
@@ -430,6 +442,8 @@ document.addEventListener("DOMContentLoaded", function () {
         // progressBar.textContent = 'Starting...';
         progressBar.classList.remove('bg-success', 'bg-danger', 'bg-warning');
         progressBar.classList.add('progress-bar-animated', 'bg-primary');
+
+        clearStepHighlights();
 
         // Update progress panel with the new script
         if (data.progress_panel_html) {

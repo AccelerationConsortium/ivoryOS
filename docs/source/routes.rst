@@ -1,4 +1,4 @@
-ivoryOS routes docs
+IvoryOS routes docs
 ====================
 
 .. toctree::
@@ -11,6 +11,3 @@ ivoryOS routes docs
    routes/execute
    routes/data
    routes/auth
-   routes/api
-
-

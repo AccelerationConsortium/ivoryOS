@@ -2,10 +2,10 @@ import os
 import csv
 import io
 
-from flask import Blueprint, redirect, url_for, request, render_template, current_app, jsonify, send_file, Response
+from flask import Blueprint, request, render_template, current_app, jsonify, send_file, Response
 from flask_login import login_required
 
-from ivoryos.utils.db_models import db, WorkflowRun, WorkflowStep, WorkflowPhase
+from ivoryos.models import db, WorkflowRun, WorkflowPhase
 
 data = Blueprint('data', __name__, template_folder='templates')
 
@@ -15,12 +15,17 @@ data = Blueprint('data', __name__, template_folder='templates')
 @login_required
 def list_workflows():
     """
-    .. :quickref: Workflow Execution Database; list all workflow execution records
+    .. :quickref: Workflow Execution Database; List all execution records
 
-    list all workflow execution records
+    **List Workflows**
 
     .. http:get:: /executions/records
 
+    Retrieve a list of all past workflow execution records, with optional keyword searching.
+
+    :query keyword: Optional search term to filter workflows by name.
+    :query page: The page number for pagination.
+    :status 200: Returns a list of workflow records (HTML or JSON).
     """
     query = WorkflowRun.query.order_by(WorkflowRun.id.desc())
     search_term = request.args.get("keyword", None)
@@ -42,14 +47,17 @@ def list_workflows():
 @data.get("/executions/records/<int:workflow_id>")
 def workflow_logs(workflow_id:int):
     """
-    .. :quickref: Workflow Data Database; get workflow data, steps, and logs
+    .. :quickref: Workflow Data Database; Get workflow logs and steps
 
-    get workflow data logs by workflow id
+    **Workflow Logs**
 
     .. http:get:: /executions/records/<int:workflow_id>
 
-    :param workflow_id: workflow id
-    :type workflow_id: int
+    Retrieve detailed logs, execution steps, and phases for a specific workflow by its ID.
+
+    :param workflow_id: The unique ID of the workflow run.
+    :status 200: Returns the workflow logs and phase details.
+    :status 404: Workflow record not found.
     """
     workflow = db.session.get(WorkflowRun, workflow_id)
     if not workflow:
@@ -114,7 +122,15 @@ def workflow_logs(workflow_id:int):
 @login_required
 def download_workflow_steps_data_csv(workflow_id: int):
     """
-    download steps data by workflow id as CSV
+    .. :quickref: Workflow Data Database; Download workflow step data CSV
+
+    .. http:get:: /executions/records/<int:workflow_id>/steps_data_csv
+
+    Download a CSV export of step inputs, outputs, and timing for a workflow run.
+
+    :param workflow_id: The unique ID of the workflow run.
+    :status 200: Returns a CSV file.
+    :status 404: Workflow record not found.
     """
     workflow = db.session.get(WorkflowRun, workflow_id)
     if not workflow:
@@ -170,7 +186,15 @@ def download_workflow_steps_data_csv(workflow_id: int):
 @login_required
 def download_workflow_logs(workflow_id: int):
     """
-    download logs by workflow id as .log file
+    .. :quickref: Workflow Data Database; Download workflow log file
+
+    .. http:get:: /executions/records/<int:workflow_id>/logs
+
+    Download the log file associated with a workflow run.
+
+    :param workflow_id: The unique ID of the workflow run.
+    :status 200: Returns a log file.
+    :status 404: Workflow record or log file not found.
     """
     workflow = db.session.get(WorkflowRun, workflow_id)
     if not workflow:
@@ -187,13 +211,16 @@ def download_workflow_logs(workflow_id: int):
 @data.get("/executions/data/<int:workflow_id>")
 def workflow_phase_data(workflow_id: int):
     """
-    .. :quickref: Workflow Data Database; get workflow data for plotting
+    .. :quickref: Workflow Data Database; Get workflow data for plotting
 
-    get workflow data for plotting by workflow id
+    **Workflow Phase Data**
 
-    .. http:get:: /executions/data/<int: workflow_id>
+    .. http:get:: /executions/data/<int:workflow_id>
 
-    :param workflow_id: workflow id
+    Get normalized data from the 'main' phases of a workflow for visualization and plotting.
+
+    :param workflow_id: The unique ID of the workflow run.
+    :status 200: Returns a JSON object with plotting data.
     """
 
     workflow = db.session.get(WorkflowRun, workflow_id)
@@ -240,17 +267,22 @@ def workflow_phase_data(workflow_id: int):
 @login_required
 def delete_workflow_record(workflow_id: int):
     """
-    .. :quickref: Workflow Data Database; delete a workflow execution record
+    .. :quickref: Workflow Data Database; Delete an execution record
 
-    delete a workflow execution record by workflow id
+    **Delete Workflow Record**
 
-    .. http:delete:: /executions/records/<int: workflow_id>
+    .. http:delete:: /executions/records/<int:workflow_id>
 
-    :param workflow_id: workflow id
-    :type workflow_id: int
-    :status 200: return success message
+    Permanently delete a workflow execution record from the database by its ID.
+
+    :param workflow_id: The unique ID of the workflow run.
+    :status 200: Returns success on deletion.
+    :status 404: Workflow record not found.
     """
-    run = WorkflowRun.query.get(workflow_id)
+    run = db.session.get(WorkflowRun, workflow_id)
+    if run is None:
+        return jsonify(success=False, error="Workflow run not found"), 404
+
     db.session.delete(run)
     db.session.commit()
     return jsonify(success=True)

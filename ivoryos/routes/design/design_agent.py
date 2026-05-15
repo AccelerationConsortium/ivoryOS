@@ -2,10 +2,14 @@ import inspect
 import os
 from flask import Blueprint, redirect, url_for, flash, request, session, current_app, g
 from flask_login import login_required
-from ivoryos.utils.global_config import GlobalConfig
-from ivoryos.utils.utils import get_script_file, post_script_file, load_deck
 
-global_config = GlobalConfig()
+from ivoryos.runtime.state import GlobalState
+from ivoryos.services.draft_service import get_script_file, post_script_file
+from ivoryos.parsers.introspection import load_interface_schema
+from ivoryos.script import ScriptEditor
+
+
+global_state = GlobalState()
 agent = Blueprint('design_agent', __name__)
 
 @agent.route('/agent/process_request', methods=['POST'])
@@ -14,7 +18,7 @@ def process_request():
     """
     .. :quickref: Workflow Design; process natural language input to automatically generate actions.
 
-    .. http:patch:: /agent/process_request
+    .. http:post:: /agent/process_request
 
     A user prompt is processed, with the most likely actions are appended at the end of the workflow design.
     The arguments and their parameter are automatically extracted from the user request. 
@@ -39,8 +43,8 @@ def process_request():
         
         # generate design steps
         try:
-            llm_agent = global_config.agent
-            if not llm_agent: raise ValueError("GlobalConfig.agent is not initialized. Ensure it is properly set up.")
+            llm_agent = global_state.agent
+            if not llm_agent: raise ValueError("GlobalState.agent is not initialized. Ensure it is properly set up.")
             action_list = llm_agent.generate_design(user_request = prompt, deck_info = deck_info)
             if len(action_list) == 0: raise ValueError("The agent returned an empty list.")
         except Exception as e:
@@ -98,21 +102,21 @@ def _get_deck_info(add_flow_control = True, add_class_info = True):
     
     if add_flow_control: deck_dictionary.update(_add_flow_control()) 
     
-    # loads the selected offline deck snapshot or the last online snapshot
+    # loads the selected offline deck interface_schema or the last online interface_schema
     if current_app.config["OFF_LINE"]:
         add_class_info = False # sets the flag to false for offline mode
         pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], session.get('pseudo_deck', ''))
-        deck_snapshot = load_deck(pseudo_deck_path)
+        interface_schema = load_interface_schema(pseudo_deck_path)
     else:
-        deck_snapshot = GlobalConfig().deck_snapshot
+        interface_schema = GlobalState().interface_schema
     
     # loads general deck with all current objects, from which class infos can be extracted
     if add_class_info == True:
-        deck_with_class_info = vars(GlobalConfig().deck)
+        deck_with_class_info = vars(GlobalState().deck)
         if not deck_with_class_info: add_class_info = False
 
-    for instrument, actions in deck_snapshot.items():
-        # skips the deck_name key present in the offline snapshots
+    for instrument, actions in interface_schema.items():
+        # skips the deck_name key present in the offline interface_schemas
         if instrument == 'deck_name':
             continue
         
@@ -235,6 +239,6 @@ def _add_actions_to_design(action_list: list, deck_info: dict):
                 "batch_action": batch_action
             }
         
-        script.add_action(action=new_action)
+        ScriptEditor(script).add_action(action=new_action)
     
     post_script_file(script)

@@ -247,3 +247,8 @@ hr.vertical {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+.executing-step {
+    background-color: #cce5ff !important;
+    border-radius: 4px;
+    padding: 2px 4px;
+}

@@ -1,7 +1,7 @@
 import asyncio
 from typing import List, Set
 import pytest
-from ivoryos.utils.task_runner import TaskRunner
+from ivoryos.runtime.task_runner import TaskRunner
 
 # Mock function definitions for type checking
 def mock_func(a, b, c=None):

@@ -1,30 +1,24 @@
-# BO platform
-# ax-platform==1.1.2
-
-# Flask and SQL
-bcrypt==4.0.1
-flask[async]
+# IvoryOS Core Requriements
+bcrypt
+Flask[async]
 Flask-Login
 Flask-Session
 Flask-SocketIO
 Flask-SQLAlchemy
-SQLAlchemy-Utils~=0.41
-wtforms~=3.2.1
-flask-wtf
+Flask-WTF
+SQLAlchemy-Utils
 pandas
 
-# connect to PostgreSQL
-# psycopg2-binary
+# pyproject.toml is the source of truth for package metadata and optional
+# dependency groups. This installs the core IvoryOS package.
 
-# LLM host
-# ollama
-openai
-python-dotenv
 
-# hardware api (optional)
-# hein-robots==0.5.3
-# ika==1.16.0
-# new-era==2.2.3
-# north-devices==0.3.5
-# vapourtec==1.2.1
-# optommp==0.4  #PLC
+# Optional groups are installed through extras, for example:
+#   pip install ".[dev]"                 # local test/development install
+#   pip install ".[llm]"                 # in-app text-to-workflow design agent
+#   pip install ".[db]"                  # PostgreSQL support
+#   pip install ".[optimizer-ax]"        # Ax optimizer
+#   pip install ".[optimizer-baybe]"     # BayBE optimizer
+#   pip install ".[optimizer-nimo]"      # NIMO optimizer
+#   pip install ".[optimizers]"          # all optimizer adapters
+

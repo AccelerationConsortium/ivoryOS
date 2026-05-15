@@ -1,9 +1,21 @@
+import importlib.util
+
 from flask import session
 
-from ivoryos.utils.global_config import GlobalConfig
+from ivoryos.runtime.state import GlobalState
 
 
-global_config = GlobalConfig()
+global_state = GlobalState()
+
+
+def import_module_by_filepath(filepath: str, name: str):
+    """
+    Import a deck/API module by file path for manual controller connection.
+    """
+    spec = importlib.util.spec_from_file_location(name, filepath)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def find_instrument_by_name(name: str):
@@ -12,11 +24,11 @@ def find_instrument_by_name(name: str):
     """
     if name.startswith("deck"):
         name = name.replace("deck.", "")
-        return getattr(global_config.deck, name)
+        return getattr(global_state.deck, name)
     elif name.startswith("blocks"):
-        return global_config.building_blocks[name]
-    elif name in global_config.defined_variables:
-        return global_config.defined_variables[name]
+        return global_state.building_blocks[name]
+    elif name in global_state.defined_variables:
+        return global_state.defined_variables[name]
     elif name in globals():
         return globals()[name]
 

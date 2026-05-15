@@ -14,4 +14,3 @@ Docs
 .. autoflask:: ivoryos:app
    :blueprints: auth
    :endpoints:
-

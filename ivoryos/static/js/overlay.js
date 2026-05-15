@@ -23,11 +23,10 @@ function addOverlayToButtons(buttonIds) {
                 }
                 
                 try {
-                    // Check if system is busy
-                    const response = await fetch(typeof STATUS_URL !== 'undefined' ? STATUS_URL : "/executions/status");
-                    const data = await response.json();
+                    // Check if system is busy using global platform state (synced via sockets)
+                    const isBusy = window.platformState && (window.platformState.is_running || window.platformState.is_paused);
                     
-                    if (data.busy) {
+                    if (isBusy) {
                         if (typeof bootstrap !== 'undefined') {
                             try {
                                 let modalEl = document.getElementById('manualOverrideModal');

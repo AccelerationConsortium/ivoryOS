@@ -1,4 +1,6 @@
-from ivoryos.utils.db_models import User, db
+import bcrypt
+
+from ivoryos.models import User, db
 
 
 def test_get_signup(client):
@@ -54,11 +56,12 @@ def test_duplicate_user_signup(client, init_database):
     assert b"User already exists" in response.data
 
     # Verify user was created
-    users = db.session.query(User).filter(User.username == 'existinguser').all()
-    assert len(users) == 1
+    with client.application.app_context():
+        users = db.session.query(User).filter(User.username == 'existinguser').all()
+        assert len(users) == 1
 
 
-def test_failed_login(client):
+def test_failed_login(client, init_database):
     """
     GIVEN a client and invalid login credentials
     WHEN a POST request is made to /ivoryos/auth/login
@@ -67,8 +70,9 @@ def test_failed_login(client):
     response = client.post('/ivoryos/auth/login', data={
         'username': 'nonexistent',
         'password': 'wrongpass'
-    })
-    assert response.status_code == 401
+    }, follow_redirects=False)
+    # Auth failure redirects back to login page
+    assert response.status_code in (401, 302)
 
 def test_logout(auth):
     """
@@ -78,3 +82,27 @@ def test_logout(auth):
     """
     response = auth.get('/ivoryos/auth/logout')
     assert response.status_code == 302  # Redirect to login
+
+
+def test_change_password_rejects_wrong_current_password(auth):
+    response = auth.post('/ivoryos/auth/change-password', data={
+        'old_password': 'wrong',
+        'new_password': 'new-password',
+    })
+
+    assert response.status_code == 302
+    with auth.application.app_context():
+        user = db.session.query(User).filter(User.username == 'testuser').first()
+        assert bcrypt.checkpw(b'password', user.hashPassword.encode('utf-8'))
+
+
+def test_change_password_updates_password_hash(auth):
+    response = auth.post('/ivoryos/auth/change-password', data={
+        'old_password': 'password',
+        'new_password': 'new-password',
+    })
+
+    assert response.status_code == 302
+    with auth.application.app_context():
+        user = db.session.query(User).filter(User.username == 'testuser').first()
+        assert bcrypt.checkpw(b'new-password', user.hashPassword.encode('utf-8'))

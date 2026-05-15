@@ -1,21 +1,24 @@
 import os
 import inspect
 
-from flask import Blueprint, redirect, url_for, flash, jsonify, request, render_template, session, current_app
+from flask import Blueprint, flash, jsonify, request, render_template, session, current_app
 from flask_login import login_required, current_user
 
-from ivoryos.routes.library.library import publish
-from ivoryos.utils import utils
-from ivoryos.utils.global_config import GlobalConfig
-from ivoryos.utils.form import create_action_button, create_form_from_pseudo, create_all_builtin_forms, create_workflow_forms
-from ivoryos.utils.db_models import Script, db
-from ivoryos.utils.py_to_json import convert_to_cards, extract_functions_and_convert
+from ivoryos.services.draft_service import get_script_file, post_script_file
+from ivoryos.services.connection_history import available_pseudo_deck
+from ivoryos.runtime.state import GlobalState
+from ivoryos.forms.dynamic_forms import create_action_button, create_form_from_pseudo, create_all_builtin_forms, create_workflow_forms
+from ivoryos.models import db
+from ivoryos.script import Script, ScriptEditor, ScriptRenderer
+from ivoryos.parsers.py_to_json import convert_to_cards, extract_functions_and_convert
+from ivoryos.parsers.introspection import load_interface_schema, _inspect_class, get_return_type, get_arg_type
+from ivoryos.parsers.returns import extract_return_variables
 
 # Import the new modular components
 from ivoryos.routes.design.design_file import files
 from ivoryos.routes.design.design_step import steps
 from ivoryos.routes.design.design_agent import agent
-
+from ivoryos.routes.library.library import publish
 
 design = Blueprint('design', __name__, template_folder='templates')
 
@@ -24,28 +27,28 @@ design.register_blueprint(files)
 design.register_blueprint(steps)
 design.register_blueprint(agent)
 
-global_config = GlobalConfig()
+global_state = GlobalState()
 
 # ---- Main Design Routes ----
 
 
 def _create_forms(instrument, script, autofill, pseudo_deck = None):
-    deck = global_config.deck
+    deck = global_state.deck
     functions = {}
     if instrument == 'flow_control':
         forms = create_all_builtin_forms(script=script)
-    elif instrument in global_config.defined_variables.keys():
-        _object = global_config.defined_variables.get(instrument)
-        functions = utils._inspect_class(_object)
+    elif instrument in global_state.defined_variables.keys():
+        _object = global_state.defined_variables.get(instrument)
+        functions = _inspect_class(_object)
         forms = create_form_from_pseudo(pseudo=functions, autofill=autofill, script=script)
     elif instrument.startswith("blocks"):
-        forms = create_form_from_pseudo(pseudo=global_config.building_blocks[instrument], autofill=autofill, script=script)
-        functions = global_config.building_blocks[instrument]
+        forms = create_form_from_pseudo(pseudo=global_state.building_blocks[instrument], autofill=autofill, script=script)
+        functions = global_state.building_blocks[instrument]
     elif instrument.startswith("workflows"):
         _, forms = create_workflow_forms(script, autofill=autofill, design=True)
     else:
         if deck:
-            functions = global_config.deck_snapshot.get(instrument, {})
+            functions = global_state.interface_schema.get(instrument, {})
         elif pseudo_deck:
             functions = pseudo_deck.get(instrument, {})
         forms = create_form_from_pseudo(pseudo=functions, autofill=autofill, script=script)
@@ -55,36 +58,35 @@ def _create_forms(instrument, script, autofill, pseudo_deck = None):
 @login_required
 def experiment_builder():
     """
-    .. :quickref: Workflow Design; Build experiment workflow
+    .. :quickref: Workflow Design; Experiment builder interface
 
     **Experiment Builder**
 
     .. http:get:: /draft
 
-    Load the experiment builder page where users can design their workflow by adding actions, instruments, and logic.
+    Load the main experiment builder interface where users can design their workflow by adding actions, instruments, and logic.
 
     :status 200: Experiment builder loaded successfully.
-
     """
-    deck = global_config.deck
-    script = utils.get_script_file()
+    deck = global_state.deck
+    script = get_script_file()
 
     if deck and script.deck is None:
         script.deck = os.path.splitext(os.path.basename(deck.__file__))[
             0] if deck.__name__ == "__main__" else deck.__name__
-        utils.post_script_file(script)
+        post_script_file(script)
     pseudo_deck_name = session.get('pseudo_deck', '')
     pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
     off_line = current_app.config["OFF_LINE"]
 
-    pseudo_deck = utils.load_deck(pseudo_deck_path) if off_line and pseudo_deck_name else None
+    pseudo_deck = load_interface_schema(pseudo_deck_path) if off_line and pseudo_deck_name else None
     if off_line and pseudo_deck is None:
         flash("Choose available deck below.")
 
-    deck_list = utils.available_pseudo_deck(current_app.config["DUMMY_DECK"])
+    deck_list = available_pseudo_deck(current_app.config["DUMMY_DECK"])
 
     if deck:
-        deck_variables = list(global_config.deck_snapshot.keys())
+        deck_variables = list(global_state.interface_schema.keys())
         # deck_variables.insert(0, "flow_control")
     else:
         deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
@@ -93,8 +95,8 @@ def experiment_builder():
     # edit_action_info = session.get("edit_action")
 
     try:
-        snapshot = global_config.deck_snapshot if deck else pseudo_deck
-        exec_string = script.python_script if script.python_script else script.compile(current_app.config['SCRIPT_FOLDER'], snapshot=snapshot)
+        interface_schema = global_state.interface_schema if deck else pseudo_deck
+        exec_string = script.python_script if script.python_script else ScriptRenderer(script).compile(current_app.config['SCRIPT_FOLDER'], interface_schema=interface_schema)
     except Exception as e:
         exec_string = {}
         flash(f"Error in Python script: {e}")
@@ -104,36 +106,49 @@ def experiment_builder():
 
     return render_template('experiment_builder.html', off_line=off_line, history=deck_list,
                            script=script, defined_variables=deck_variables, buttons_dict=design_buttons,
-                           local_variables=global_config.defined_variables, block_variables=global_config.building_blocks,
+                           local_variables=global_state.defined_variables, block_variables=global_state.building_blocks,
                            design_agent_enabled=current_app.config.get("ENABLE_AGENT"))
 
 @design.route("/draft/code_preview", methods=["GET"])
 @login_required
 def compile_preview():
+    """
+    .. :quickref: Workflow Design; Preview generated code
+
+    **Compile Preview**
+
+    .. http:get:: /draft/code_preview
+
+    Get a preview of the generated Python code for the current workflow.
+
+    :query mode: The compilation mode ('single' or 'batch').
+    :query batch: The batch processing mode ('sample' or others).
+    :status 200: Returns the generated code as JSON.
+    """
     # Get mode and batch from query parameters
-    script = utils.get_script_file()
+    script = get_script_file()
     mode = request.args.get("mode", "single")   # default to "single"
     batch = request.args.get("batch", "sample") # default to "sample"
 
     pseudo_deck_name = session.get('pseudo_deck', '')
     pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
     off_line = current_app.config["OFF_LINE"]
-    pseudo_deck = utils.load_deck(pseudo_deck_path) if off_line and pseudo_deck_name else None
-    snapshot = global_config.deck_snapshot if not off_line and global_config.deck else pseudo_deck
+    pseudo_deck = load_interface_schema(pseudo_deck_path) if off_line and pseudo_deck_name else None
+    interface_schema = global_state.interface_schema if not off_line and global_state.deck else pseudo_deck
 
     try:
         # Example: decide which code to return based on mode/batch
         if mode == "single":
-            code = script.compile(current_app.config['SCRIPT_FOLDER'], snapshot=snapshot)
+            code = ScriptRenderer(script).compile(current_app.config['SCRIPT_FOLDER'], interface_schema=interface_schema)
         elif mode == "batch":
-            code = script.compile(current_app.config['SCRIPT_FOLDER'], batch=True, mode=batch, snapshot=snapshot)
+            code = ScriptRenderer(script).compile(current_app.config['SCRIPT_FOLDER'], batch=True, mode=batch, interface_schema=interface_schema)
         else:
             code = "Invalid mode. Please select 'single' or 'batch'."
     except Exception as e:
         code = f"Error compiling: {e}"
 
     if isinstance(code, dict):
-        imports = script.get_required_imports()
+        imports = ScriptRenderer(script).get_required_imports()
         if imports:
             # Simple approach: prepend to valid code blocks.
             code["imports"] = imports
@@ -145,30 +160,31 @@ def compile_preview():
 @login_required
 def update_script_meta():
     """
-    .. :quickref: Workflow Design; update the script metadata.
+    .. :quickref: Workflow Design; Update script metadata
+
+    **Update Meta**
 
     .. http:patch:: /draft/meta
 
-    Update the script metadata, including the script name and status. If the script name is provided,
-    it saves the script with that name. If the status is "finished", it finalizes the script.
+    Update the script metadata, such as the script name and status. If the script name is provided,
+    it saves the script with that name. If the status is "finalized", it finalizes and publishes the script.
 
     :form name: The name to save the script as.
-    :form status: The status of the script (e.g., "finished").
-
+    :form status: The status of the script (e.g., "finalized").
     :status 200: Successfully updated the script metadata.
     """
     data = request.get_json()
-    script = utils.get_script_file()
+    script = get_script_file()
     if 'name' in data:
         run_name = data.get("name")
-        exist_script = Script.query.get(run_name)
+        exist_script = db.session.get(Script, run_name)
         if exist_script is None:
-            _, return_list = script.config_return()
+            _, return_list = ScriptEditor(script).config_return()
             script.return_values = list(return_list)
             script.save_as(run_name)
             if 'registered' in data:
                  script.registered = data.get('registered')
-            utils.post_script_file(script)
+            post_script_file(script)
             return jsonify(success=True)
         else:
             flash("Script name is already exist in database")
@@ -176,10 +192,10 @@ def update_script_meta():
 
     if 'status' in data:
         if data['status'] == "finalized":
-            _, return_list = script.config_return()
+            _, return_list = ScriptEditor(script).config_return()
             script.return_values = list(return_list)
             script.finalize()
-            utils.post_script_file(script)
+            post_script_file(script)
             publish()
             return jsonify(success=True)
     return jsonify(success=False)
@@ -189,19 +205,20 @@ def update_script_meta():
 @login_required
 def update_ui_state():
     """
-    .. :quickref: Workflow Design; update the UI state for the design canvas.
+    .. :quickref: Workflow Design; Update design UI state
+
+    **Update UI State**
 
     .. http:patch:: /draft/ui-state
 
-    Update the UI state for the design canvas, including showing code overlays, setting editing types,
-    and handling deck selection.
+    Update UI settings for the design canvas, such as showing code overlays, setting the editing mode,
+    handling deck selection, or toggling autofill.
 
-    :form show_code: Whether to show the code overlay (true/false).
+    :form show_code: Whether to show the code overlay (bool).
     :form editing_type: The type of editing to set (prep, script, cleanup).
-    :form autofill: Whether to enable autofill for the instrument panel (true/false).
-    :form deck_name: The name of the deck to select.
-
-    :status 200: Updates the UI state and returns a success message.
+    :form autofill: Whether to enable autofill (bool).
+    :form deck_name: The name of the pseudo-deck to select.
+    :status 200: Updates the UI state successfully.
     """
     data = request.get_json()
 
@@ -211,9 +228,9 @@ def update_ui_state():
     if "editing_type" in data:
         stype = data.get("editing_type")
 
-        script = utils.get_script_file()
+        script = get_script_file()
         script.editing_type = stype
-        utils.post_script_file(script)
+        post_script_file(script)
 
         # Re-render only the part of the page you want to update
         design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
@@ -221,7 +238,7 @@ def update_ui_state():
         return jsonify({"html": rendered_html})
 
     if "autofill" in data:
-        script = utils.get_script_file()
+        script = get_script_file()
         instrument = data.get("instrument", '')
         autofill = data.get("autofill", False)
         session['autofill'] = autofill
@@ -231,22 +248,22 @@ def update_ui_state():
 
     if "deck_name" in data:
         pkl_name = data.get('deck_name', "")
-        script = utils.get_script_file()
+        script = get_script_file()
         session['pseudo_deck'] = pkl_name
-        deck_list = utils.available_pseudo_deck(current_app.config["DUMMY_DECK"])
+        deck_list = available_pseudo_deck(current_app.config["DUMMY_DECK"])
 
         if script.deck is None or script.isEmpty():
             script.deck = pkl_name.split('.')[0]
-            utils.post_script_file(script)
+            post_script_file(script)
         elif script.deck and not script.deck == pkl_name.split('.')[0]:
             flash(f"Choose the deck with name {script.deck}")
         pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pkl_name)
-        pseudo_deck = utils.load_deck(pseudo_deck_path)
+        pseudo_deck = load_interface_schema(pseudo_deck_path)
         deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
         deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
         html = render_template("components/sidebar.html", history=deck_list,
-                               defined_variables=deck_variables, local_variables = global_config.defined_variables,
-                               block_variables=global_config.building_blocks, design_agent_enabled=current_app.config.get("ENABLE_AGENT"))
+                               defined_variables=deck_variables, local_variables = global_state.defined_variables,
+                               block_variables=global_state.building_blocks, design_agent_enabled=current_app.config.get("ENABLE_AGENT"))
         return jsonify({"html": html})
     return jsonify({"error": "Invalid request"}), 400
 
@@ -265,11 +282,11 @@ def update_ui_state():
 #     :status 200: Successfully updated the order of steps.
 #     """
 #     order = request.form['order']
-#     script = utils.get_script_file()
+#     script = get_script_file()
 #     script.currently_editing_order = order.split(",", len(script.currently_editing_script))
-#     script.sort_actions()
-#     exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
-#     utils.post_script_file(script)
+#     ScriptEditor(script).sort_actions()
+#     exec_string = ScriptRenderer(script).compile(current_app.config['SCRIPT_FOLDER'])
+#     post_script_file(script)
 #     session['python_code'] = exec_string
 #
 #     return jsonify({'success': True})
@@ -286,15 +303,15 @@ def clear_draft():
 
     :status 200: clear canvas
     """
-    deck = global_config.deck
+    deck = global_state.deck
     if deck:
         deck_name = os.path.splitext(os.path.basename(deck.__file__))[
             0] if deck.__name__ == "__main__" else deck.__name__
     else:
         deck_name = session.get("pseudo_deck", "")
     script = Script(deck=deck_name, author=current_user.get_id())
-    utils.post_script_file(script)
-    exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+    post_script_file(script)
+    exec_string = ScriptRenderer(script).compile(current_app.config['SCRIPT_FOLDER'])
     # session['python_code'] = exec_string
     return jsonify({'success': True})
 
@@ -317,7 +334,7 @@ def submit_script():
     :form cleanup: post script
     :status 200: clear canvas
     """
-    deck = global_config.deck
+    deck = global_state.deck
     deck_name = os.path.splitext(os.path.basename(deck.__file__))[0] if deck.__name__ == "__main__" else deck.__name__
     script = Script(author=current_user.get_id(), deck=deck_name)
     script_collection = request.get_json()
@@ -333,7 +350,7 @@ def submit_script():
             result[stype] = "success"
         except Exception as e:
             result[stype] = f"failed to transcript, but function can still run. error: {str(e)}"
-    utils.post_script_file(script)
+    post_script_file(script)
     status = publish()
     return jsonify({"script": result, "db": status}), 200
 
@@ -353,11 +370,11 @@ def methods_handler(instrument: str = ''):
     :type instrument: str
     :status 200: Render the methods for the specified instrument.
     """
-    script = utils.get_script_file()
+    script = get_script_file()
     pseudo_deck_name = session.get('pseudo_deck', '')
     pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
     off_line = current_app.config["OFF_LINE"]
-    pseudo_deck = utils.load_deck(pseudo_deck_path) if off_line and pseudo_deck_name else None
+    pseudo_deck = load_interface_schema(pseudo_deck_path) if off_line and pseudo_deck_name else None
     autofill = session.get('autofill', False)
 
     if instrument == 'workflows':
@@ -368,8 +385,8 @@ def methods_handler(instrument: str = ''):
     success = True
     msg = ""
     if "hidden_name" in request.form:
-        deck_snapshot = global_config.deck_snapshot
-        block_snapshot = global_config.building_blocks
+        interface_schema = global_state.interface_schema
+        block_interface_schema = global_state.building_blocks
         method_name = request.form.get("hidden_name", None)
         form = forms.get(method_name) if forms else None
         insert_position = request.form.get("drop_target_id", None)
@@ -414,8 +431,8 @@ def methods_handler(instrument: str = ''):
                     # Fallback or error handling
                     function_data = {}
 
-                return_format = utils.get_return_type(function_data)
-                save_data = utils.extract_return_variables(kwargs, script.validate_function_name)
+                return_format = get_return_type(function_data)
+                save_data = extract_return_variables(kwargs, ScriptEditor.validate_function_name)
 
                 # Save arg_order from signature to exclude dynamic args
                 if function_data and 'signature' in function_data:
@@ -424,10 +441,10 @@ def methods_handler(instrument: str = ''):
                 else:
                     arg_order = list(kwargs.keys())
 
-                primitive_arg_types = utils.get_arg_type(kwargs, function_data)
+                primitive_arg_types = get_arg_type(kwargs, function_data)
 
-                script.eval_list(kwargs, primitive_arg_types)
-                kwargs = script.validate_variables(kwargs, primitive_arg_types)
+                ScriptEditor.eval_list(kwargs, primitive_arg_types)
+                kwargs = ScriptEditor(script).validate_variables(kwargs, primitive_arg_types)
                 
                 # Use function_data to get coroutine status, avoiding KeyError for virtual setters
                 coroutine = function_data.get("coroutine", False)
@@ -443,7 +460,7 @@ def methods_handler(instrument: str = ''):
                           "arg_order": arg_order,  # Explicitly save order
                           "return_format": return_format,
                           }
-                script.add_action(action=action, insert_position=insert_position)
+                ScriptEditor(script).add_action(action=action, insert_position=insert_position)
             else:
                 msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
                 success = False
@@ -456,21 +473,21 @@ def methods_handler(instrument: str = ''):
             if form.validate_on_submit():
                 logic_type = kwargs.pop('builtin_name')
                 if logic_type == 'input':
-                    script.add_input_action(insert_position=insert_position, **kwargs)
+                    ScriptEditor(script).add_input_action(insert_position=insert_position, **kwargs)
                 elif logic_type == 'variable':
                     try:
-                        script.add_variable(insert_position=insert_position, **kwargs)
+                        ScriptEditor(script).add_variable(insert_position=insert_position, **kwargs)
                     except ValueError as e:
                         success = False
                         msg = e.__str__()
                 elif logic_type == 'math_variable' or logic_type == 'math': # should work with math_variable but doesnt, but does for math because it is the builtin name; should change all instances of using == "math_variable" to math later?
                     try:
-                        script.add_math_variable(insert_position=insert_position, **kwargs)
+                        ScriptEditor(script).add_math_variable(insert_position=insert_position, **kwargs)
                     except ValueError as e:
                         success = False
                         msg = e.__str__()
                 else:
-                    script.add_logic_action(logic_type=logic_type, insert_position=insert_position, **kwargs)
+                    ScriptEditor(script).add_logic_action(logic_type=logic_type, insert_position=insert_position, **kwargs)
             else:
                 success = False
                 msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
@@ -493,11 +510,11 @@ def methods_handler(instrument: str = ''):
                 batch_action = kwargs.pop("batch_action", False)
                 consolidate_batch_args = request.form.getlist("consolidate_batch_args")
                 kwargs.pop('workflow_name')
-                save_data = utils.extract_return_variables(kwargs, script.validate_function_name)
+                save_data = extract_return_variables(kwargs, ScriptEditor.validate_function_name)
 
-                primitive_arg_types = utils.get_arg_type(kwargs, functions[unique_key])
-                script.eval_list(kwargs, primitive_arg_types)
-                kwargs = script.validate_variables(kwargs, primitive_arg_types)
+                primitive_arg_types = get_arg_type(kwargs, functions[unique_key])
+                ScriptEditor.eval_list(kwargs, primitive_arg_types)
+                kwargs = ScriptEditor(script).validate_variables(kwargs, primitive_arg_types)
                 
                 # Fetch the workflow to embed its steps
                 target_workflow = Script.query.filter_by(name=workflow_name).first()
@@ -513,23 +530,23 @@ def methods_handler(instrument: str = ''):
                           'arg_types': primitive_arg_types,
                           "workflow": embedded_steps} # Embed steps
                 # print(action)
-                script.add_action(action=action, insert_position=insert_position)
+                ScriptEditor(script).add_action(action=action, insert_position=insert_position)
             else:
                 success = False
                 msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
-    utils.post_script_file(script)
+    post_script_file(script)
     #TODO
     pseudo_deck_name = session.get('pseudo_deck', '')
     pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
     off_line = current_app.config["OFF_LINE"]
-    pseudo_deck = utils.load_deck(pseudo_deck_path) if off_line and pseudo_deck_name else None
-    snapshot = global_config.deck_snapshot if not off_line and global_config.deck else pseudo_deck
+    pseudo_deck = load_interface_schema(pseudo_deck_path) if off_line and pseudo_deck_name else None
+    interface_schema = global_state.interface_schema if not off_line and global_state.deck else pseudo_deck
     try:
-        exec_string = script.compile(current_app.config['SCRIPT_FOLDER'], snapshot=snapshot)
+        exec_string = ScriptRenderer(script).compile(current_app.config['SCRIPT_FOLDER'], interface_schema=interface_schema)
     except Exception as e:
         exec_string = {}
         msg = f"Compilation failed: {str(e)}"
-    # exec_string = script.compile(current_app.config['SCRIPT_FOLDER'])
+    # exec_string = ScriptRenderer(script).compile(current_app.config['SCRIPT_FOLDER'])
     # session['python_code'] = exec_string
     design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
     html = render_template("components/canvas_main.html", script=script, buttons_dict=design_buttons)
@@ -543,28 +560,34 @@ def get_operation_sidebar(instrument: str = ''):
     """
     .. :quickref: Workflow Design; handle methods of a specific instrument
 
+    .. http:get:: /draft/instruments
+
+       Get all available instruments, variables, building blocks, and workflow controls for the design sidebar.
+
     .. http:get:: /draft/instruments/<string:instrument>
 
-    :param instrument: The name of the instrument to handle methods for.
+       Get the action forms for a specific instrument or workflow source.
+
+    :param instrument: Optional instrument or workflow source name.
     :type instrument: str
 
     :status 200: Render the methods for the specified instrument.
     """
-    script = utils.get_script_file()
+    script = get_script_file()
     pseudo_deck_name = session.get('pseudo_deck', '')
     pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
     off_line = current_app.config["OFF_LINE"]
-    pseudo_deck = utils.load_deck(pseudo_deck_path) if off_line and pseudo_deck_name else None
+    pseudo_deck = load_interface_schema(pseudo_deck_path) if off_line and pseudo_deck_name else None
     autofill = session.get('autofill', False)
 
     if instrument == 'workflows':
         functions, forms = create_workflow_forms(script, autofill=autofill, design=True)
 
-    elif instrument in global_config.defined_variables.keys() or instrument == 'flow_control' or instrument.startswith("blocks"):
+    elif instrument in global_state.defined_variables.keys() or instrument == 'flow_control' or instrument.startswith("blocks"):
         functions, forms = _create_forms(instrument, script, autofill, pseudo_deck)
     else:
         # Check if it's a deck method
-        deck = global_config.deck
+        deck = global_state.deck
         if deck:
              # This part seems redundant given _create_forms logic but let's stick to existing pattern or just call _create_forms
              pass
@@ -577,20 +600,20 @@ def get_operation_sidebar(instrument: str = ''):
         pseudo_deck_name = session.get('pseudo_deck', '')
         pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
         off_line = current_app.config["OFF_LINE"]
-        pseudo_deck = utils.load_deck(pseudo_deck_path) if off_line and pseudo_deck_name else None
+        pseudo_deck = load_interface_schema(pseudo_deck_path) if off_line and pseudo_deck_name else None
         if off_line and pseudo_deck is None:
             flash("Choose available deck below.")
-        deck_list = utils.available_pseudo_deck(current_app.config["DUMMY_DECK"])
+        deck_list = available_pseudo_deck(current_app.config["DUMMY_DECK"])
         if not off_line:
-            deck_variables = list(global_config.deck_snapshot.keys())
+            deck_variables = list(global_state.interface_schema.keys())
         else:
             deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
             deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
         # edit_action_info = session.get("edit_action")
         html = render_template("components/sidebar.html", off_line=off_line, history=deck_list,
                                defined_variables=deck_variables,
-                               local_variables=global_config.defined_variables,
-                               block_variables=global_config.building_blocks,
+                               local_variables=global_state.defined_variables,
+                               block_variables=global_state.building_blocks,
                                script=script, 
                                design_agent_enabled=current_app.config.get("ENABLE_AGENT"))
     return jsonify({"html": html})
@@ -599,6 +622,18 @@ def get_operation_sidebar(instrument: str = ''):
 @design.route("/draft/import_python_file", methods=["POST"])
 @login_required
 def import_python_file():
+    """
+    .. :quickref: Workflow Design; Import Python script
+
+    **Import Python File**
+
+    .. http:post:: /draft/import_python_file
+
+    Upload a Python script file and extract workflow functions to be converted into visual cards.
+
+    :form file: The Python (.py) file to import.
+    :status 200: Returns extracted workflows and identifies duplicate script names.
+    """
     try:
         if 'file' not in request.files:
             return jsonify({"success": False, "error": "No file part"})
@@ -614,7 +649,7 @@ def import_python_file():
 
         duplicates = []
         for name in workflows.keys():
-            if Script.query.get(name):
+            if db.session.get(Script, name):
                 duplicates.append(name)
 
         return jsonify({
@@ -629,6 +664,19 @@ def import_python_file():
 @design.route("/draft/confirm_import_python", methods=["POST"])
 @login_required
 def confirm_import_python():
+    """
+    .. :quickref: Workflow Design; Confirm Python import
+
+    **Confirm Import**
+
+    .. http:post:: /draft/confirm_import_python
+
+    Finalize the import of extracted workflows, optionally overwriting existing scripts in the database.
+
+    :json workflows: A dictionary of extracted workflows to save.
+    :json overwrite: A list of script names that should be overwritten.
+    :status 200: Returns success after saving the scripts.
+    """
     try:
         data = request.get_json()
         workflows = data.get("workflows", {})
@@ -636,7 +684,7 @@ def confirm_import_python():
 
         results = {}
 
-        deck = global_config.deck
+        deck = global_state.deck
         if deck:
              deck_name = os.path.splitext(os.path.basename(deck.__file__))[0] if deck.__name__ == "__main__" else deck.__name__
         else:
@@ -646,7 +694,7 @@ def confirm_import_python():
             cards = content.get("cards", [])
             source = content.get("source", "")
 
-            exist_script = Script.query.get(name)
+            exist_script = db.session.get(Script, name)
 
             if exist_script:
                 if name in overwrite:
@@ -688,10 +736,16 @@ def confirm_import_python():
 @login_required
 def get_available_variables():
     """
-    Get available variables for the current script state.
-    Optional query param: before_id (int) - filter variables available before this step ID.
+    .. :quickref: Workflow Design; Get available workflow variables
+
+    .. http:get:: /draft/variables
+
+    Return variables available for autocomplete in the current script state.
+
+    :query before_id: Optional step UUID. When provided, only variables available before that step are returned.
+    :status 200: Returns a JSON object with available variable names.
     """
-    script = utils.get_script_file()
+    script = get_script_file()
     before_id = request.args.get('before_id')
     if before_id:
         try:
@@ -699,5 +753,5 @@ def get_available_variables():
         except ValueError:
             before_id = None
 
-    variable_list = script.get_autocomplete_variables(before_id=before_id)
+    variable_list = ScriptEditor(script).get_autocomplete_variables(before_id=before_id)
     return jsonify({"variables": variable_list})

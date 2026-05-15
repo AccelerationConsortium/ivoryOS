@@ -31,6 +31,7 @@ optimizer-ax = ["ax-platform"]
 optimizer-baybe = ["baybe"]
 optimizer-nimo = ["nimo"]
 db = ["psycopg2-binary"]
+llm = ["openai"]
 
 optimizers = [
     "ax-platform>=1.1.2",
@@ -38,7 +39,8 @@ optimizers = [
     "nimo>=2.0.5"
 ]
 doc = [
-    "sphinx",
+    "sphinx<8",
+    "myst-parser>=2,<4",
     "sphinx-rtd-theme",
     "sphinxcontrib-httpdomain"
 ]
@@ -61,3 +63,6 @@ exclude = ["community*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "ivoryos.version.__version__"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

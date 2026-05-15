@@ -4,19 +4,20 @@ import uuid
 import bcrypt
 from flask import Flask, session, g, redirect, url_for
 from flask_login import AnonymousUserMixin
+from sqlalchemy import inspect, text
 
-from ivoryos.utils import utils
-from ivoryos.utils.db_models import db, User
+from ivoryos.utils.logger import start_logger
+from ivoryos.models import db, User
+from ivoryos.socket_handlers import socketio
 from ivoryos.routes.auth.auth import auth, login_manager
 from ivoryos.routes.control.control import control
 from ivoryos.routes.data.data import data
 from ivoryos.routes.library.library import library
 from ivoryos.routes.design.design import design
 from ivoryos.routes.execute.execute import execute
-from ivoryos.socket_handlers import socketio
 from ivoryos.routes.main.main import main
 from ivoryos.version import __version__ as ivoryos_version
-from sqlalchemy import inspect, text
+
 
 url_prefix = os.getenv('URL_PREFIX', "/ivoryos")
 app = Flask(__name__, static_url_path=f'{url_prefix}/static', static_folder='static')
@@ -106,6 +107,15 @@ def create_admin():
             print("Admin user already exists.")
 
 
+def create_ivoryos_folders(parent_path):
+    """
+    Creates folders for ivoryos data
+    """
+    os.makedirs(parent_path, exist_ok=True)
+    for path in ["config_csv", "scripts", "scripts/drafts", "results", "pseudo_deck", "logs"]:
+        os.makedirs(os.path.join(parent_path, path), exist_ok=True)
+
+
 def create_app(config_class=None):
     """
     create app, init database
@@ -126,11 +136,11 @@ def create_app(config_class=None):
         create_admin()
 
     # Additional setup
-    utils.create_gui_dir(app.config['OUTPUT_FOLDER'])
+    create_ivoryos_folders(app.config['OUTPUT_FOLDER'])
 
     # logger_list = app.config["LOGGERS"]
     logger_path = os.path.join(app.config["OUTPUT_FOLDER"], app.config["LOGGERS_PATH"])
-    logger = utils.start_logger(socketio, 'gui_logger', logger_path)
+    logger = start_logger(socketio, 'gui_logger', logger_path)
 
     @app.before_request
     def before_request():

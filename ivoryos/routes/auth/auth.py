@@ -1,12 +1,13 @@
 from flask import Blueprint, redirect, url_for, flash, request, render_template, session
 from flask_login import login_required, login_user, logout_user, LoginManager, current_user
 import bcrypt
-from sqlalchemy_utils.types import password
 
-from ivoryos.utils.db_models import Script, User, db
-from ivoryos.utils.utils import post_script_file
+from ivoryos.models import User, db
+from ivoryos.script import Script
+from ivoryos.services.draft_service import post_script_for_user
+
+
 login_manager = LoginManager()
-# from flask import g
 
 auth = Blueprint('auth', __name__, template_folder='templates')
 
@@ -14,11 +15,13 @@ auth = Blueprint('auth', __name__, template_folder='templates')
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
     """
-    .. :quickref: User; login user
+    .. :quickref: User; Login user
+
+    **Login**
 
     .. http:get:: /auth/login
 
-    load user login form.
+        Load the user login form.
 
     .. http:post:: /auth/login
 
@@ -50,7 +53,7 @@ def login():
                 session["script"] = script_file.as_dict()
                 session['hidden_functions'], session['card_order'], session['prompt'] = {}, {}, {}
                 session['autofill'] = False
-                post_script_file(script_file)
+                post_script_for_user(username, script_file)
                 return redirect(url_for('main.index'))
         else:
             flash("Incorrect username or password")
@@ -61,11 +64,13 @@ def login():
 @auth.route('/signup', methods=['GET', 'POST'])
 def signup():
     """
-    .. :quickref: User; signup for a new account
+    .. :quickref: User; Signup for a new account
+
+    **Signup**
 
     .. http:get:: /auth/signup
 
-    load user sighup
+        Load the user signup form.
 
     .. http:post:: /auth/signup
 
@@ -96,13 +101,21 @@ def signup():
 @login_required
 def change_password():
     """
-    .. :quickref: User; change password
+    .. :quickref: User; Change password
+
+    **Change Password**
 
     .. http:get:: /auth/change-password
 
+        Load the password change form.
+
     .. http:post:: /auth/change-password
 
-    change password
+        Update the current user's password.
+
+    :form old_password: The user's current password.
+    :form new_password: The new password to set.
+    :status 302: Redirects to the homepage on success.
     """
     if request.method == "POST":
         old_password = request.form.get("old_password")
@@ -124,11 +137,15 @@ def change_password():
 @login_required
 def logout():
     """
-    .. :quickref: User; logout the user
+    .. :quickref: User; Logout the user
+
+    **Logout**
 
     .. http:get:: /auth/logout
 
-    logout the current user, clear session info, and redirect to the login page.
+    Terminate the current user session and redirect to the login page.
+
+    :status 302: Redirects to the login page.
     """
     logout_user()
     session.clear()
