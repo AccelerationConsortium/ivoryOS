@@ -286,11 +286,24 @@
         var tableBody = document.getElementById("tableBody");
         var rows = tableBody.getElementsByTagName('tr');
         for (var i = 0; i < rows.length; i++) {
+            // Update displayed row number badge
             var badge = rows[i].querySelector('.badge');
             if (badge) {
                 badge.textContent = i + 1;
             }
+            // Re-sync input/select name attributes to use the correct 1-based index
+            var inputs = rows[i].querySelectorAll('input[name], select[name], textarea[name]');
+            inputs.forEach(function (input) {
+                var name = input.name;
+                var bracketIdx = name.indexOf('[');
+                if (bracketIdx !== -1) {
+                    var columnName = name.substring(0, bracketIdx);
+                    input.name = columnName + '[' + (i + 1) + ']';
+                }
+            });
         }
+        // Keep rowCount in sync with the actual number of rows
+        rowCount = rows.length;
     }
 
     function clearAllRows() {
