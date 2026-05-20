@@ -81,6 +81,7 @@ body {
     background-color: #f8f9fa;
     /* Light grey background */
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    scrollbar-gutter: stable;
 }
 
 /*.run-panel-row-height {*/
@@ -112,13 +113,17 @@ label {
 }
 
 
-/*Remove the scrollbar from Chrome, Safari, Edge and IE*/
+/* Styled scrollbar — always visible so the navbar has no gap */
 ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
     background: transparent;
 }
-
-* {
-    -ms-overflow-style: none !important;
+::-webkit-scrollbar-thumb {
+    background-color: #c8c8c8;
+    border-radius: 6px;
 }
 
 .script-table {
