@@ -8,6 +8,7 @@ SERVER_BOOT_ID = str(uuid.uuid4())
 
 socketio = SocketIO(cors_allowed_origins="*")
 runner = ScriptRunner()
+runner.socketio = socketio
 
 def abort_pending(continue_queue=True):
     runner.abort_pending(continue_queue)

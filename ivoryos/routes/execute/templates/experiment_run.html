@@ -147,10 +147,10 @@
                     throw new Error(`Status check failed: ${response.status}`);
                 }
                 const data = await response.json();
-                return data.busy;
+                return { busy: data.busy, paused: data.paused };
             } catch (error) {
                 console.error('Error checking system status:', error);
-                return Boolean(window.platformState && window.platformState.is_running);
+                return { busy: Boolean(window.platformState && window.platformState.is_running), paused: Boolean(window.platformState && window.platformState.is_paused) };
             }
         }
 
@@ -164,14 +164,20 @@
                 e.preventDefault(); // Stop immediate submission
                 e.stopPropagation();
 
-                const busy = await isSystemBusy();
+                const status = await isSystemBusy();
                 const form = btn.form;
 
-                if (busy) {
+                if (status.busy || status.paused) {
                     // Check if Bootstrap is available
                     if (typeof bootstrap !== 'undefined') {
                         try {
                             const modalElement = document.getElementById('taskNameModal');
+                            const modalTitle = document.getElementById('taskNameModalLabel');
+                            if (status.paused && !status.busy) {
+                                modalTitle.textContent = "System Paused - Queue Task";
+                            } else {
+                                modalTitle.textContent = "System Busy - Queue Task";
+                            }
                             const modal = new bootstrap.Modal(modalElement);
                             const taskNameInput = document.getElementById('queueTaskName');
 
@@ -214,7 +220,8 @@
                         }
                     } else {
                         // Fallback if bootstrap missing
-                        if (confirm("System is busy. Add to queue? (Display name unavailable)")) {
+                        const confirmMsg = status.paused && !status.busy ? "System is paused. Add to queue?" : "System is busy. Add to queue?";
+                        if (confirm(`${confirmMsg} (Display name unavailable)`)) {
                             btn.dataset.processed = "true";
                             btn.click();
                         }
