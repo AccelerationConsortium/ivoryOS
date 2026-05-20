@@ -1,4 +1,7 @@
 # Changelog
+## 1.6.1 (May 20th, 2026)
+- !150 **[New]** f-string printing in code
+
 ## 1.6.0 (May 20th, 2026)
 - !153 **[Bug]** fix workflow log and execution data downloads by correctly sanitizing workflow names
 - !152 **[Bug]** add pause status check to runner state and update UI warning logic
