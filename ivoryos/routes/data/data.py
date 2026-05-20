@@ -27,12 +27,32 @@ def list_workflows():
     :query page: The page number for pagination.
     :status 200: Returns a list of workflow records (HTML or JSON).
     """
-    query = WorkflowRun.query.order_by(WorkflowRun.id.desc())
+    query = WorkflowRun.query
     search_term = request.args.get("keyword", None)
     if search_term:
         query = query.filter(WorkflowRun.name.like(f'%{search_term}%'))
+
+    sort_by = request.args.get('sort_by', 'id')
+    order = request.args.get('order', 'desc')
+
+    sort_mapping = {
+        'name': WorkflowRun.name,
+        'id': WorkflowRun.id,
+        'start_time': WorkflowRun.start_time,
+        'end_time': WorkflowRun.end_time
+    }
+
+    sort_column = sort_mapping.get(sort_by, WorkflowRun.id)
+
+    if order == 'asc':
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+
     page = request.args.get('page', default=1, type=int)
-    per_page = 10
+    per_page = request.args.get('per_page', default=10, type=int)
+    if per_page not in [10, 20, 50]:
+        per_page = 10
 
     workflows = query.paginate(page=page, per_page=per_page, error_out=False)
     if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
@@ -42,8 +62,8 @@ def list_workflows():
             "workflow_data": workflow_data,
         })
     else:
-        return render_template('workflow_database.html', workflows=workflows)
-
+        return render_template('workflow_database.html', workflows=workflows, deck_name=None,
+                               current_per_page=per_page, current_sort_by=sort_by, current_order=order)
 @data.get("/executions/records/<int:workflow_id>")
 def workflow_logs(workflow_id:int):
     """

@@ -1,109 +1,206 @@
 {% extends 'base.html' %}
 
-{% block title %}IvoryOS | Design Database{% endblock %}
+{% block title %}IvoryOS | Experiment Logs{% endblock %}
 {% block body %}
-    <div class="div">
-        <form id="search" style="display: inline-block;float: right;" action="{{url_for('data.list_workflows',deck_name=deck_name)}}" method="GET">
-            <div class="input-group">
-                <div class="form-outline">
-                    <input type="search" name="keyword" id="keyword" class="form-control" placeholder="Search workflows...">
-                </div>
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-search"></i>
+<div class="p-4" style="max-width: 1400px; margin: 0 auto;">
+    
+    <!-- PAGE HEADER -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <h1 class="h2 mb-1" style="font-weight: 700; color: #2c3e50; letter-spacing: -0.5px;">Experiment Logs</h1>
+            <p class="text-muted mb-0">Browse past workflow runs, inspect step-by-step logs, and export structured data outputs.</p>
+        </div>
+    </div>
+
+    <!-- Header: Filters, Size Selector, & Search -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <!-- Page Size Selector -->
+            <div class="dropdown">
+                <button class="btn btn-outline-teal dropdown-toggle rounded-pill px-3" type="button" id="pageSizeDropdown" data-bs-toggle="dropdown"
+                    aria-expanded="false" style="font-weight: 500;">
+                    <i class="bi bi-list-ol me-1"></i>
+                    Show: {{ current_per_page }}
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="pageSizeDropdown">
+                    {% for size in [10, 20, 50] %}
+                    <li>
+                        <a class="dropdown-item {% if size == current_per_page %}active{% endif %}"
+                            href="{{ url_for('data.list_workflows', per_page=size, keyword=request.args.get('keyword', ''), sort_by=current_sort_by, order=current_order) }}">
+                            Show {{ size }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Search Form -->
+        <form id="search" class="d-flex" method="GET" action="{{ url_for('data.list_workflows') }}">
+            <input type="hidden" name="per_page" value="{{ current_per_page }}">
+            <input type="hidden" name="sort_by" value="{{ current_sort_by }}">
+            <input type="hidden" name="order" value="{{ current_order }}">
+            <div class="input-group rounded-pill border border-teal-light overflow-hidden" style="background: white; max-width: 300px;">
+                <input type="search" name="keyword" id="keyword" class="form-control border-0 px-3 py-2" placeholder="Search experiments..."
+                    value="{{ request.args.get('keyword', '') }}" style="box-shadow: none; font-size: 0.9rem;">
+                <button type="submit" class="btn btn-link text-secondary px-3 py-0 border-0" style="text-decoration: none;">
+                    <i class="bi bi-search" style="color: #6c757d; font-size: 0.95rem;"></i>
                 </button>
             </div>
         </form>
     </div>
 
-    <table class="table table-hover" id="workflowResultLibrary">
-        <thead>
-            <tr>
-                <th scope="col">Workflow name</th>
-                <th scope="col">Workflow ID</th>
-                <th scope="col">Start time</th>
-                <th scope="col">End time</th>
-                <th scope="col">Data</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for workflow in workflows %}
-                <tr>
-                    <td><a href="{{ url_for('data.workflow_logs', workflow_id=workflow.id) }}">{{ workflow.name }}</a></td>
-                    <td>{{ workflow.id }}</td>
-                    <td>{{ workflow.start_time.strftime("%Y-%m-%d %H:%M:%S") if workflow.start_time else '' }}</td>
-                    <td>{{ workflow.end_time.strftime("%Y-%m-%d %H:%M:%S") if workflow.end_time else '' }}</td>
+    <!-- TABLE CARD -->
+    <div class="card border border-teal-light mb-4 shadow-sm" style="border-radius: 8px;">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="workflowResultLibrary">
+                    <thead class="table-light text-secondary" style="font-size: 0.85rem;">
+                        <tr>
+                            <th scope="col" class="ps-3 py-3 border-0">
+                                <a href="{{ url_for('data.list_workflows', keyword=request.args.get('keyword', ''), per_page=current_per_page, sort_by='name', order='desc' if current_sort_by == 'name' and current_order == 'asc' else 'asc') }}"
+                                    class="text-secondary text-decoration-none fw-semibold">
+                                    Workflow Name {% if current_sort_by == 'name' %}<i class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th scope="col" class="py-3 border-0">
+                                <a href="{{ url_for('data.list_workflows', keyword=request.args.get('keyword', ''), per_page=current_per_page, sort_by='id', order='desc' if current_sort_by == 'id' and current_order == 'asc' else 'asc') }}"
+                                    class="text-secondary text-decoration-none fw-semibold">
+                                    Workflow ID {% if current_sort_by == 'id' %}<i class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th scope="col" class="py-3 border-0">
+                                <a href="{{ url_for('data.list_workflows', keyword=request.args.get('keyword', ''), per_page=current_per_page, sort_by='start_time', order='desc' if current_sort_by == 'start_time' and current_order == 'asc' else 'asc') }}"
+                                    class="text-secondary text-decoration-none fw-semibold">
+                                    Start Time {% if current_sort_by == 'start_time' %}<i class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th scope="col" class="py-3 border-0">
+                                <a href="{{ url_for('data.list_workflows', keyword=request.args.get('keyword', ''), per_page=current_per_page, sort_by='end_time', order='desc' if current_sort_by == 'end_time' and current_order == 'asc' else 'asc') }}"
+                                    class="text-secondary text-decoration-none fw-semibold">
+                                    End Time {% if current_sort_by == 'end_time' %}<i class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th scope="col" class="py-3 border-0 fw-semibold">Data Output</th>
+                            <th scope="col" class="text-end pe-3 py-3 border-0 fw-semibold">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for workflow in workflows %}
+                            <tr>
+                                <td class="ps-3">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="d-flex align-items-center justify-content-center rounded bg-teal-subtle text-teal p-2">
+                                            <i class="bi bi-clipboard-data-fill"></i>
+                                        </span>
+                                        <div>
+                                            <a href="{{ url_for('data.workflow_logs', workflow_id=workflow.id) }}" style="font-weight: 600; color: #2c3e50; text-decoration: none;" class="workflow-title-link">
+                                                {{ workflow.name }}
+                                            </a>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <code class="small text-secondary">{{ workflow.id }}</code>
+                                </td>
+                                <td class="small text-muted">
+                                    {{ workflow.start_time.strftime("%Y-%m-%d %H:%M:%S") if workflow.start_time else '-' }}
+                                </td>
+                                <td class="small text-muted">
+                                    {{ workflow.end_time.strftime("%Y-%m-%d %H:%M:%S") if workflow.end_time else '-' }}
+                                </td>
+                                <td>
+                                    {% if workflow.data_path %}
+                                      <a href="{{ url_for('data.download_results', filename=workflow.data_path) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3" style="font-size: 0.8rem;">
+                                          <i class="bi bi-download me-1"></i>Download CSV
+                                      </a>
+                                    {% else %}
+                                      <span class="text-muted small">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-3">
+                                    <div class="d-flex align-items-center justify-content-end gap-2">
+                                        <a href="{{ url_for('data.workflow_logs', workflow_id=workflow.id) }}" class="btn btn-sm rounded-pill px-3 border-teal-btn">
+                                            View Logs
+                                        </a>
+                                        {% if session['user'] == 'admin' or session['user'] == workflow.author %}
+                                        <button class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                            data-delete-url="{{ url_for('data.delete_workflow_record', workflow_id=workflow.id) }}"
+                                            onclick="deleteWorkflow(this); return false;">
+                                            Delete
+                                        </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" disabled style="opacity: 0.5; cursor: not-allowed;">
+                                            Delete
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-                    <td>
-                        {% if workflow.data_path %}
-                          <a href="{{ url_for('data.download_results', filename=workflow.data_path) }}">{{ workflow.data_path }}</a>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if session['user'] == 'admin' or session['user'] == workflow.author %}
-{#                            <a href="{{ url_for('data.delete_workflow_data', workflow_id=workflow.id) }}">delete</a>#}
-                            <a href="#"
-                               class="text-danger"
-                               data-delete-url="{{ url_for('data.delete_workflow_record', workflow_id=workflow.id) }}"
-                               onclick="deleteWorkflow(this); return false;">
-                               Delete
-                            </a>
-                        {% else %}
-                            <a class="disabled-link">delete</a>
-                        {% endif %}
-                    </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    {#    paging#}
-    <div class="pagination justify-content-center">
+    <!-- PAGINATION -->
+    <div class="pagination justify-content-center gap-1">
         <div class="page-item {{ 'disabled' if not workflows.has_prev else '' }}">
-            <a class="page-link" href="{{ url_for('data.list_workflows', page=workflows.prev_num) }}">Previous</a>
+            <a class="page-link rounded-pill px-3 border border-teal-light"
+                href="{{ url_for('data.list_workflows', page=workflows.prev_num, keyword=request.args.get('keyword', ''), per_page=current_per_page, sort_by=current_sort_by, order=current_order) }}">
+                <i class="bi bi-chevron-left me-1"></i>Previous
+            </a>
         </div>
 
         {% for num in workflows.iter_pages() %}
             {% if num %}
                 <div class="page-item {{ 'active' if num == workflows.page else '' }}">
-                    <a class="page-link" href="{{ url_for('data.list_workflows', page=num) }}">{{ num }}</a>
+                    <a class="page-link rounded-pill px-3 border border-teal-light pagination-num"
+                        href="{{ url_for('data.list_workflows', page=num, keyword=request.args.get('keyword', ''), per_page=current_per_page, sort_by=current_sort_by, order=current_order) }}">{{ num }}</a>
                 </div>
             {% else %}
                 <div class="page-item disabled">
-                    <span class="page-link">…</span>
+                    <span class="page-link rounded-pill px-3 border border-teal-light bg-transparent">…</span>
                 </div>
             {% endif %}
         {% endfor %}
 
         <div class="page-item {{ 'disabled' if not workflows.has_next else '' }}">
-            <a class="page-link" href="{{ url_for('data.list_workflows', page=workflows.next_num) }}">Next</a>
+            <a class="page-link rounded-pill px-3 border border-teal-light"
+                href="{{ url_for('data.list_workflows', page=workflows.next_num, keyword=request.args.get('keyword', ''), per_page=current_per_page, sort_by=current_sort_by, order=current_order) }}">
+                Next<i class="bi bi-chevron-right ms-1"></i>
+            </a>
         </div>
     </div>
 
     <div id="steps-container"></div>
 
-    <script>
-        function showSteps(workflowId) {
-            fetch(`/workflow_steps/${workflowId}`)
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('steps-container');
-                    container.innerHTML = '';  // Clear previous content
-                    const stepsList = document.createElement('ul');
+</div>
 
-                    data.steps.forEach(step => {
-                        const li = document.createElement('li');
-                        li.innerHTML = `
-                            <strong>Step: </strong> ${step.method_name} <br>
-                            <strong>Start Time:</strong> ${step.start_time} <br>
-                            <strong>End Time:</strong> ${step.end_time} <br>
-                            <strong>Human Intervention:</strong> ${step.run_error ? 'Yes' : 'No'}
-                        `;
-                        stepsList.appendChild(li);
-                    });
+<script>
+    function showSteps(workflowId) {
+        fetch(`/workflow_steps/${workflowId}`)
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('steps-container');
+                container.innerHTML = '';  // Clear previous content
+                const stepsList = document.createElement('ul');
 
-                    container.appendChild(stepsList);
+                data.steps.forEach(step => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <strong>Step: </strong> ${step.method_name} <br>
+                        <strong>Start Time:</strong> ${step.start_time} <br>
+                        <strong>End Time:</strong> ${step.end_time} <br>
+                        <strong>Human Intervention:</strong> ${step.run_error ? 'Yes' : 'No'}
+                    `;
+                    stepsList.appendChild(li);
                 });
-        }
-    </script>
-    <script src="{{ url_for('static', filename='js/db_delete.js') }}"></script>
+
+                container.appendChild(stepsList);
+            });
+    }
+</script>
+<script src="{{ url_for('static', filename='js/db_delete.js') }}"></script>
 {% endblock %}

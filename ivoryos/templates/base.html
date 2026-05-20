@@ -25,7 +25,7 @@
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+    <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container-fluid px-4">
             <a class="navbar-brand" href="{{ url_for('main.index') }}">
                 {% if current_user.is_authenticated %}
@@ -47,60 +47,114 @@
 
 
 
+
+
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                <ul class="navbar-nav mr-auto">
+                <ul class="navbar-nav mr-auto align-items-center">
+                    {# ── Home ── #}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('main.index') }}" aria-current="page">Home</a>
+                        <a class="nav-link {{ 'active' if request.blueprint == 'main' else '' }}"
+                            href="{{ url_for('main.index') }}">Home</a>
                     </li>
                     {% if enable_design %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('library.load_from_database') }}" aria-current="page">Library</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('design.experiment_builder') }}">Design</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('execute.experiment_run') }}">Compile/Run</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('data.list_workflows') }}">Data</a>
-                        </li>
+                    {# ── Pipeline: Library › Workflow › Execution › Data ── #}
+                    <span class="nav-pipeline-sep mx-2" style="opacity:0.5;">|</span>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.blueprint == 'library' else '' }}"
+                            href="{{ url_for('library.load_from_database') }}">Library</a>
+                    </li>
+                    <span class="nav-pipeline-sep"><i class="bi bi-chevron-right"></i></span>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.blueprint == 'design' else '' }}"
+                            href="{{ url_for('design.experiment_builder') }}">Workflow</a>
+                    </li>
+                    <span class="nav-pipeline-sep"><i class="bi bi-chevron-right"></i></span>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.blueprint == 'execute' else '' }}"
+                            href="{{ url_for('execute.experiment_run') }}">Execution</a>
+                    </li>
+                    <span class="nav-pipeline-sep"><i class="bi bi-chevron-right"></i></span>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.blueprint == 'data' else '' }}"
+                            href="{{ url_for('data.list_workflows') }}">Data</a>
+                    </li>
+                    {# ── Instruments: clearly separated from workflow pipeline ── #}
+                    <span class="nav-pipeline-sep mx-2" style="opacity:0.5;">|</span>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.blueprint == 'control' else '' }}"
+                            href="{{ url_for('control.deck_controllers') }}">Instruments</a>
+                    </li>
                     {% endif %}
 
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('control.deck_controllers') }}">Devices</a>
-                    </li>
+                    {# ── Plugins ── #}
                     {% if plugins %}
-                        {% for plugin in plugins %}
-                            {% if plugin.type == 'tab' or plugin.type is undefined %}
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for(plugin.name+'.main') }}">{{ plugin.name.capitalize() }}</a>
-                            </li>
+                        {% set ns = namespace(tab_count=0) %}
+                        {% for p in plugins %}
+                            {% if p.type == 'tab' or p.type is undefined %}
+                                {% set ns.tab_count = ns.tab_count + 1 %}
                             {% endif %}
                         {% endfor %}
+
+                        {% if ns.tab_count == 1 %}
+                            {% for plugin in plugins %}
+                                {% if plugin.type == 'tab' or plugin.type is undefined %}
+                                    <li class="nav-item">
+                                        <a class="nav-link {{ 'active' if request.blueprint == plugin.name else '' }}"
+                                            href="{{ url_for(plugin.name+'.main') }}">{{ plugin.name.capitalize() }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            {% set plugin_active = namespace(found=false) %}
+                            {% for plugin in plugins %}
+                                {% if (plugin.type == 'tab' or plugin.type is undefined) and request.blueprint == plugin.name %}
+                                    {% set plugin_active.found = true %}
+                                {% endif %}
+                            {% endfor %}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle {{ 'active' if plugin_active.found else '' }}" href="#"
+                                    role="button" id="pluginsDropdown">
+                                    Plugins
+                                    {% if plugin_active.found %}
+                                        <span class="badge bg-primary rounded-pill ms-1" style="font-size:0.6rem;">●</span>
+                                    {% endif %}
+                                </a>
+                                <ul class="dropdown-menu">
+                                    {% for plugin in plugins %}
+                                        {% if plugin.type == 'tab' or plugin.type is undefined %}
+                                            <li>
+                                                <a class="dropdown-item {{ 'active' if request.blueprint == plugin.name else '' }}"
+                                                    href="{{ url_for(plugin.name+'.main') }}">{{ plugin.name.capitalize() }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            </li>
+                        {% endif %}
                     {% endif %}
                 </ul>
-                <ul class="navbar-nav ms-auto align-items-center">
+                <ul class="navbar-nav ms-auto align-items-center gap-1">
                     {% if current_user.is_authenticated %}
-                        <div class="dropdown">
-                            <li class="nav-item dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
-                                <i class="bi bi-person-circle"></i> {{ current_user.get_id() }}
-                            </li>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{{ url_for("auth.change_password") }}" role="button" aria-expanded="false">Change Password</a></li>
-                                <li><a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#logoModal" role="button" aria-expanded="false">Customize Logo</a></li>
-                                <li><a class="dropdown-item" href="{{ url_for("auth.logout") }}" role="button" aria-expanded="false">Logout</a></li>
-                            </ul>
-
-                        </div>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                            aria-expanded="false" style="cursor: pointer;">
+                            <i class="bi bi-person-circle"></i> {{ current_user.get_id() }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ url_for('auth.change_password') }}">Change Password</a></li>
+                            <li><a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#logoModal">Customize Logo</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
+                        </ul>
+                    </li>
                     {% else %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for("auth.login") }}">Login</a>
-                        </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('auth.login') }}">Login</a>
+                    </li>
                     {% endif %}
                 </ul>
             </div>
@@ -123,39 +177,39 @@
         </div>
         <div class="col-9 p-0" style="min-width: 0;">
             <div class="container-fluid px-2">
-    {% else %}
-    <div class="container">
-    {% endif %}
+                {% else %}
+                <div class="container">
+                    {% endif %}
 
-        <div class="flash">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        {% if category == 'popup' %}
-                        <!-- Popup Modal Trigger Script -->
-                        <script>
-                            document.addEventListener("DOMContentLoaded", function () {
-                                var flashModal = new bootstrap.Modal(document.getElementById('flashModal'));
-                                document.getElementById('flashModalBody').innerText = "{{ message }}";
-                                flashModal.show();
-                            });
-                        </script>
-                        {% else %}
-                        <div class="alert alert-warning">
-                            {{ message|safe }}
-                        </div>
+                    <div class="flash">
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                {% if category == 'popup' %}
+                                    <!-- Popup Modal Trigger Script -->
+                                    <script>
+                                        document.addEventListener("DOMContentLoaded", function () {
+                                            var flashModal = new bootstrap.Modal(document.getElementById('flashModal'));
+                                            document.getElementById('flashModalBody').innerText = "{{ message }}";
+                                            flashModal.show();
+                                        });
+                                    </script>
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    {{ message|safe }}
+                                </div>
+                                {% endif %}
+                            {% endfor %}
                         {% endif %}
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-        </div>
-        {% block body %}{% endblock %}
+                        {% endwith %}
+                    </div>
+                    {% block body %}{% endblock %}
 
-    {% if ns.left_plugin %}
+                    {% if ns.left_plugin %}
+                </div>
             </div>
         </div>
-    </div>
-    {% else %}
+        {% else %}
     </div>
     {% endif %}
 
@@ -189,10 +243,10 @@
                         <h5>from connection history</h5>
                         <div class="form-group">
                             <select class="form-select" name="filepath">
-                            <option disabled selected value> -- select an option -- </option>
-                            {% for connection in history %}
+                                <option disabled selected value> -- select an option -- </option>
+                                {% for connection in history %}
                                 <option style="overflow-wrap: break-word;" name="filepath" id="filepath" value="{{connection}}">{{connection}}</option>
-                            {% endfor %}
+                                {% endfor %}
 {#                            <option>clear history</option>#}
                             </select>
                         </div>
@@ -243,13 +297,13 @@
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="mode" id="add" value="add" checked>
                                 <label class="form-check-label" for="add">
-                                Add next to IvoryOS logo
+                                    Add next to IvoryOS logo
                                 </label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="mode" id="replace" value="replace">
                                 <label class="form-check-label" for="replace">
-                                Replace IvoryOS logo
+                                    Replace IvoryOS logo
                                 </label>
                             </div>
                         </div>
@@ -268,11 +322,11 @@
     {% include 'components/error_modal.html' %}
 
     {# Floating system status / error restore icon (bottom left) #}
-    <div id="global-status-icon" class="position-fixed shadow" 
-         style="bottom: 20px; left: 20px; z-index: 9999; display: flex; cursor: pointer; border-radius: 20px; height: 35px; padding: 0 15px; background-color: #6c757d; align-items: center; justify-content: center; gap: 8px; color: white; font-weight: 500;"
+    <div id="global-status-icon" class="position-fixed shadow"
+        style="bottom: 20px; left: 20px; z-index: 9999; display: flex; cursor: pointer; border-radius: 20px; height: 35px; padding: 0 15px; background-color: #6c757d; align-items: center; justify-content: center; gap: 8px; color: white; font-weight: 500;"
          title="Platform is idle"
          onclick="if(localStorage.getItem('active_error')) restoreErrorModal()">
-         <span id="global-status-text">Idle</span>
+        <span id="global-status-text">Idle</span>
     </div>
 
     <!-- Socket.io for global events (like error modals) -->

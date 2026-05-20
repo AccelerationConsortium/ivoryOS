@@ -20,8 +20,14 @@ def index():
     .. http:get:: /
 
     """
+    from ivoryos.script import Script
     off_line = current_app.config["OFF_LINE"]
-    return render_template('home.html', off_line=off_line, version=ivoryos_version)
+    recent_scripts = []
+    try:
+        recent_scripts = Script.query.order_by(Script.last_modified.desc()).limit(3).all()
+    except Exception:
+        pass
+    return render_template('home.html', off_line=off_line, version=ivoryos_version, recent_scripts=recent_scripts)
 
 
 @main.route("/help")
