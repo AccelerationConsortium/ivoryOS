@@ -6,6 +6,7 @@ from flask import Blueprint, request, render_template, current_app, jsonify, sen
 from flask_login import login_required
 
 from ivoryos.models import db, WorkflowRun, WorkflowPhase
+from ivoryos.script.editor import ScriptEditor
 
 data = Blueprint('data', __name__, template_folder='templates')
 
@@ -156,7 +157,8 @@ def download_workflow_steps_data_csv(workflow_id: int):
     if not workflow:
         return jsonify({"error": "Workflow not found"}), 404
 
-    base_data_path = workflow.data_path if workflow.data_path else f"{workflow.name}_{workflow.start_time.strftime('%Y-%m-%d %H-%M')}"
+    run_name = ScriptEditor.validate_function_name(workflow.name)
+    base_data_path = workflow.data_path if workflow.data_path else f"{run_name}_{workflow.start_time.strftime('%Y-%m-%d %H-%M')}"
     base_data_path = base_data_path.replace('.csv', '')
 
     # Query all phases for this run
@@ -220,7 +222,8 @@ def download_workflow_logs(workflow_id: int):
     if not workflow:
         return jsonify({"error": "Workflow record not found"}), 404
 
-    log_filename = f"{workflow.name}_{workflow.start_time.strftime('%Y-%m-%d %H-%M-%S')}.log"
+    run_name = ScriptEditor.validate_function_name(workflow.name)
+    log_filename = f"{run_name}_{workflow.start_time.strftime('%Y-%m-%d %H-%M-%S')}.log"
     log_path = os.path.join(current_app.config["LOG_FOLDER"], log_filename)
     if not os.path.exists(log_path):
         return jsonify({"error": "Log file not found on disk"}), 404
