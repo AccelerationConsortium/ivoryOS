@@ -1,4 +1,20 @@
 # Changelog
+## 1.6.0 (May 20th, 2026)
+- !153 **[Bug]** fix workflow log and execution data downloads by correctly sanitizing workflow names
+- !152 **[Bug]** add pause status check to runner state and update UI warning logic
+- !151 **[QoL]** modernize and improve library template layout, styles, and filtering interface
+- !149 **[Bug]** fix row index synchronization in configuration tab
+- !148 **[Refactor]** major refactor
+  - the monolithic `utils` package is now split into modular, domain-specific packages:
+    - `forms/`: dynamic form generation
+    - `models/`: database models
+    - `parsers/`: serialization, type conversions, and code introspection
+    - `runtime/`: execution state, task queuing, and the workflow execution engine
+    - `script/`: script rendering and editing logic
+    - `services/`: API proxies, LLM integration, and file/draft handling
+  - extensive codebase refactoring including database queries and API route documentation
+  - refactor step highlighting logic
+
 ## 1.5.21 (May 13th, 2026)
 - **[Patch]** fix the paused queue when submitting
 
