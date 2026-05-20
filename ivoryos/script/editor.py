@@ -1,5 +1,6 @@
 import ast
 import builtins
+import keyword
 import re
 import uuid
 from typing import Dict
@@ -26,7 +27,6 @@ class ScriptEditor:
 
     @staticmethod
     def validate_function_name(name):
-        import keyword
         name = re.sub(r'\W|^(?=\d)', '_', name)
         if keyword.iskeyword(name):
             name += '_'
