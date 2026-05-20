@@ -10,35 +10,50 @@
     </div>
 
     <!-- Center: Main Actions -->
-    <div class="btn-toolbar" role="toolbar">
-        <button class="btn btn-primary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#newScriptModal">New</button>
-        <button class="btn btn-secondary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#jsonModal">Import
-            JSON</button>
-        <button class="btn btn-secondary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#pythonModal">Import
-            Python</button>
-        <a class="btn btn-secondary btn-sm me-1"
-            href="{{url_for('design.design_files.download_json', filetype='script')}}">Export</a>
-        <button class="btn btn-secondary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#saveasModal">Save
-            as</button>
-        <div class="btn-group">
-            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown"
-                aria-expanded="false">More</button>
-            <ul class="dropdown-menu">
+    <div class="btn-toolbar gap-2" role="toolbar">
+        <button class="btn border-teal-btn btn-sm d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#newScriptModal">
+            <i class="bi bi-file-earmark-plus"></i> New
+        </button>
+        
+        <button class="btn border-teal-btn btn-sm d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#jsonModal">
+            <i class="bi bi-upload"></i> Import
+        </button>
+
+        <a class="btn border-teal-btn btn-sm d-flex align-items-center gap-1 shadow-sm" href="{{url_for('design.design_files.download_json', filetype='script')}}">
+            <i class="bi bi-download"></i> Export
+        </a>
+
+        <button class="btn border-teal-btn btn-sm d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#saveasModal">
+            <i class="bi bi-floppy"></i> Save As
+        </button>
+
+        <div class="btn-group shadow-sm">
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle d-flex align-items-center gap-1" data-bs-toggle="dropdown" aria-expanded="false">
+                More
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
                 <li>
-                    <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#renameModal">Rename</button>
+                    <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#pythonModal">
+                        <i class="bi bi-filetype-py me-2 text-muted"></i>Import Python
+                    </button>
+                </li>
+                <li>
+                    <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#renameModal">
+                        <i class="bi bi-pencil me-2 text-muted"></i>Rename
+                    </button>
                 </li>
                 {% if script.name %}
                 <li>
-                    <a class="dropdown-item {{ 'disabled' if not script.name or script.status == " finalized" else ''
-                        }}" href="#" data-post-url="{{ url_for('library.workflow_script', script_name=script.name) }}"
-                        onclick="saveWorkflow(this); return false;">
-                        Save
+                    <a class="dropdown-item {{ 'disabled' if not script.name or script.status == 'finalized' else '' }}" href="#" data-post-url="{{ url_for('library.workflow_script', script_name=script.name) }}" onclick="saveWorkflow(this); return false;">
+                        <i class="bi bi-save me-2 text-muted"></i>Save
                     </a>
                 </li>
                 {% endif %}
                 {% if not script.status == 'finalized' %}
                 <li>
-                    <a class="dropdown-item" onclick="lockScriptEditing()">Disable editing</a>
+                    <a class="dropdown-item" onclick="lockScriptEditing()" style="cursor: pointer;">
+                        <i class="bi bi-lock me-2 text-muted"></i>Disable editing
+                    </a>
                 </li>
                 {% endif %}
             </ul>

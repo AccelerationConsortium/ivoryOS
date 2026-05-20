@@ -59,7 +59,7 @@
                 <div class="mb-3 dynamic-args-container">
                     {# New args will be added here #}
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-secondary mb-3" onclick="addDynamicArg(this)">
+                <button type="button" class="btn btn-sm btn-outline-teal mb-3" onclick="addDynamicArg(this)">
                     <i class="bi bi-plus"></i> Add Parameter
                 </button>
                 {% endif %}
@@ -79,7 +79,7 @@
                 </div>
                 {% endif %}
 
-                <button type="submit" class="btn btn-dark">Add</button>
+                <button type="submit" class="btn btn-primary">Add</button>
                 {% if 'hidden_name' in form %}
                     <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top"
                        title='{{ form.hidden_name.description or "Docstring is not available" }}'>

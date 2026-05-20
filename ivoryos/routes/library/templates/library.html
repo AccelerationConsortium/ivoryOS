@@ -1,153 +1,226 @@
 {% extends 'base.html' %}
 
-{% block title %}IvoryOS | Design Database{% endblock %}
+{% block title %}IvoryOS | Design Library{% endblock %}
 {% block body %}
-<!-- Header: Deck Filter & Search -->
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <!-- Deck Filter Dropdown -->
-    <div class="dropdown">
-        <button class="btn btn-primary dropdown-toggle" type="button" id="deckFilterDropdown" data-bs-toggle="dropdown"
-            aria-expanded="false">
-            Deck: {{ current_deck_name if current_deck_name and current_deck_name != 'ALL' else 'All Decks' }}
-        </button>
-        <ul class="dropdown-menu" aria-labelledby="deckFilterDropdown">
-            {% for deck in deck_list %}
-            <li>
-                <a class="dropdown-item {% if deck == current_deck_name %}active{% endif %}"
-                    href="{{ url_for('library.load_from_database', deck_name=deck) }}">
-                    {{ deck }}
-                </a>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-
-    <!-- Search Form -->
-    <form id="search" class="d-flex" method="GET"
-        action="{{ url_for('library.load_from_database', deck_name=current_deck_name or 'ALL') }}">
-        <div class="input-group">
-            <input type="search" name="keyword" id="keyword" class="form-control" placeholder="Search workflows..."
-                value="{{ request.args.get('keyword', '') }}">
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-search"></i>
-            </button>
+<div class="p-4" style="max-width: 1400px; margin: 0 auto;">
+    
+    <!-- PAGE HEADER -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <h1 class="h2 mb-1" style="font-weight: 700; color: #2c3e50; letter-spacing: -0.5px;">Design Library</h1>
+            <p class="text-muted mb-0">Browse, search, and manage your saved protocol designs.</p>
         </div>
-    </form>
-</div>
+    </div>
 
-<table class="table table-hover align-middle" id="workflowLibrary">
-    <thead class="table-light">
-        <tr>
-            <th scope="col">
-                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='name', order='desc' if current_sort_by == 'name' and current_order == 'asc' else 'asc') }}"
-                    class="text-dark text-decoration-none">
-                    Workflow name {% if current_sort_by == 'name' %}<i
-                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
-                </a>
-            </th>
-            <th scope="col">
-                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='deck', order='desc' if current_sort_by == 'deck' and current_order == 'asc' else 'asc') }}"
-                    class="text-dark text-decoration-none">
-                    Deck {% if current_sort_by == 'deck' %}<i
-                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
-                </a>
-            </th>
-            <th scope="col">Description</th>
-            <th scope="col">
-                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='status', order='desc' if current_sort_by == 'status' and current_order == 'asc' else 'asc') }}"
-                    class="text-dark text-decoration-none">
-                    Status {% if current_sort_by == 'status' %}<i
-                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
-                </a>
-            </th>
-            <th scope="col">
-                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='created', order='asc' if current_sort_by == 'created' and current_order == 'desc' else 'desc') }}"
-                    class="text-dark text-decoration-none">
-                    Created {% if current_sort_by == 'created' %}<i
-                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
-                </a>
-            </th>
-            <th scope="col">
-                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='modified', order='asc' if current_sort_by == 'modified' and current_order == 'desc' else 'desc') }}"
-                    class="text-dark text-decoration-none">
-                    Modified {% if current_sort_by == 'modified' %}<i
-                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
-                </a>
-            </th>
-            <th scope="col">
-                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='author', order='desc' if current_sort_by == 'author' and current_order == 'asc' else 'asc') }}"
-                    class="text-dark text-decoration-none">
-                    Author {% if current_sort_by == 'author' %}<i
-                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
-                </a>
-            </th>
-            <th scope="col">
-                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='registered', order='asc' if current_sort_by == 'registered' and current_order == 'desc' else 'desc') }}"
-                    class="text-dark text-decoration-none">
-                    Registered {% if current_sort_by == 'registered' %}<i
-                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
-                </a>
-            </th>
-            <th scope="col"></th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for script in scripts %}
-        <tr>
-            <td>
-                <a href="{{ url_for('library.workflow_script', script_name=script.name) }}" title="{{ script.name }}">{{
-                    script.name }}</a>
-            </td>
-            <td>{{ script.deck }}</td>
-            <td>{{ script.description }}</td>
-            <td>{{ script.status }}</td>
-            <td>{{ script.time_created }}</td>
-            <td>{{ script.last_modified }}</td>
-            <td>{{ script.author }}</td>
-            <td>{{ script.registered }}</td>
-            <td>
-                {#not workflow.status == "finalized" or#}
-                {% set username = current_user.get_id() %}
-                {% if username == 'admin' or username == script.author %}
-                <a href="#" class="text-danger"
-                    data-delete-url="{{ url_for('library.workflow_script', script_name=script.name) }}"
-                    onclick="deleteWorkflow(this); return false;">
-                    Delete
-                </a>
-                {% else %}
-                <a class="disabled-link">delete</a>
-                {% endif %}
-            <td>
-        </tr>
+    <!-- Header: Filters, Size Selector, & Search -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <!-- Deck Filter Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-outline-teal dropdown-toggle rounded-pill px-3" type="button" id="deckFilterDropdown" data-bs-toggle="dropdown"
+                    aria-expanded="false" style="font-weight: 500;">
+                    <i class="bi bi-filter me-1"></i>
+                    Deck: {{ current_deck_name if current_deck_name and current_deck_name != 'ALL' else 'All Decks' }}
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="deckFilterDropdown">
+                    {% for deck in deck_list %}
+                    <li>
+                        <a class="dropdown-item {% if deck == current_deck_name %}active{% endif %}"
+                            href="{{ url_for('library.load_from_database', deck_name=deck, per_page=current_per_page, keyword=request.args.get('keyword', '')) }}">
+                            {{ deck }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <!-- Page Size Selector -->
+            <div class="dropdown">
+                <button class="btn btn-outline-teal dropdown-toggle rounded-pill px-3" type="button" id="pageSizeDropdown" data-bs-toggle="dropdown"
+                    aria-expanded="false" style="font-weight: 500;">
+                    <i class="bi bi-list-ol me-1"></i>
+                    Show: {{ current_per_page }}
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="pageSizeDropdown">
+                    {% for size in [10, 20, 50] %}
+                    <li>
+                        <a class="dropdown-item {% if size == current_per_page %}active{% endif %}"
+                            href="{{ url_for('library.load_from_database', deck_name=current_deck_name or 'ALL', per_page=size, keyword=request.args.get('keyword', '')) }}">
+                            Show {{ size }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Search Form -->
+        <form id="search" class="d-flex" method="GET"
+            action="{{ url_for('library.load_from_database', deck_name=current_deck_name or 'ALL') }}">
+            <input type="hidden" name="per_page" value="{{ current_per_page }}">
+            <div class="input-group rounded-pill border border-teal-light overflow-hidden" style="background: white; max-width: 300px;">
+                <input type="search" name="keyword" id="keyword" class="form-control border-0 px-3 py-2" placeholder="Search workflows..."
+                    value="{{ request.args.get('keyword', '') }}" style="box-shadow: none; font-size: 0.9rem;">
+                <button type="submit" class="btn btn-link text-secondary px-3 py-0 border-0" style="text-decoration: none;">
+                    <i class="bi bi-search" style="color: #6c757d; font-size: 0.95rem;"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- TABLE CARD -->
+    <div class="card border border-teal-light mb-4 shadow-sm" style="border-radius: 8px;">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="workflowLibrary">
+                    <thead class="table-light text-secondary" style="font-size: 0.85rem;">
+                        <tr>
+                            <th scope="col" class="ps-3 py-3 border-0">
+                                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='name', order='desc' if current_sort_by == 'name' and current_order == 'asc' else 'asc') }}"
+                                    class="text-secondary text-decoration-none fw-semibold">
+                                    Workflow Name {% if current_sort_by == 'name' %}<i
+                                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th scope="col" class="py-3 border-0">
+                                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='deck', order='desc' if current_sort_by == 'deck' and current_order == 'asc' else 'asc') }}"
+                                    class="text-secondary text-decoration-none fw-semibold">
+                                    Deck Configuration {% if current_sort_by == 'deck' %}<i
+                                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th scope="col" class="py-3 border-0 fw-semibold">Description</th>
+                            <th scope="col" class="py-3 border-0">
+                                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='status', order='desc' if current_sort_by == 'status' and current_order == 'asc' else 'asc') }}"
+                                    class="text-secondary text-decoration-none fw-semibold">
+                                    Status {% if current_sort_by == 'status' %}<i
+                                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th scope="col" class="py-3 border-0">
+                                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='created', order='asc' if current_sort_by == 'created' and current_order == 'desc' else 'desc') }}"
+                                    class="text-secondary text-decoration-none fw-semibold">
+                                    Created {% if current_sort_by == 'created' %}<i
+                                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th scope="col" class="py-3 border-0">
+                                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='modified', order='asc' if current_sort_by == 'modified' and current_order == 'desc' else 'desc') }}"
+                                    class="text-secondary text-decoration-none fw-semibold">
+                                    Last Modified {% if current_sort_by == 'modified' %}<i
+                                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th scope="col" class="py-3 border-0">
+                                <a href="{{ url_for('library.load_from_database', deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by='author', order='desc' if current_sort_by == 'author' and current_order == 'asc' else 'asc') }}"
+                                    class="text-secondary text-decoration-none fw-semibold">
+                                    Author {% if current_sort_by == 'author' %}<i
+                                        class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th scope="col" class="text-end pe-3 py-3 border-0 fw-semibold">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for script in scripts %}
+                        <tr>
+                            <td class="ps-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="d-flex align-items-center justify-content-center rounded bg-teal-subtle text-teal p-2">
+                                        <i class="bi bi-file-earmark-code-fill"></i>
+                                    </span>
+                                    <div>
+                                        <a href="{{ url_for('library.workflow_script', script_name=script.name) }}" title="{{ script.name }}" style="font-weight: 600; color: #2c3e50; text-decoration: none;" class="workflow-title-link">
+                                            {{ script.name }}
+                                        </a>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary-subtle text-secondary border-0 px-2 py-1 rounded" style="font-size: 0.8rem;">
+                                    {{ script.deck }}
+                                </span>
+                            </td>
+                            <td class="small text-muted py-3" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                {{ script.description or '-' }}
+                            </td>
+                            <td>
+                                {% if script.status == 'active' or script.status == 'finalized' or script.status == 'ready' %}
+                                <span class="badge bg-success-subtle text-success border-0 px-2 py-1 rounded" style="font-size: 0.8rem;">
+                                    {{ script.status }}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-warning-subtle text-warning border-0 px-2 py-1 rounded" style="font-size: 0.8rem;">
+                                    {{ script.status or 'draft' }}
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="small text-muted">{{ script.time_created }}</td>
+                            <td class="small text-muted">{{ script.last_modified }}</td>
+                            <td class="small text-muted">
+                                <span class="badge bg-light text-dark border-0 px-2 py-1 rounded" style="font-size: 0.8rem;">
+                                    {{ script.author or 'System' }}
+                                </span>
+                            </td>
+                            <td class="text-end pe-3">
+                                <div class="d-flex align-items-center justify-content-end gap-2">
+                                    <a href="{{ url_for('library.workflow_script', script_name=script.name) }}" class="btn btn-sm rounded-pill px-3 border-teal-btn">
+                                        Open
+                                    </a>
+                                    {% set username = current_user.get_id() %}
+                                    {% if username == 'admin' or username == script.author %}
+                                    <button class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                        data-delete-url="{{ url_for('library.workflow_script', script_name=script.name) }}"
+                                        onclick="deleteWorkflow(this); return false;">
+                                        Delete
+                                    </button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" disabled style="opacity: 0.5; cursor: not-allowed;">
+                                        Delete
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="pagination justify-content-center gap-1">
+        <div class="page-item {{ 'disabled' if not scripts.has_prev else '' }}">
+            <a class="page-link rounded-pill px-3 border border-teal-light"
+                href="{{ url_for('library.load_from_database', page=scripts.prev_num, deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by=current_sort_by, order=current_order, per_page=current_per_page) }}">
+                <i class="bi bi-chevron-left me-1"></i>Previous
+            </a>
+        </div>
+
+        {% for num in scripts.iter_pages() %}
+        {% if num %}
+        <div class="page-item {{ 'active' if num == scripts.page else '' }}">
+            <a class="page-link rounded-pill px-3 border border-teal-light pagination-num"
+                href="{{ url_for('library.load_from_database', page=num, deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by=current_sort_by, order=current_order, per_page=current_per_page) }}">{{
+                num }}</a>
+        </div>
+        {% else %}
+        <div class="page-item disabled">
+            <span class="page-link rounded-pill px-3 border border-teal-light bg-transparent">…</span>
+        </div>
+        {% endif %}
         {% endfor %}
-    </tbody>
-</table>
 
-{# paging#}
-<div class="pagination justify-content-center">
-    <div class="page-item {{ 'disabled' if not scripts.has_prev else '' }}">
-        <a class="page-link"
-            href="{{ url_for('library.load_from_database', page=scripts.prev_num, deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by=current_sort_by, order=current_order) }}">Previous</a>
+        <div class="page-item {{ 'disabled' if not scripts.has_next else '' }}">
+            <a class="page-link rounded-pill px-3 border border-teal-light"
+                href="{{ url_for('library.load_from_database', page=scripts.next_num, deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by=current_sort_by, order=current_order, per_page=current_per_page) }}">
+                Next<i class="bi bi-chevron-right ms-1"></i>
+            </a>
+        </div>
     </div>
 
-    {% for num in scripts.iter_pages() %}
-    {% if num %}
-    <div class="page-item {{ 'active' if num == scripts.page else '' }}">
-        <a class="page-link"
-            href="{{ url_for('library.load_from_database', page=num, deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by=current_sort_by, order=current_order) }}">{{
-            num }}</a>
-    </div>
-    {% else %}
-    <div class="page-item disabled">
-        <span class="page-link">…</span>
-    </div>
-    {% endif %}
-    {% endfor %}
-
-    <div class="page-item {{ 'disabled' if not scripts.has_next else '' }}">
-        <a class="page-link"
-            href="{{ url_for('library.load_from_database', page=scripts.next_num, deck_name=current_deck_name, keyword=request.args.get('keyword', ''), sort_by=current_sort_by, order=current_order) }}">Next</a>
-    </div>
 </div>
+
 <script src="{{ url_for('static', filename='js/db_delete.js') }}"></script>
 {% endblock %}

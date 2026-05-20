@@ -1,103 +1,168 @@
 {% extends 'base.html' %}
-{% block title %}IvoryOS | Welcome{% endblock %}
+{% block title %}IvoryOS | Dashboard{% endblock %}
 
 {% block body %}
-    <div class="p-4">
-        <h1 class="mb-4" style="font-size: 3rem; font-weight: bold; color: #343a40;">
-            Welcome
-        </h1>
-        <p class="mb-5">Version: {{ version }}</p>
-
-        {% if enable_design %}
-        <!-- Workflow Design Section -->
-        <h4 class="mb-3">Workflow Design</h4>
-        <div class="row">
-            <div class="col-lg-6 mb-3 d-flex align-items-stretch">
-                <div class="card rounded shadow-sm flex-fill">
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            <i class="bi bi-folder2-open me-2"></i>Browse designs
-                        </h5>
-                        <p class="card-text">View all saved workflows from the database.</p>
-                        <a href="{{ url_for('library.load_from_database') }}" class="stretched-link"></a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-6 mb-3 d-flex align-items-stretch">
-                <div class="card rounded shadow-sm flex-fill">
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            <i class="bi bi-pencil-square me-2"></i>Edit designs
-                        </h5>
-                        <p class="card-text">Create or modify workflows using available functions.</p>
-                        <a href="{{ url_for('design.experiment_builder') }}" class="stretched-link"></a>
-                    </div>
-                </div>
-            </div>
+<div class="p-4" style="max-width: 1400px; margin: 0 auto;">
+    
+    <!-- SYSTEM STATUS HEADER -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <h1 class="h2 mb-1" style="font-weight: 700; color: #2c3e50; letter-spacing: -0.5px;">
+                Welcome back, <span style="color: #387e81;">{{ current_user.get_id() }}</span>!
+            </h1>
+            <p class="text-muted mb-0">Manage and automate your liquid handling and experimental workflows.</p>
         </div>
-        {% endif %}
-
-        <!-- Workflow Control and Monitor Section -->
-        <h4 class="mt-5 mb-3">Workflow Control & Monitoring</h4>
-        <div class="row">
-            <!-- Always visible: Experiment data -->
-            <div class="col-lg-6 mb-3 d-flex align-items-stretch">
-                <div class="card rounded shadow-sm flex-fill">
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            <i class="bi bi-graph-up-arrow me-2"></i>Experiment data
-                        </h5>
-                        <p class="card-text">Browse workflow logs and output data.</p>
-                        <a href="{{ url_for('data.list_workflows') }}" class="stretched-link"></a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Conditionally visible: Run current workflow -->
-            {% if not off_line %}
-            <div class="col-lg-6 mb-3 d-flex align-items-stretch">
-                <div class="card rounded shadow-sm flex-fill">
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            <i class="bi bi-play-circle me-2"></i>Run current workflow
-                        </h5>
-                        <p class="card-text">Execute workflows with configurable parameters.</p>
-                        <a href="{{ url_for('execute.experiment_run') }}" class="stretched-link"></a>
-                    </div>
-                </div>
-            </div>
+        <div class="d-flex align-items-center gap-2 mt-2 mt-sm-0">
+            {% if off_line %}
+            <span class="badge d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill bg-warning-subtle text-warning border border-warning-subtle" style="font-size: 0.85rem;">
+                <span class="spinner-grow spinner-grow-sm text-warning" role="status" style="width: 8px; height: 8px;"></span>
+                Simulation Mode (Offline)
+            </span>
+            {% else %}
+            <span class="badge d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill bg-success-subtle text-success border border-success-subtle" style="font-size: 0.85rem;">
+                <span class="position-relative d-inline-flex">
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-success" style="width: 8px; height: 8px; background-color: #198754; border-radius: 50%;"></span>
+                </span>
+                System Connected (Online)
+            </span>
             {% endif %}
+            <span class="badge bg-secondary-subtle text-secondary px-3 py-2 rounded-pill border" style="font-size: 0.85rem;">
+                v{{ version }}
+            </span>
         </div>
-
-
-
-        {% if not off_line %}
-        <!-- Direct Control Section -->
-        <h4 class="mt-5 mb-3">Direct Control</h4>
-        <div class="row">
-            <div class="col-lg-6 mb-3 d-flex align-items-stretch">
-                <div class="card rounded shadow-sm flex-fill">
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            <i class="bi bi-toggle-on me-2"></i>Direct control
-                        </h5>
-                        <p class="card-text">Manually control individual components.</p>
-                        <a href="{{ url_for('control.deck_controllers') }}" class="stretched-link"></a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-6 mb-3 d-flex align-items-stretch">
-                <div class="card rounded shadow-sm flex-fill">
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            <i class="bi bi-usb-plug me-2"></i>Connect a new device
-                        </h5>
-                        <p class="card-text">Add new hardware temporarily or for testing purposes.</p>
-                        <a href="{{ url_for('control.temp.new_controller') }}" class="stretched-link"></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
     </div>
+
+    <!-- PIPELINE -->
+    
+
+    <!-- DYNAMIC MAIN SECTIONS -->
+    <div class="row g-4 mb-5">
+        <!-- LEFT COLUMN: RECENT DESIGNS -->
+        <div class="col-lg-8">
+            <div class="card border border-light-subtle h-100" style="border-radius: 8px;">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="card-title mb-0" style="font-weight: 600; color: #2c3e50;">
+                            Recently Modified Designs
+                        </h5>
+                        <a href="{{ url_for('library.load_from_database') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                            View Full Library
+                        </a>
+                    </div>
+
+                    {% if recent_scripts %}
+                    <div class="table-responsive flex-fill">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light text-secondary" style="font-size: 0.85rem;">
+                                <tr>
+                                    <th scope="col" class="ps-3 border-0">Workflow Name</th>
+                                    <th scope="col" class="border-0">Deck Configuration</th>
+                                    <th scope="col" class="border-0">Last Modified</th>
+                                    <th scope="col" class="text-end pe-3 border-0">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for script in recent_scripts %}
+                                <tr>
+                                    <td class="ps-3">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="d-flex align-items-center justify-content-center rounded bg-teal-subtle text-teal p-2">
+                                                <i class="bi bi-file-earmark-code-fill"></i>
+                                            </span>
+                                            <div>
+                                                <div style="font-weight: 600; color: #2c3e50;">{{ script.name }}</div>
+                                                <div class="small text-muted">{{ script.author or 'System' }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary-subtle text-secondary border px-2 py-1 rounded" style="font-size: 0.8rem;">
+                                            {{ script.deck }}
+                                        </span>
+                                    </td>
+                                    <td class="small text-muted">
+                                        {{ script.last_modified if script.last_modified else 'N/A' }}
+                                    </td>
+                                    <td class="text-end pe-3">
+                                        <a href="{{ url_for('library.workflow_script', script_name=script.name) }}" class="btn btn-sm rounded-pill px-3 border-teal-btn">
+                                            Open in Editor
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <!-- Placeholder when no designs exist -->
+                    <div class="text-center py-5 my-auto">
+                        <div class="rounded-circle bg-light-subtle d-inline-flex p-3 mb-3 border">
+                            <i class="bi bi-folder-plus text-muted" style="font-size: 2rem;"></i>
+                        </div>
+                        <h6 class="mb-2" style="font-weight: 600;">No designs found in the database</h6>
+                        <p class="text-muted small mx-auto mb-4" style="max-width: 320px;">Get started by building a new liquid handling script using the interactive block canvas.</p>
+                        <a href="{{ url_for('design.experiment_builder') }}" class="btn btn-teal text-white rounded-pill px-4" style="background-color: #387e81;">
+                            Create New Design
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: SYSTEM QUICK ACTIONS -->
+        <div class="col-lg-4">
+            <div class="card border border-teal-light h-100" style="border-radius: 8px;">
+                <div class="card-body p-4 d-flex flex-column">
+                    <h5 class="card-title mb-3" style="font-weight: 600; color: #2c3e50;">
+                        Quick Actions
+                    </h5>
+                    
+                    <div class="list-group list-group-flush flex-fill">
+                        
+                        <!-- Action 1: Create New Workflow -->
+                        <a href="{{ url_for('design.experiment_builder') }}" class="list-group-item list-group-item-action py-3 d-flex align-items-center justify-content-between border-bottom px-0">
+                            <div class="d-flex align-items-center gap-3">
+                                <i class="bi bi-pencil-square fs-5 text-secondary"></i>
+                                <div>
+                                    <div style="font-weight: 600; color: #2c3e50;">Experiment Builder</div>
+                                    <div class="small text-muted">Create new pipeline designs</div>
+                                </div>
+                            </div>
+                            <i class="bi bi-chevron-right text-muted small"></i>
+                        </a>
+
+                        <!-- Action 2: Direct Device Control -->
+                        {% if not off_line %}
+                        <a href="{{ url_for('control.deck_controllers') }}" class="list-group-item list-group-item-action py-3 d-flex align-items-center justify-content-between border-bottom px-0">
+                            <div class="d-flex align-items-center gap-3">
+                                <i class="bi bi-sliders fs-5 text-secondary"></i>
+                                <div>
+                                    <div style="font-weight: 600; color: #2c3e50;">Deck Controllers</div>
+                                    <div class="small text-muted">Manually trigger valves & pumps</div>
+                                </div>
+                            </div>
+                            <i class="bi bi-chevron-right text-muted small"></i>
+                        </a>
+                        {% endif %}
+
+                        <!-- Action 3: View Past Data -->
+                        <a href="{{ url_for('data.list_workflows') }}" class="list-group-item list-group-item-action py-3 d-flex align-items-center justify-content-between border-0 px-0">
+                            <div class="d-flex align-items-center gap-3">
+                                <i class="bi bi-journal-text fs-5 text-secondary"></i>
+                                <div>
+                                    <div style="font-weight: 600; color: #2c3e50;">Experiment Logs</div>
+                                    <div class="small text-muted">Analyze recent runs & export CSVs</div>
+                                </div>
+                            </div>
+                            <i class="bi bi-chevron-right text-muted small"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</div>
 {% endblock %}

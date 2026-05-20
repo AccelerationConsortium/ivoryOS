@@ -1,3 +1,21 @@
+:root {
+    /* Brand Accent & Colors */
+    --brand-primary: #387481;
+    --brand-primary-light: #e0f5f3;
+    --brand-primary-hover: #377384;
+    --brand-accent: #4db6ac;
+
+    /* Workflow Canvas Design Elements */
+    --canvas-bg: #e8e8cd;
+    --canvas-grid: cadetblue;
+
+    /* Workflow Design Component Accordions */
+    --design-control-bg: #b3dad9;
+    --design-control-collapsed-bg: #c1f2f1;
+    --design-agent-bg: #cdc1f2;
+    --design-agent-hover-bg: #b8afdc;
+}
+
 .login {
     width: 500px;
     padding: 8% 0 0;
@@ -110,11 +128,11 @@ label {
 
 .script-table td {
     border-bottom: none;
-    border-top: cadetblue;
+    border-top: var(--canvas-grid);
 }
 
 .script-table th {
-    border-top: cadetblue;
+    border-top: var(--canvas-grid);
     border-bottom: none;
 }
 
@@ -179,9 +197,6 @@ hr.vertical {
     padding: 10px;
 }
 
-.dropdown:hover .dropdown-menu {
-    display: block;
-}
 
 #reorder {
     overflow-y: scroll;
@@ -189,27 +204,27 @@ hr.vertical {
 }
 
 .accordion-item.design-control .accordion-button.collapsed {
-    background-color: #c1f2f1 !important;
+    background-color: var(--design-control-collapsed-bg) !important;
 }
 
 .accordion-item.design-control .accordion-button {
-    background-color: #b3dad9 !important;
+    background-color: var(--design-control-bg) !important;
 }
 
 .accordion-item.design-control .accordion-button:hover {
-    background-color: #b3dad9 !important;
+    background-color: var(--design-control-bg) !important;
 }
 
 .accordion-item.design-agent .accordion-button.collapsed {
-    background-color: #cdc1f2 !important;
+    background-color: var(--design-agent-bg) !important;
 }
 
 .accordion-item.design-agent .accordion-button {
-    background-color: #cdc1f2 !important;
+    background-color: var(--design-agent-bg) !important;
 }
 
 .accordion-item.design-agent .accordion-button:hover {
-    background-color: #b8afdc !important;
+    background-color: var(--design-agent-hover-bg) !important;
 }
 
 .overlay {
@@ -252,3 +267,273 @@ hr.vertical {
     border-radius: 4px;
     padding: 2px 4px;
 }
+
+/* ══════════════════════════════════════════
+   Navbar — active state, pipeline, dropdowns
+   ══════════════════════════════════════════ */
+
+.navbar {
+    background-color: #eeecec !important;
+    box-shadow: none !important;
+    border-bottom: none !important;
+    z-index: 1050 !important; /* Ensure it stays above VisJS timeline and other content when scrolling */
+}
+
+/* Active nav-link highlight */
+.navbar-nav .nav-link {
+    position: relative;
+    transition: color 0.2s ease;
+}
+.navbar-nav .nav-link.active {
+    color: var(--brand-primary) !important;
+    font-weight: 600;
+}
+.navbar-nav .nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 6px;
+    right: 6px;
+    height: 2px;
+    background-color: var(--brand-accent);
+    border-radius: 2px;
+    animation: navSlideIn 0.2s ease forwards;
+}
+@keyframes navSlideIn {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+}
+
+/* Pipeline chevron separators */
+.nav-pipeline-sep {
+    color: #6c757d;
+    font-size: 0.75rem;
+    padding: 0 2px;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* Plugin dropdown (left nav): open on hover */
+.navbar-nav.mr-auto .dropdown:hover .dropdown-menu {
+    display: block;
+}
+
+/* User dropdown (right nav): always anchor to right edge */
+.navbar-nav.ms-auto .dropdown-menu {
+    right: 0;
+    left: auto;
+}
+
+/* Active dropdown toggle (Plugins) */
+.navbar-nav .dropdown-toggle.active {
+    color: var(--brand-primary) !important;
+    font-weight: 600;
+}
+.navbar-nav .dropdown-toggle.active::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 6px;
+    right: 6px;
+    height: 2px;
+    background-color: var(--brand-accent);
+    border-radius: 2px;
+}
+
+/* Active item inside dropdown menus */
+.dropdown-menu .dropdown-item.active {
+    background-color: var(--brand-primary-light);
+    color: var(--brand-primary);
+    font-weight: 600;
+}
+
+/* Signature Teal Buttons & Styling Unification */
+.btn-teal {
+    background-color: var(--brand-primary) !important;
+    border-color: var(--brand-primary) !important;
+    color: #ffffff !important;
+}
+.btn-teal:hover, .btn-teal:focus, .btn-teal:active {
+    background-color: var(--brand-primary-hover) !important;
+    border-color: var(--brand-primary-hover) !important;
+    color: #ffffff !important;
+}
+.btn-outline-teal {
+    color: var(--brand-primary) !important;
+    border-color: var(--brand-primary) !important;
+    background-color: transparent;
+}
+.btn-outline-teal:hover, .btn-outline-teal:focus, .btn-outline-teal:active, .btn-outline-teal.active {
+    background-color: var(--brand-primary) !important;
+    border-color: var(--brand-primary) !important;
+    color: #ffffff !important;
+}
+
+/* Global list-group active item styling override */
+.list-group-item.active {
+    background-color: var(--brand-primary-light) !important;
+    color: var(--brand-primary) !important;
+    font-weight: 600 !important;
+    border-color: var(--brand-primary-light) !important;
+}
+
+/* Global nav-tabs active & hover styling override */
+.nav-tabs .nav-link.active {
+    color: var(--brand-primary) !important;
+    border-color: #dee2e6 #dee2e6 #fff !important;
+    font-weight: 600;
+}
+.nav-tabs .nav-link {
+    color: #495057;
+    transition: color 0.15s ease-in-out;
+}
+.nav-tabs .nav-link:hover {
+    color: var(--brand-primary);
+}
+
+/* Premium alert for notifications and empty states */
+.alert-teal {
+    background-color: var(--brand-primary-light) !important;
+    color: var(--brand-primary) !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 1rem 1.25rem !important;
+    font-size: 0.95rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.alert-teal i {
+    font-size: 1.2rem;
+    color: var(--brand-primary);
+}
+
+/* Style form switches and checkboxes using the brand palette */
+.form-check-input:checked {
+    background-color: var(--brand-primary) !important;
+    border-color: var(--brand-primary) !important;
+}
+.form-check-input:focus {
+    border-color: var(--brand-primary) !important;
+    box-shadow: 0 0 0 0.25rem rgba(56, 126, 129, 0.25) !important;
+}
+
+/* Sleek border overrides for forms and inputs to remove standard grey borders */
+.form-control, .form-select {
+    border-color: var(--brand-primary-light) !important;
+}
+.form-control:focus, .form-select:focus {
+    border-color: var(--brand-primary) !important;
+    box-shadow: 0 0 0 0.25rem rgba(56, 116, 129, 0.15) !important;
+}
+
+/* Beautiful styling for input groups */
+/* .input-group-text {
+    background-color: var(--brand-primary-light) !important;
+    color: var(--brand-primary) !important;
+    border-color: var(--brand-primary-light) !important;
+} */
+
+/* Special helper classes for brand-specific borders */
+.border-teal {
+    border: 1px solid var(--brand-primary) !important;
+}
+.border-teal-light {
+    border: 1px solid var(--brand-primary-light) !important;
+}
+
+.input-group.rounded-pill.border {
+    border-color: var(--brand-primary-light) !important;
+}
+.input-group.rounded-pill.border:focus-within {
+    border-color: var(--brand-primary) !important;
+}
+
+/* Global button overrides to eliminate blue/grey default styles */
+.btn-primary {
+    background-color: var(--brand-primary) !important;
+    border-color: var(--brand-primary) !important;
+    color: #ffffff !important;
+}
+.btn-primary:hover, .btn-primary:focus, .btn-primary:active {
+    background-color: var(--brand-primary-hover) !important;
+    border-color: var(--brand-primary-hover) !important;
+    color: #ffffff !important;
+}
+.btn-secondary {
+    background-color: var(--brand-primary-light) !important;
+    border-color: var(--brand-primary-light) !important;
+    color: var(--brand-primary) !important;
+}
+.btn-secondary:hover, .btn-secondary:focus, .btn-secondary:active {
+    background-color: var(--brand-primary) !important;
+    border-color: var(--brand-primary) !important;
+    color: #ffffff !important;
+}
+
+/* Premium modal border overrides to remove harsh grey borders */
+.modal-content {
+    border-color: var(--brand-primary-light) !important;
+}
+.modal-header, .modal-footer {
+    border-color: var(--brand-primary-light) !important;
+}
+
+/* Beautiful table cell separator overrides using signature light teal */
+.table > :not(caption) > * > * {
+    border-bottom-color: var(--brand-primary-light) !important;
+}
+.table {
+    --bs-table-border-color: var(--brand-primary-light) !important;
+}
+
+/* Consolidated Teal Actions & Styling Unification */
+.border-teal-btn {
+    color: #387e81 !important;
+    border-color: #387e81 !important;
+    background-color: transparent !important;
+    transition: all 0.2s ease-in-out;
+}
+.border-teal-btn:hover {
+    background-color: #387e81 !important;
+    border-color: #387e81 !important;
+    color: white !important;
+}
+
+/* Unified bg-teal-subtle text-teal Badge Icon Box styling */
+.bg-teal-subtle.text-teal {
+    background-color: #e0f5f3 !important;
+    color: #387e81 !important;
+    width: 36px;
+    height: 36px;
+}
+
+/* Consolidated Pagination / Link overrides */
+.workflow-title-link:hover {
+    color: #387e81 !important;
+    text-decoration: underline !important;
+}
+.pagination-num {
+    transition: all 0.2s ease;
+}
+.page-item.active .page-link {
+    background-color: #387e81 !important;
+    border-color: #387e81 !important;
+    color: white !important;
+}
+.page-link {
+    color: #2c3e50;
+}
+.page-link:hover {
+    background-color: #e0f5f3 !important;
+    color: #387e81 !important;
+    border-color: #e0f5f3 !important;
+}
+.page-item.disabled .page-link {
+    color: #6c757d;
+    opacity: 0.5;
+}
+
+
+

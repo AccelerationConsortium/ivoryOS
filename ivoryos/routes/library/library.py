@@ -129,7 +129,9 @@ def load_from_database():
         query = query.order_by(sort_column.desc())
 
     page = request.args.get('page', default=1, type=int)
-    per_page = 10
+    per_page = request.args.get('per_page', default=10, type=int)
+    if per_page not in [10, 20, 50]:
+        per_page = 10
 
     scripts = query.paginate(page=page, per_page=per_page, error_out=False)
     if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
@@ -141,10 +143,7 @@ def load_from_database():
     else:
         # return HTML
         return render_template("library.html", scripts=scripts, deck_list=deck_list, current_deck_name=deck_name,
-                               current_sort_by=sort_by, current_order=order)
-
-
-
+                               current_sort_by=sort_by, current_order=order, current_per_page=per_page)
 
 @library.post("/", strict_slashes=False)
 @login_required

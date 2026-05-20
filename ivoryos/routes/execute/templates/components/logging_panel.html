@@ -3,7 +3,7 @@
   <div class="d-flex justify-content-between align-items-center flex-shrink-0">
     <h5>Progress：<span id="iteration-display" class="ms-2 fs-6 text-muted"></span></h5>
     <div class="d-flex gap-2 ms-auto">
-      <button id="view-current-config" class="btn btn-secondary text-white" title="View Current Run Configuration">
+      <button id="view-current-config" class="btn border-0 text-secondary" style="background-color: #e9ecef;" title="View Current Run Configuration">
         <i class="bi bi-info-circle"></i>
       </button>
       <button id="pause-resume" class="btn btn-info text-white">
@@ -503,6 +503,9 @@
           return response.json();
       })
       .then(data => {
+          if (data.error) {
+              throw new Error(data.error);
+          }
           // Prepare the modal with 'data'
           // Using existing renderTaskDetails function meant for queued tasks
           const fullConfig = data["Full Config"] || null;
