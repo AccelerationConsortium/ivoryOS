@@ -503,7 +503,7 @@ def get_current_task_details():
     details = runner.get_current_task_details()
     if details:
         return details
-    return jsonify({"error": "No task currently running"}), 404
+    return jsonify({"error": "No task currently running"}), 200
 
 
 @execute.route("/executions/queue/task/rename", methods=["POST"])
@@ -547,7 +547,7 @@ def runner_status():
     """
     # runner = global_state.runner
     runner_busy = global_state.runner_lock.locked() or len(runner.execution_queue) > 0
-    status = {"busy": runner_busy}
+    status = {"busy": runner_busy, "paused": runner.pause_status()}
     task_status = global_state.runner_status
     current_step = {}
 
