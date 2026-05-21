@@ -317,7 +317,7 @@ class ScriptRunnerStepMixin:
                 self.toggle_pause()
 
             except Exception as e:
-                self.logger.error(f"Error during script execution: {e}")
+                self.logger.error(f"Error during script execution: {e}", exc_info=True)
                 self.socketio.emit('error', {'message': str(e)})
                 
                 # Update error status in a fresh transaction

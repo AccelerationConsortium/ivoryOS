@@ -4,7 +4,7 @@
 <details style="margin-left: 0px;">
     <summary style="font-family: monospace; cursor: pointer; list-style: none;">
         <pre
-            style="margin: 0; padding: 0; line-height: 1; display: inline;"><code class="python" id="{{ node.id }}" style="font-weight: bold;">{{ node.code }}</code></pre>
+            style="margin: 0; padding: 0; line-height: 1; display: inline; white-space: pre-wrap; word-break: break-word;"><code class="python" id="{{ node.id }}" style="font-weight: bold;">{{ node.code }}</code></pre>
     </summary>
     <div style="margin-left: 20px;">
         {{ render_nodes(node.children) }}
@@ -12,7 +12,7 @@
 </details>
 {% else %}
 <pre
-    style="margin: 0; padding: 0; line-height: 1;"><code class="python" id="{{ node.id }}" >{{ node.code }}</code></pre>
+    style="margin: 0; padding: 0; line-height: 1; white-space: pre-wrap; word-break: break-word;"><code class="python" id="{{ node.id }}" >{{ node.code }}</code></pre>
 {% endif %}
 {% endfor %}
 {% endmacro %}
