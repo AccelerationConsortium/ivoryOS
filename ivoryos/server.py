@@ -5,6 +5,7 @@ from typing import Union
 import sqlite3
 from flask import Blueprint
 from sqlalchemy import Engine, event
+import socket
 
 from ivoryos.app import create_app
 from ivoryos.config import Config, get_config
@@ -255,7 +256,24 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
                 raise TypeError(f"Handler {handler} is not callable.")
             global_state.register_notification(handler)
 
-    # TODO in case Python 3.12 or higher doesn't log URL
+    def get_local_ip():
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+        except Exception:
+            ip = "127.0.0.1"
+        finally:
+            s.close()
+        return ip
+
+    display_host = "127.0.0.1" if host in ("0.0.0.0", "::") else host
+    print(f" * Running on http://{display_host}:{port}")
+    if host in ("0.0.0.0", "::"):
+        local_ip = get_local_ip()
+        if local_ip not in ("127.0.0.1", "::1"):
+            print(f" * Running on http://{local_ip}:{port}")
+
     socketio.run(app, host=host, port=port, debug=debug, use_reloader=False, allow_unsafe_werkzeug=True)
     # return app
 
