@@ -115,10 +115,10 @@ Use `admin` for both username and password, and start building workflows!
 ----
 ## Features
 ### Direct control: 
-direct function calling _Devices_ tab
+direct function calling _Instruments_ tab
 ### Workflows
-  - **Design Editor**: drag/add function to canvas in _Design_ tab, use `#parameter_name` for dynamic parameters, click `Prepare Run` button to go to the execution configuration page
-  - **Execution Config**: configure iteration methods and parameters in _Compile/Run_ tab. 
+  - **Design Editor**: drag/add function to canvas in _Workflow_ tab, use `#parameter_name` for dynamic parameters, click `Prepare Run` button to go to the execution configuration page
+  - **Execution Config**: configure iteration methods and parameters in _Execution_ tab. 
   - **Design Library**: manage workflow scripts in _Library_ tab.
   - **Workflow Data**: Execution records are in _Data_ tab.
 
