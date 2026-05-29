@@ -1,6 +1,7 @@
 import os
 import sys
 from typing import Union
+import logging
 
 import sqlite3
 from flask import Blueprint
@@ -266,6 +267,13 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
         finally:
             s.close()
         return ip
+
+    class NoRunningFilter(logging.Filter):
+        def filter(self, record):
+            msg = record.getMessage()
+            return "Running on " not in msg and "This is a development server" not in msg
+
+    logging.getLogger("werkzeug").addFilter(NoRunningFilter())
 
     display_host = "127.0.0.1" if host in ("0.0.0.0", "::") else host
     print(f" * Running on http://{display_host}:{port}")
