@@ -99,41 +99,43 @@
                             {% endif %}
                         {% endfor %}
 
-                        {% if ns.tab_count == 1 %}
-                            {% for plugin in plugins %}
-                                {% if plugin.type == 'tab' or plugin.type is undefined %}
-                                    <li class="nav-item">
-                                        <a class="nav-link {{ 'active' if request.blueprint == plugin.name else '' }}"
-                                            href="{{ url_for(plugin.name+'.main') }}">{{ plugin.name.capitalize() }}</a>
-                                    </li>
-                                {% endif %}
-                            {% endfor %}
-                        {% else %}
-                            {% set plugin_active = namespace(found=false) %}
-                            {% for plugin in plugins %}
-                                {% if (plugin.type == 'tab' or plugin.type is undefined) and request.blueprint == plugin.name %}
-                                    {% set plugin_active.found = true %}
-                                {% endif %}
-                            {% endfor %}
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle {{ 'active' if plugin_active.found else '' }}" href="#"
-                                    role="button" id="pluginsDropdown">
-                                    Plugins
-                                    {% if plugin_active.found %}
-                                        <span class="badge bg-primary rounded-pill ms-1" style="font-size:0.6rem;">●</span>
+                        {% if ns.tab_count > 0 %}
+                            {% if ns.tab_count <= 2 %}
+                                {% for plugin in plugins %}
+                                    {% if plugin.type == 'tab' or plugin.type is undefined %}
+                                        <li class="nav-item">
+                                            <a class="nav-link {{ 'active' if request.blueprint == plugin.name else '' }}"
+                                                href="{{ url_for(plugin.name+'.main') }}">{{ plugin.name.capitalize() }}</a>
+                                        </li>
                                     {% endif %}
-                                </a>
-                                <ul class="dropdown-menu">
-                                    {% for plugin in plugins %}
-                                        {% if plugin.type == 'tab' or plugin.type is undefined %}
-                                            <li>
-                                                <a class="dropdown-item {{ 'active' if request.blueprint == plugin.name else '' }}"
-                                                    href="{{ url_for(plugin.name+'.main') }}">{{ plugin.name.capitalize() }}</a>
-                                            </li>
+                                {% endfor %}
+                            {% else %}
+                                {% set plugin_active = namespace(found=false) %}
+                                {% for plugin in plugins %}
+                                    {% if (plugin.type == 'tab' or plugin.type is undefined) and request.blueprint == plugin.name %}
+                                        {% set plugin_active.found = true %}
+                                    {% endif %}
+                                {% endfor %}
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle {{ 'active' if plugin_active.found else '' }}" href="#"
+                                        role="button" id="pluginsDropdown">
+                                        Plugins
+                                        {% if plugin_active.found %}
+                                            <span class="badge bg-primary rounded-pill ms-1" style="font-size:0.6rem;">●</span>
                                         {% endif %}
-                                    {% endfor %}
-                                </ul>
-                            </li>
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        {% for plugin in plugins %}
+                                            {% if plugin.type == 'tab' or plugin.type is undefined %}
+                                                <li>
+                                                    <a class="dropdown-item {{ 'active' if request.blueprint == plugin.name else '' }}"
+                                                        href="{{ url_for(plugin.name+'.main') }}">{{ plugin.name.capitalize() }}</a>
+                                                </li>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </ul>
+                                </li>
+                            {% endif %}
                         {% endif %}
                     {% endif %}
                 </ul>
