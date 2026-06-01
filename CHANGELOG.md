@@ -1,4 +1,9 @@
 # Changelog
+## 1.6.2 (June 1st, 2026)
+- !156 **[QoL]** be able to check task execution output by task ID
+- !155 **[QoL]** fix plugin dropdown showing up in nav bar when there is only side bar plugin
+- !154 **[QoL]** clean up and add singular server print on startup
+
 ## 1.6.1 (May 20th, 2026)
 - !150 **[New]** f-string printing in code
 
