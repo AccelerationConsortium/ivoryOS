@@ -9,6 +9,7 @@ from ivoryos.routes.control.utils import post_session_by_instrument, get_session
 from ivoryos.forms.dynamic_forms import create_form_from_module, create_form_from_pseudo
 from ivoryos.runtime.task_runner import TaskRunner
 from ivoryos.runtime.state import GlobalState
+from ivoryos.models import db, SingleStep
 
 global_state = GlobalState()
 runner = TaskRunner()
@@ -184,6 +185,24 @@ def hide_function(instrument: str, function: str):
     post_session_by_instrument('hidden_functions', instrument, functions)
     post_session_by_instrument('card_order', instrument, order)
     return jsonify(success=True, message="Visibility updated")
+
+
+@control.route("/task/<int:task_id>", methods=["GET"])
+def get_task_by_id(task_id):
+    """
+    .. :quickref: Direct Control; Get task by ID
+
+    .. http:get:: /instruments/task/<int:task_id>
+
+    Retrieve a single task execution step by its ID from the database.
+
+    :status 200: Returns task details.
+    :status 404: Task not found.
+    """
+    step = db.session.get(SingleStep, task_id)
+    if step is not None:
+        return jsonify(step.as_dict()), 200
+    return jsonify({"error": "Task not found"}), 404
 
 
 
