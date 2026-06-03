@@ -122,8 +122,11 @@ def get_return_type(function_data):
         return {"kind": "none", "types": [], "annotation": ""}
 
     annotation = signature.return_annotation
-    if annotation in (inspect.Signature.empty, inspect._empty, None):
+    if annotation in (None, type(None)):
         return {"kind": "none", "types": [], "annotation": ""}
+
+    if annotation in (inspect.Signature.empty, inspect._empty):
+        return {"kind": "scalar", "types": [], "annotation": ""}
 
     if isinstance(annotation, str):
         return _get_return_type_from_string(annotation)
