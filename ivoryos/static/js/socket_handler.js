@@ -326,9 +326,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const retryBtn = document.getElementById('retry-btn');
     if (retryBtn) {
         retryBtn.addEventListener('click', function () {
+            window.clearActiveError();
             retryInFlight = true;
-            socket.emit('retry');
-            console.log("Execution resumed, retrying.");
+            // Delay emitting the retry just slightly to allow the modal's hide animation to finish
+            // This prevents a race condition if the step fails instantly and tries to show the modal again
+            setTimeout(function() {
+                socket.emit('retry');
+                console.log("Execution resumed, retrying.");
+            }, 350);
         });
     }
 
