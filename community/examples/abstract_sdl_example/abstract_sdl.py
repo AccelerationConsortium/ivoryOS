@@ -37,6 +37,7 @@ class AbstractSDL(ABC):
         self.pump = pump
         self.balance = balance
         self.logger = logging.getLogger(f"logger_name")
+        self._error_tracker_count = 0
 
 
     def analyze(self, param_1:int, param_2:int):
@@ -83,7 +84,12 @@ class AbstractSDL(ABC):
 
 
     def simulate_error(self):
-        raise ValueError("some error")
+        # time.sleep(1)
+        self._error_tracker_count += 1
+        if self._error_tracker_count % 3 == 0:
+            pass
+        else:
+            raise ValueError("error will clear after the 3rd retry")
 
 
     def _send_command(self):
