@@ -1,4 +1,8 @@
 # Changelog
+## 1.6.3 (June 4th, 2026)
+- !158 **[Bug]** fix error indicator doesn't go back to running
+- !157 **[Bug]** fix no return value field for unannotated functions
+
 ## 1.6.2 (June 1st, 2026)
 - !156 **[QoL]** be able to check task execution output by task ID
 - !155 **[QoL]** fix plugin dropdown showing up in nav bar when there is only side bar plugin
