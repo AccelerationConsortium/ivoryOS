@@ -46,8 +46,8 @@ class TestingConfig(Config):
 class DemoConfig(Config):
     DEBUG = False
     DEMO_MODE = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    OUTPUT_FOLDER = os.path.join(os.path.abspath(os.curdir), '/tmp/ivoryos_data')
+    OUTPUT_FOLDER = os.path.join(os.path.abspath(os.curdir), 'ivoryos_demo_data')
+    SQLALCHEMY_DATABASE_URI = os.getenv('IVORYOS_DB_URI') or os.getenv('DATABASE_URL') or f"sqlite:///{os.path.join(OUTPUT_FOLDER, 'ivoryos.db')}"
     CSV_FOLDER = os.path.join(OUTPUT_FOLDER, 'config_csv/')
     SCRIPT_FOLDER = os.path.join(OUTPUT_FOLDER, 'scripts/')
     DATA_FOLDER = os.path.join(OUTPUT_FOLDER, 'results/')
