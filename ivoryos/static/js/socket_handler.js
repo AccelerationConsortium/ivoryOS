@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
-    var socket = io();
+    var socketPath = window.URL_PREFIX ? window.URL_PREFIX + "/socket.io" : "/socket.io";
+    var socket = io({ path: socketPath });
     window.socket = socket;
 
     window.platformState = { is_running: false, is_paused: false };
