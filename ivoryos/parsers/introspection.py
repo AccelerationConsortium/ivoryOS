@@ -12,6 +12,9 @@ except ImportError:
 from ivoryos.utils.decorators import BUILDING_BLOCKS
 
 
+UNSUPPORTED_PARAMETER_TYPES = ["BinaryIO", "TextIO", "BytesIO", "typing.IO"]
+
+
 def _inspect_class(class_object=None, debug=False):
     """
     inspect class object: inspect function signature if not name.startswith("_")
@@ -25,6 +28,18 @@ def _inspect_class(class_object=None, debug=False):
         if not function.startswith(under_score) and not function.isupper():
             try:
                 annotation = inspect.signature(method)
+                
+                # Check if the method requires an unsupported parameter type (like file streams)
+                is_compatible = True
+                for p in annotation.parameters.values():
+                    type_str = str(p.annotation)
+                    if any(t in type_str for t in UNSUPPORTED_PARAMETER_TYPES):
+                        is_compatible = False
+                        break
+                
+                if not is_compatible:
+                    continue
+
                 docstring = inspect.getdoc(method)
                 coroutine = inspect.iscoroutinefunction(method)
                 has_args = any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in annotation.parameters.values())
