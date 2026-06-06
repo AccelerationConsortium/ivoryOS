@@ -299,6 +299,39 @@ class FlexibleEnumField(StringField):
                 raise ValidationError(f"Invalid choice: '{key}'. Must match one of {list(self.enum_class.__members__.keys())}")
 
 
+class FlexibleLiteralField(StringField):
+    def __init__(self, label=None, validators=None, choices=None, script=None, **kwargs):
+        super().__init__(label, validators, **kwargs)
+        self.script = script
+        self.choices = [str(c) for c in (choices or [])]
+
+    def _value(self):
+        if self.data is None:
+            return ''
+        return str(self.data)
+
+    def process_formdata(self, valuelist):
+        if valuelist:
+            key = valuelist[0]
+            if key in ("", None, "None"):
+                self.data = None
+                return
+
+            if key in self.choices:
+                self.data = key
+            elif key.startswith("#"):
+                if self.script is None or not self.script.editing_type == "script":
+                    raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
+                self.data = key
+            else:
+                if self.script is not None:
+                    variable, variable_type = find_variable(key, self.script)
+                    if variable:
+                        self.data = variable
+                        return
+                raise ValidationError(f"Invalid choice: '{key}'. Must match one of {self.choices}")
+
+
 
 def parse_annotation(annotation):
     """
@@ -375,6 +408,12 @@ def create_form_for_method(method, autofill, script=None, design=True):
             placeholder_text = f"Choose or type a value for {enum_class.__name__} (start with # for custom)"
 
             extra_kwargs = {"choices": param.annotation}
+
+        elif _is_literal_type(param.annotation):
+            literal_args = _unwrap_literal_args(param.annotation)
+            field_class = FlexibleLiteralField
+            placeholder_text = f"Choose or type a value (start with # for custom)"
+            extra_kwargs = {"choices": literal_args}
 
         else:
             # print(param.annotation)
@@ -465,6 +504,34 @@ def _unwrap_enum_type(tp):
                 return arg
 
     return None
+
+def _is_literal_type(tp):
+    from typing import get_origin, get_args, Union
+    try:
+        from typing import Literal
+    except ImportError:
+        from typing_extensions import Literal
+    origin = get_origin(tp)
+    if origin is Literal:
+        return True
+    if origin is Union:
+        return any(get_origin(arg) is Literal for arg in get_args(tp))
+    return False
+
+def _unwrap_literal_args(tp):
+    from typing import get_origin, get_args, Union
+    try:
+        from typing import Literal
+    except ImportError:
+        from typing_extensions import Literal
+    origin = get_origin(tp)
+    if origin is Literal:
+        return get_args(tp)
+    if origin is Union:
+        for arg in get_args(tp):
+            if get_origin(arg) is Literal:
+                return get_args(arg)
+    return []
 
 def create_add_form(attr, attr_name, autofill: bool, script=None, design: bool = True):
     """
@@ -634,6 +701,12 @@ def create_form_from_action(action: dict, script=None, design=True):
                     param_type,
                     (VariableOrStringField if design else StringField, f'Enter {param_type} value')
                 )
+        elif param_type.startswith("Literal:"):
+            _, literal_args_str = param_type.split(":", 1)
+            literal_args = literal_args_str.split(",")
+            field_class = FlexibleLiteralField
+            placeholder_text = f"Choose or type a value (start with # for custom)"
+            extra_kwargs = {"choices": literal_args}
         else:
             field_class, placeholder_text = annotation_mapping.get(
                 param_type,
