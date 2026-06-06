@@ -1,4 +1,11 @@
 # Changelog
+## 1.6.4 (June 5th, 2026)
+- !162 **[Bug]** handle different url_prefix for hosting multiple demos
+- !161 **[Bug]** wait method is class conflict with builtin wait
+- !160 **[New]** support Literal
+- !159 **[QoL]** auto-hide methods that are not usable on a web app
+- using permanent session and databae for demo config
+
 ## 1.6.3 (June 4th, 2026)
 - !158 **[Bug]** fix error indicator doesn't go back to running
 - !157 **[Bug]** fix no return value field for unannotated functions
