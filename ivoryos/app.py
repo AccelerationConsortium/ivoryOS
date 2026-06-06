@@ -1,5 +1,8 @@
 import os
 import uuid
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import bcrypt
 from flask import Flask, session, g, redirect, url_for
@@ -122,12 +125,14 @@ def create_app(config_class=None):
     """
 
     app.config.from_object(config_class or 'config.get_config()')
+    app.config['URL_PREFIX'] = url_prefix
     os.makedirs(app.config["OUTPUT_FOLDER"], exist_ok=True)
     # Initialize extensions
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
     db.init_app(app)
-    socketio.init_app(app, cors_allowed_origins="*", cookie=None)
+    socketio_path = f"{url_prefix}/socket.io".lstrip("/") if url_prefix and url_prefix != "/" else "socket.io"
+    socketio.init_app(app, cors_allowed_origins="*", cookie=None, path=socketio_path)
 
     # Create database tables
     with app.app_context():
