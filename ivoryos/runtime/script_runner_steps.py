@@ -19,13 +19,13 @@ class ScriptRunnerStepMixin:
             action = step["action"]
             instrument = step["instrument"]
             action_id = step["id"]
-            if action == "if":
+            if instrument == "if" and action == "if":
                 await self._execute_if_batched(step, contexts, phase_id=phase_id, step_index=action_id,
                                                section_name=section_name)
-            elif action == "repeat":
+            elif instrument == "repeat" and action == "repeat":
                 await self._execute_repeat_batched(step, contexts, phase_id=phase_id, step_index=action_id,
                                                    section_name=section_name)
-            elif action == "while":
+            elif instrument == "while" and action == "while":
                 await self._execute_while_batched(step, contexts, phase_id=phase_id, step_index=action_id,
                                                   section_name=section_name)
             elif instrument == "variable":
@@ -240,15 +240,15 @@ class ScriptRunnerStepMixin:
                 section_id = f"{section_name}-{step_index-1}"
                 self.last_execution_section = section_id
                 self.socketio.emit('execution', {'section': section_id})
-                if action == "wait":
+                if instrument == "wait" and action == "wait":
                     duration = float(substituted_args["statement"])
                     self.safe_sleep(duration)
 
-                elif action == "pause":
+                elif instrument == "pause" and action == "pause":
                     msg = substituted_args.get("statement", "")
                     pause(msg)
 
-                elif action == "comment":
+                elif instrument == "comment" and action == "comment":
                     msg = substituted_args.get("statement", "")
                     if self.logger:
                         self.logger.info(f"Comment: {msg}")

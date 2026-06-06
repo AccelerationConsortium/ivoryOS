@@ -53,26 +53,31 @@ class ScriptRenderer:
                 act = action["action"]
                 instrument = action["instrument"]
 
-                if act == "if":
+                if instrument == "if" and act == "if":
                     stmt = action["args"].get("statement", "")
                     lines.append("    " * indent + f"if {stmt}:")
                     indent += 1
                     stack.append("if")
-                elif act == "else":
+                elif instrument == "if" and act == "else":
                     indent -= 1
                     lines.append("    " * indent + f"else:")
                     indent += 1
-                elif act in ("endif", "endwhile"):
+                elif instrument == "if" and act == "endif":
                     if stack:
                         stack.pop()
                     indent = max(indent - 1, 0)
                     lines.append("    " * indent + f"# {act}")
-                elif act == "while":
+                elif instrument == "while" and act == "endwhile":
+                    if stack:
+                        stack.pop()
+                    indent = max(indent - 1, 0)
+                    lines.append("    " * indent + f"# {act}")
+                elif instrument == "while" and act == "while":
                     stmt = action["args"].get("statement", "")
                     lines.append("    " * indent + f"while {stmt}:")
                     indent += 1
                     stack.append("while")
-                elif act == "wait":
+                elif instrument == "wait" and act == "wait":
                     stmt = action["args"].get("statement", "")
                     if isinstance(stmt, str) and stmt.startswith("#"):
                         stmt = stmt[1:]
@@ -149,17 +154,19 @@ class ScriptRenderer:
                     })
                 else: 
                     line_code = ""
-                    if act == "if":
+                    if instrument == "if" and act == "if":
                         stmt = action["args"].get("statement", "")
                         line_code = "    " * indent + f"if {stmt}:"
-                    elif act == "else":
+                    elif instrument == "if" and act == "else":
                          line_code = "    " * (indent -1) + f"else:" if indent > 0 else "else:"
-                    elif act in ("endif", "endwhile"):
+                    elif instrument == "if" and act == "endif":
                          line_code = "    " * (indent -1) + f"# {act}" if indent > 0 else f"# {act}"
-                    elif act == "while":
+                    elif instrument == "while" and act == "endwhile":
+                         line_code = "    " * (indent -1) + f"# {act}" if indent > 0 else f"# {act}"
+                    elif instrument == "while" and act == "while":
                         stmt = action["args"].get("statement", "")
                         line_code = "    " * indent + f"while {stmt}:"
-                    elif act == "wait":
+                    elif instrument == "wait" and act == "wait":
                         stmt = action["args"].get("statement", "")
                         if isinstance(stmt, str) and stmt.startswith("#"):
                             stmt = stmt[1:]
