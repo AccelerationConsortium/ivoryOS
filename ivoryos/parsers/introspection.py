@@ -5,9 +5,9 @@ import flask
 import logging
 from enum import Enum
 try:
-    from typing import get_args, get_origin
+    from typing import get_args, get_origin, Literal
 except ImportError:
-    from typing_extensions import get_args, get_origin
+    from typing_extensions import get_args, get_origin, Literal
 
 from ivoryos.utils.decorators import BUILDING_BLOCKS
 
@@ -90,7 +90,13 @@ def _get_type_from_parameters(arg, parameters):
     elif isinstance(annotation, type) and issubclass(annotation, Enum):
         arg_type = _resolve_type_string(annotation)
     elif annotation is not inspect._empty:
-        if annotation.__module__ == 'typing':
+        origin = get_origin(annotation)
+        if origin is Literal:
+            args = get_args(annotation)
+            arg_type = f"Literal:{','.join(str(a) for a in args)}"
+            return arg_type
+
+        if getattr(annotation, '__module__', '') == 'typing':
 
             if hasattr(annotation, '__origin__'):
                 origin = annotation.__origin__

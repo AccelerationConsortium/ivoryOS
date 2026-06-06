@@ -244,8 +244,9 @@
             var value = data && data[column] ? data[column] : '';
             var configType = configTypes[column] || '';
 
-            if (typeof configType === "string" && configType.startsWith('Enum:')) {
-                var options = configType.substring(5).split(',');
+            if (typeof configType === "string" && (configType.startsWith('Enum:') || configType.startsWith('Literal:'))) {
+                var prefixLen = configType.startsWith('Enum:') ? 5 : 8;
+                var options = configType.substring(prefixLen).split(',');
                 var optionsHtml = '<option value="">Select...</option>';
                 options.forEach(function (opt) {
                     var selected = (value === opt) ? 'selected' : '';

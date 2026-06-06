@@ -265,6 +265,17 @@ class ScriptRenderer:
                  _, full_path = param_type.split(":", 1)
                  class_name = full_path.split(".")[-1]
                  new_configure.append(f"{param}: {class_name}")
+            elif isinstance(param_type, str) and param_type.startswith("Literal:"):
+                 _, literal_args_str = param_type.split(":", 1)
+                 args_list = []
+                 for a in literal_args_str.split(","):
+                     if a.isdigit() or (a.startswith("-") and a[1:].isdigit()):
+                         args_list.append(a)
+                     elif a.replace(".", "", 1).isdigit() and a.count(".") < 2:
+                         args_list.append(a)
+                     else:
+                         args_list.append(f"'{a}'")
+                 new_configure.append(f"{param}: Literal[{', '.join(args_list)}]")
             elif isinstance(param_type, list):
                  enum_item = next((item for item in param_type if isinstance(item, str) and item.startswith("Enum:")), None)
                  if enum_item:
@@ -646,6 +657,8 @@ class ScriptRenderer:
                                     imports.add(f"from {module_name} import {class_name}")
                                 except Exception:
                                     pass
+                            elif t.startswith("Literal:"):
+                                imports.add("from typing import Literal")
                         if isinstance(type_str, list) and "NoneType" in type_str:
                              imports.add("from typing import Optional")
         return "\n".join(sorted(list(imports)))

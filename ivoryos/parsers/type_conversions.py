@@ -30,6 +30,12 @@ def _convert_by_str(args, arg_types):
                         raise
                 enum_class = getattr(mod, class_name)
                 return enum_class[args].value
+            elif isinstance(arg_type, str) and arg_type.startswith("Literal:"):
+                _, options_str = arg_type.split(":", 1)
+                options = options_str.split(",")
+                if str(args) in options:
+                    return args
+                raise ValueError(f"Value '{args}' not in Literal choices: {options}")
             converted_args = eval(f'{arg_type}("{args}")') if type(args) is str else eval(f'{arg_type}({args})')
             return converted_args
         except Exception:
