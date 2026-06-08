@@ -484,7 +484,7 @@ class ScriptRunnerStepMixin:
                     # For expressions like "vial+10", replace variable name directly
                     # Use word boundaries to avoid partial matches
                     import re
-                    substituted_value = re.sub(r'\b' + re.escape(key) + r'\b', str(val), substituted_value)
+                    substituted_value = re.sub(r'\b' + re.escape(key) + r'\b', re.escape(str(val)), substituted_value)
 
                 # Handle based on type
                 if arg_type == "float":
