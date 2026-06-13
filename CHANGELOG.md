@@ -1,4 +1,7 @@
 # Changelog
+## 1.6.5 (June 12th, 2026)
+- !165 **[Bug]** fix resave workflow to a different name error
+
 ## 1.6.4 (June 5th, 2026)
 - !162 **[Bug]** handle different url_prefix for hosting multiple demos
 - !161 **[Bug]** wait method is class conflict with builtin wait
