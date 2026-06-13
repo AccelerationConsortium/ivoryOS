@@ -1,4 +1,5 @@
 import json
+import uuid
 from datetime import datetime
 
 from sqlalchemy_utils import JSONType
@@ -138,3 +139,4 @@ class Script(db.Model):
         self.name = name
         self.status = "editing"
         self.update_time_stamp()
+        self.uuid = str(uuid.uuid4())
