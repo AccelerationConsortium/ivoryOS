@@ -31,10 +31,6 @@ class ScriptRunnerWorkflowMixin:
         """Rewrite the results CSV from completed rows plus the current in-flight snapshot."""
         file_path = os.path.join(output_path, filename)
         rows = completed_rows + current_rows
-
-        if not rows:
-            return
-
         pd.DataFrame(rows).to_csv(file_path, index=False)
 
     def _save_results_file(self, script, filename, arg_type, return_list, output_list, output_path):
@@ -480,7 +476,7 @@ class ScriptRunnerWorkflowMixin:
             self.last_iteration = kwargs['iteration']
         if 'total' in kwargs:
             self.last_total = kwargs['total']
-            
+
         if progress == 100 or progress == 0:
             self.last_iteration = None
             self.last_total = None
