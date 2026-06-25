@@ -4,13 +4,21 @@ from typing import Any, Dict, List
 
 from ivoryos.runtime.control_flow import validate_and_nest_control_flow
 from ivoryos.runtime.runner_runtime import HumanInterventionRequired, ensure_deck, global_state, pause
-from ivoryos.models import WorkflowStep, db
+from ivoryos.models import WorkflowPhase, WorkflowStep, db
 from ivoryos.parsers.returns import store_return_value
 from ivoryos.parsers.serialize import sanitize_for_json
 from ivoryos.utils.decorators import BUILDING_BLOCKS
 
 
 class ScriptRunnerStepMixin:
+    def _save_phase_outputs(self, phase_id, contexts):
+        phase = db.session.get(WorkflowPhase, phase_id)
+        if phase is None:
+            return
+
+        phase.outputs = sanitize_for_json(contexts)
+        db.session.commit()
+
     async def _execute_steps_batched(self, steps: List[Dict], contexts: List[Dict[str, Any]], phase_id, section_name, arg_contexts:List[Dict[str, Any]] = None):
         """
         Execute a list of steps for multiple samples, batching where appropriate.
@@ -144,6 +152,20 @@ class ScriptRunnerStepMixin:
                             await self._execute_action(step, context, phase_id=phase_id, step_index=action_id,
                                                        section_name=section_name)
                             self.pause_event.wait()
+
+            # save phase outputs at the end of each step
+            self._save_phase_outputs(phase_id, contexts)
+
+            snapshot = getattr(self, "_results_snapshot", None)
+            if snapshot:
+                self._save_results_snapshot(
+                    filename=snapshot["filename"],
+                    arg_type=snapshot["arg_type"],
+                    return_list=snapshot["return_list"],
+                    completed_rows=getattr(self, "_completed_result_rows", []),
+                    current_rows=contexts,
+                    output_path=snapshot["output_path"],
+                )
 
 
 

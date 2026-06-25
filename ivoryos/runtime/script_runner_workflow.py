@@ -230,11 +230,12 @@ class ScriptRunnerWorkflowMixin:
         db.session.commit()
 
         step_outputs = await self.exec_steps(script, section_name, phase_id=phase_id)
-        # Save phase-level output
-        phase = db.session.get(WorkflowPhase, phase_id)
-        phase.outputs = sanitize_for_json(step_outputs)
-        phase.end_time = datetime.now()
-        db.session.commit()
+        # todo still need this section to save?
+        # # Save phase-level output
+        # phase = db.session.get(WorkflowPhase, phase_id)
+        # phase.outputs = sanitize_for_json(step_outputs)
+        # phase.end_time = datetime.now()
+        # db.session.commit()
         return step_outputs
 
     async def _run_config_section(self, config, arg_type, output_list, script, run_name, run_id, filename, return_list, output_path,
