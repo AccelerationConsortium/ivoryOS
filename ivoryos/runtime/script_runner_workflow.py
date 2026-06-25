@@ -15,6 +15,35 @@ from ivoryos.parsers.type_conversions import convert_config_type
 
 
 class ScriptRunnerWorkflowMixin:
+    def _initialize_results_file(self, filename, arg_type, return_list, output_path):
+        """Create the results CSV before the first iteration can finish."""
+        file_path = os.path.join(output_path, filename)
+        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+            return
+
+        arg_columns = list(arg_type.keys()) if arg_type else []
+        return_columns = list(return_list) if return_list else []
+        all_columns = arg_columns + return_columns
+
+        pd.DataFrame(columns=all_columns).to_csv(file_path, index=False)
+
+    def _save_results_snapshot(self, filename, arg_type, return_list, completed_rows, current_rows, output_path):
+        """Rewrite the results CSV from completed rows plus the current in-flight snapshot."""
+        file_path = os.path.join(output_path, filename)
+        rows = completed_rows + current_rows
+
+        if not rows:
+            return
+
+        pd.DataFrame(rows).to_csv(file_path, index=False)
+
+    def _save_results_file(self, script, filename, arg_type, return_list, output_list, output_path):
+        """Save data so far to csv file."""
+        if script.python_script or not any(output_list):
+            return
+
+        self._save_results_snapshot(filename=filename, arg_type=arg_type, return_list=return_list, completed_rows=output_list, current_rows=[], output_path=output_path)
+
     async def exec_steps(self, script, section_name, phase_id, kwargs_list=None, batch_size=1):
         """
         Executes a function defined in a string line by line
@@ -81,6 +110,8 @@ class ScriptRunnerWorkflowMixin:
         self._emit_progress(1)
         filename = f"{run_name}_{datetime.now().strftime('%Y-%m-%d %H-%M')}.csv"
         error_flag = False
+        _, arg_type = ScriptEditor(script).config("script")
+        _, return_list = ScriptEditor(script).config_return()
         # create a new run entry in the database
         repeat_mode = "batch" if config else "optimizer" if optimizer else "repeat"
         if optimizer_cls is not None:
@@ -111,6 +142,14 @@ class ScriptRunnerWorkflowMixin:
             filename = f"{run_name}_{run.start_time.strftime('%Y-%m-%d %H-%M-%S')}.csv"
             run.data_path = filename
             db.session.commit()
+            if not script.python_script:
+                self._initialize_results_file(filename, arg_type, return_list, output_path)
+            self._results_snapshot = {
+                "filename": filename,
+                "output_path": output_path,
+                "arg_type": arg_type,
+                "return_list": return_list,
+            }
 
             # setup run-specific logging to a file using run_id
             log_filename = f"{run_name}_{run.start_time.strftime('%Y-%m-%d %H-%M-%S')}.log"
@@ -138,8 +177,7 @@ class ScriptRunnerWorkflowMixin:
                 # Run "prep" section once
                 asyncio.run(self._run_actions(script, section_name="prep", run_id=run_id))
                 output_list = []
-                _, arg_type = ScriptEditor(script).config("script")
-                _, return_list = ScriptEditor(script).config_return()
+                self._completed_result_rows = output_list
                 # Run "script" section multiple times
                 if repeat_count:
                     asyncio.run(
@@ -189,6 +227,8 @@ class ScriptRunnerWorkflowMixin:
 
                 # Check for next task in queue
                 self._process_queue()
+                self._results_snapshot = None
+                self._completed_result_rows = None
 
 
         with current_app.app_context():
@@ -261,46 +301,41 @@ class ScriptRunnerWorkflowMixin:
             nested_list = [config[i:i + batch_size] for i in range(0, len(config), batch_size)]
 
             for i, kwargs_list in enumerate(nested_list):
-                # kwargs = dict(kwargs)
-                if self.stop_pending_event.is_set():
+                phase = None
+                try:
+                    # kwargs = dict(kwargs)
+                    if self.stop_pending_event.is_set():
+                        if self.logger:
+                            self.logger.info(f'Stopping execution during {run_name}: {i + 1}/{len(config)}')
+                        break
                     if self.logger:
-                        self.logger.info(f'Stopping execution during {run_name}: {i + 1}/{len(config)}')
-                    break
-                if self.logger:
-                    self.logger.info(f'Executing {i + 1} of {len(nested_list)} with kwargs = {kwargs_list}')
-                progress = ((i + 1) * 100 / len(nested_list)) - 0.1
-                self._emit_progress(progress, iteration=i + 1, total=len(nested_list))
+                        self.logger.info(f'Executing {i + 1} of {len(nested_list)} with kwargs = {kwargs_list}')
+                    progress = ((i + 1) * 100 / len(nested_list)) - 0.1
+                    self._emit_progress(progress, iteration=i + 1, total=len(nested_list))
 
-                phase = WorkflowPhase(
-                    run_id=run_id,
-                    name="main",
-                    repeat_index=i + 1,
-                    parameters=sanitize_for_json(kwargs_list),
-                    start_time=datetime.now()
-                )
-                db.session.add(phase)
-                db.session.flush()
+                    phase = WorkflowPhase(
+                        run_id=run_id,
+                        name="main",
+                        repeat_index=i + 1,
+                        parameters=sanitize_for_json(kwargs_list),
+                        start_time=datetime.now()
+                    )
+                    db.session.add(phase)
+                    db.session.flush()
 
-                phase_id = phase.id
-                db.session.commit()
+                    phase_id = phase.id
+                    db.session.commit()
 
-                output = await self.exec_steps(script, "script", phase_id, kwargs_list=kwargs_list, )
-                # print(output)
-                phase = db.session.get(WorkflowPhase, phase_id)
-                if output:
-                    # kwargs.update(output)
-                    for output_dict in output:
-                        output_list.append(output_dict)
-                    phase.outputs = sanitize_for_json(output)
-                phase.end_time = datetime.now()
-                db.session.commit()
-
-                # save results
-                if not script.python_script and any(output_list):
-                    if i == 0:
-                        self._save_results(filename, arg_type, return_list, output_list, output_path)
-                    else:
-                        self._save_results_last_row(filename, arg_type, return_list, output_list, output_path)
+                    output = await self.exec_steps(script, "script", phase_id, kwargs_list=kwargs_list, )
+                    # print(output)
+                    phase = db.session.get(WorkflowPhase, phase_id)
+                    if output:
+                        # kwargs.update(output)
+                        for output_dict in output:
+                            output_list.append(output_dict)
+                        # phase.outputs = sanitize_for_json(output) # todo still need this section to save? dont think so because save happens after every step now
+                finally:
+                    self._save_results_file(script=script, filename=filename, arg_type=arg_type, return_list=return_list, output_list=output_list, output_path=output_path)
 
         return output_list
 
@@ -336,83 +371,77 @@ class ScriptRunnerWorkflowMixin:
 
 
         for i_progress in range(int(repeat_count)):
-            if self.stop_pending_event.is_set():
-                if self.logger:
-                    self.logger.info(f'Stopping execution during {run_name}: {i_progress + 1}/{int(repeat_count)}')
-                break
-
-            phase = WorkflowPhase(
-                run_id=run_id,
-                name="main",
-                repeat_index=i_progress + 1,
-                start_time=datetime.now()
-            )
-            db.session.add(phase)
-            db.session.flush()
-            phase_id = phase.id
-            db.session.commit()
-
-            if self.logger:
-                self.logger.info(f'Executing {run_name} experiment: {i_progress + 1}/{int(repeat_count)}')
-            progress = (i_progress + 1) * 100 / int(repeat_count) - 0.1
-            self._emit_progress(progress, iteration=i_progress + 1, total=int(repeat_count))
-
-            # Optimizer for UI
-            if optimizer:
-                try:
-                    parameters = optimizer.suggest(n=batch_size)
-
-                    if parameters is None or len(parameters) == 0:
-                        self.logger.info("No parameters suggested by optimizer.")
-                        raise ValueError("No parameters suggested by optimizer.")
-
+            phase = None
+            output = None
+            try:
+                if self.stop_pending_event.is_set():
                     if self.logger:
-                        self.logger.info(f'Parameters: {parameters}')
-                    # Re-fetch phase to update
-                    phase = db.session.get(WorkflowPhase, phase_id)
-                    phase.parameters = sanitize_for_json(parameters)
-                    db.session.commit() # Commit parameters early? Or wait? Let's commit to be safe if exec_steps crashes
-
-                    output = await self.exec_steps(script, "script",  phase_id, kwargs_list=parameters)
-                    if output:
-                        optimizer.observe(output)
-                        
-                    else:
-                        if self.logger:
-                            self.logger.info('No output from script')
-
-
-                except Exception as e:
-                    if self.logger:
-                        self.logger.info(f'Optimization error: {e}')
+                        self.logger.info(f'Stopping execution during {run_name}: {i_progress + 1}/{int(repeat_count)}')
                     break
-            else:
 
-                output = await self.exec_steps(script, "script", phase_id, batch_size=batch_size)
+                phase = WorkflowPhase(
+                    run_id=run_id,
+                    name="main",
+                    repeat_index=i_progress + 1,
+                    start_time=datetime.now()
+                )
+                db.session.add(phase)
+                db.session.flush()
+                phase_id = phase.id
+                db.session.commit()
 
-            phase = db.session.get(WorkflowPhase, phase_id)
-            if output:
-                # print("output: ", output)
-                output_list.extend(output)
                 if self.logger:
-                    self.logger.info(f'Output value: {output}')
-                phase.outputs = sanitize_for_json(output)
+                    self.logger.info(f'Executing {run_name} experiment: {i_progress + 1}/{int(repeat_count)}')
+                progress = (i_progress + 1) * 100 / int(repeat_count) - 0.1
+                self._emit_progress(progress, iteration=i_progress + 1, total=int(repeat_count))
 
-            phase.end_time = datetime.now()
-            db.session.commit()
+                # Optimizer for UI
+                if optimizer:
+                    try:
+                        parameters = optimizer.suggest(n=batch_size)
 
-            # save results
-            if not script.python_script and any(output_list):
-                if i_progress == 0:
-                    self._save_results(filename, arg_types, return_list, output_list, output_path)
+                        if parameters is None or len(parameters) == 0:
+                            self.logger.info("No parameters suggested by optimizer.")
+                            raise ValueError("No parameters suggested by optimizer.")
+
+                        if self.logger:
+                            self.logger.info(f'Parameters: {parameters}')
+                        # Re-fetch phase to update
+                        phase = db.session.get(WorkflowPhase, phase_id)
+                        phase.parameters = sanitize_for_json(parameters)
+                        db.session.commit() # Commit parameters early? Or wait? Let's commit to be safe if exec_steps crashes
+
+                        output = await self.exec_steps(script, "script",  phase_id, kwargs_list=parameters)
+                        if output:
+                            optimizer.observe(output)
+
+                        else:
+                            if self.logger:
+                                self.logger.info('No output from script')
+
+
+                    except Exception as e:
+                        if self.logger:
+                            self.logger.info(f'Optimization error: {e}')
+                        break
                 else:
-                    self._save_results_last_row(filename, arg_types, return_list, output_list, output_path)
 
-            if optimizer and self._check_early_stop(output, objectives):
-                if self.logger:
-                    self.logger.info('Early stopping')
-                break
-                
+                    output = await self.exec_steps(script, "script", phase_id, batch_size=batch_size)
+
+                phase = db.session.get(WorkflowPhase, phase_id)
+                if output:
+                    # print("output: ", output)
+                    output_list.extend(output)
+                    if self.logger:
+                        self.logger.info(f'Output value: {output}')
+                    # phase.outputs = sanitize_for_json(output) # todo still need this section to save? dont think so because save happens after every step now
+
+                if optimizer and self._check_early_stop(output, objectives):
+                    if self.logger:
+                        self.logger.info('Early stopping')
+                    break
+            finally:
+                self._save_results_file(script=script, filename=filename, arg_type=arg_types, return_list=return_list, output_list=output_list, output_path=output_path)
 
         return output_list
 
