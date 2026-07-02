@@ -286,8 +286,13 @@ def generate_interface_schema(deck, save: bool = False, output_path: str = '', e
         parse_dict = interface_schema.copy()
         parse_dict["deck_name"] = os.path.splitext(os.path.basename(deck.__file__))[
             0] if deck.__name__ == "__main__" else deck.__name__
-        with open(os.path.join(output_path, f"{parse_dict['deck_name']}.pkl"), 'wb') as file:
-            pickle.dump(parse_dict, file)
+        try:
+            if output_path:
+                os.makedirs(output_path, exist_ok=True)
+            with open(os.path.join(output_path, f"{parse_dict['deck_name']}.pkl"), 'wb') as file:
+                pickle.dump(parse_dict, file)
+        except Exception:
+            pass
     return interface_schema
 
 
