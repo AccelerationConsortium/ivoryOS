@@ -22,6 +22,8 @@ except ImportError:
     from typing_extensions import get_origin, get_args
 
 
+VARIABLE_TYPE_CHOICES = [('int', 'Integer'), ('float', 'Float'), ('str', 'String'), ('bool', 'Boolean')]
+
 def is_list_type(ann):
     if ann is list: return True
     try:
@@ -818,7 +820,7 @@ def create_builtin_form(logic_type, script):
                                      render_kw=render_kwargs, script=script)
         type_field = SelectField(
             'Select Input Type',
-            choices=[('int', 'Integer'), ('float', 'Float'), ('str', 'String'), ('bool', 'Boolean')],
+            choices=VARIABLE_TYPE_CHOICES,
             default='str',  # Optional default value
             # coerce = lambda x: None if x == "None" else x
         )
@@ -830,7 +832,7 @@ def create_builtin_form(logic_type, script):
                                      render_kw={"placeholder": "Result variable name"}, script=script)
         type_field = SelectField(
             'Select Value Type',
-            choices=[('int', 'Integer'), ('float', 'Float'), ('str', 'String'), ('bool', 'Boolean')],
+            choices=VARIABLE_TYPE_CHOICES,
             default='str',
         )
         setattr(BuiltinFunctionForm, "variable", variable_field)
@@ -843,7 +845,13 @@ def create_builtin_form(logic_type, script):
             render_kw={"placeholder": "Result variable name"},
             script=script
         )
+        type_field = SelectField(
+            'Select Value Type',
+            choices=VARIABLE_TYPE_CHOICES,
+            default='float',
+        )
         setattr(BuiltinFunctionForm, "math_variable", math_variable_field)
+        setattr(BuiltinFunctionForm, "variable_type", type_field)
 
     if logic_type in ['wait']:
         batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})
