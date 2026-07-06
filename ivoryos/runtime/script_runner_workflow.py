@@ -161,8 +161,11 @@ class ScriptRunnerWorkflowMixin:
                 # Reset the running flag when done
 
             except Exception as e:
+                error_msg = f"Error during script execution: {e.__str__()}"
                 if self.logger:
-                    self.logger.error(f"Error during script execution: {e.__str__()}")
+                    self.logger.error(error_msg)
+                if self.socketio:
+                    self.socketio.emit('error', {'message': error_msg})
                 error_flag = True
             finally:
                 self._emit_progress(100)
