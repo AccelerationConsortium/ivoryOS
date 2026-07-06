@@ -138,13 +138,13 @@ class ScriptEditor:
         self._insert_action(insert_position, current_len)
         self.script.update_time_stamp()
 
-    def add_math_variable(self, statement, math_variable, insert_position=None):
+    def add_math_variable(self, statement, math_variable, variable_type="float", insert_position=None):
         math_variable = self.validate_function_name(math_variable)
         current_len = len(self.currently_editing_script)
         uid = uuid.uuid4().fields[-1]
         action = {"id": current_len + 1, "instrument": 'math_variable', "action": math_variable,
                         "args": {"statement": 'None' if statement == '' else statement}, "return": '', "uuid": uid,
-                        "arg_types": {"statement": 'float'}}
+                        "arg_types": {"statement": variable_type}}
         self.currently_editing_script.append(action)
         self._insert_action(insert_position, current_len)
         self.script.update_time_stamp()
