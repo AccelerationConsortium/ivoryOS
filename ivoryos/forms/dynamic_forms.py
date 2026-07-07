@@ -715,9 +715,14 @@ def create_form_from_action(action: dict, script=None, design=True):
                 (VariableOrStringField if design else StringField, f'Enter {param_type} value')
             )
 
-        if instrument == "math_variable":
+        if instrument in ["math_variable", "variable", "input"]:
             field_class = VariableOrStringField
-            placeholder_text = "Enter math expression"
+            if instrument == "math_variable":
+                placeholder_text = "Enter math expression"
+            elif instrument == "input":
+                placeholder_text = "Enter prompt message"
+            else:
+                placeholder_text = "Enter statement"
             field_kwargs["validators"] = [InputRequired()]
 
 
@@ -730,6 +735,15 @@ def create_form_from_action(action: dict, script=None, design=True):
         # Create the field with additional rendering kwargs for placeholder text
         field = field_class(**field_kwargs, render_kw=render_kwargs, **extra_kwargs)
         setattr(DynamicForm, name, field)
+
+    if instrument in ["math_variable", "variable", "input"]:
+        # Add variable type dropdown
+        type_field = SelectField(
+            'Select Value Type',
+            choices=VARIABLE_TYPE_CHOICES,
+            default=arg_types.get("statement", "float" if instrument == "math_variable" else "str")
+        )
+        setattr(DynamicForm, "variable_type", type_field)
 
     if design:
         # if "batch_action" in action:
@@ -749,7 +763,11 @@ def create_form_from_action(action: dict, script=None, design=True):
                 )
                 setattr(DynamicForm, f'return_{index}', return_value)
         else:
-            return_value = StringField(label='Save value as', default=f"{save_as or ''}", render_kw={"placeholder": "Optional"})
+            if instrument in ["variable", "input", "math_variable"]:
+                default_return = action.get("action", "")
+            else:
+                default_return = save_as or ""
+            return_value = VariableOrStringField(label='Save value as', default=default_return, render_kw={"placeholder": "Result variable name"}, script=script)
             setattr(DynamicForm, 'return', return_value)
     
     # Attach arg_types for UI
