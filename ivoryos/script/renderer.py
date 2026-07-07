@@ -89,8 +89,7 @@ class ScriptRenderer:
                     lines.append("    " * indent + f"{act} = {stmt}")
                 elif instrument == "input":
                     stmt = action["args"].get("statement", "")
-                    var_name = act if act and act != "None" else "var"
-                    lines.append("    " * indent + f"{var_name} = input({repr(stmt)})")
+                    lines.append("    " * indent + f"{act} = input({repr(stmt)})")
                 elif instrument == "math_variable":
                     stmt = action["args"].get("statement", "")
                     lines.append("    " * indent + f"{act} = {stmt}")
@@ -188,8 +187,7 @@ class ScriptRenderer:
                              line_code = "    " * indent + f"print({repr(stmt)})"
                     elif instrument == "input":
                         stmt = action["args"].get("statement", "")
-                        var_name = act if act else "var"
-                        line_code = "    " * indent + f"{var_name} = input({repr(stmt)})"
+                        line_code = "    " * indent + f"{act} = input({repr(stmt)})"
                     else:
                         args_dict = action.get("args", {})
                         args = render_args(args_dict)
@@ -372,7 +370,7 @@ class ScriptRenderer:
                     statement = statement[1:]
                 return self.indent(indent_unit) + f"{action_name} = {statement}", indent_unit
         elif instrument == 'input':
-            var_name = action_name if action_name and action_name != "None" else "var"
+            var_name = action_name
             var_type = args.get('variable_type', 'str')
             prompt = statement
             
