@@ -61,10 +61,21 @@ class ScriptEditor:
         action = self.find_by_uuid(uuid)
         if not action:
             return
-        arg_types = action['arg_types']
-        if type(action['args']) is dict:
+        arg_types = action.get('arg_types', {})
+        
+        # Intercept variable/math/input edits to properly route the fields
+        instrument = action.get("instrument")
+        if instrument in ["variable", "input", "math_variable"]:
+            if "variable_type" in args:
+                arg_types["statement"] = args.pop("variable_type")
+                
+            if output:
+                action["action"] = self.validate_function_name(output)
+
+        if type(action.get('args')) is dict:
             self.eval_list(args, arg_types)
         action['args'] = args
+        action['arg_types'] = arg_types
         action['return'] = output
         action['batch_action'] = batch_action
         action['consolidate_batch_args'] = consolidate_batch_args
@@ -153,7 +164,7 @@ class ScriptEditor:
         current_len = len(self.currently_editing_script)
         uid = uuid.uuid4().fields[-1]
         action = {"id": current_len + 1, "instrument": 'input', "action": variable,
-                  "args": {"statement": statement, "variable": variable}, "return": variable, "uuid": uid,
+                  "args": {"statement": statement}, "return": variable, "uuid": uid,
                   "arg_types": {"statement": variable_type}}
         self.currently_editing_script.append(action)
         self._insert_action(insert_position, current_len)
