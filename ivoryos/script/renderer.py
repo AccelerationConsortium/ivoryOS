@@ -189,7 +189,6 @@ class ScriptRenderer:
                     elif instrument == "input":
                         stmt = action["args"].get("statement", "")
                         var_name = act if act else "var"
-                        print(var_name)
                         line_code = "    " * indent + f"{var_name} = input({repr(stmt)})"
                     else:
                         args_dict = action.get("args", {})
