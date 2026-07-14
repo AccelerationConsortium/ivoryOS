@@ -1014,7 +1014,8 @@ def _action_button(action: dict, variables: dict):
             if type(action['args']) is dict:
                 arg_list = []
                 if 'arg_order' in action:
-                    arg_order = action.get('arg_order')
+                    arg_order = list(action.get('arg_order') or [])
+                    arg_order.extend(argument for argument in action['args'].keys() if argument not in arg_order)
                 else:
                     arg_order = sorted(action['args'].keys())
                 for argument_name in arg_order:
