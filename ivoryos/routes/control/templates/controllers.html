@@ -225,9 +225,125 @@
       <script src="{{ url_for('static', filename='js/sortable_card.js') }}"></script>
       <script src="{{ url_for('static', filename='js/overlay.js') }}"></script>
       {% else %}
-      <div class="alert alert-teal mt-4"><i class="bi bi-info-circle-fill"></i> Select an instrument to view its methods.</div>
+      <div class="alert alert-teal mt-4"><i class="bi bi-info-circle-fill"></i> Select an instrument to view its
+        methods.</div>
       {% endif %}
     </main>
   </div>
 </div>
+
+<!-- Console Floating Action Button -->
+<button class="btn btn-primary rounded-circle shadow-lg" type="button" data-bs-toggle="offcanvas"
+  data-bs-target="#consoleOffcanvas" aria-controls="consoleOffcanvas"
+  style="position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; z-index: 1050; display: flex; align-items: center; justify-content: center;">
+  <i class="bi bi-terminal-fill fs-3"></i>
+</button>
+
+<!-- Console Offcanvas -->
+<div class="offcanvas offcanvas-end shadow" tabindex="-1" id="consoleOffcanvas" aria-labelledby="consoleOffcanvasLabel"
+  style="width: 400px; border-left: 1px solid #dee2e6;">
+  <div class="offcanvas-header bg-light border-bottom">
+    <h5 class="offcanvas-title fw-bold text-primary" id="consoleOffcanvasLabel">
+      <i class="bi bi-terminal"></i> Interactive Console
+    </h5>
+    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body d-flex flex-column" style="background-color: #f8f9fa;">
+    <div class="mb-3">
+      <label for="consoleCodeInput" class="form-label text-secondary fw-semibold small">Python Code (Deck modules
+        available directly)</label>
+      <textarea id="consoleCodeInput" class="form-control" rows="5" placeholder="e.g. module.action()"></textarea>
+    </div>
+    <button id="consoleExecuteBtn" class="btn btn-primary mb-3 shadow-sm" style="border-radius: 0.5rem;">
+      <i class="bi bi-play-fill"></i> Execute
+    </button>
+    <div class="flex-grow-1 d-flex flex-column">
+      <label class="form-label text-secondary fw-semibold small">Output</label>
+      <div class="flex-grow-1 position-relative">
+        <pre id="consoleOutput" class="form-control h-100 m-0"
+          style="font-family: monospace; font-size: 0.85rem; background-color: #212529; color: #f8f9fa; border: none; border-radius: 0.5rem; overflow-y: auto; padding: 1rem;"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
+<style>
+  .CodeMirror {
+    border: 1px solid #ced4da;
+    border-radius: 0.5rem;
+    height: auto;
+    min-height: 120px;
+    font-family: monospace;
+    font-size: 0.9rem;
+  }
+</style>
+
+<script>
+  let cmEditor;
+  document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.getElementById('consoleCodeInput');
+    cmEditor = CodeMirror.fromTextArea(textarea, {
+      mode: 'python',
+      lineNumbers: true,
+      theme: 'default',
+      indentUnit: 4,
+      viewportMargin: Infinity,
+      lineWrapping: true
+    });
+
+    const consoleOffcanvas = document.getElementById('consoleOffcanvas');
+    if (consoleOffcanvas) {
+      consoleOffcanvas.addEventListener('shown.bs.offcanvas', function () {
+        cmEditor.refresh();
+        cmEditor.focus();
+      });
+    }
+  });
+
+  document.getElementById('consoleExecuteBtn').addEventListener('click', async function () {
+    const code = cmEditor ? cmEditor.getValue() : document.getElementById('consoleCodeInput').value;
+    const outputEl = document.getElementById('consoleOutput');
+    const executeBtn = document.getElementById('consoleExecuteBtn');
+
+    if (!code.trim()) return;
+
+    // UI Loading state
+    const originalBtnHTML = executeBtn.innerHTML;
+    executeBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Executing...';
+    executeBtn.disabled = true;
+    outputEl.textContent = 'Running...';
+    outputEl.style.color = '#f8f9fa';
+
+    try {
+      const response = await fetch("{{ url_for('control.console_execute') }}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ code: code })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        outputEl.textContent = result.output || 'No output.';
+        outputEl.style.color = '#20c997'; // green-ish success
+      } else {
+        outputEl.textContent = (result.output ? result.output + '\n' : '') + 'Error: ' + result.error;
+        outputEl.style.color = '#ff6b6b'; // red-ish error
+      }
+    } catch (err) {
+      outputEl.textContent = 'Network or server error: ' + err.message;
+      outputEl.style.color = '#ff6b6b';
+    } finally {
+      executeBtn.innerHTML = originalBtnHTML;
+      executeBtn.disabled = false;
+    }
+  });
+
+</script>
+
 {% endblock %}
