@@ -463,7 +463,7 @@ class ScriptRunnerStepMixin:
     async def _execute_variable_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index,
                                         section_name):
         """Execute variable assignment for multiple samples."""
-        var_name = step["action"]  # "vial" in your example
+        var_name = step["action"]
         var_value = step["args"]["statement"]
         arg_type = step["arg_types"]["statement"]
 
@@ -484,7 +484,7 @@ class ScriptRunnerStepMixin:
                     # For expressions like "vial+10", replace variable name directly
                     # Use word boundaries to avoid partial matches
                     import re
-                    substituted_value = re.sub(r'\b' + re.escape(key) + r'\b', str(val), substituted_value)
+                    substituted_value = re.sub(r'\b' + re.escape(key) + r'\b', lambda _: str(val), substituted_value)
 
                 # Handle based on type
                 if arg_type == "float":
