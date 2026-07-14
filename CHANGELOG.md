@@ -1,4 +1,10 @@
 # Changelog
+## 1.6.6 (July 14th, 2026)
+- !168 **[QoL]** enforce variable type from math expression
+- !167 **[Bug]** resolve pickle error during introspection
+- !164 **[Bug]** resolve error if doing math evaluation and there is a path in the context
+- !163 **[QoL]** kwargs do not show up in design area
+
 ## 1.6.5 (June 12th, 2026)
 - !165 **[Bug]** fix resave workflow to a different name error
 
