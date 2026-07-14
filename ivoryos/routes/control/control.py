@@ -204,7 +204,44 @@ def get_task_by_id(task_id):
         return jsonify(step.as_dict()), 200
     return jsonify({"error": "Task not found"}), 404
 
-
-
-
-
+@control.post("/console/execute")
+@login_required
+def console_execute():
+    """
+    Execute raw python code quickly in the console using the global deck state.
+    """
+    import io, sys
+    
+    code = request.json.get("code", "") if request.is_json else ""
+    deck = global_state.deck
+    local_vars = {"deck": deck}
+    if deck:
+        for attr in dir(deck):
+            if not attr.startswith("_"):
+                local_vars[attr] = getattr(deck, attr)
+                
+    old_stdout = sys.stdout
+    redirected_output = io.StringIO()
+    sys.stdout = redirected_output
+    
+    # Restrict execution environment to prevent arbitrary imports (e.g. import os, subprocess)
+    safe_builtins = {
+        'print': print, 'len': len, 'range': range,
+        'str': str, 'int': int, 'float': float, 'bool': bool,
+        'list': list, 'dict': dict, 'set': set, 'tuple': tuple,
+        'enumerate': enumerate, 'zip': zip, 'sum': sum, 'max': max, 'min': min,
+        'abs': abs, 'round': round, 'any': any, 'all': all,
+        'isinstance': isinstance, 'type': type, 'hasattr': hasattr, 'getattr': getattr,
+        'Exception': Exception, 'ValueError': ValueError, 'TypeError': TypeError
+    }
+    restricted_globals = {"__builtins__": safe_builtins}
+    
+    try:
+        exec(code, restricted_globals, local_vars)
+        output = redirected_output.getvalue()
+        return jsonify({"success": True, "output": output})
+    except Exception as e:
+        output = redirected_output.getvalue()
+        return jsonify({"success": False, "error": str(e), "output": output})
+    finally:
+        sys.stdout = old_stdout
