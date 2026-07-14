@@ -2,6 +2,10 @@
 
 IvoryOS builds UI controls from Python method signatures. Good type hints make direct control, workflow design, CSV configuration, generated proxy clients, and optimizer setup more predictable.
 
+> [!NOTE]
+> **Type Hints are Optional (but Recommended)**
+> While explicit type hints are highly recommended for the best UI experience (such as automatic validation and rendering specific controls like sliders or dropdowns), they are **not strictly required**. Because IvoryOS evaluates form inputs using Python literal parsing, methods with untyped arguments that accept standard primitive data types (like `int`, `float`, `str`, or `list`) are fully compatible and will work out of the box.
+
 ## Basic pattern
 
 Expose a normal Python object or function, then launch IvoryOS from the script where it is initialized.
@@ -153,7 +157,7 @@ Use scalar return annotations for single values, fixed-length tuple annotations 
 
 ## Practical rules
 
-- Add type hints to every public method you want users to call from IvoryOS.
+- Add type hints to every public method you want users to call from IvoryOS for the best experience. If omitted, methods are still supported provided they accept primitive data types.
 - Use `Enum` for settings with a fixed set of valid choices, and convert the submitted value back to the Enum inside the method when needed.
 - Use fixed-length tuple return annotations when users should save multiple outputs from one workflow action.
 - Use defaults for common values so the generated UI opens in a useful state.
