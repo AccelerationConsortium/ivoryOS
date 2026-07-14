@@ -18,6 +18,18 @@ class ScriptRenderer:
         self.needs_call_human = False
         self.blocks_included = False
 
+    def _apply_type_cast(self, expr: str, action: dict, default_type: str = 'any') -> str:
+        arg_types = action.get('arg_types', {})
+        arg_type = arg_types.get('statement', default_type) if isinstance(arg_types, dict) else default_type
+        
+        if arg_type == 'float':
+            return f"float({expr})"
+        elif arg_type == 'int':
+            return f"int({expr})"
+        elif arg_type == 'bool':
+            return f"bool({expr})"
+        return expr
+
     def indent(self, unit=0):
         string = "\n"
         for _ in range(unit):
@@ -84,16 +96,20 @@ class ScriptRenderer:
                     lines.append("    " * indent + f"time.sleep({stmt})")
                 elif instrument == "variable":
                     stmt = action["args"].get("statement", "")
+                    expr = str(stmt)
                     if isinstance(stmt, str) and stmt.startswith("#"):
-                        stmt = stmt[1:]
-                    lines.append("    " * indent + f"{act} = {stmt}")
+                        expr = stmt[1:]
+                    expr = self._apply_type_cast(expr, action)
+                    lines.append("    " * indent + f"{act} = {expr}")
                 elif instrument == "input":
                     stmt = action["args"].get("statement", "")
-                    var_name = action["args"].get("variable", "")
-                    lines.append("    " * indent + f"{var_name} = input({repr(stmt)})")
+                    input_call = f"input({repr(stmt)})"
+                    expr = self._apply_type_cast(input_call, action, 'str')
+                    lines.append("    " * indent + f"{act} = {expr}")
                 elif instrument == "math_variable":
                     stmt = action["args"].get("statement", "")
-                    lines.append("    " * indent + f"{act} = {stmt}")
+                    expr = self._apply_type_cast(str(stmt), action)
+                    lines.append("    " * indent + f"{act} = {expr}")
                 else:
                     instr = action["instrument"]
                     args = render_args(action.get("args", {}))
@@ -173,12 +189,15 @@ class ScriptRenderer:
                         line_code = "    " * indent + f"time.sleep({stmt})"
                     elif instrument == "variable":
                         stmt = action["args"].get("statement", "")
+                        expr = str(stmt)
                         if isinstance(stmt, str) and stmt.startswith("#"):
-                             stmt = stmt[1:]
-                        line_code = "    " * indent + f"{act} = {stmt}"
+                             expr = stmt[1:]
+                        expr = self._apply_type_cast(expr, action)
+                        line_code = "    " * indent + f"{act} = {expr}"
                     elif instrument == "math_variable":
                         stmt = action["args"].get("statement", "")
-                        line_code = "    " * indent + f"{act} = {stmt}"
+                        expr = self._apply_type_cast(str(stmt), action)
+                        line_code = "    " * indent + f"{act} = {expr}"
                     elif instrument == "comment":
                         stmt = action["args"].get("statement", "")
                         if isinstance(stmt, str) and stmt.startswith("#"):
@@ -188,8 +207,9 @@ class ScriptRenderer:
                              line_code = "    " * indent + f"print({repr(stmt)})"
                     elif instrument == "input":
                         stmt = action["args"].get("statement", "")
-                        var_name = action["args"].get("variable", "var")
-                        line_code = "    " * indent + f"{var_name} = input({repr(stmt)})"
+                        input_call = f"input({repr(stmt)})"
+                        expr = self._apply_type_cast(input_call, action, 'str')
+                        line_code = "    " * indent + f"{act} = {expr}"
                     else:
                         args_dict = action.get("args", {})
                         args = render_args(args_dict)
@@ -362,18 +382,20 @@ class ScriptRenderer:
         elif instrument == 'while':
             return self._process_while(indent_unit, action_name, statement, next_action)
         elif instrument == 'variable':
+            expr = str(statement)
+            if isinstance(statement, str) and statement.startswith("#"):
+                expr = statement[1:]
+            expr = self._apply_type_cast(expr, action)
+
             if batch:
                 if isinstance(statement, str) and statement.startswith("#"):
                     return '', indent_unit
                 return self.indent(indent_unit) + "for param in param_list:" + self.indent(
-                    indent_unit + 1) + f"param['{action_name}'] = {statement}", indent_unit
+                    indent_unit + 1) + f"param['{action_name}'] = {expr}", indent_unit
             else:
-                if isinstance(statement, str) and statement.startswith("#"):
-                    statement = statement[1:]
-                return self.indent(indent_unit) + f"{action_name} = {statement}", indent_unit
+                return self.indent(indent_unit) + f"{action_name} = {expr}", indent_unit
         elif instrument == 'input':
-            var_name = args.get('variable')
-            var_type = args.get('variable_type', 'str')
+            var_name = action_name
             prompt = statement
             
             if isinstance(prompt, str) and prompt.startswith("#"):
@@ -382,15 +404,7 @@ class ScriptRenderer:
                 prompt_expr = repr(prompt) if prompt else "''"
                 
             input_call = f"input({prompt_expr})"
-            
-            if var_type == 'int':
-                expr = f"int({input_call})"
-            elif var_type == 'float':
-                expr = f"float({input_call})"
-            elif var_type == 'bool':
-                expr = f"bool({input_call})"
-            else:
-                expr = input_call
+            expr = self._apply_type_cast(input_call, action, 'str')
                 
             if batch:
                 return self.indent(indent_unit) + "for param in param_list:" + \
@@ -427,10 +441,11 @@ class ScriptRenderer:
             return f"{self.indent(indent_unit)}pause('''{statement}''')", indent_unit
         elif instrument == "math_variable":
             math_expression = self._process_math(statement)
+            expr = self._apply_type_cast(str(math_expression), action)
             if batch:
-                return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit + 1)}param['{action_name}'] = {math_expression}", indent_unit
+                return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit + 1)}param['{action_name}'] = {expr}", indent_unit
             else:
-                return f"{self.indent(indent_unit)}{action_name} = {math_expression}", indent_unit
+                return f"{self.indent(indent_unit)}{action_name} = {expr}", indent_unit
         else:
             is_async = action.get("coroutine", False)
             dynamic_arg = len(self.editor.get_variables()) > 0

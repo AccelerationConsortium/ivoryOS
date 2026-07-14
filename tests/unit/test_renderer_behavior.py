@@ -43,7 +43,7 @@ def test_render_script_lines_formats_common_action_types():
     lines = renderer.render_script_lines(script_dict)["script"]
 
     assert lines == [
-        "count = 1",
+        "count = int(1)",
         "if count > 0:",
         "    time.sleep(delay)",
         "else:",
@@ -115,7 +115,7 @@ def test_compile_generates_headers_builtins_returns_and_required_imports(tmp_pat
     assert "sample = input('Sample?')" in compiled["script"]
     assert "time.sleep(0.1)" in compiled["script"]
     assert "pause('''Check''')" in compiled["script"]
-    assert "total = count + 2" in compiled["script"]
+    assert "total = float(count + 2)" in compiled["script"]
     assert "__ivoryos_result = deck.pump.dose(**{'amount': total, 'choice': RenderChoice('a')})" in compiled["script"]
     assert "return {" in compiled["script"]
     assert "'sample':sample" in compiled["script"]
