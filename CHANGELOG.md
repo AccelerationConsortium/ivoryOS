@@ -1,5 +1,6 @@
 # Changelog
 ## 1.6.6 (July 14th, 2026)
+- !169 **[New]** Add Python console in Instrument panel (test release)
 - !168 **[QoL]** enforce variable type from math expression
 - !167 **[Bug]** resolve pickle error during introspection
 - !164 **[Bug]** resolve error if doing math evaluation and there is a path in the context
