@@ -161,6 +161,8 @@ class ScriptRunnerStepMixin:
                 times = context.get(times[1:])
             # print("repeat times", times, type(times))
             for i in range(times):
+                if self.stop_current_event.is_set():
+                    break
                 # Add repeat index to all contexts
                 # for context in contexts:
                 #     context["repeat_index"] = i
@@ -463,6 +465,9 @@ class ScriptRunnerStepMixin:
     async def _execute_variable_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index,
                                         section_name):
         """Execute variable assignment for multiple samples."""
+        if self.stop_current_event.is_set():
+            return
+            
         var_name = step["action"]
         var_value = step["args"]["statement"]
         arg_type = step["arg_types"]["statement"]
@@ -542,6 +547,9 @@ class ScriptRunnerStepMixin:
 
                 self.toggle_pause()
                 self.pause_event.wait()
+
+                if self.stop_current_event.is_set():
+                    break
 
                 if self.retry:
                     self.retry = False
