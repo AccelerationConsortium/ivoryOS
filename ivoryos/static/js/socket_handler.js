@@ -210,9 +210,12 @@ document.addEventListener("DOMContentLoaded", function () {
     socket.on('server_boot_id', function (data) {
         let lastBootId = localStorage.getItem('server_boot_id');
         if (lastBootId && lastBootId !== data.boot_id) {
-            console.log("Server restart detected. Clearing old errors.");
+            console.log("Server restart detected. Clearing old errors and inputs.");
             if (typeof window.clearActiveError === "function") {
                 window.clearActiveError();
+            }
+            if (typeof window.clearActiveInput === "function") {
+                window.clearActiveInput();
             }
         }
         localStorage.setItem('server_boot_id', data.boot_id);
