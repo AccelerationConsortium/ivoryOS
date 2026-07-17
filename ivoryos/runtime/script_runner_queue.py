@@ -262,8 +262,8 @@ class ScriptRunnerQueueMixin:
         else:
             self.queue_paused = False
             # self.paused = False
-            if not self.pause_event.is_set():
-                self.pause_event.set()
+            # if not self.pause_event.is_set():
+            #     self.pause_event.set()
             if self.socketio:
                 self.socketio.emit('pause_status', {'paused': False})
 

@@ -437,9 +437,6 @@ document.addEventListener("DOMContentLoaded", function () {
             
             const continueQueueEl = document.getElementById('continueQueuePendingCheckbox');
             const continueQueue = continueQueueEl ? continueQueueEl.checked : false;
-
-            if (typeof window.clearActiveInput === 'function') window.clearActiveInput();
-
             socket.emit('abort_pending', { cleanup: doCleanup, continue_queue: continueQueue });
             console.log("Abort pending sent. Cleanup:", doCleanup, "Continue queue:", continueQueue);
 
