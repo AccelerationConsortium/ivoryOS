@@ -9,7 +9,7 @@ from wtforms.fields.core import Field
 from wtforms.validators import InputRequired, ValidationError, Optional
 from wtforms.widgets.core import TextInput
 from flask_wtf import FlaskForm
-from wtforms import StringField, FloatField, HiddenField, BooleanField, IntegerField
+from wtforms import StringField, FloatField, HiddenField, BooleanField, IntegerField, TextAreaField
 
 from ivoryos.script import Script, ScriptEditor, ScriptRenderer
 from ivoryos.runtime.state import GlobalState
@@ -795,7 +795,7 @@ def create_form_from_action(action: dict, script=None, design=True):
 
 def create_all_builtin_forms(script):
     all_builtin_forms = {}
-    for logic_name in ['if', 'while', 'variable', 'input', 'wait', 'repeat', 'pause', 'math', 'comment']:
+    for logic_name in ['if', 'while', 'variable', 'input', 'wait', 'repeat', 'pause', 'math', 'comment', 'pro_code']:
         # signature = info.get('signature', {})
         form_class = create_builtin_form(logic_name, script)
         all_builtin_forms[logic_name] = form_class()
@@ -813,23 +813,30 @@ def create_builtin_form(logic_type, script):
         'pause': 'Human Intervention Message',
         'comment': 'Enter comment to log',
         'input': 'Enter prompt message',
-        'math': 'Enter math expression, e.g. #x + 5 * (#y - 2)'
+        'math': 'Enter math expression, e.g. #x + 5 * (#y - 2)',
+        'pro_code': 'Enter raw Python code here (e.g. deck.module.function())'
     }.get(logic_type, 'Enter statement')
     description_text = {
         'variable': 'Your variable can be numbers, boolean (True or False) or text ("text")',
         'math': "Enter a math expression using #variables, numbers, or returned variables",
+        'pro_code': "Execute arbitrary Python code directly within the script loop. The 'deck' module and variables are available."
     }.get(logic_type, '')
     field_class = {
         'wait': VariableOrFloatField,
         'repeat': VariableOrIntField,
+        'pro_code': TextAreaField
     }.get(logic_type, VariableOrStringField)  # Default to StringField as a fallback
     field_kwargs = {
         "label": f'statement',
-        "validators": [InputRequired()] if logic_type in ['wait', "variable", "math"] else [],
+        "validators": [InputRequired()] if logic_type in ['wait', "variable", "math", "pro_code"] else [],
         "description": description_text,
-        "script": script
     }
+    if logic_type != 'pro_code':
+        field_kwargs["script"] = script
     render_kwargs = {"placeholder": placeholder_text}
+    if logic_type == 'pro_code':
+        render_kwargs["rows"] = 5
+        render_kwargs["style"] = "font-family: monospace;"
     field = field_class(**field_kwargs, render_kw=render_kwargs)
     setattr(BuiltinFunctionForm, "statement", field)
     if logic_type == 'variable':

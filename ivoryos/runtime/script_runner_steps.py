@@ -255,6 +255,33 @@ class ScriptRunnerStepMixin:
                     if self.logger:
                         self.logger.info(f"Comment: {msg}")
 
+                elif instrument == "pro_code" and action == "execute":
+                    code = substituted_args.get("statement", "")
+                    if self.logger:
+                        self.logger.info("Executing Pro Code block")
+                    local_vars = {"deck": current_deck, **context}
+                    if current_deck:
+                        for attr in dir(current_deck):
+                            if not attr.startswith("_"):
+                                local_vars[attr] = getattr(current_deck, attr)
+
+                    # Restrict execution environment
+                    safe_builtins = {
+                        'print': print, 'len': len, 'range': range,
+                        'str': str, 'int': int, 'float': float, 'bool': bool,
+                        'list': list, 'dict': dict, 'set': set, 'tuple': tuple,
+                        'enumerate': enumerate, 'zip': zip, 'sum': sum, 'max': max, 'min': min,
+                        'abs': abs, 'round': round, 'any': any, 'all': all,
+                        'isinstance': isinstance, 'type': type, 'hasattr': hasattr, 'getattr': getattr,
+                        'Exception': Exception, 'ValueError': ValueError, 'TypeError': TypeError
+                    }
+                    restricted_globals = {"__builtins__": safe_builtins}
+
+                    exec(code, restricted_globals, local_vars)
+                    for k, v in local_vars.items():
+                        if k != "deck" and k not in dir(current_deck):
+                            context[k] = v
+
                 elif instrument_type == "deck" and hasattr(current_deck, instrument):
                     component = getattr(current_deck, instrument)
                     if "_(setter)" in action:

@@ -328,6 +328,12 @@ class ScriptEditor:
                      "args": {"statement": statement}, "return": '', "uuid": uid,
                      "arg_types": {"statement": "str"}}
                 ],
+            "pro_code":
+                [
+                    {"id": current_len + 1, "instrument": 'pro_code', "action": "execute",
+                     "args": {"statement": statement}, "return": '', "uuid": uid,
+                     "arg_types": {"statement": "str"}}
+                ],
         }
         action_list = logic_dict[logic_type]
         self.currently_editing_script.extend(action_list)
