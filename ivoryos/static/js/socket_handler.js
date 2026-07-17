@@ -181,6 +181,19 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     };
 
+    window.clearActiveInput = function() {
+        localStorage.removeItem('active_input');
+        checkActiveError();
+        
+        const inputModalEl = document.getElementById('inputModal');
+        if (inputModalEl) {
+            var inputModal = bootstrap.Modal.getInstance(inputModalEl);
+            if (inputModal) {
+                inputModal.hide();
+            }
+        }
+    };
+
     checkActiveError();
 
     const errorModalEl = document.getElementById('error-modal');
@@ -377,9 +390,21 @@ document.addEventListener("DOMContentLoaded", function () {
     if (stopBtn) {
         stopBtn.addEventListener('click', function () {
             window.clearActiveError();
-            // socket.emit('pause');
-            socket.emit('abort_current');
+            if (typeof window.clearActiveInput === 'function') window.clearActiveInput();
+            socket.emit('abort_current', { continue_queue: false });
             console.log("Execution stopped.");
+            
+            // const modalEl = document.getElementById('stopWorkflowModal');
+            // const continueQueueEl = document.getElementById('continueQueueCheckbox');
+
+            // if (modalEl && typeof bootstrap !== 'undefined') {
+            //     if (continueQueueEl) continueQueueEl.checked = false;
+            //     const modal = new bootstrap.Modal(modalEl);
+            //     modal.show();
+            // } else {
+            //     socket.emit('abort_current', { continue_queue: false });
+            //     console.log("Execution stopped.");
+            // }
         });
     }
 
@@ -410,6 +435,8 @@ document.addEventListener("DOMContentLoaded", function () {
             const continueQueueEl = document.getElementById('continueQueuePendingCheckbox');
             const continueQueue = continueQueueEl ? continueQueueEl.checked : false;
 
+            if (typeof window.clearActiveInput === 'function') window.clearActiveInput();
+
             socket.emit('abort_pending', { cleanup: doCleanup, continue_queue: continueQueue });
             console.log("Abort pending sent. Cleanup:", doCleanup, "Continue queue:", continueQueue);
 
@@ -434,6 +461,8 @@ document.addEventListener("DOMContentLoaded", function () {
             } else {
                 var confirmation = confirm("Are you sure you want to stop after this step?");
                 if (confirmation) {
+                    if (typeof window.clearActiveInput === 'function') window.clearActiveInput();
+                    // if (typeof window.clearActiveError === 'function') window.clearActiveError();
                     socket.emit('abort_current', { continue_queue: true });
                     console.log('Stop action sent to server.');
                 }
@@ -451,6 +480,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 const modal = bootstrap.Modal.getInstance(modalEl);
                 if (modal) modal.hide();
             }
+            if (typeof window.clearActiveInput === 'function') window.clearActiveInput();
             socket.emit('abort_current', { continue_queue: continueQueue });
             console.log('Stop action sent to server. Continue queue:', continueQueue);
         });
