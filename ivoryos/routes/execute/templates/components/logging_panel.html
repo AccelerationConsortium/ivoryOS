@@ -16,7 +16,7 @@
       <button id="abort-current" class="btn btn-danger text-white">
         <i class="bi bi-stop-circle"></i>
       </button>
-      <button id="abort-pending" class="btn btn-warning text-white">
+      <button id="abort-pending" class="btn btn-warning text-white" title="Stop pending tasks">
         <i class="bi bi-hourglass-split"></i>
       </button>
     </div>
@@ -133,26 +133,7 @@
   </div>
 </div>
 
-<!-- Input Modal -->
-<div class="modal fade" id="inputModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false"
-  aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">User Input Required</h5>
-      </div>
-      <div class="modal-body">
-        <p id="input-prompt"></p>
-        <div id="input-container">
-          <!-- Dynamic input will be inserted here -->
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-primary" id="submit-input-btn">Submit</button>
-      </div>
-    </div>
-  </div>
-</div>
+
 <!-- Queue Details Modal -->
 <div class="modal fade" id="queueDetailsModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
