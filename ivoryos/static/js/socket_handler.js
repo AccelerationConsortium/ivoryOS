@@ -34,6 +34,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function updateGlobalStatus() {
         const activeErrorStr = localStorage.getItem('active_error');
+        const activeInputStr = localStorage.getItem('active_input');
         const icon = document.getElementById('global-status-icon');
         
         if (icon) {
@@ -42,6 +43,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 icon.style.backgroundColor = '#dc3545'; // red
                 icon.setAttribute('title', 'View active error');
                 icon.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-white fs-5"></i> <span>Error</span>';
+                icon.style.cursor = 'pointer';
+            } else if (activeInputStr) {
+                icon.style.backgroundColor = '#0dcaf0'; // info cyan
+                icon.setAttribute('title', 'View active input prompt');
+                icon.innerHTML = '<i class="bi bi-keyboard-fill text-white fs-5"></i> <span>Input</span>';
                 icon.style.cursor = 'pointer';
             } else if (window.platformState.is_paused) {
                 icon.style.backgroundColor = '#fd7e14'; // orange
@@ -61,25 +67,38 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
     }
+    
+    window.handleGlobalStatusClick = function() {
+        if (localStorage.getItem('active_error')) {
+            window.restoreErrorModal();
+        } else if (localStorage.getItem('active_input')) {
+            window.restoreInterventionModal();
+        }
+    };
 
     function checkActiveError() {
         const activeErrorStr = localStorage.getItem('active_error');
+        const activeInputStr = localStorage.getItem('active_input');
         const progressBar = getProgressBar();
         
         updateGlobalStatus();
 
-        if (activeErrorStr) {
+        if (activeErrorStr || activeInputStr) {
             if (progressBar) {
                 try {
-                    const activeError = JSON.parse(activeErrorStr);
                     progressBar.classList.remove('bg-primary', 'bg-warning', 'bg-danger');
-                    if (activeError.type === 'error') {
-                        progressBar.classList.add('bg-danger');
-                    } else if (activeError.type === 'warning' || activeError.type === 'human_intervention') {
+                    if (activeErrorStr) {
+                        const activeError = JSON.parse(activeErrorStr);
+                        if (activeError.type === 'error') {
+                            progressBar.classList.add('bg-danger');
+                        } else if (activeError.type === 'warning' || activeError.type === 'human_intervention') {
+                            progressBar.classList.add('bg-warning');
+                        }
+                    } else if (activeInputStr) {
                         progressBar.classList.add('bg-warning');
                     }
                 } catch (e) {
-                    console.error("Failed to parse active_error", e);
+                    console.error("Failed to parse active state", e);
                 }
             }
         } else {
@@ -92,6 +111,21 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
     }
+
+    window.restoreInterventionModal = function() {
+        const activeInputStr = localStorage.getItem('active_input');
+        if (activeInputStr) {
+            try {
+                const data = JSON.parse(activeInputStr);
+                showInputModal(data);
+                return;
+            } catch (e) {
+                console.error("Failed to parse active_input", e);
+                localStorage.removeItem('active_input');
+            }
+        }
+        window.restoreErrorModal();
+    };
 
     window.restoreErrorModal = function() {
         const activeErrorStr = localStorage.getItem('active_error');
@@ -132,9 +166,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (stopBtn) stopBtn.style.display = "inline-block";
         
         errorModal.show();
-        
-        const icon = document.getElementById('error-restore-icon');
-        if (icon) icon.style.display = 'none';
     };
 
     window.clearActiveError = function() {
@@ -469,11 +500,14 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    socket.on('request_input', function (data) {
+    window.showInputModal = function(data) {
         console.log("Request input:", data);
+        localStorage.setItem('active_input', JSON.stringify(data));
+        checkActiveError();
+
         var inputModalEl = document.getElementById('inputModal');
         if (!inputModalEl) return;
-        var inputModal = new bootstrap.Modal(inputModalEl);
+        var inputModal = bootstrap.Modal.getInstance(inputModalEl) || new bootstrap.Modal(inputModalEl);
         
         var promptEl = document.getElementById('input-prompt');
         if (promptEl) promptEl.innerText = data.prompt;
@@ -521,8 +555,21 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                     socket.emit('submit_input', { value: val });
                 }
+                localStorage.removeItem('active_input');
+                checkActiveError();
                 inputModal.hide();
             };
         }
+    };
+
+    socket.on('request_input', function (data) {
+        window.showInputModal(data);
     });
+    
+    const inputModalEl2 = document.getElementById('inputModal');
+    if (inputModalEl2) {
+        inputModalEl2.addEventListener('hidden.bs.modal', function () {
+            checkActiveError();
+        });
+    }
 });

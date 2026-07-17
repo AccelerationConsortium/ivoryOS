@@ -325,12 +325,13 @@
 
     {# Include global error modal #}
     {% include 'components/error_modal.html' %}
+    {% include 'components/input_modal.html' %}
 
     {# Floating system status / error restore icon (bottom left) #}
     <div id="global-status-icon" class="position-fixed shadow"
         style="bottom: 20px; left: 20px; z-index: 9999; display: flex; cursor: pointer; border-radius: 20px; height: 35px; padding: 0 15px; background-color: #6c757d; align-items: center; justify-content: center; gap: 8px; color: white; font-weight: 500;"
          title="Platform is idle"
-         onclick="if(localStorage.getItem('active_error')) restoreErrorModal()">
+         onclick="handleGlobalStatusClick()">
         <span id="global-status-text">Idle</span>
     </div>
 
