@@ -254,7 +254,8 @@ class ScriptRunnerQueueMixin:
         if self.logger:
             self.logger.info("Abort pending tasks")
             
-        if not continue_queue:
+        has_pending = len(self.execution_queue) > 0
+        if not continue_queue and has_pending:
             self.queue_paused = True
             if self.socketio:
                 self.socketio.emit('pause_status', {'paused': True})
@@ -279,7 +280,8 @@ class ScriptRunnerQueueMixin:
         self.abort_pending()
         self.abort_cleanup()
         
-        if continue_queue:
+        has_pending = len(self.execution_queue) > 0
+        if continue_queue or not has_pending:
             self.queue_paused = False
             # self.paused = False
             if not self.pause_event.is_set():
