@@ -317,10 +317,14 @@ document.addEventListener("DOMContentLoaded", function () {
     if (continueBtn) {
         continueBtn.addEventListener('click', function () {
             window.clearActiveError();
-            socket.emit('pause');
-            console.log("Execution resumed.");
-
-            setProgressBarClasses(['bg-primary'], ['bg-danger', 'bg-warning']);
+            
+            // Delay emitting slightly to allow the modal's hide animation to finish
+            // This prevents a race condition if the next step fails instantly
+            setTimeout(function() {
+                socket.emit('pause');
+                console.log("Execution resumed.");
+                setProgressBarClasses(['bg-primary'], ['bg-danger', 'bg-warning']);
+            }, 350);
         });
     }
 
