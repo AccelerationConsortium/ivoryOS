@@ -1,4 +1,10 @@
 # Changelog
+## 1.6.7 (July 17th, 2026)
+- !174 **[Bug]** resolve registered workflow not loading
+- !172 **[QoL]** remove pause upon stop when there is no pending workflow
+- !171 **[QoL]** minimize user input pop up to status icon
+- !170 **[Bug]** resolve error can't stop right after variable expression error
+
 ## 1.6.6 (July 14th, 2026)
 - !169 **[New]** Add Python console in Instrument panel (test release)
 - !168 **[QoL]** enforce variable type from math expression
