@@ -884,6 +884,7 @@ def get_method_from_workflow(function_string, func_name=None):
     """Creates a function from a string and assigns it a new name."""
 
     namespace = {}
+    
     exec(function_string, globals(), namespace)  # Execute the string in a safe namespace
     
     if func_name and func_name in namespace:
@@ -931,8 +932,10 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
             
             # Add imports so Enums are defined
             import_str = ScriptRenderer(workflow).get_required_imports() or ""
-            full_code = f"{import_str}\n{compiled_strs}"
-            
+            safe_imports = [line for line in import_str.split('\n') if not line.endswith(' as deck')]
+            safe_imports_str = '\n'.join(safe_imports)
+            full_code = f"{safe_imports_str}\n{compiled_strs}"
+
             method = get_method_from_workflow(full_code, func_name=workflow.name)
 
             functions[unique_key] = dict(signature=inspect.signature(method), docstring=inspect.getdoc(method))
