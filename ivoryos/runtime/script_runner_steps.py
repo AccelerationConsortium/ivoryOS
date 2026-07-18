@@ -16,9 +16,17 @@ class ScriptRunnerStepMixin:
         Execute a list of steps for multiple samples, batching where appropriate.
         """
         for step in steps:
+            if self.stop_current_event.is_set():
+                break
             action = step["action"]
             instrument = step["instrument"]
             action_id = step["id"]
+            
+            # Emit execution status so the UI highlights the current step
+            section_id = f"{section_name}-{action_id-1}"
+            self.last_execution_section = section_id
+            if self.socketio:
+                self.socketio.emit('execution', {'section': section_id})
             if instrument == "if" and action == "if":
                 await self._execute_if_batched(step, contexts, phase_id=phase_id, step_index=action_id,
                                                section_name=section_name)
@@ -238,10 +246,6 @@ class ScriptRunnerStepMixin:
 
                 if self.logger:
                     self.logger.info(f"Executing '{instrument}.{action}' with args {substituted_args}")
-                
-                section_id = f"{section_name}-{step_index-1}"
-                self.last_execution_section = section_id
-                self.socketio.emit('execution', {'section': section_id})
                 if instrument == "wait" and action == "wait":
                     duration = float(substituted_args["statement"])
                     self.safe_sleep(duration)
