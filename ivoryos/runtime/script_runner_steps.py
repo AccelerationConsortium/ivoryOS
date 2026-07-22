@@ -486,6 +486,9 @@ class ScriptRunnerStepMixin:
 
                     # Substitute any variable references in the value
                     if isinstance(var_value, str):
+                        if self.logger:
+                            self.logger.info(f'Executing variable {var_name} ({arg_type}): {var_value}')
+
                         substituted_value = var_value
 
                         # Replace all variable references (with or without #) with their values
@@ -496,6 +499,8 @@ class ScriptRunnerStepMixin:
                             # Use word boundaries to avoid partial matches
                             import re
                             substituted_value = re.sub(r'\b' + re.escape(key) + r'\b', lambda _: str(val), substituted_value)
+                        if self.logger:
+                            self.logger.info(f'Substituted variable references for {var_name}: {substituted_value}')
 
                         # Handle based on type
                         if arg_type == "float":
@@ -542,6 +547,8 @@ class ScriptRunnerStepMixin:
                         context[var_name] = var_value
 
                 # If everything succeeds, break the retry loop
+                if self.logger:
+                    self.logger.info(f'Evaluated variable {var_name} ({arg_type}) to: {context[var_name]}')
                 break
 
             except Exception as e:
