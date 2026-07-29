@@ -45,7 +45,7 @@
                         {% if forms.arg_types and forms.arg_types.get(field.name) == 'list' %}
                             {% set is_consolidated = field.name in (action.get('consolidate_batch_args') or []) %}
                             {# Initial visibility calculation #}
-                            {% set is_visible = forms.batch_action.data and field.data and field.data.startswith('#') %}
+                            {% set is_visible = forms.batch_action.data and field.data is string and field.data.startswith('#') %}
                             <div class="input-group mb-3 consolidate-wrapper" title="Consolidate batch arguments"
                                 style="display: {{ 'flex' if is_visible else 'none' }}">
                                 <div class="input-group-text">
