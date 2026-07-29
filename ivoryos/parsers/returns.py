@@ -46,10 +46,18 @@ def store_return_value(context, arg_contexts, return_var, result):
             value = safe_dump(value)
             context[name] = value
             if arg_contexts is not None:
-                arg_contexts[name] = value
+                if isinstance(arg_contexts, list):
+                    for arg_context in arg_contexts:
+                        arg_context[name] = value
+                else:
+                    arg_contexts[name] = value
         return
 
     result = safe_dump(result)
     context[return_var] = result
     if arg_contexts is not None:
-        arg_contexts[return_var] = result
+        if isinstance(arg_contexts, list):
+            for arg_context in arg_contexts:
+                arg_context[return_var] = result
+        else:
+            arg_contexts[return_var] = result
