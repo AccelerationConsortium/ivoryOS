@@ -134,6 +134,13 @@ class ScriptRunnerStepMixin:
                         await self._execute_action_once(step, contexts[0], arg_contexts=arg_contexts, phase_id=phase_id, step_index=action_id,
                                                             section_name=section_name)
 
+                    if len(contexts) > 1:
+                        # Propagate any new values from first context to others
+                        for key, value in contexts[0].items():
+                            for context in contexts[1:]:
+                                if key not in context:
+                                    context[key] = value
+
                 else:
                     # Execute for each sample
                     if arg_contexts:
@@ -218,7 +225,11 @@ class ScriptRunnerStepMixin:
         if override_args is not None:
             substituted_args = override_args
         elif arg_contexts:
-            substituted_args = self._substitute_params(step["args"], arg_contexts)
+            # If arg_contexts is a list, use the first element for substitution
+            if isinstance(arg_contexts, list):
+                substituted_args = self._substitute_params(step["args"], arg_contexts[0])
+            else:
+                substituted_args = self._substitute_params(step["args"], arg_contexts)
         else:
             substituted_args = self._substitute_params(step["args"], context)
 
