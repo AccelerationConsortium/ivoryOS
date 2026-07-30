@@ -111,7 +111,10 @@
                                 </td>
                                 <td>
                                     {% if workflow.data_path %}
-                                      <a href="{{ url_for('data.download_results', filename=workflow.data_path) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3" style="font-size: 0.8rem;">
+                                      <a href="{{ url_for('data.download_workflow_data_csv', workflow_id=workflow.id) }}" 
+                                         class="btn btn-sm btn-outline-secondary rounded-pill px-3" 
+                                         style="font-size: 0.8rem;"
+                                         onclick="return downloadDynamicCSV(event, this.href);">
                                           <i class="bi bi-download me-1"></i>Download CSV
                                       </a>
                                     {% else %}
@@ -179,6 +182,25 @@
 </div>
 
 <script>
+    function downloadDynamicCSV(event, url) {
+        event.preventDefault();
+        fetch(url)
+            .then(response => {
+                if (response.status === 404) {
+                    alert("No data available yet.");
+                } else if (response.ok) {
+                    window.location.href = url; // Trigger normal browser download
+                } else {
+                    alert("Error downloading data.");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Error downloading data.");
+            });
+        return false;
+    }
+
     function showSteps(workflowId) {
         fetch(`/workflow_steps/${workflowId}`)
             .then(response => response.json())
