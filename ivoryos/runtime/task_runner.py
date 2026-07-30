@@ -189,9 +189,12 @@ class TaskRunner:
                            if origin is list:
                                is_list_target = True
 
-                       # If we have a tuple (likely from "1,2,3") but want a list, cast it
-                       if is_list_target and isinstance(val, tuple):
-                           val = list(val)
+                       # Wrap single items or cast tuples to list
+                       if is_list_target:
+                           if isinstance(val, tuple):
+                               val = list(val)
+                           elif not isinstance(val, list):
+                               val = [val]
                        
                        # Try to cast to target type if possible (e.g. valid for int, float, str, but fails for typing.List)
                        try:

@@ -407,24 +407,45 @@ def create_form_for_method(method, autofill, script=None, design=True):
         if _is_enum_type(param.annotation):
             enum_class = _unwrap_enum_type(param.annotation)
             field_class = FlexibleEnumField
-            placeholder_text = f"Choose or type a value for {enum_class.__name__} (start with # for custom)"
+            placeholder_text = f"Choose or type a value for {enum_class.__name__}"
 
             extra_kwargs = {"choices": param.annotation}
 
         elif _is_literal_type(param.annotation):
             literal_args = _unwrap_literal_args(param.annotation)
             field_class = FlexibleLiteralField
-            placeholder_text = f"Choose or type a value (start with # for custom)"
+            placeholder_text = f"Choose or type a value"
             extra_kwargs = {"choices": literal_args}
 
         else:
             # print(param.annotation)
-            annotation, optional = parse_annotation(param.annotation)
-            annotation = annotation[0]
-            field_class, placeholder_text = annotation_mapping.get(
+            annotations, optional = parse_annotation(param.annotation)
+            if str in annotations:
+                annotation = str
+            elif float in annotations:
+                annotation = float
+            else:
+                annotation = annotations[0]
+            if hasattr(param.annotation, '__origin__'):
+                fallback_type_name = str(param.annotation).replace("typing.", "")
+            else:
+                fallback_type_name = getattr(param.annotation, '__name__', str(param.annotation).replace("typing.", ""))
+            field_class, default_placeholder = annotation_mapping.get(
                 annotation,
-                (VariableOrStringField if design else StringField, f'Enter {param.annotation} value')
+                (VariableOrStringField if design else StringField, f'Enter {fallback_type_name} value')
             )
+            if len(annotations) > 1:
+                type_names = []
+                for t in annotations:
+                    if t is int: type_names.append('int')
+                    elif t is float: type_names.append('float')
+                    elif t is str: type_names.append('text')
+                    elif t is bool: type_names.append('bool')
+                    else: type_names.append(getattr(t, '__name__', str(t)))
+                placeholder_text = f"Enter {' or '.join(type_names)} value"
+            else:
+                placeholder_text = default_placeholder
+
             extra_kwargs = {}
             if optional:
                 field_kwargs["filters"] = [lambda x: x if x != '' else None]
@@ -433,7 +454,7 @@ def create_form_for_method(method, autofill, script=None, design=True):
                 # Boolean fields should not use InputRequired
                 field_kwargs["validators"] = []  # or [Optional()]
             else:
-                field_kwargs["validators"] = [InputRequired()] if param.default is param.empty else [Optional()]
+                field_kwargs["validators"] = [InputRequired()] if not optional else [Optional()]
 
         render_kwargs = {"placeholder": placeholder_text}
 
@@ -707,7 +728,7 @@ def create_form_from_action(action: dict, script=None, design=True):
             _, literal_args_str = param_type.split(":", 1)
             literal_args = literal_args_str.split(",")
             field_class = FlexibleLiteralField
-            placeholder_text = f"Choose or type a value (start with # for custom)"
+            placeholder_text = f"Choose or type a value"
             extra_kwargs = {"choices": literal_args}
         else:
             field_class, placeholder_text = annotation_mapping.get(
