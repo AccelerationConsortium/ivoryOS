@@ -204,6 +204,60 @@ def download_workflow_steps_data_csv(workflow_id: int):
     )
 
 
+@data.get("/executions/records/<int:workflow_id>/data_csv")
+@login_required
+def download_workflow_data_csv(workflow_id: int):
+    """
+    Download a dynamically generated CSV export of the workflow's main data.
+    """
+    import pandas as pd
+    from ivoryos.models import WorkflowStep
+    from ivoryos.script.editor import ScriptEditor
+    
+    workflow = db.session.get(WorkflowRun, workflow_id)
+    if not workflow:
+        return jsonify({"error": "Workflow not found"}), 404
+
+    run_name = ScriptEditor.validate_function_name(workflow.name)
+    base_data_path = workflow.data_path if workflow.data_path else f"{run_name}_{workflow.start_time.strftime('%Y-%m-%d %H-%M')}"
+    if not base_data_path.endswith('.csv'):
+        base_data_path += '.csv'
+
+    main_phases = WorkflowPhase.query.filter_by(run_id=workflow_id, name='main') \
+        .order_by(WorkflowPhase.repeat_index).all()
+
+    output_list = []
+    for phase in main_phases:
+        if phase.outputs:
+            outputs = phase.outputs
+            if isinstance(outputs, dict):
+                outputs = [outputs]
+            elif isinstance(outputs, list):
+                outputs = [
+                    item for sublist in outputs
+                    for item in (sublist if isinstance(sublist, list) else [sublist])
+                ]
+            output_list.extend(outputs)
+        else:
+            # Phase is running or failed, fetch latest completed step output
+            last_step = WorkflowStep.query.filter(
+                WorkflowStep.phase_id == phase.id,
+                WorkflowStep.end_time.isnot(None)
+            ).order_by(WorkflowStep.step_index.desc()).first()
+            if last_step and last_step.output:
+                output_list.append(last_step.output)
+
+    if not output_list:
+        return "No data available yet.", 404
+
+    df = pd.DataFrame(output_list)
+    return Response(
+        df.to_csv(index=False),
+        mimetype="text/csv",
+        headers={"Content-disposition": f"attachment; filename={base_data_path}"}
+    )
+
+
 @data.get("/executions/records/<int:workflow_id>/logs")
 @login_required
 def download_workflow_logs(workflow_id: int):

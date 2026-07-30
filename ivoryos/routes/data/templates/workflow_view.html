@@ -100,8 +100,9 @@
         <!-- Download Section -->
         <div class="d-flex flex-wrap gap-2 mb-4">
             {% if workflow.data_path %}
-              <a href="{{ url_for('data.download_results', filename=workflow.data_path) }}"
-               class="btn btn-sm rounded-pill px-3 border-teal-btn">
+              <a href="{{ url_for('data.download_workflow_data_csv', workflow_id=workflow.id) }}"
+               class="btn btn-sm rounded-pill px-3 border-teal-btn"
+               onclick="return downloadDynamicCSV(event, this.href);">
                 <i class="bi bi-download me-1"></i>
                 Download workflow data
               </a>
@@ -374,15 +375,27 @@
                 const dataSection = document.querySelector('.data-section');
                 // Hide the section on error as well
                 dataSection.style.display = 'none';
-
-                // Optionally, you could show an error message instead:
-                // dataSection.innerHTML = `
-                //     <div class="alert alert-danger m-3" role="alert">
-                //         <i class="fas fa-exclamation-triangle me-2"></i>
-                //         <strong>Error:</strong> Unable to load phase data. ${error.message}
-                //     </div>
-                // `;
             });
+
+        // ---------------- Live Data CSV ----------------
+        window.downloadDynamicCSV = function(event, url) {
+            event.preventDefault();
+            fetch(url)
+                .then(response => {
+                    if (response.status === 404) {
+                        alert("No data available yet.");
+                    } else if (response.ok) {
+                        window.location.href = url; // Trigger normal browser download
+                    } else {
+                        alert("Error downloading data.");
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Error downloading data.");
+                });
+            return false;
+        };
     });
 </script>
 
