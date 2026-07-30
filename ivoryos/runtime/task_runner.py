@@ -127,7 +127,7 @@ class TaskRunner:
                 if inspect.iscoroutinefunction(function_executable):
                     output = await function_executable(**kwargs)
                 else:
-                    output = function_executable(**kwargs)
+                    output = await asyncio.to_thread(function_executable, **kwargs)
                 output = sanitize_for_json(output)
                 step.output = output
                 step.end_time = datetime.now()

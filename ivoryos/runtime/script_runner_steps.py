@@ -1,4 +1,5 @@
 import re
+import asyncio
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -271,7 +272,7 @@ class ScriptRunnerStepMixin:
                             if step.get("coroutine", False):
                                 result = await attr(**substituted_args)
                             else:
-                                result = attr(**substituted_args)
+                                result = await asyncio.to_thread(attr, **substituted_args)
                         else:
                             # Handle property setter/getter
                             if "value" in substituted_args:
@@ -295,7 +296,7 @@ class ScriptRunnerStepMixin:
                         if step.get("coroutine", False):
                             result = await method(**substituted_args)
                         else:
-                            result = method(**substituted_args)
+                            result = await asyncio.to_thread(method, **substituted_args)
 
                         # # Store return value if specified
                         # return_var = step.get("return", "")
@@ -309,7 +310,7 @@ class ScriptRunnerStepMixin:
                     if step.get("coroutine", False):
                         result = await method(**substituted_args)
                     else:
-                        result = method(**substituted_args)
+                        result = await asyncio.to_thread(method, **substituted_args)
                         # Store return value if specified
                 return_var = step.get("return", "")
                 if return_var and result is not None:
