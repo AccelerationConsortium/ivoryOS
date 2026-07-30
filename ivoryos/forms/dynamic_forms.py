@@ -426,7 +426,10 @@ def create_form_for_method(method, autofill, script=None, design=True):
                 annotation = float
             else:
                 annotation = annotations[0]
-            fallback_type_name = getattr(param.annotation, '__name__', str(param.annotation))
+            if hasattr(param.annotation, '__origin__'):
+                fallback_type_name = str(param.annotation).replace("typing.", "")
+            else:
+                fallback_type_name = getattr(param.annotation, '__name__', str(param.annotation).replace("typing.", ""))
             field_class, default_placeholder = annotation_mapping.get(
                 annotation,
                 (VariableOrStringField if design else StringField, f'Enter {fallback_type_name} value')
