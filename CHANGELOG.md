@@ -1,4 +1,13 @@
 # Changelog
+## 1.6.8 (July 30th, 2026)
+- !181 **[QoL]** resolve error status modal doesn't pop up from other tabs
+- !180 **[Bug]** resolve error cannot download csv before first iteration done
+- !179 **[New]** resolve event loop error from sync func using asyncio.run
+- !178 **[Bug]** resolve type hint annotation doesnt work if union 2 types
+- !177 **[Bug]** resolve batch step list consolidate render error
+- !176 **[Bug]** resolve batch with registered workflows list error
+- !175 **[QoL]** add logging for variable evaluation
+
 ## 1.6.7 (July 17th, 2026)
 - !174 **[Bug]** resolve registered workflow not loading
 - !172 **[QoL]** remove pause upon stop when there is no pending workflow
