@@ -281,11 +281,15 @@ class ScriptRunnerQueueMixin:
         self.abort_cleanup()
         
         has_pending = len(self.execution_queue) > 0
+        
+        # unpause the internal state and unblock the thread so it can exit
+        self.paused = False
+        if not self.pause_event.is_set():
+            self.pause_event.set()
+            
         if continue_queue or not has_pending:
             self.queue_paused = False
-            # self.paused = False
-            if not self.pause_event.is_set():
-                self.pause_event.set()
+
             if self.socketio:
                 self.socketio.emit('pause_status', {'paused': False})
         else:
