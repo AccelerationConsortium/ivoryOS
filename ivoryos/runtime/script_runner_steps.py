@@ -19,6 +19,11 @@ class ScriptRunnerStepMixin:
         for step in steps:
             if self.stop_current_event.is_set():
                 break
+            if step.get("disabled", False):
+                if self.logger:
+                    self.logger.info(f"Skipping disabled step: {step.get('action')}")
+                continue
+            
             action = step["action"]
             instrument = step["instrument"]
             action_id = step["id"]

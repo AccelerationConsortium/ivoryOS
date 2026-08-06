@@ -160,6 +160,42 @@ def duplicate_action(uuid: int):
                          script=script,
                          buttons_dict=design_buttons, warning=warning)
 
+@steps.post("/draft/steps/<int:uuid>/toggle_comment")
+def toggle_comment_action(uuid: int):
+    """
+    .. :quickref: Workflow Design; Toggle comment step
+    
+    **Toggle Comment Step**
+    
+    .. http:post:: /draft/steps/<int:uuid>/toggle_comment
+    
+    :param uuid: The step number uuid
+    :type uuid: int
+    
+    :status 200: render new design script template
+    """
+    script = get_script_file()
+    
+    # We find the ID of the step that corresponds to this UUID.
+    action = script.find_by_uuid(uuid)
+    if action is not None:
+        action_id = action['id']
+        ScriptEditor(script).toggle_comment_action(action_id)
+        post_script_file(script)
+        
+    warning = None
+    try:
+        exec_string = ScriptRenderer(script).compile(current_app.config['SCRIPT_FOLDER'])
+    except Exception as e:
+        exec_string = {}
+        warning = f"Compilation failed: {str(e)}"
+    
+    design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
+
+    return render_template("components/canvas_main.html",
+                         script=script,
+                         buttons_dict=design_buttons, warning=warning)
+
 
 @steps.route("/draft/steps/order", methods=['POST'])
 @login_required

@@ -162,6 +162,9 @@ class ScriptRenderer:
                             children_steps = wf_script.script_dict.get('script', [])
 
                     children_nodes = parse_block(children_steps, current_id, indent + 1)
+                    if action.get("disabled", False):
+                        line_code = "    " * indent + f"# {line_code.lstrip()}"
+                    
                     nodes.append({
                         "type": "workflow",
                         "code": line_code,
@@ -251,6 +254,9 @@ class ScriptRenderer:
                             else:
                                 line_code += f"{instrument}.{act}({args})"
                     
+                    if action.get("disabled", False):
+                        line_code = "    " * indent + f"# {line_code.lstrip()}"
+                        
                     nodes.append({
                         "type": "line",
                         "code": line_code,
@@ -366,6 +372,24 @@ class ScriptRenderer:
         return body
 
     def _process_action(self, indent_unit, action, index, stype, batch=False, mode="sample", interface_schema=None, action_list=None):
+        output_code, next_indent = self._do_process_action(indent_unit, action, index, stype, batch, mode, interface_schema, action_list)
+        if action.get('disabled', False):
+            disabled_code = ""
+            for line in output_code.split("\n"):
+                if line.strip():
+                    stripped_len = len(line) - len(line.lstrip())
+                    indent_str = line[:stripped_len]
+                    disabled_code += f"\n{indent_str}# {line.lstrip()}"
+                else:
+                    disabled_code += "\n"
+            indent_spaces = self.indent(indent_unit).lstrip('\n')
+            disabled_code += f"\n{indent_spaces}pass # Disabled action"
+            output_code = disabled_code.lstrip("\n")
+            if not output_code.startswith("\n"):
+                output_code = "\n" + output_code
+        return output_code, next_indent
+
+    def _do_process_action(self, indent_unit, action, index, stype, batch=False, mode="sample", interface_schema=None, action_list=None):
         configure, config_type = self.editor.config(stype)
 
         instrument = action['instrument']

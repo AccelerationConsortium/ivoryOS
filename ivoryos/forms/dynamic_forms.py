@@ -1059,4 +1059,4 @@ def _action_button(action: dict, variables: dict):
             else:
                 arg_string = f"= {action['args']}"
         text = f"{prefix}{action_text}  {arg_string}"
-    return dict(label=text, style=style, uuid=action["uuid"], id=action["id"], instrument=action['instrument'])
+    return dict(label=text, style=style, uuid=action["uuid"], id=action["id"], instrument=action['instrument'], disabled=action.get('disabled', False))

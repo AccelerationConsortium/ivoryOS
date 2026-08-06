@@ -344,6 +344,14 @@ class ScriptEditor:
         self.sort_actions()
         self.script.update_time_stamp()
 
+    def toggle_comment_action(self, action_id: int):
+        uid = next((action['uuid'] for action in self.currently_editing_script if action['id'] == int(action_id)), None)
+        if uid is not None:
+            for action in self.currently_editing_script:
+                if action['uuid'] == uid:
+                    action['disabled'] = not action.get('disabled', False)
+            self.script.update_time_stamp()
+
     def duplicate_action(self, action_id: int):
         action_to_duplicate = next((action for action in self.currently_editing_script if action['id'] == int(action_id)),
                                    None)

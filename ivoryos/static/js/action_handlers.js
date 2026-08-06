@@ -367,6 +367,27 @@ function deleteAction(uuid) {
         .catch(error => console.error('Error:', error));
 }
 
+function toggleCommentAction(uuid) {
+    if (!uuid) {
+        console.error('Invalid UUID');
+        return;
+    }
+
+    fetch(scriptStepToggleCommentUrl.replace('0', uuid), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+        .then(response => response.text())
+        .then(html => {
+            updateActionCanvas(html);
+            showWarningIfExists(html);
+            updateCode(); // Update the python code overlay
+        })
+        .catch(error => console.error('Error:', error));
+}
+
 // ============================================================================
 // MODAL MANAGEMENT
 // ============================================================================
