@@ -295,11 +295,11 @@ class ScriptRunnerWorkflowMixin:
                 db.session.commit()
 
                 # save results
-                if not script.python_script and any(output_list):
-                    if i == 0:
-                        self._save_results(filename, arg_type, return_list, output_list, output_path)
-                    else:
-                        self._save_results_last_row(filename, arg_type, return_list, output_list, output_path)
+            # if not script.python_script and any(output_list):
+            #     if i == 0:
+            #         self._save_results(filename, arg_type, return_list, output_list, output_path)
+            #     else:
+            #         self._save_results_last_row(filename, arg_type, return_list, output_list, output_path)
 
         return output_list
 
@@ -401,11 +401,11 @@ class ScriptRunnerWorkflowMixin:
             db.session.commit()
 
             # save results
-            if not script.python_script and any(output_list):
-                if i_progress == 0:
-                    self._save_results(filename, arg_types, return_list, output_list, output_path)
-                else:
-                    self._save_results_last_row(filename, arg_types, return_list, output_list, output_path)
+            # if not script.python_script and any(output_list):
+            #     if i_progress == 0:
+            #         self._save_results(filename, arg_types, return_list, output_list, output_path)
+            #     else:
+            #         self._save_results_last_row(filename, arg_types, return_list, output_list, output_path)
 
             if optimizer and self._check_early_stop(output, objectives):
                 if self.logger:
@@ -415,34 +415,34 @@ class ScriptRunnerWorkflowMixin:
 
         return output_list
 
-    def _save_results(self, filename, arg_type, return_list, output_list, output_path):
-        """Save the results to the filename"""
-        file_path = os.path.join(output_path, filename)
-        df = pd.DataFrame(output_list)
-        # output_columns = list(arg_type.keys()) + list(return_list)
-        # df = df.reindex(columns=output_columns)
+    # def _save_results(self, filename, arg_type, return_list, output_list, output_path):
+    #     """Save the results to the filename"""
+    #     file_path = os.path.join(output_path, filename)
+    #     df = pd.DataFrame(output_list)
+    #     # output_columns = list(arg_type.keys()) + list(return_list)
+    #     # df = df.reindex(columns=output_columns)
+    #
+    #     # print(f'save df {df} to {file_path}')
+    #     df.to_csv(file_path, index=False)
+    #
+    #     if self.logger:
+    #         self.logger.info(f'Results saved to {file_path}')
 
-        # print(f'save df {df} to {file_path}')
-        df.to_csv(file_path, index=False)
-
-        if self.logger:
-            self.logger.info(f'Results saved to {file_path}')
-
-    def _save_results_last_row(self, filename, arg_type, return_list, output_list, output_path):
-        """
-        Save the last row to the filename. If the file does not exist, create it with header.
-        """
-        file_path = os.path.join(output_path, filename)
-        df = pd.DataFrame([output_list[-1]])
-
-        df.to_csv(file_path,
-                  mode="a",
-                  header=not os.path.exists(file_path),
-                  index=False,
-                  )
-
-        if self.logger:
-            self.logger.info(f'Append to results saved to {file_path}')
+    # def _save_results_last_row(self, filename, arg_type, return_list, output_list, output_path):
+    #     """
+    #     Save the last row to the filename. If the file does not exist, create it with header.
+    #     """
+    #     file_path = os.path.join(output_path, filename)
+    #     df = pd.DataFrame([output_list[-1]])
+    #
+    #     df.to_csv(file_path,
+    #               mode="a",
+    #               header=not os.path.exists(file_path),
+    #               index=False,
+    #               )
+    #
+    #     if self.logger:
+    #         self.logger.info(f'Append to results saved to {file_path}')
 
     def _emit_progress(self, progress, **kwargs):
         self.last_progress = progress

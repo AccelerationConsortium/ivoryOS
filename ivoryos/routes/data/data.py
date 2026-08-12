@@ -174,27 +174,39 @@ def download_workflow_steps_data_csv(workflow_id: int):
                      ])
 
     for phase in phases:
-        for step in phase.steps:
-            step_parameters = step.workflow_phases.parameters[0] if step.workflow_phases.parameters else {}
-            step_output = step.output  # at time of writing the output contains full context of action, so both input parameters, variables, and returns
-            if set(step_output) - set(step_parameters) == set():
-                # there is no difference between the step parameters and the step output -> no set variables/return values in the step
-                step_output = {}
-            else:
-                output_keys = set(step_output) - set(step_parameters)
-                step_output = {k: v for k, v in step_output.items() if k in output_keys}
+        from collections import defaultdict
+        steps_sorted = sorted(phase.steps, key=lambda s: s.id)
+        steps_by_index = defaultdict(list)
+        for step in steps_sorted:
+            steps_by_index[step.step_index].append(step)
 
-            writer.writerow([
-                phase.name,
-                phase.repeat_index,
-                step.step_index,
-                step.start_time,
-                step.end_time,
-                step.run_error,
-                step.method_name,
-                step_output,
-                step_parameters,
-            ])
+        for step_idx, steps in steps_by_index.items():
+            for batch_index, step in enumerate(steps):
+                params = step.workflow_phases.parameters
+                if isinstance(params, list):
+                    step_parameters = params[batch_index] if batch_index < len(params) else (params[0] if params else {})
+                else:
+                    step_parameters = params if params else {}
+
+                step_output = step.output  # at time of writing the output contains full context of action, so both input parameters, variables, and returns
+                if set(step_output) - set(step_parameters) == set():
+                    # there is no difference between the step parameters and the step output -> no set variables/return values in the step
+                    step_output = {}
+                else:
+                    output_keys = set(step_output) - set(step_parameters)
+                    step_output = {k: v for k, v in step_output.items() if k in output_keys}
+
+                writer.writerow([
+                    phase.name,
+                    phase.repeat_index,
+                    step.step_index,
+                    step.start_time,
+                    step.end_time,
+                    step.run_error,
+                    step.method_name,
+                    step_output,
+                    step_parameters,
+                ])
 
     output.seek(0)
     return Response(
