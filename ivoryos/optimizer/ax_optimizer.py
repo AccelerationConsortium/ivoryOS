@@ -115,7 +115,11 @@ class AxOptimizer(OptimizerBase):
             if not num_trials == 0:
                 steps.append(GenerationStep(generator=generators.get(generator), num_trials=num_trials, should_deduplicate=True))
 
-        return GenerationStrategy(steps=steps)
+        import inspect
+        if "nodes" in inspect.signature(GenerationStrategy.__init__).parameters:
+            return GenerationStrategy(nodes=steps)
+        else:
+            return GenerationStrategy(steps=steps)
 
     def suggest(self, n=1):
         trials = self.client.get_next_trials(n)
