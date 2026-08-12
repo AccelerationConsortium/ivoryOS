@@ -17,9 +17,15 @@
     {% for button in buttons %}
         <li id="{{ button['id'] }}" style="list-style-type: none;" class="d-flex align-items-center mb-1">
             <span class="line-number d-none">{{ button['id'] }}.</span>
-{#            <input type="checkbox" class="form-check-input me-2 action-checkbox" value="{{ button['id'] }}" style="margin-right: 10px;">#}
-            <a href="#" onclick="editAction('{{ button['uuid'] }}'); return false;" type="button" class="btn btn-light flex-grow-1 text-start text-wrap text-break" style="{{ button['style'] }}">{{ button['label'] }}</a>
+            <a href="#" onclick="editAction('{{ button['uuid'] }}'); return false;" type="button" class="btn btn-light flex-grow-1 text-start text-wrap text-break {% if button.get('disabled', False) %}text-muted text-decoration-line-through{% endif %}" style="{{ button['style'] }} {% if button.get('disabled', False) %}background-color: #e9ecef;{% endif %}">{{ button['label'] }}</a>
             {% if not button["instrument"] in ["if","while","repeat"] %}
+                <button onclick="toggleCommentAction('{{ button['uuid'] }}')" type="button" class="btn btn-light" title="Toggle Execution">
+                    {% if button.get('disabled', False) %}
+                        <span class="bi bi-eye-slash text-muted"></span>
+                    {% else %}
+                        <span class="bi bi-eye"></span>
+                    {% endif %}
+                </button>
                 <button onclick="duplicateAction('{{ button['id'] }}')" type="button" class="btn btn-light"><span class="bi bi-copy"></span></button>
 
             {% endif %}

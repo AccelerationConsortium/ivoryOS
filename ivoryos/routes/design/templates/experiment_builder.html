@@ -32,6 +32,7 @@
         const scriptMetaUrl = "{{ url_for('design.update_script_meta') }}";
         const scriptStepUrl = `{{ url_for('design.design_steps.get_step', uuid=0) }}`;
         const scriptStepDupUrl = `{{ url_for('design.design_steps.duplicate_action', uuid=0) }}`;
+        const scriptStepToggleCommentUrl = `{{ url_for('design.design_steps.toggle_comment_action', uuid=0) }}`;
         const scriptDeleteUrl = "{{ url_for('design.clear_draft') }}";
         const scriptCompileUrl = "{{ url_for('design.compile_preview') }}";
         const variablesUrl = "{{ url_for('design.get_available_variables') }}";
