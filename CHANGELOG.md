@@ -1,5 +1,6 @@
 # Changelog
 ## 1.6.9 (August 12th, 2026)
+- !186 **[New]** Add .agent documentation
 - !185 **[Bug]** resolve incompatible with ax-platform 1.3.1
 - !184 **[Bug]** fix skip "none" values when parsing objectives
 - !183 **[Bug]** resolve batch execution logging error
