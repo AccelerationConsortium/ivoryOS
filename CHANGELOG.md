@@ -1,4 +1,10 @@
 # Changelog
+## 1.6.9 (August 12th, 2026)
+- !185 **[Bug]** resolve incompatible with ax-platform 1.3.1
+- !184 **[Bug]** fix skip "none" values when parsing objectives
+- !183 **[Bug]** resolve batch execution logging error
+- !182 **[QoL]** add being able to skip steps during execution
+
 ## 1.6.8 (July 30th, 2026)
 - !181 **[QoL]** resolve error status modal doesn't pop up from other tabs
 - !180 **[Bug]** resolve error cannot download csv before first iteration done
