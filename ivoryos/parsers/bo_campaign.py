@@ -74,7 +74,7 @@ def parse_optimization_form(form_data: Dict[str, str]):
 
     # Parse objectives
     for field_name, value in form_data.items():
-        if field_name.endswith('_obj_min') and value:
+        if field_name.endswith('_obj_min') and value and value.lower() != "none":
             # Extract objective name
             obj_name = field_name.replace('_obj_min', '')
             if obj_name in processed_objectives:
