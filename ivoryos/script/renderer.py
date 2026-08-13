@@ -284,6 +284,7 @@ class ScriptRenderer:
             if self.script.script_dict[i]:
                 is_async = any(a.get("coroutine", False) for a in self.script.script_dict[i])
                 func_str = self._generate_function_header(run_name, i, is_async, batch) + self._generate_function_body(i, batch, mode, interface_schema)
+                func_str = self._fix_empty_blocks(func_str)
                 exec_str_collection[i] = func_str
         if script_path:
             self._write_to_file(script_path, run_name, exec_str_collection)
@@ -348,6 +349,36 @@ class ScriptRenderer:
             function_header += self.indent(1) + f'"""Batch mode is experimental and may have bugs."""'
         return function_header
 
+    def _fix_empty_blocks(self, code_str: str) -> str:
+        lines = code_str.split('\n')
+        fixed_lines = []
+        needs_pass = False
+        pass_indent = ""
+        
+        for line in lines:
+            stripped = line.strip()
+            
+            if needs_pass:
+                if stripped and not stripped.startswith('#'):
+                    current_indent = len(line) - len(line.lstrip())
+                    if current_indent <= len(pass_indent):
+                        fixed_lines.append(pass_indent + "    pass")
+                    needs_pass = False
+            
+            fixed_lines.append(line)
+            
+            if stripped and not stripped.startswith('#'):
+                if stripped.endswith(':'):
+                    needs_pass = True
+                    pass_indent = line[:len(line) - len(line.lstrip())]
+                else:
+                    needs_pass = False
+                    
+        if needs_pass:
+            fixed_lines.append(pass_indent + "    pass")
+            
+        return "\n".join(fixed_lines)
+
     def _generate_function_body(self, stype, batch=False, mode="sample", interface_schema=None):
         body = ''
         indent_unit = 1
@@ -382,8 +413,6 @@ class ScriptRenderer:
                     disabled_code += f"\n{indent_str}# {line.lstrip()}"
                 else:
                     disabled_code += "\n"
-            indent_spaces = self.indent(indent_unit).lstrip('\n')
-            disabled_code += f"\n{indent_spaces}pass # Disabled action"
             output_code = disabled_code.lstrip("\n")
             if not output_code.startswith("\n"):
                 output_code = "\n" + output_code
