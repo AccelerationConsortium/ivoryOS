@@ -1,4 +1,8 @@
 # Changelog
+## 1.6.10 (August 13th, 2026)
+- !189 **[Bug]** resolve ax optimizer error
+- !188 **[Bug]** resolve "pass" in code renderer for skipped steps
+
 ## 1.6.9 (August 12th, 2026)
 - !186 **[New]** Add .agent documentation
 - !185 **[Bug]** resolve incompatible with ax-platform 1.3.1
