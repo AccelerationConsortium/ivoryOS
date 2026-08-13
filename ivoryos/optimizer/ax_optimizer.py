@@ -116,7 +116,7 @@ class AxOptimizer(OptimizerBase):
                 steps.append(GenerationStep(generator=generators.get(generator), num_trials=num_trials, should_deduplicate=True))
 
         import inspect
-        if "nodes" in inspect.signature(GenerationStrategy.__init__).parameters:
+        if "steps" not in inspect.signature(GenerationStrategy.__init__).parameters:
             return GenerationStrategy(nodes=steps)
         else:
             return GenerationStrategy(steps=steps)
