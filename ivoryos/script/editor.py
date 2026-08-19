@@ -181,7 +181,7 @@ class ScriptEditor:
             self.sort_actions()
 
     def get_added_variables(self, before_id: int = None):
-        script_list = self.currently_editing_script
+        script_list = self.script.script_dict.get("script", [])
         if before_id is not None:
             script_list = [a for a in script_list if a['id'] < before_id]
         return self._collect_added_variables(script_list)
@@ -198,7 +198,7 @@ class ScriptEditor:
         return vars_dict
 
     def get_output_variables(self, before_id: int = None):
-        script_list = self.currently_editing_script
+        script_list = self.script.script_dict.get("script", [])
         if before_id is not None:
             script_list = [a for a in script_list if a['id'] < before_id]
         return self._collect_output_variables(script_list)
