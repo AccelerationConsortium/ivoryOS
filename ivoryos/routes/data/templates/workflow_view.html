@@ -93,6 +93,14 @@
         <div id="phase-plot" style="height:450px;" class="border rounded bg-white shadow-sm"></div>
     </div>
 
+    <!-- Optimizer Plots Section -->
+    <div class="mb-5 d-none" id="optimizer-plots-section">
+        <h4 class="text-primary mb-3">
+            <i class="fas fa-chart-area me-2"></i>Optimizer Plots
+        </h4>
+        <div id="optimizerPlotsContainer" class="w-100 d-flex flex-column gap-3"></div>
+    </div>
+
     <!-- Workflow Details Section -->
 
     <div>
@@ -396,6 +404,47 @@
                 });
             return false;
         };
+
+        // ---------------- Optimizer Plots ----------------
+        fetch("{{ url_for('data.get_optimizer_plots', workflow_id=workflow.id) }}")
+            .then(res => res.ok ? res.json() : Promise.reject(res))
+            .then(data => {
+                const section = document.getElementById('optimizer-plots-section');
+                const container = document.getElementById('optimizerPlotsContainer');
+                section.classList.remove('d-none');
+                
+                if (data.type === 'image') {
+                    // Nimo PNG image
+                    container.innerHTML = `<img src="data:image/png;base64,${data.data}" class="img-fluid rounded shadow-sm d-block mx-auto" style="max-width:100%;">`;
+                } else if (data.type === 'html') {
+                    // Ax HTML snippets
+                    for (const [plotName, htmlSnippet] of Object.entries(data.plots)) {
+                        const plotWrapper = document.createElement('div');
+                        plotWrapper.className = "card mb-3";
+                        
+                        const cardHeader = document.createElement('div');
+                        cardHeader.className = "card-header fw-bold";
+                        cardHeader.innerText = plotName;
+                        
+                        const cardBody = document.createElement('div');
+                        cardBody.className = "card-body overflow-auto d-flex justify-content-center";
+                        cardBody.innerHTML = htmlSnippet;
+                        
+                        plotWrapper.appendChild(cardHeader);
+                        plotWrapper.appendChild(cardBody);
+                        container.appendChild(plotWrapper);
+                        
+                        Array.from(cardBody.querySelectorAll("script")).forEach(oldScript => {
+                            const newScript = document.createElement("script");
+                            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                            oldScript.parentNode.replaceChild(newScript, oldScript);
+                        });
+                    }
+                }
+            })
+            .catch(err => console.log("No optimizer plots for this run"));
+
     });
 </script>
 
