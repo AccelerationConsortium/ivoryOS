@@ -145,7 +145,80 @@ class AxOptimizer(OptimizerBase):
                 )
 
     def get_plots(self, plot_type):
-        return None
+        from ax.plot.contour import interact_contour_plotly
+        from ax.plot.slice import interact_slice_plotly
+        from ax.plot.trace import optimization_trace_single_method_plotly
+        from ax.plot.render import plot_config_to_html
+        import numpy as np
+        
+        plots = {}
+        if hasattr(self, 'generators'):
+            try:
+                from ax.plot.feature_importances import plot_feature_importance_by_feature_plotly
+                
+                # We need the model adapter from the current generation step to extract feature importance
+                gs = self.client._generation_strategy
+                adapter = gs.adapter if hasattr(gs, 'adapter') else gs.model
+                
+                if adapter is not None:
+                    fig = plot_feature_importance_by_feature_plotly(model=adapter, relative=True)
+                    plots['Feature Importance'] = fig.to_html(full_html=False, include_plotlyjs=False)
+            except Exception as e:
+                print(f"Feature Importance Error: {e}")
+                pass
+
+            try:
+                adapter = None
+                if hasattr(self.client, "_generation_strategy"):
+                    gs = self.client._generation_strategy
+                    if hasattr(gs, "adapter"):
+                        adapter = gs.adapter
+                    elif hasattr(gs, "model"):
+                        adapter = gs.model
+
+                metric_name = self.objective_config[0]["name"] if self.objective_config else None
+                if metric_name:
+                    fig = interact_contour_plotly(model=adapter, metric_name=metric_name)
+                    plots['Contour'] = fig.to_html(full_html=False, include_plotlyjs=False)
+            except Exception as e:
+                print(f"Contour Error: {e}")
+                pass
+
+            try:
+                fig = interact_slice_plotly(model=adapter)
+                plots['Slice'] = fig.to_html(full_html=False, include_plotlyjs=False)
+            except Exception as e:
+                print(f"Slice Error: {e}")
+                pass
+
+        if len(self.objective_config) > 1:
+            try:
+                from ax.plot.pareto_utils import compute_posterior_pareto_frontier
+                from ax.plot.pareto_frontier import plot_pareto_frontier
+                
+                experiment = self.client._experiment
+                metric_names = [o['name'] for o in self.objective_config]
+                
+                # Check if experiment has enough data and metrics
+                if len(metric_names) >= 2 and all(m in experiment.metrics for m in metric_names[:2]):
+                    m1 = experiment.metrics[metric_names[0]]
+                    m2 = experiment.metrics[metric_names[1]]
+                    
+                    frontier = compute_posterior_pareto_frontier(
+                        experiment=experiment,
+                        data=experiment.fetch_data(),
+                        primary_objective=m1,
+                        secondary_objective=m2,
+                        absolute_metrics=metric_names,
+                        num_points=30,
+                    )
+                    fig = plot_pareto_frontier(frontier, CI_level=0.90)
+                    plots['Pareto Frontier'] = plot_config_to_html(fig)
+            except Exception as e:
+                print(f"Pareto Error: {e}")
+                pass
+
+        return plots if plots else None
 
     @staticmethod
     def get_schema():
