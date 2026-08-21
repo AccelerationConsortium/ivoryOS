@@ -173,14 +173,6 @@
                 
                 container.innerHTML = ''; // clear loading
                 
-                // Add Plotly dynamically if missing, so graphs render correctly
-                if (typeof Plotly === 'undefined' && !document.getElementById('plotly-script')) {
-                    const script = document.createElement('script');
-                    script.id = 'plotly-script';
-                    script.src = 'https://cdn.plot.ly/plotly-2.24.1.min.js';
-                    document.head.appendChild(script);
-                }
-
                 for (const [plotName, htmlSnippet] of Object.entries(plots)) {
                     const plotWrapper = document.createElement('div');
                     plotWrapper.className = "card mb-3";

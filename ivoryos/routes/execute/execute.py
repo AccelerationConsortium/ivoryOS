@@ -364,10 +364,10 @@ def run_bo():
                           optimizer_cls=Optimizer, additional_params=additional_params,
                           on_start=on_start_callback, display_name=display_name
                           )
-        if result == "queued":
-            flash(f"System busy. Optimization {run_name} added to queue.")
-        else:
-            flash(f"Optimization {run_name} started.")
+        # if result == "queued":
+        #     flash(f"System busy. Optimization {run_name} added to queue.")
+        # else:
+        #     flash(f"Optimization {run_name} started.")
 
     except Exception as e:
         if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
