@@ -364,10 +364,10 @@ def run_bo():
                           optimizer_cls=Optimizer, additional_params=additional_params,
                           on_start=on_start_callback, display_name=display_name
                           )
-        if result == "queued":
-            flash(f"System busy. Optimization {run_name} added to queue.")
-        else:
-            flash(f"Optimization {run_name} started.")
+        # if result == "queued":
+        #     flash(f"System busy. Optimization {run_name} added to queue.")
+        # else:
+        #     flash(f"Optimization {run_name} started.")
 
     except Exception as e:
         if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
@@ -376,31 +376,33 @@ def run_bo():
             flash(e.__str__())
     return redirect(url_for("execute.experiment_run"))
 
-@execute.route("/executions/latest_plot")
+
+@execute.route("/executions/latest_plot", methods=["GET"])
 @login_required
 def get_optimizer_plot():
     """
-    .. :quickref: Workflow Execution; Get latest optimization plot
+    .. :quickref: Workflow Execution; Get latest optimization plots
 
-    **Optimizer Plot**
+    **Optimizer Plots**
 
     .. http:get:: /executions/latest_plot
 
-    Retrieve the most recently generated visualization plot from the active Bayesian Optimization campaign.
+    Retrieve the most recently generated visualization plots from the active Bayesian Optimization campaign.
 
-    :status 200: Returns the plot image (PNG).
+    :status 200: Returns a JSON dictionary of plot HTML snippets or an image file.
     :status 404: No plots found.
     """
 
     optimizer = current_app.config.get("LAST_OPTIMIZER")
     if optimizer is not None:
-        # the placeholder is for showing different plots
-        latest_file = optimizer.get_plots('placeholder')
-        # print(latest_file)
-        if files:
-            return send_file(latest_file, mimetype="image/png")
-    # print("No plots found")
+        plots = optimizer.get_plots('all')
+        if plots:
+            if isinstance(plots, dict):
+                return jsonify(plots)
+            else:
+                return send_file(plots, mimetype="image/png")
     return jsonify({"error": "No plots found"}), 404
+
 
 
 @execute.route("/executions/queue", methods=["GET"])

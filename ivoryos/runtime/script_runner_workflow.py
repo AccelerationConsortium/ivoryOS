@@ -411,7 +411,20 @@ class ScriptRunnerWorkflowMixin:
                 if self.logger:
                     self.logger.info('Early stopping')
                 break
-                
+
+        if optimizer:
+            try:
+                plots = optimizer.get_plots('all')
+                if plots:
+                    plots_file_path = os.path.join(output_path, f"{filename.replace('.csv', '')}_plots.json")
+                    import json
+                    with open(plots_file_path, 'w') as f:
+                        json.dump(plots, f)
+                    if self.logger:
+                        self.logger.info(f'Optimizer plots saved to {plots_file_path}')
+            except Exception as e:
+                if self.logger:
+                    self.logger.warning(f'Could not save optimizer plots: {e}')
 
         return output_list
 

@@ -58,11 +58,9 @@
     <div class="tab-pane fade flex-grow-1 h-100" id="plot" role="tabpanel" style="overflow-y: auto;">
       <div class="d-flex flex-column h-100 justify-content-start">
         <button class="btn btn-success mb-2" onclick="showPlot()">Refresh Plot</button>
-        <small class="text-muted d-block mt-1" id="plot-info">This function is only available for NIMO
-          optimizers.</small>
+        <small class="text-muted d-block mt-1" id="plot-info">Interactive plots from your active optimizer.</small>
         <br>
-        <img id="optimizerPlot" src="" class="img-fluid rounded shadow-sm d-block mx-auto"
-          style="max-width:100%; display:none;">
+        <div id="optimizerPlotsContainer" class="w-100 d-flex flex-column gap-3"></div>
       </div>
     </div>
   </div>
@@ -152,10 +150,64 @@
   </div>
 </div>
 <script>
-    function showPlot() {
-        const img = document.getElementById('optimizerPlot');
-        img.src = "{{ url_for('execute.get_optimizer_plot') }}";
-        img.style.display = 'block';
+    async function showPlot() {
+        const container = document.getElementById('optimizerPlotsContainer');
+        container.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
+        
+        try {
+            const response = await fetch("{{ url_for('execute.get_optimizer_plot') }}");
+            if (!response.ok) {
+                container.innerHTML = '<p class="text-danger">No plots found or an error occurred.</p>';
+                return;
+            }
+            
+            // Check content type to see if it's JSON
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                const plots = await response.json();
+                
+                if (plots.error) {
+                    container.innerHTML = `<p class="text-danger">${plots.error}</p>`;
+                    return;
+                }
+                
+                container.innerHTML = ''; // clear loading
+                
+                for (const [plotName, htmlSnippet] of Object.entries(plots)) {
+                    const plotWrapper = document.createElement('div');
+                    plotWrapper.className = "card mb-3";
+                    
+                    const cardHeader = document.createElement('div');
+                    cardHeader.className = "card-header fw-bold";
+                    cardHeader.innerText = plotName;
+                    
+                    const cardBody = document.createElement('div');
+                    cardBody.className = "card-body overflow-auto d-flex justify-content-center";
+                    
+                    // We can just set innerHTML because plot_config_to_html has the script logic
+                    cardBody.innerHTML = htmlSnippet;
+                    
+                    plotWrapper.appendChild(cardHeader);
+                    plotWrapper.appendChild(cardBody);
+                    container.appendChild(plotWrapper);
+                    
+                    // Force script execution
+                    Array.from(cardBody.querySelectorAll("script")).forEach(oldScript => {
+                        const newScript = document.createElement("script");
+                        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
+                    });
+                }
+            } else {
+                // Fallback for returning an image (e.g. from NIMO optimizer)
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                container.innerHTML = `<img src="${url}" class="img-fluid rounded shadow-sm d-block mx-auto" style="max-width:100%;">`;
+            }
+        } catch (error) {
+            container.innerHTML = `<p class="text-danger">Error fetching plot: ${error.message}</p>`;
+        }
     }
 
   let currentDetailsMsg = null;

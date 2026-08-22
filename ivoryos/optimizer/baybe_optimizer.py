@@ -152,7 +152,60 @@ class BaybeOptimizer(OptimizerBase):
         )
 
     def get_plots(self, plot_type):
-        return None
+        try:
+            import plotly.express as px
+            import pandas as pd
+            
+            plots = {}
+            if not hasattr(self.experiment, 'measurements') or self.experiment.measurements.empty:
+                return {"error": "No measurements collected yet. Please wait for the first iteration to finish and try again."}
+                
+            df = self.experiment.measurements
+            
+            # --- Raw Data Plots ---
+            # 1. Parallel Coordinates
+            param_names = [p["name"] for p in self.parameter_space]
+            available_params = [p for p in param_names if p in df.columns]
+            
+            if available_params and self.objective_config:
+                obj_name = self.objective_config[0]["name"]
+                if obj_name in df.columns:
+                    plot_df = df.copy()
+                    categorical_maps = {}
+                    for col in available_params:
+                        if plot_df[col].dtype == 'object' or plot_df[col].dtype.name == 'category':
+                            plot_df[col] = pd.Categorical(plot_df[col])
+                            plot_df[col] = plot_df[col].cat.codes
+                    
+                    fig_par = px.parallel_coordinates(
+                        plot_df, 
+                        dimensions=available_params + [obj_name],
+                        color=obj_name,
+                        title='Parallel Coordinates'
+                    )
+                    fig_par.update_layout(margin=dict(l=60, r=60, t=60, b=40))
+                    plots['Parallel Coordinates'] = fig_par.to_html(full_html=False, include_plotlyjs=False)
+            
+            # 2. Pareto Frontier (if multiple objectives)
+            if len(self.objective_config) > 1:
+                obj1 = self.objective_config[0]["name"]
+                obj2 = self.objective_config[1]["name"]
+                
+                if obj1 in df.columns and obj2 in df.columns:
+                    fig_pareto = px.scatter(
+                        df, 
+                        x=obj1, 
+                        y=obj2,
+                        title='Objective Trade-offs (Pareto)',
+                        hover_data=available_params
+                    )
+                    plots['Pareto Frontier'] = fig_pareto.to_html(full_html=False, include_plotlyjs=False)
+                    
+            return plots if plots else {"error": "Plots could not be generated. Check if parameters/objectives match the dataset."}
+            
+        except Exception as e:
+            print(f"Failed to generate BayBE plots: {e}")
+            return {"error": f"Failed to generate BayBE plots: {str(e)}"}
 
     @staticmethod
     def get_schema():

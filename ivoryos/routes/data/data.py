@@ -270,6 +270,51 @@ def download_workflow_data_csv(workflow_id: int):
     )
 
 
+@data.get("/executions/records/<int:workflow_id>/optimizer_plots")
+@login_required
+def get_optimizer_plots(workflow_id: int):
+    """
+    Retrieve saved optimizer plots (Ax HTML or Nimo PNG base64) for a workflow.
+    """
+    import json
+    import base64
+    from ivoryos.script.editor import ScriptEditor
+    
+    workflow = db.session.get(WorkflowRun, workflow_id)
+    if not workflow:
+        print(f"DEBUG get_optimizer_plots: Workflow {workflow_id} not found")
+        return jsonify({"error": "Workflow not found"}), 404
+        
+    run_name = ScriptEditor.validate_function_name(workflow.name)
+    base_data_path = workflow.data_path if workflow.data_path else f"{run_name}_{workflow.start_time.strftime('%Y-%m-%d %H-%M')}"
+    base_data_path = base_data_path.replace('.csv', '')
+    
+    output_path = current_app.config["DATA_FOLDER"]
+    plots_json_path = os.path.join(output_path, f"{base_data_path}_plots.json")
+    print(f"DEBUG get_optimizer_plots: Looking for {plots_json_path}")
+    
+    if not os.path.exists(plots_json_path):
+        print(f"DEBUG get_optimizer_plots: File not found {plots_json_path}")
+        return jsonify({"error": "No plots found"}), 404
+        
+    with open(plots_json_path, 'r') as f:
+        try:
+            plots_data = json.load(f)
+        except Exception:
+            return jsonify({"error": "Failed to read plots data"}), 500
+            
+    if isinstance(plots_data, dict):
+        return jsonify({"type": "html", "plots": plots_data})
+    elif isinstance(plots_data, str) and plots_data.endswith(".png"):
+        if not os.path.exists(plots_data):
+             return jsonify({"error": "Image file not found"}), 404
+        with open(plots_data, 'rb') as img_f:
+             encoded = base64.b64encode(img_f.read()).decode('utf-8')
+        return jsonify({"type": "image", "data": encoded})
+    else:
+        return jsonify({"error": "Unknown plot format"}), 500
+
+
 @data.get("/executions/records/<int:workflow_id>/logs")
 @login_required
 def download_workflow_logs(workflow_id: int):
