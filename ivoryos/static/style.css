@@ -293,7 +293,7 @@ hr.vertical {
     color: var(--brand-primary) !important;
     font-weight: 600;
 }
-.navbar-nav .nav-link.active::after {
+.navbar-nav .nav-link.active::before {
     content: '';
     position: absolute;
     bottom: -4px;
@@ -334,7 +334,7 @@ hr.vertical {
     color: var(--brand-primary) !important;
     font-weight: 600;
 }
-.navbar-nav .dropdown-toggle.active::after {
+.navbar-nav .dropdown-toggle.active::before {
     content: '';
     position: absolute;
     bottom: -4px;
