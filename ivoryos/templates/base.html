@@ -103,6 +103,7 @@
                         {% endfor %}
 
                         {% if ns.tab_count > 0 %}
+                            <span class="nav-pipeline-sep mx-2" style="opacity:0.5;">|</span>
                             {% if ns.tab_count <= 2 %}
                                 {% for plugin in plugins %}
                                     {% if plugin.type == 'tab' or plugin.type is undefined %}
@@ -123,9 +124,6 @@
                                     <a class="nav-link dropdown-toggle {{ 'active' if plugin_active.found else '' }}" href="#"
                                         role="button" id="pluginsDropdown">
                                         Plugins
-                                        {% if plugin_active.found %}
-                                            <span class="badge bg-primary rounded-pill ms-1" style="font-size:0.6rem;">●</span>
-                                        {% endif %}
                                     </a>
                                     <ul class="dropdown-menu">
                                         {% for plugin in plugins %}
