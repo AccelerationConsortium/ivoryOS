@@ -1,4 +1,9 @@
 # Changelog
+## 1.6.11 (August 21st, 2026)
+- !192 **[Bug]** resolve plugin page collapse icon display glitch
+- !191 **[New]** display insight from Optimizer
+- !190 **[Bug]** resolve arg config column error when toggle skip step
+
 ## 1.6.10 (August 13th, 2026)
 - !189 **[Bug]** resolve ax optimizer error
 - !188 **[Bug]** resolve "pass" in code renderer for skipped steps
