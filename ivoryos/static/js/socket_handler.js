@@ -234,9 +234,11 @@ document.addEventListener("DOMContentLoaded", function () {
         console.log(progress);
         
         if (data.iteration && data.total) {
-            document.getElementById('iteration-display').innerText = `(Iteration ${data.iteration}/${data.total})`;
+            document.getElementById('iteration-display').innerText = `Iteration: ${data.iteration}/${data.total}`;
         } else {
             document.getElementById('iteration-display').innerText = 'Currently not running any tasks';
+            var batchDisplay = document.getElementById('batch-display');
+            if (batchDisplay) batchDisplay.innerText = '';
         }
 
         // Update the progress bar's width and appearance
@@ -530,6 +532,28 @@ document.addEventListener("DOMContentLoaded", function () {
                     currentCodePanel.innerHTML = data.progress_panel_html;
                 }
                 if (typeof hljs !== 'undefined') hljs.highlightAll();
+            }
+        }
+        
+        var batchDisplay = document.getElementById('batch-display');
+        if (batchDisplay) {
+            if (data.batch_size && data.batch_size > 1) {
+                window.currentBatchSize = data.batch_size;
+                batchDisplay.innerText = ` | Batch: ${data.batch_size}`;
+            } else {
+                window.currentBatchSize = 1;
+                batchDisplay.innerText = '';
+            }
+        }
+    });
+
+    socket.on('batch_progress', function (data) {
+        var batchDisplay = document.getElementById('batch-display');
+        if (batchDisplay && window.currentBatchSize > 1) {
+            if (data.shared) {
+                batchDisplay.innerText = ` | Batch: -/${data.batch_total}`;
+            } else if (data.batch_total && data.batch_total > 1) {
+                batchDisplay.innerText = ` | Batch: ${data.batch_index}/${data.batch_total}`;
             }
         }
     });

@@ -564,6 +564,26 @@
     // Initialize table when page loads
     document.addEventListener("DOMContentLoaded", function () {
         loadConfigData();
+        
+        var savedBatchSize = localStorage.getItem('ivoryos_batch_size');
+        var batchSizeInputs = document.querySelectorAll('input[name="batch_size"]');
+        if (savedBatchSize && batchSizeInputs.length > 0) {
+            batchSizeInputs.forEach(function(input) {
+                input.value = savedBatchSize;
+            });
+        }
+        batchSizeInputs.forEach(function(input) {
+            input.addEventListener('input', function() {
+                localStorage.setItem('ivoryos_batch_size', this.value);
+                // Sync the value across all tabs
+                var val = this.value;
+                batchSizeInputs.forEach(function(otherInput) {
+                    if (otherInput !== input) {
+                        otherInput.value = val;
+                    }
+                });
+            });
+        });
     });
 
     // Add change listener to filename select
