@@ -109,6 +109,12 @@ class ProxyGenerator:
 
         # Add the base _call method
         class_template += self._generate_call_method()
+        
+        # Add the status method (is_busy by default, unless collision)
+        if "is_busy" in functions:
+            class_template += self._generate_status_method(method_name="is_server_busy")
+        else:
+            class_template += self._generate_status_method(method_name="is_busy")
 
         # Add individual methods for each function
         for function_name, details in functions.items():
@@ -148,6 +154,24 @@ class ProxyGenerator:
         if not data.get('success'):
             raise Exception(data.get('output', "Unknown API error."))
         return data.get('output')
+
+'''
+
+    def _generate_status_method(self, method_name: str = "is_busy") -> str:
+        """Generate the is_busy method to check if server is busy."""
+        return f'''    def {method_name}(self) -> bool:
+        """Check if the server is currently busy running a task."""
+        global host
+        global port
+        res = session.get(f'http://{{host}}:{{port}}/ivoryos/executions/status', allow_redirects=False)
+        if res.status_code == 302:
+            try:
+                self._auth()
+                res = session.get(f'http://{{host}}:{{port}}/ivoryos/executions/status', allow_redirects=False)
+            except Exception as e:
+                raise Exception("Authentication failed during re-attempt. Please check your credentials or connection.") from e
+        res.raise_for_status()
+        return res.json().get('busy', False)
 
 '''
 
