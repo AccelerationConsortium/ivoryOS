@@ -101,7 +101,7 @@ class ScriptRunnerWorkflowMixin:
                 return None
 
         with current_app.app_context():
-            run = WorkflowRun(name=script.name or "untitled", platform=script.deck or "deck", start_time=datetime.now(),
+            run = WorkflowRun(name=run_name, platform=script.deck or "deck", start_time=datetime.now(),
                               repeat_mode=repeat_mode
                               )
             db.session.add(run)

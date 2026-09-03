@@ -13,6 +13,10 @@
                     <div class="card-body">
                         <form role="form" method='POST' name="run" action="{{url_for('execute.experiment_run')}}">
                             <div class="mb-3">
+                                <label class="form-label small text-muted">Experiment Name</label>
+                                <input class="form-control" type="text" id="display_name_repeat" name="display_name" placeholder="{{ script.name if script.name else 'untitled' }}">
+                            </div>
+                            <div class="mb-3">
                                 <label class="form-label small text-muted">Batch size</label>
                                 <input class="form-control" type="number" id="batch_size" name="batch_size" min="1"
                                     max="1000" value="1">
