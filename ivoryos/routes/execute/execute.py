@@ -188,7 +188,14 @@ def experiment_run():
         try:
         # if True:
             datapath = current_app.config["DATA_FOLDER"]
-            run_name = ScriptEditor.validate_function_name(run_name)
+            base_name = display_name if (display_name and display_name.strip()) else run_name
+            base_name = ScriptEditor.validate_function_name(base_name)
+            final_name = base_name
+            counter = 1
+            while WorkflowRun.query.filter_by(name=final_name).first() is not None:
+                final_name = f"{base_name}_{counter}"
+                counter += 1
+            run_name = final_name
             
             socketio_instance = g.socketio
             def on_start_callback():
@@ -340,7 +347,15 @@ def run_bo():
     # if True:
     try:
         datapath = current_app.config["DATA_FOLDER"]
-        run_name = ScriptEditor.validate_function_name(run_name)
+        base_name = display_name if (display_name and display_name.strip()) else run_name
+        base_name = ScriptEditor.validate_function_name(base_name)
+        final_name = base_name
+        counter = 1
+        while WorkflowRun.query.filter_by(name=final_name).first() is not None:
+            final_name = f"{base_name}_{counter}"
+            counter += 1
+        run_name = final_name
+        
         Optimizer = global_state.optimizers.get(optimizer_type, None)
         if not Optimizer:
             raise ValueError(f"Optimizer {optimizer_type} is not supported or not found.")

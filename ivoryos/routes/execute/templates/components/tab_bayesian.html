@@ -58,6 +58,10 @@
                             </div>
                             <div class="card-body">
                                 <div class="mb-3">
+                                    <label class="form-label small text-muted">Experiment Name</label>
+                                    <input class="form-control form-control-sm" type="text" id="display_name_bo" name="display_name" placeholder="{{ script.name if script.name else 'untitled' }}">
+                                </div>
+                                <div class="mb-3">
                                     <label class="form-label small text-muted">Batch size (# of suggestions)</label>
                                     <input class="form-control form-control-sm" type="number" id="batch_size"
                                         name="batch_size" min="1" max="100" value="1">
