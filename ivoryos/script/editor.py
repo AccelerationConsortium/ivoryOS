@@ -18,12 +18,12 @@ class ScriptEditor:
         self.script.script_dict[self.script.editing_type] = value
 
     @property
-    def currently_editing_order(self):
-        return self.script.id_order[self.script.editing_type]
+    def currently_editing_script(self):
+        return self.script.script_dict[self.script.editing_type]
 
-    @currently_editing_order.setter
-    def currently_editing_order(self, value):
-        self.script.id_order[self.script.editing_type] = value
+    @currently_editing_script.setter
+    def currently_editing_script(self, value):
+        self.script.script_dict[self.script.editing_type] = value
 
     @staticmethod
     def validate_function_name(name):
@@ -103,17 +103,8 @@ class ScriptEditor:
                         args[arg] = [item.strip() for item in args[arg].split(",") if item.strip()]
 
     def _sort(self, script_type):
-        if len(self.script.id_order[script_type]) > 0:
-            for action in self.script.script_dict[script_type]:
-                for i in range(len(self.script.id_order[script_type])):
-                    if action['id'] == int(self.script.id_order[script_type][i]):
-                        action['id'] = i + 1
-                        break
-            self.script.id_order[script_type].sort(key=int)
-            if not int(self.script.id_order[script_type][-1]) == len(self.script.script_dict[script_type]):
-                new_order = list(range(1, len(self.script.script_dict[script_type]) + 1))
-                self.script.id_order[script_type] = [str(i) for i in new_order]
-            self.script.script_dict[script_type].sort(key=lambda x: int(x['id']))
+        for i, action in enumerate(self.script.script_dict[script_type]):
+            action['id'] = i + 1
 
     def sort_actions(self, script_type=None):
         if script_type:
@@ -127,8 +118,11 @@ class ScriptEditor:
         action_to_add = action.copy()
         action_to_add['id'] = current_len + 1
         action_to_add['uuid'] = uuid.uuid4().fields[-1]
-        self.currently_editing_script.append(action_to_add)
-        self._insert_action(insert_position, current_len)
+        if insert_position is None:
+            self.currently_editing_script.append(action_to_add)
+        else:
+            self.currently_editing_script.insert(int(insert_position) - 1, action_to_add)
+        self.sort_actions()
         self.script.update_time_stamp()
 
     def add_variable(self, statement, variable, variable_type, insert_position=None):
@@ -145,8 +139,11 @@ class ScriptEditor:
         action = {"id": current_len + 1, "instrument": 'variable', "action": variable,
                         "args": {"statement": 'None' if statement == '' else statement}, "return": '', "uuid": uid,
                         "arg_types": {"statement": variable_type}}
-        self.currently_editing_script.append(action)
-        self._insert_action(insert_position, current_len)
+        if insert_position is None:
+            self.currently_editing_script.append(action)
+        else:
+            self.currently_editing_script.insert(int(insert_position) - 1, action)
+        self.sort_actions()
         self.script.update_time_stamp()
 
     def add_math_variable(self, statement, math_variable, variable_type="float", insert_position=None):
@@ -156,8 +153,11 @@ class ScriptEditor:
         action = {"id": current_len + 1, "instrument": 'math_variable', "action": math_variable,
                         "args": {"statement": 'None' if statement == '' else statement}, "return": '', "uuid": uid,
                         "arg_types": {"statement": variable_type}}
-        self.currently_editing_script.append(action)
-        self._insert_action(insert_position, current_len)
+        if insert_position is None:
+            self.currently_editing_script.append(action)
+        else:
+            self.currently_editing_script.insert(int(insert_position) - 1, action)
+        self.sort_actions()
         self.script.update_time_stamp()
 
     def add_input_action(self, statement, variable, variable_type, insert_position=None):
@@ -166,19 +166,13 @@ class ScriptEditor:
         action = {"id": current_len + 1, "instrument": 'input', "action": variable,
                   "args": {"statement": statement}, "return": variable, "uuid": uid,
                   "arg_types": {"statement": variable_type}}
-        self.currently_editing_script.append(action)
-        self._insert_action(insert_position, current_len)
+        if insert_position is None:
+            self.currently_editing_script.append(action)
+        else:
+            self.currently_editing_script.insert(int(insert_position) - 1, action)
+        self.sort_actions()
         self.script.update_time_stamp()
 
-    def _insert_action(self, insert_position, current_len, action_len:int=1):
-        if not len(self.currently_editing_order) == current_len:
-            self.currently_editing_order = list(range(1, current_len + action_len + 1))
-        if insert_position is None:
-            self.currently_editing_order.extend([str(current_len + i + 1) for i in range(action_len)])
-        else:
-            index = int(insert_position) - 1
-            self.currently_editing_order[index:index] = [str(current_len + i + 1) for i in range(action_len)]
-            self.sort_actions()
 
     def get_added_variables(self, before_id: int = None):
         script_list = self.script.script_dict.get("script", [])
@@ -330,17 +324,17 @@ class ScriptEditor:
                 ],
         }
         action_list = logic_dict[logic_type]
-        self.currently_editing_script.extend(action_list)
-        self._insert_action(insert_position, current_len, len(action_list))
+        if insert_position is None:
+            self.currently_editing_script.extend(action_list)
+        else:
+            index = int(insert_position) - 1
+            self.currently_editing_script[index:index] = action_list
+        self.sort_actions()
         self.script.update_time_stamp()
 
     def delete_action(self, action_id: int):
         uid = next((action['uuid'] for action in self.currently_editing_script if action['id'] == int(action_id)), None)
-        id_to_be_removed = [action['id'] for action in self.currently_editing_script if action['uuid'] == uid]
-        order = self.currently_editing_order
-        script_list = self.currently_editing_script
-        self.currently_editing_order = [i for i in order if int(i) not in id_to_be_removed]
-        self.currently_editing_script = [action for action in script_list if action['id'] not in id_to_be_removed]
+        self.currently_editing_script = [action for action in self.currently_editing_script if action['uuid'] != uid]
         self.sort_actions()
         self.script.update_time_stamp()
 
