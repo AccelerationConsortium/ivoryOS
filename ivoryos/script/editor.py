@@ -347,19 +347,11 @@ class ScriptEditor:
             self.script.update_time_stamp()
 
     def duplicate_action(self, action_id: int):
-        action_to_duplicate = next((action for action in self.currently_editing_script if action['id'] == int(action_id)),
-                                   None)
-        if action_to_duplicate is None:
-            raise ValueError("Action not found: Unable to duplicate the action with ID", action_id)
-        insert_id = action_to_duplicate.get("id")
-        self.add_action(action_to_duplicate)
-        if action_to_duplicate is not None:
-            for action in self.currently_editing_script:
-                if action['id'] > insert_id:
-                    action['id'] += 1
-            self.currently_editing_script[-1]['id'] = insert_id + 1
-            self.sort_actions()
-            self.script.update_time_stamp()
+        index_to_duplicate = next((i for i, action in enumerate(self.currently_editing_script) if action['id'] == int(action_id)), None)
+        if index_to_duplicate is None:
+            raise ValueError(f"Action not found: Unable to duplicate the action with ID {action_id}")
+        action_to_duplicate = self.currently_editing_script[index_to_duplicate]
+        self.add_action(action_to_duplicate, insert_position=index_to_duplicate + 2)
 
     def config(self, stype, before_id: int = None):
         configure = []
