@@ -68,6 +68,7 @@ class Script(db.Model):
     def as_dict(self):
         data = dict(self.__dict__)  # shallow copy
         data.pop('_sa_instance_state', None)
+        data.pop('id_order', None)
         return data
 
     @classmethod

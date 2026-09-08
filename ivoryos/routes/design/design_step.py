@@ -210,10 +210,23 @@ def update_list():
     :form order: A comma-separated string representing the new order of steps.
     :status 200: Successfully updated the order of steps.
     """
-    order = request.form['order']
+    order = request.form.get('order', '')
     script = get_script_file()
     editor = ScriptEditor(script)
-    editor.currently_editing_order = order.split(",", len(editor.currently_editing_script))
+    
+    if order:
+        order_ids = [int(i) for i in order.split(",") if i.strip()]
+        action_dict = {action['id']: action for action in editor.currently_editing_script}
+        new_script = []
+        for action_id in order_ids:
+            if action_id in action_dict:
+                new_script.append(action_dict[action_id])
+                del action_dict[action_id]
+        
+        # Append any remaining actions just in case
+        new_script.extend(action_dict.values())
+        editor.currently_editing_script = new_script
+        
     editor.sort_actions()
     warning = None
 

@@ -100,3 +100,29 @@ def test_duplicate_missing_action_raises_value_error():
 
     with pytest.raises(ValueError):
         editor.duplicate_action(404)
+
+def test_sort_actions_renumbers_sequentially():
+    script = Script(author="tester")
+    script.script_dict["script"] = [
+        {"id": 99, "action": "first"},
+        {"id": 5, "action": "second"},
+        {"id": 42, "action": "third"}
+    ]
+    editor = ScriptEditor(script)
+    editor.sort_actions("script")
+    assert [action["id"] for action in script.script_dict["script"]] == [1, 2, 3]
+
+def test_toggle_comment_action():
+    script = Script(author="tester")
+    script.script_dict["script"] = [
+        {"id": 1, "uuid": 12345, "action": "dose", "disabled": False}
+    ]
+    editor = ScriptEditor(script)
+    
+    # Toggle to disabled
+    editor.toggle_comment_action(1)
+    assert script.script_dict["script"][0]["disabled"] is True
+    
+    # Toggle back to enabled
+    editor.toggle_comment_action(1)
+    assert script.script_dict["script"][0]["disabled"] is False
