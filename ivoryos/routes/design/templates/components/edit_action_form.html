@@ -25,7 +25,11 @@
                     {% if field.type not in ['CSRFTokenField'] and field.name != 'return' and field.name != 'batch_action' and
                         field.name != 'consolidate_batch_args' %}
                         <div class="input-group mb-3">
-                            <label class="input-group-text">{{ field.label.text | format_name }}</label>
+                            <label class="input-group-text">{{ field.label.text | format_name }}
+                                {% if field.flags.required %}
+                                    <span class="text-danger ms-1">*</span>
+                                {% endif %}
+                            </label>
                             {% if field.type == "BooleanField" %}
                                 {{ field(class="form-check-input") }}
                             {% elif field.type in ["FlexibleEnumField", "FlexibleLiteralField"] %}

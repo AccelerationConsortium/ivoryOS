@@ -399,11 +399,17 @@ def create_form_for_method(method, autofill, script=None, design=True):
                 else:
                     default_value = param.default
 
+        annotations, optional = parse_annotation(param.annotation)
+
         field_kwargs = {
             "label": param.name,
             "default": default_value,
-            "validators": [InputRequired()] if param.default is param.empty else [Optional()]
+            "validators": [InputRequired()] if not (optional or param.default is None) else [Optional()]
         }
+        
+        if optional or param.default is None:
+            field_kwargs["filters"] = [lambda x: x if x != '' else None]
+
         if _is_enum_type(param.annotation):
             enum_class = _unwrap_enum_type(param.annotation)
             field_class = FlexibleEnumField
@@ -419,7 +425,6 @@ def create_form_for_method(method, autofill, script=None, design=True):
 
         else:
             # print(param.annotation)
-            annotations, optional = parse_annotation(param.annotation)
             if str in annotations:
                 annotation = str
             elif float in annotations:
@@ -447,14 +452,11 @@ def create_form_for_method(method, autofill, script=None, design=True):
                 placeholder_text = default_placeholder
 
             extra_kwargs = {}
-            if optional:
-                field_kwargs["filters"] = [lambda x: x if x != '' else None]
 
             if annotation is bool:
                 # Boolean fields should not use InputRequired
                 field_kwargs["validators"] = []  # or [Optional()]
-            else:
-                field_kwargs["validators"] = [InputRequired()] if not optional else [Optional()]
+
 
         render_kwargs = {"placeholder": placeholder_text}
 
@@ -674,6 +676,7 @@ def create_form_from_action(action: dict, script=None, design=True):
     args = action.get("args", {})
     save_as = action.get("return")
     instrument = action.get("instrument")
+    action_name = action.get("action")
 
     class DynamicForm(FlaskForm):
         pass
@@ -687,6 +690,20 @@ def create_form_from_action(action: dict, script=None, design=True):
 
     # Use explicitly saved order if available, otherwise fallback (e.g. for old actions)
     arg_order = action.get("arg_order", arg_types.keys())
+    
+    sig = None
+    if instrument:
+        try:
+            if instrument in global_state.interface_schema:
+                method_info = global_state.interface_schema[instrument].get(action_name)
+                if method_info and 'signature' in method_info:
+                    sig = method_info['signature']
+            elif instrument in global_state.building_blocks:
+                method_info = global_state.building_blocks[instrument].get(action_name)
+                if method_info and 'signature' in method_info:
+                    sig = method_info['signature']
+        except Exception:
+            pass
 
     for name in arg_order:
         param_type = arg_types[name]
@@ -697,17 +714,32 @@ def create_form_from_action(action: dict, script=None, design=True):
         if value in (None, "", "None"):
             value = None
 
-        field_kwargs = {
-            "label": name,
-            "default": value,
-            # todo get optional/required from interface_schema
-            "validators": [],
-            "filters": [lambda x: x if x != '' else None]
-        }
+        is_optional = False
+        param_default_is_none = False
+        is_bool = (param_type == 'bool')
+        
+        if sig and name in sig.parameters:
+            param = sig.parameters[name]
+            annotations, parsed_optional = parse_annotation(param.annotation)
+            is_optional = parsed_optional
+            param_default_is_none = (param.default is None)
+            if bool in annotations:
+                is_bool = True
+
         if type(param_type) is list:
             none_type = param_type[1]
             if none_type == "NoneType":
                 param_type = param_type[0]
+                is_optional = True
+
+        is_required = not (is_optional or param_default_is_none or is_bool)
+
+        field_kwargs = {
+            "label": name,
+            "default": value,
+            "validators": [InputRequired()] if is_required else [Optional()],
+            "filters": [lambda x: x if x != '' else None] if (is_optional or param_default_is_none) else []
+        }
         param_type = param_type if type(param_type) is str else f"{param_type}"
         extra_kwargs = {}
         if param_type.startswith("Enum:"):
