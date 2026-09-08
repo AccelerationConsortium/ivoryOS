@@ -1,4 +1,11 @@
 # Changelog
+## 1.6.12 (September 8th, 2026)
+- !197 **[QoL]** add experiment name upon starting execution
+- !196 **[QoL]** remove sequence id order in json
+- !195 **[New]** indicate batch in progress
+- !194 **[QoL]** allow blank input when none as a default
+- !193 **[New]** add built-in server/client busy status
+
 ## 1.6.11 (August 21st, 2026)
 - !192 **[Bug]** resolve plugin page collapse icon display glitch
 - !191 **[New]** display insight from Optimizer
