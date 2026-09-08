@@ -205,6 +205,7 @@ def experiment_run():
                 progress_panel_html = render_template('components/progress_panel.html', line_collection=line_collection)
                 socketio_instance.emit('start_task', {
                     'run_name': run_name,
+                    'batch_size': int(batch_size),
                     'progress_panel_html': progress_panel_html
                 })
 
@@ -368,6 +369,7 @@ def run_bo():
             progress_panel_html = render_template('components/progress_panel.html', line_collection=line_collection)
             socketio_instance.emit('start_task', {
                 'run_name': run_name,
+                'batch_size': int(batch_size),
                 'progress_panel_html': progress_panel_html
             })
 

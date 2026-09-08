@@ -76,6 +76,8 @@ class ScriptRunnerStepMixin:
                         # print("context", context)
                         # print("substituted_args", substituted_args)
                     if step.get("batch_action", False):
+                        if len(contexts) > 1 and getattr(self, 'socketio', None):
+                            self.socketio.emit('batch_progress', {'batch_index': 1, 'batch_total': len(contexts), 'shared': True})
                         await self._execute_steps_batched(workflow_steps, [contexts[0]], arg_contexts=[workflow_contexts[0]], phase_id=phase_id, section_name=f"{section_name}-{action_id-1}")
                         if len(contexts) > 1:
                             # Propagate any new values from first context to others
@@ -94,6 +96,9 @@ class ScriptRunnerStepMixin:
                 # Regular action - check if batch
                 if step.get("batch_action", False):
                     # Execute once for all samples
+                    if len(contexts) > 1 and getattr(self, 'socketio', None):
+                        self.socketio.emit('batch_progress', {'batch_index': 1, 'batch_total': len(contexts), 'shared': True})
+                    
                     consolidate_keys = step.get("consolidate_batch_args", [])
                     if consolidate_keys:
                         # Normalize to list if boolean (backward compat)
@@ -149,11 +154,15 @@ class ScriptRunnerStepMixin:
                 else:
                     # Execute for each sample
                     if arg_contexts:
-                        for context, arg_context in zip(contexts, arg_contexts):
+                        for i, (context, arg_context) in enumerate(zip(contexts, arg_contexts)):
+                            if len(contexts) > 1 and getattr(self, 'socketio', None):
+                                self.socketio.emit('batch_progress', {'batch_index': i + 1, 'batch_total': len(contexts)})
                             await self._execute_action(step, context, arg_contexts=arg_context, phase_id=phase_id, step_index=action_id,
                                                        section_name=section_name)
                     else:
-                        for context in contexts:
+                        for i, context in enumerate(contexts):
+                            if len(contexts) > 1 and getattr(self, 'socketio', None):
+                                self.socketio.emit('batch_progress', {'batch_index': i + 1, 'batch_total': len(contexts)})
                             await self._execute_action(step, context, phase_id=phase_id, step_index=action_id,
                                                        section_name=section_name)
                             self.pause_event.wait()
