@@ -10,9 +10,11 @@ from wtforms.validators import InputRequired, ValidationError, Optional
 from wtforms.widgets.core import TextInput
 from flask_wtf import FlaskForm
 from wtforms import StringField, FloatField, HiddenField, BooleanField, IntegerField
+from wtforms.form import BaseForm
 
 from ivoryos.script import Script, ScriptEditor, ScriptRenderer
 from ivoryos.runtime.state import GlobalState
+
 from ivoryos.parsers.introspection import get_return_type
 
 try:
@@ -20,6 +22,53 @@ try:
 except ImportError:
     # For Python versions = 3.7, use typing_extensions
     from typing_extensions import get_origin, get_args
+
+
+# ---------------------------------------------------------------------------
+# Reserved form field names
+#
+# Field names on a dynamic form come from user method signatures, so they can
+# collide with names the form itself needs. There are two distinct kinds of
+# collision, handled by two different mechanisms:
+#
+# 1. Parameter vs. the form's own API (`validate`, `process`, `meta`,
+#    `arg_types`, `filter_<field>`, ...). One field, one non-field attribute.
+#    Handled by `DynamicBaseForm` + `safe_field_name` below, which bind the
+#    field under a prefixed *attribute* while keeping the parameter name as the
+#    field's HTML name. See issue #183.
+#
+# 2. Parameter vs. a step metadata widget (the batch toggle, the hidden field
+#    naming the workflow). Two *real fields* competing for one HTML name, so
+#    renaming the attribute is not enough - both would still submit under the
+#    same name. The metadata field's submitted name has to move instead, which
+#    is what the constants below do. See issue #185.
+#
+# The `ivoryos_` prefix is reserved for (2); do not add these names to
+# `DynamicBaseForm` as reserved attributes, that would reintroduce the
+# duplicate-input problem.
+#
+# The *step dict* keys stay unprefixed (`batch_action`, `consolidate_batch_args`),
+# so saved scripts and the ScriptEditor API are unaffected.
+#
+# Reserved names that are deliberately NOT namespaced:
+#   `hidden_name`, `hidden_wait`, `override_busy`
+#       Part of the public HTTP API - the generated remote proxy client posts
+#       `{"hidden_name": ...}` (see services/client_proxy.py), so renaming them
+#       would break already-generated clients. A parameter with one of these
+#       names will be dropped.
+#   `builtin_name`, `variable_type`
+#       Only ever set on builtin logic forms (if/while/wait/variable/...),
+#       which have a fixed field set and no user signature. Unreachable.
+#   `return`
+#       A Python keyword, so it can never be a parameter name.
+#   `return_0`, `return_1`, ...
+#       Only added for methods annotated with a tuple return of arity > 1, and
+#       `extract_return_variables` consumes any `return_<digits>` key. A
+#       parameter named `return_0` on such a method would be swallowed.
+# ---------------------------------------------------------------------------
+BATCH_ACTION_FIELD = "ivoryos_batch_action"
+CONSOLIDATE_ARGS_FIELD = "ivoryos_consolidate_batch_args"
+WORKFLOW_NAME_FIELD = "ivoryos_workflow_name"
 
 
 VARIABLE_TYPE_CHOICES = [('int', 'Integer'), ('float', 'Float'), ('str', 'String'), ('bool', 'Boolean')]
@@ -125,9 +174,6 @@ class VariableOrFloatField(Field):
         except ValueError as exc:
             self.data = None
             raise ValueError(self.gettext("Not a valid float value.")) from exc
-
-
-# unset_value = UnsetValue()
 
 
 class VariableOrIntField(Field):
@@ -334,6 +380,86 @@ class FlexibleLiteralField(StringField):
                 raise ValidationError(f"Invalid choice: '{key}'. Must match one of {self.choices}")
 
 
+class DynamicBaseForm(FlaskForm):
+    """
+    Base form for dynamic forms, whose field names come from user method signatures.
+
+    A parameter name is not allowed to take over part of the form's own API:
+
+    - WTForms reads ``filter_<field>`` and ``validate_<field>`` attributes as inline hooks for
+      ``<field>``, so a parameter named ``filter_count`` next to ``count`` would be called
+      as a filter/validator for the latter. A field is never a hook.
+    - A parameter named after a form attribute (``validate``, ``process``, ``arg_types``, ...)
+      is bound under a safe attribute name by :func:`safe_field_name`, keeping the parameter
+      name as the field's HTML name.
+    """
+
+    # Names a parameter must not take over. Declaring them here is what reserves them:
+    # :func:`safe_field_name` finds them with ``hasattr`` and renames the colliding field.
+    arg_types = {}        # default; replaced per form class by the factories, read by templates
+    has_kwargs = False    # default; replaced per form class by create_form_for_method
+    original_name = None  # default; replaced per form class by create_workflow_forms
+    meta = None           # value unused: WTForms replaces it on every instance
+    form_errors = ()      # value unused: WTForms replaces it on every instance
+
+    def _hook_shadowing_fields(self, prefix):
+        """field names that WTForms would mistake for a ``<prefix>_<field>`` hook of another field"""
+        return [name for name in self._fields
+                if name.startswith(f"{prefix}_") and name[len(prefix) + 1:] in self._fields]
+
+    def process(self, *args, **kwargs):
+        # inline filters are looked up on the instance, hide the colliding fields while processing
+        shadowing = {name: getattr(self, name) for name in self._hook_shadowing_fields("filter")}
+        for name in shadowing:
+            setattr(self, name, None)
+        try:
+            super().process(*args, **kwargs)
+        finally:
+            for name, field in shadowing.items():
+                setattr(self, name, field)
+
+    def validate(self, extra_validators=None):
+        # inline validators are looked up on the class, where the colliding fields are still unbound
+        extra = dict(extra_validators) if extra_validators else {}
+        for name in self._fields:
+            inline = getattr(type(self), f"validate_{name}", None)
+            if inline is not None and not hasattr(inline, "_formfield"):
+                extra.setdefault(name, []).append(inline)
+        return BaseForm.validate(self, extra)
+
+    @property
+    def errors(self):
+        # report errors under the parameter name, which is what routes and templates use
+        errors = {field.name: field.errors for field in self._fields.values() if field.errors}
+        if self.form_errors:
+            errors[None] = self.form_errors
+        return errors
+
+
+def safe_field_name(param_name: str, taken=()):
+    """
+    Python attribute name to bind a parameter's field under.
+
+    Parameter names come from user code and can collide with the form's own attributes, e.g. a
+    parameter named ``validate`` would shadow ``Form.validate()`` and make validation a no-op.
+    Colliding names are prefixed; the field keeps ``param_name`` as its HTML name, so
+    ``field.name``, request data and rendering are unaffected.
+
+    :param param_name: the method parameter name
+    :param taken: attribute names already bound on the form
+    """
+    def is_reserved(name):
+        # WTForms skips underscore-prefixed class attributes when collecting fields, so such a
+        # parameter would be dropped entirely; it also keeps internals like ``_fields`` safe.
+        # ``csrf_token`` is not reserved: it is a field rather than an attribute, so renaming a
+        # parameter of that name would submit two inputs called ``csrf_token`` and break CSRF.
+        return name.startswith("_") or hasattr(DynamicBaseForm, name)
+
+    safe_name = param_name
+    while is_reserved(safe_name) or safe_name in taken:
+        safe_name = f"param_{safe_name}"
+    return safe_name
+
 
 def parse_annotation(annotation):
     """
@@ -365,7 +491,7 @@ def create_form_for_method(method, autofill, script=None, design=True):
     :param design: if design is enabled
     """
 
-    class DynamicForm(FlaskForm):
+    class DynamicForm(DynamicBaseForm):
         pass
 
     annotation_mapping = {
@@ -375,7 +501,8 @@ def create_form_for_method(method, autofill, script=None, design=True):
         bool: (VariableOrBoolField if design else BooleanField, 'Empty for false')
     }
     sig = method if type(method) is inspect.Signature else inspect.signature(method)
-    
+
+    attr_names = set()
     has_kwargs = False
     for param in sig.parameters.values():
         if param.name == 'self':
@@ -465,8 +592,11 @@ def create_form_for_method(method, autofill, script=None, design=True):
             field_kwargs["script"] = script
 
         # Create the field with additional rendering kwargs for placeholder text
-        field = field_class(**field_kwargs, render_kw=render_kwargs, **extra_kwargs)
-        setattr(DynamicForm, param.name, field)
+        # ``name`` keeps the parameter name in the HTML even when the attribute is renamed
+        field = field_class(**field_kwargs, render_kw=render_kwargs, name=param.name, **extra_kwargs)
+        attr_name = safe_field_name(param.name, attr_names)
+        setattr(DynamicForm, attr_name, field)
+        attr_names.add(attr_name)
 
     setattr(DynamicForm, 'has_kwargs', has_kwargs)
 
@@ -584,7 +714,7 @@ def create_add_form(attr, attr_name, autofill: bool, script=None, design: bool =
             return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
             setattr(dynamic_form, 'return', return_value)
         batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})
-        setattr(dynamic_form, 'batch_action', batch_action)
+        setattr(dynamic_form, BATCH_ACTION_FIELD, batch_action)
     hidden_method_name = HiddenField(name=f'hidden_name', description=docstring, render_kw={"value": f'{attr_name}'})
     setattr(dynamic_form, 'hidden_name', hidden_method_name)
     return dynamic_form
@@ -613,7 +743,7 @@ def create_form_from_module(sdl_module, autofill: bool = False, script=None, des
     return method_forms
 
 
-def create_form_from_pseudo(pseudo: dict, autofill: bool, script=None, design=True):
+def create_form_from_pseudo(pseudo: dict, autofill: bool, script=None, design: bool = True):
     """
     Create forms for pseudo method, used for design routes
     :param pseudo:{'dose_liquid': {
@@ -678,7 +808,7 @@ def create_form_from_action(action: dict, script=None, design=True):
     instrument = action.get("instrument")
     action_name = action.get("action")
 
-    class DynamicForm(FlaskForm):
+    class DynamicForm(DynamicBaseForm):
         pass
 
     annotation_mapping = {
@@ -690,6 +820,7 @@ def create_form_from_action(action: dict, script=None, design=True):
 
     # Use explicitly saved order if available, otherwise fallback (e.g. for old actions)
     arg_order = action.get("arg_order", arg_types.keys())
+    attr_names = set()
     
     sig = None
     if instrument:
@@ -786,8 +917,11 @@ def create_form_from_action(action: dict, script=None, design=True):
             field_kwargs["script"] = script
 
         # Create the field with additional rendering kwargs for placeholder text
-        field = field_class(**field_kwargs, render_kw=render_kwargs, **extra_kwargs)
-        setattr(DynamicForm, name, field)
+        # ``name`` keeps the parameter name in the HTML even when the attribute is renamed
+        field = field_class(**field_kwargs, render_kw=render_kwargs, name=name, **extra_kwargs)
+        attr_name = safe_field_name(name, attr_names)
+        setattr(DynamicForm, attr_name, field)
+        attr_names.add(attr_name)
 
     if instrument in ["math_variable", "variable", "input"]:
         # Add variable type dropdown
@@ -803,7 +937,7 @@ def create_form_from_action(action: dict, script=None, design=True):
         # TODO for future, no need to have `or instrument in ['wait']`
         if "batch_action" in action or instrument in ['wait']:
             batch_action = BooleanField(label='run once per batch', default=bool(action.get("batch_action", False)))
-            setattr(DynamicForm, 'batch_action', batch_action)
+            setattr(DynamicForm, BATCH_ACTION_FIELD, batch_action)
         if isinstance(save_as, list):
             return_format = action.get("return_format", {})
             return_types = return_format.get("types") or []
@@ -926,7 +1060,7 @@ def create_builtin_form(logic_type, script):
 
     if logic_type in ['wait']:
         batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})
-        setattr(BuiltinFunctionForm, 'batch_action', batch_action)
+        setattr(BuiltinFunctionForm, BATCH_ACTION_FIELD, batch_action)
 
     hidden_field = HiddenField(name=f'builtin_name', render_kw={"value": f'{logic_type}'})
     setattr(BuiltinFunctionForm, "builtin_name", hidden_field)
@@ -999,15 +1133,15 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
             # Store original name for display purposes
             form_class.original_name = workflow.name
 
-            hidden_method_name = HiddenField(name=f'workflow_name', description=f"{workflow.description}",
+            hidden_method_name = HiddenField(name=WORKFLOW_NAME_FIELD, description=f"{workflow.description}",
                                              render_kw={"value": f'{workflow.name}'})
             if design:
                 # if workflow.return_values:
                 #     return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
                 #     setattr(form_class, 'return', return_value)
                 batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})
-                setattr(form_class, 'batch_action', batch_action)
-            setattr(form_class, 'workflow_name', hidden_method_name)
+                setattr(form_class, BATCH_ACTION_FIELD, batch_action)
+            setattr(form_class, WORKFLOW_NAME_FIELD, hidden_method_name)
 
             wf_arg_types = {}
             for param in functions[unique_key]['signature'].parameters.values():
