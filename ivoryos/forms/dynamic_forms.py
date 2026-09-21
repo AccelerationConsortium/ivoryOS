@@ -14,6 +14,7 @@ from wtforms.form import BaseForm
 
 from ivoryos.script import Script, ScriptEditor, ScriptRenderer
 from ivoryos.runtime.state import GlobalState
+
 from ivoryos.parsers.introspection import get_return_type
 
 try:
@@ -21,6 +22,53 @@ try:
 except ImportError:
     # For Python versions = 3.7, use typing_extensions
     from typing_extensions import get_origin, get_args
+
+
+# ---------------------------------------------------------------------------
+# Reserved form field names
+#
+# Field names on a dynamic form come from user method signatures, so they can
+# collide with names the form itself needs. There are two distinct kinds of
+# collision, handled by two different mechanisms:
+#
+# 1. Parameter vs. the form's own API (`validate`, `process`, `meta`,
+#    `arg_types`, `filter_<field>`, ...). One field, one non-field attribute.
+#    Handled by `DynamicBaseForm` + `safe_field_name` below, which bind the
+#    field under a prefixed *attribute* while keeping the parameter name as the
+#    field's HTML name. See issue #183.
+#
+# 2. Parameter vs. a step metadata widget (the batch toggle, the hidden field
+#    naming the workflow). Two *real fields* competing for one HTML name, so
+#    renaming the attribute is not enough - both would still submit under the
+#    same name. The metadata field's submitted name has to move instead, which
+#    is what the constants below do. See issue #185.
+#
+# The `ivoryos_` prefix is reserved for (2); do not add these names to
+# `DynamicBaseForm` as reserved attributes, that would reintroduce the
+# duplicate-input problem.
+#
+# The *step dict* keys stay unprefixed (`batch_action`, `consolidate_batch_args`),
+# so saved scripts and the ScriptEditor API are unaffected.
+#
+# Reserved names that are deliberately NOT namespaced:
+#   `hidden_name`, `hidden_wait`, `override_busy`
+#       Part of the public HTTP API - the generated remote proxy client posts
+#       `{"hidden_name": ...}` (see services/client_proxy.py), so renaming them
+#       would break already-generated clients. A parameter with one of these
+#       names will be dropped.
+#   `builtin_name`, `variable_type`
+#       Only ever set on builtin logic forms (if/while/wait/variable/...),
+#       which have a fixed field set and no user signature. Unreachable.
+#   `return`
+#       A Python keyword, so it can never be a parameter name.
+#   `return_0`, `return_1`, ...
+#       Only added for methods annotated with a tuple return of arity > 1, and
+#       `extract_return_variables` consumes any `return_<digits>` key. A
+#       parameter named `return_0` on such a method would be swallowed.
+# ---------------------------------------------------------------------------
+BATCH_ACTION_FIELD = "ivoryos_batch_action"
+CONSOLIDATE_ARGS_FIELD = "ivoryos_consolidate_batch_args"
+WORKFLOW_NAME_FIELD = "ivoryos_workflow_name"
 
 
 VARIABLE_TYPE_CHOICES = [('int', 'Integer'), ('float', 'Float'), ('str', 'String'), ('bool', 'Boolean')]
@@ -126,9 +174,6 @@ class VariableOrFloatField(Field):
         except ValueError as exc:
             self.data = None
             raise ValueError(self.gettext("Not a valid float value.")) from exc
-
-
-# unset_value = UnsetValue()
 
 
 class VariableOrIntField(Field):
@@ -333,7 +378,6 @@ class FlexibleLiteralField(StringField):
                         self.data = variable
                         return
                 raise ValidationError(f"Invalid choice: '{key}'. Must match one of {self.choices}")
-
 
 
 class DynamicBaseForm(FlaskForm):
@@ -670,7 +714,7 @@ def create_add_form(attr, attr_name, autofill: bool, script=None, design: bool =
             return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
             setattr(dynamic_form, 'return', return_value)
         batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})
-        setattr(dynamic_form, 'batch_action', batch_action)
+        setattr(dynamic_form, BATCH_ACTION_FIELD, batch_action)
     hidden_method_name = HiddenField(name=f'hidden_name', description=docstring, render_kw={"value": f'{attr_name}'})
     setattr(dynamic_form, 'hidden_name', hidden_method_name)
     return dynamic_form
@@ -699,7 +743,7 @@ def create_form_from_module(sdl_module, autofill: bool = False, script=None, des
     return method_forms
 
 
-def create_form_from_pseudo(pseudo: dict, autofill: bool, script=None, design=True):
+def create_form_from_pseudo(pseudo: dict, autofill: bool, script=None, design: bool = True):
     """
     Create forms for pseudo method, used for design routes
     :param pseudo:{'dose_liquid': {
@@ -893,7 +937,7 @@ def create_form_from_action(action: dict, script=None, design=True):
         # TODO for future, no need to have `or instrument in ['wait']`
         if "batch_action" in action or instrument in ['wait']:
             batch_action = BooleanField(label='run once per batch', default=bool(action.get("batch_action", False)))
-            setattr(DynamicForm, 'batch_action', batch_action)
+            setattr(DynamicForm, BATCH_ACTION_FIELD, batch_action)
         if isinstance(save_as, list):
             return_format = action.get("return_format", {})
             return_types = return_format.get("types") or []
@@ -1016,7 +1060,7 @@ def create_builtin_form(logic_type, script):
 
     if logic_type in ['wait']:
         batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})
-        setattr(BuiltinFunctionForm, 'batch_action', batch_action)
+        setattr(BuiltinFunctionForm, BATCH_ACTION_FIELD, batch_action)
 
     hidden_field = HiddenField(name=f'builtin_name', render_kw={"value": f'{logic_type}'})
     setattr(BuiltinFunctionForm, "builtin_name", hidden_field)
@@ -1089,15 +1133,15 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
             # Store original name for display purposes
             form_class.original_name = workflow.name
 
-            hidden_method_name = HiddenField(name=f'workflow_name', description=f"{workflow.description}",
+            hidden_method_name = HiddenField(name=WORKFLOW_NAME_FIELD, description=f"{workflow.description}",
                                              render_kw={"value": f'{workflow.name}'})
             if design:
                 # if workflow.return_values:
                 #     return_value = StringField(label='Save value as', render_kw={"placeholder": "Optional"})
                 #     setattr(form_class, 'return', return_value)
                 batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})
-                setattr(form_class, 'batch_action', batch_action)
-            setattr(form_class, 'workflow_name', hidden_method_name)
+                setattr(form_class, BATCH_ACTION_FIELD, batch_action)
+            setattr(form_class, WORKFLOW_NAME_FIELD, hidden_method_name)
 
             wf_arg_types = {}
             for param in functions[unique_key]['signature'].parameters.values():

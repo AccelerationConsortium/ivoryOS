@@ -155,6 +155,23 @@ def measure_sample(sample_id: str) -> Tuple[float, float]:
 
 Use scalar return annotations for single values, fixed-length tuple annotations for multiple named outputs, and `dict` returns when the result is best handled as a structured object.
 
+## Reserved argument names
+
+IvoryOS builds form fields from your method signature, and renders its own controls (the *run once per batch* toggle, the *Save value as* box, hidden fields identifying the method) on the same form. Almost all name clashes are handled for you:
+
+- Parameters that clash with the form's internals - `validate`, `process`, `meta`, `data`, `arg_types`, or hook-shaped names like `filter_volume` next to `volume` - are bound internally under a different name and still submit, render and validate under your parameter name.
+- Metadata controls are submitted under an `ivoryos_`-prefixed name, so parameters called `batch_action`, `consolidate_batch_args` or `workflow_name` work normally. Do not name a parameter `ivoryos_*`.
+
+A few names cannot be reassigned because they are part of the remote proxy client API. Avoid these:
+
+| Name | Effect if used as a parameter |
+| --- | --- |
+| `hidden_name` | Dropped. Carries the method name in the direct-control and workflow-design POST payloads, and in generated proxy clients. |
+| `hidden_wait`, `override_busy` | Dropped. Control-route execution flags. |
+| `return_0`, `return_1`, ... | Dropped, but only on methods annotated with a tuple return of arity > 1, where these name the per-item save fields. |
+
+If you cannot rename such a parameter, accept it through `**kwargs` and add it from the designer's **Add Parameter** control instead.
+
 ## Practical rules
 
 - Add type hints to every public method you want users to call from IvoryOS for the best experience. If omitted, methods are still supported provided they accept primitive data types.
@@ -162,4 +179,5 @@ Use scalar return annotations for single values, fixed-length tuple annotations 
 - Use fixed-length tuple return annotations when users should save multiple outputs from one workflow action.
 - Use defaults for common values so the generated UI opens in a useful state.
 - Keep hardware-only driver objects inside your wrapper class; expose small, stable methods to IvoryOS.
+- Avoid the reserved argument names listed above; expose them through `**kwargs` if you cannot rename them.
 - Regenerate remote proxy clients after changing method names, argument names, annotations, or return types.

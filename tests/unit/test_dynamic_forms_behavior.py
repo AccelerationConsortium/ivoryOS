@@ -7,6 +7,8 @@ from wtforms import IntegerField, StringField
 from wtforms.validators import ValidationError
 
 from ivoryos.forms.dynamic_forms import (
+    BATCH_ACTION_FIELD,
+    WORKFLOW_NAME_FIELD,
     DynamicBaseForm,
     FlexibleEnumField,
     VariableOrBoolField,
@@ -14,9 +16,11 @@ from ivoryos.forms.dynamic_forms import (
     VariableOrIntField,
     VariableOrStringField,
     create_action_button,
+    create_add_form,
     create_all_builtin_forms,
     create_form_for_method,
     create_form_from_action,
+    create_workflow_forms,
     parse_annotation,
 )
 from ivoryos.script import Script
@@ -29,6 +33,10 @@ class Choice(Enum):
 
 def typed_method(count: int, amount: float = 1.5, enabled: bool = False, color: Choice = Choice.RED, items: list = None, **extra):
     return count, amount, enabled, color, items, extra
+
+
+def method_with_batch_action_param(amount: float, batch_action: bool = False):
+    return amount, batch_action
 
 
 def test_parse_annotation_detects_optional_types():
@@ -84,6 +92,67 @@ def test_create_form_from_action_preserves_arg_order_and_return_fields(app):
     assert form.return_0.render_kw["placeholder"] == "float"
 
 
+def test_batch_action_parameter_is_not_shadowed_by_batch_toggle(app):
+    """
+    A method parameter literally named `batch_action` must keep its own field
+    instead of being replaced by the "run once per batch" toggle.
+    """
+    script = Script(author="tester")
+    attr = {"signature": inspect.signature(method_with_batch_action_param), "docstring": ""}
+
+    with app.app_context():
+        form = create_add_form(attr, "dose", autofill=False, script=script, design=True)()
+
+    assert isinstance(form.batch_action, VariableOrBoolField)
+    assert form.batch_action.label.text == "batch_action"
+    assert form[BATCH_ACTION_FIELD].label.text == "run once per batch"
+
+
+def test_edit_form_keeps_batch_action_argument_alongside_toggle(app):
+    action = {
+        "id": 1,
+        "uuid": 1,
+        "instrument": "deck.pump",
+        "action": "dose",
+        "args": {"amount": 1.0, "batch_action": True},
+        "arg_types": {"amount": "float", "batch_action": "bool"},
+        "arg_order": ["amount", "batch_action"],
+        "batch_action": False,
+    }
+
+    with app.app_context():
+        form = create_form_from_action(action, script=Script(author="tester"), design=True)
+
+    assert form.batch_action.data is True
+    assert form[BATCH_ACTION_FIELD].data is False
+
+
+def test_workflow_variable_named_workflow_name_is_not_shadowed(app, init_database):
+    """
+    A workflow input variable named `workflow_name` compiles to a parameter of
+    that name; it must not collide with the hidden field carrying the workflow
+    name, which would otherwise break step dispatch.
+    """
+    from ivoryos.models import Script as ScriptModel, db
+
+    registered = ScriptModel(author="tester", name="myflow", deck="mydeck", registered=True)
+    registered.script_dict["script"] = [
+        {"id": 1, "uuid": 1, "instrument": "deck.pump", "action": "dose",
+         "args": {"amount": "#workflow_name"}, "arg_types": {"amount": "float"},
+         "return": ""},
+    ]
+    db.session.add(registered)
+    db.session.commit()
+
+    draft = Script(author="tester", name="draft", deck="mydeck")
+    _functions, forms = create_workflow_forms(draft, design=True)
+
+    form = list(forms.values())[0]
+    assert "workflow_name" in form._fields
+    assert form._fields["workflow_name"].type != "HiddenField"
+    assert form[WORKFLOW_NAME_FIELD].type == "HiddenField"
+
+
 def test_create_all_builtin_forms_exposes_expected_controls(app):
     script = Script(author="tester")
 
@@ -91,7 +160,7 @@ def test_create_all_builtin_forms_exposes_expected_controls(app):
         forms = create_all_builtin_forms(script)
 
     assert set(forms) == {"if", "while", "variable", "input", "wait", "repeat", "pause", "math", "comment"}
-    assert hasattr(forms["wait"], "batch_action")
+    assert hasattr(forms["wait"], BATCH_ACTION_FIELD)
     assert hasattr(forms["variable"], "variable_type")
     assert hasattr(forms["input"], "variable_type")
     assert hasattr(forms["math"], "math_variable")

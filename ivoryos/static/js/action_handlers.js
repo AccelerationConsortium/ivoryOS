@@ -489,7 +489,7 @@ function updateConsolidateVisibility(input) {
     if (!form) return;
 
     // Find batch action checkbox
-    const batchBox = form.querySelector('input[name="batch_action"]');
+    const batchBox = form.querySelector('input[name="ivoryos_batch_action"]');
     if (!batchBox) return;
 
     const isBatch = batchBox.checked;

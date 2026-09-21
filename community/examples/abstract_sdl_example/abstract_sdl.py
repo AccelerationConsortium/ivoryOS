@@ -91,7 +91,13 @@ class AbstractSDL(ABC):
         else:
             raise ValueError("error will clear after the 3rd retry")
 
-
+    def fn_with_similar_variable_names(self,
+                                       tip_tray: int,
+                                       tip_index: int,
+                                       filter_tip_tray: int,
+                                       filter_tip_index: int,
+                                       ):
+        return
     def _send_command(self):
         """helper function"""
         pass

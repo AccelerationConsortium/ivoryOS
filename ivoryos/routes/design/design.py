@@ -7,7 +7,9 @@ from flask_login import login_required, current_user
 from ivoryos.services.draft_service import get_script_file, post_script_file
 from ivoryos.services.connection_history import available_pseudo_deck
 from ivoryos.runtime.state import GlobalState
-from ivoryos.forms.dynamic_forms import create_action_button, create_form_from_pseudo, create_all_builtin_forms, create_workflow_forms
+from ivoryos.forms.dynamic_forms import (BATCH_ACTION_FIELD, CONSOLIDATE_ARGS_FIELD, WORKFLOW_NAME_FIELD,
+                                          create_action_button, create_form_from_pseudo,
+                                          create_all_builtin_forms, create_workflow_forms)
 from ivoryos.models import db
 from ivoryos.script import Script, ScriptEditor, ScriptRenderer
 from ivoryos.parsers.py_to_json import convert_to_cards, extract_functions_and_convert
@@ -404,8 +406,8 @@ def methods_handler(instrument: str = ''):
             # print(kwargs)
             if form.validate_on_submit():
                 function_name = kwargs.pop("hidden_name")
-                batch_action = kwargs.pop("batch_action", False)
-                consolidate_batch_args = request.form.getlist("consolidate_batch_args")
+                batch_action = kwargs.pop(BATCH_ACTION_FIELD, False)
+                consolidate_batch_args = request.form.getlist(CONSOLIDATE_ARGS_FIELD)
 
                 function_data = functions.get(function_name)
                 # Handle virtual property setters
@@ -472,6 +474,9 @@ def methods_handler(instrument: str = ''):
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
             if form.validate_on_submit():
                 logic_type = kwargs.pop('builtin_name')
+                # the toggle is namespaced on the form; the step dict keeps `batch_action`
+                if BATCH_ACTION_FIELD in kwargs:
+                    kwargs['batch_action'] = kwargs.pop(BATCH_ACTION_FIELD)
                 if logic_type == 'input':
                     ScriptEditor(script).add_input_action(insert_position=insert_position, **kwargs)
                 elif logic_type == 'variable':
@@ -491,8 +496,8 @@ def methods_handler(instrument: str = ''):
             else:
                 success = False
                 msg = [f"{field}: {', '.join(messages)}" for field, messages in form.errors.items()]
-    elif "workflow_name" in request.form:
-        workflow_name = request.form.get("workflow_name")
+    elif WORKFLOW_NAME_FIELD in request.form:
+        workflow_name = request.form.get(WORKFLOW_NAME_FIELD)
 
         # still get workflow by name (name is the primary key)
         target_workflow = Script.query.filter_by(name=workflow_name).first()
@@ -507,9 +512,9 @@ def methods_handler(instrument: str = ''):
         if form:
             kwargs = {field.name: field.data for field in form if field.name != 'csrf_token'}
             if form.validate_on_submit():
-                batch_action = kwargs.pop("batch_action", False)
-                consolidate_batch_args = request.form.getlist("consolidate_batch_args")
-                kwargs.pop('workflow_name')
+                batch_action = kwargs.pop(BATCH_ACTION_FIELD, False)
+                consolidate_batch_args = request.form.getlist(CONSOLIDATE_ARGS_FIELD)
+                kwargs.pop(WORKFLOW_NAME_FIELD)
                 save_data = extract_return_variables(kwargs, ScriptEditor.validate_function_name)
 
                 primitive_arg_types = get_arg_type(kwargs, functions[unique_key])

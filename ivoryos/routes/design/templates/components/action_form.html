@@ -14,7 +14,7 @@
                     {{ form.hidden_tag() }}
                     {% for field in form %}
                         {% if field.type not in ['CSRFTokenField', 'HiddenField'] and field.name != 'return' and field.name
-                        != 'batch_action' and field.name != 'consolidate_batch_args' %}
+                        != 'ivoryos_batch_action' %}
                             <div class="input-group mb-3">
                                 <label class="input-group-text">{{ field.label.text | format_name }}
                                     {% if field.flags.required %}
@@ -44,7 +44,7 @@
                                 {% if form.arg_types is defined and form.arg_types and form.arg_types.get(field.name) == 'list' %}
                                     <div class="input-group-text consolidate-wrapper" style="display: none;"
                                         title="Consolidate batch arguments">
-                                        <input class="form-check-input mt-0" type="checkbox" name="consolidate_batch_args"
+                                        <input class="form-check-input mt-0" type="checkbox" name="ivoryos_consolidate_batch_args"
                                             value="{{ field.name }}" aria-label="Consolidate">
                                         <span class="ms-1 small">Consolidate</span>
                                     </div>
@@ -65,10 +65,10 @@
                 {% endif %}
 
                 {# Manual rendering of batch_action and return #}
-                {% if form.batch_action %}
+                {% if form.ivoryos_batch_action %}
                 <div class="input-group mb-3">
-                    <label class="input-group-text">{{ form.batch_action.label.text | format_name }}</label>
-                    {{ form.batch_action(class="form-check-input", onchange="handleBatchActionChange(this)") }}
+                    <label class="input-group-text">{{ form.ivoryos_batch_action.label.text | format_name }}</label>
+                    {{ form.ivoryos_batch_action(class="form-check-input", onchange="handleBatchActionChange(this)") }}
                 </div>
                 {% endif %}
 
@@ -84,10 +84,10 @@
                     <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top"
                        title='{{ form.hidden_name.description or "Docstring is not available" }}'>
                     </i>
-                {% elif 'workflow_name' in form %}
+                {% elif 'ivoryos_workflow_name' in form %}
                     <!-- handle info tooltip for flow control / workflows -->
                     <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top"
-                       title='{{ form.workflow_name.description or "Docstring is not available" }}'>
+                       title='{{ form.ivoryos_workflow_name.description or "Docstring is not available" }}'>
                     </i>
                 {% endif %}
             </form>

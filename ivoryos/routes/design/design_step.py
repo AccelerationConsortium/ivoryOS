@@ -2,7 +2,8 @@ from flask import Blueprint, request, jsonify, render_template, current_app
 from flask_login import login_required
 
 from ivoryos.services.draft_service import get_script_file, post_script_file
-from ivoryos.forms.dynamic_forms import create_form_from_action, create_action_button
+from ivoryos.forms.dynamic_forms import (BATCH_ACTION_FIELD, CONSOLIDATE_ARGS_FIELD,
+                                          create_form_from_action, create_action_button)
 from ivoryos.parsers.returns import extract_return_variables
 from ivoryos.script import ScriptEditor, ScriptRenderer
 
@@ -65,8 +66,8 @@ def save_step(uuid: int):
         if forms and forms.validate_on_submit():
             save_data = extract_return_variables(kwargs, ScriptEditor.validate_function_name)
 
-            batch_action = kwargs.pop('batch_action', False)
-            consolidate_batch_args = request.form.getlist('consolidate_batch_args')
+            batch_action = kwargs.pop(BATCH_ACTION_FIELD, False)
+            consolidate_batch_args = request.form.getlist(CONSOLIDATE_ARGS_FIELD)
 
             # Collect dynamic kwargs
             extra_keys = request.form.getlist('extra_key[]')

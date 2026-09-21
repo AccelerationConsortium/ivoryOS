@@ -22,8 +22,8 @@
             {% else %}
                 {{ forms.hidden_tag() }}
                 {% for field in forms %}
-                    {% if field.type not in ['CSRFTokenField'] and field.name != 'return' and field.name != 'batch_action' and
-                        field.name != 'consolidate_batch_args' %}
+                    {% if field.type not in ['CSRFTokenField'] and field.name != 'return'
+                        and field.name != 'ivoryos_batch_action' %}
                         <div class="input-group mb-3">
                             <label class="input-group-text">{{ field.label.text | format_name }}
                                 {% if field.flags.required %}
@@ -49,11 +49,12 @@
                         {% if forms.arg_types and forms.arg_types.get(field.name) == 'list' %}
                             {% set is_consolidated = field.name in (action.get('consolidate_batch_args') or []) %}
                             {# Initial visibility calculation #}
-                            {% set is_visible = forms.batch_action.data and field.data is string and field.data.startswith('#') %}
+                            {% set is_visible = forms.ivoryos_batch_action and forms.ivoryos_batch_action.data
+                                and field.data is string and field.data.startswith('#') %}
                             <div class="input-group mb-3 consolidate-wrapper" title="Consolidate batch arguments"
                                 style="display: {{ 'flex' if is_visible else 'none' }}">
                                 <div class="input-group-text">
-                                    <input class="form-check-input mt-0" type="checkbox" name="consolidate_batch_args"
+                                    <input class="form-check-input mt-0" type="checkbox" name="ivoryos_consolidate_batch_args"
                                         value="{{ field.name }}" aria-label="Consolidate" {% if is_consolidated %}checked{% endif %}>
                                     <span class="ms-1 small">Consolidate</span>
                                 </div>
@@ -104,10 +105,10 @@
             {% endif %}
 
             {# Manual rendering of batch_action and return #}
-            {% if forms.batch_action %}
+            {% if forms.ivoryos_batch_action %}
                 <div class="input-group mb-3">
-                    <label class="input-group-text">{{ forms.batch_action.label.text | format_name }}</label>
-                    {{ forms.batch_action(class="form-check-input", onchange="handleBatchActionChange(this)") }}
+                    <label class="input-group-text">{{ forms.ivoryos_batch_action.label.text | format_name }}</label>
+                    {{ forms.ivoryos_batch_action(class="form-check-input", onchange="handleBatchActionChange(this)") }}
                 </div>
             {% endif %}
 
