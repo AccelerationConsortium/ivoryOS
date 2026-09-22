@@ -49,6 +49,37 @@
     }
 </style>
 
+{# Last screen before a run: say plainly which steps cannot succeed against the
+   deck that is loaded. Steps whose module or method is gone will raise; the rest
+   are worth a look but may still run. #}
+{% if compat_steps or compat_deck_note %}
+    {% set blocking = compat_steps | selectattr('blocking') | list %}
+    <div class="alert {{ 'alert-danger' if blocking else 'alert-warning' }} py-2 px-3 mb-2"
+         id="run-compatibility-warning">
+        <div class="fw-semibold">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            {% if blocking %}
+                {{ blocking | length }} step{{ 's' if blocking | length != 1 }} will fail against the current deck
+            {% else %}
+                {{ compat_steps | length }} step{{ 's' if compat_steps | length != 1 }} may not run as designed
+            {% endif %}
+        </div>
+        {% if compat_deck_note %}<div class="small mt-1">{{ compat_deck_note }}</div>{% endif %}
+        {# One line per step. The full sentences are the title, so the detail is a
+           hover away rather than a wall of text above the run controls. #}
+        <ul class="mb-0 mt-1 small">
+            {% for entry in compat_steps %}
+                <li title="{% for issue in entry.issues %}{{ issue.message }}
+{% endfor %}">
+                    <span class="text-muted">{{ entry.phase }} step {{ entry.id }}</span>
+                    <code>{{ entry.label }}</code>
+                    &middot; {{ entry.summary }}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+
 <div class="d-flex flex-column" style="height: calc(100vh - 100px);">
     <div id="config-container" class="d-flex flex-column flex-shrink-0">
         <div class="row h-100 m-0">

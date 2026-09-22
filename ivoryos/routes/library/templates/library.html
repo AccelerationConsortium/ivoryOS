@@ -133,6 +133,16 @@
                                         <a href="{{ url_for('library.workflow_script', script_name=script.name) }}" title="{{ script.name }}" style="font-weight: 600; color: #2c3e50; text-decoration: none;" class="workflow-title-link">
                                             {{ script.name }}
                                         </a>
+                                        {# Only workflows for the loaded deck are checked, so a row is
+                                           unmarked either because it fits or because it belongs to
+                                           another platform - the deck column says which. #}
+                                        {% set flagged = (compat or {}).get(script.name) %}
+                                        {% if flagged %}
+                                            <span class="bi {{ 'bi-exclamation-octagon-fill text-danger' if flagged.blocking else 'bi-exclamation-triangle-fill text-warning' }}"
+                                                  role="img"
+                                                  aria-label="{{ flagged.count }} step{{ 's' if flagged.count != 1 }} no longer match the current deck"
+                                                  title="{{ flagged.count }} step{{ 's' if flagged.count != 1 }} no longer match the current deck&#10;{% for line in flagged.detail %}{{ line }}&#10;{% endfor %}"></span>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </td>

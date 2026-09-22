@@ -8,10 +8,11 @@ from ivoryos.services.draft_service import get_script_file, post_script_file
 from ivoryos.services.connection_history import available_pseudo_deck
 from ivoryos.runtime.state import GlobalState
 from ivoryos.forms.dynamic_forms import (BATCH_ACTION_FIELD, CONSOLIDATE_ARGS_FIELD, WORKFLOW_NAME_FIELD,
-                                          create_action_button, create_form_from_pseudo,
+                                          create_action_buttons, create_form_from_pseudo,
                                           create_all_builtin_forms, create_workflow_forms)
 from ivoryos.models import db
 from ivoryos.script import Script, ScriptEditor, ScriptRenderer
+from ivoryos.script.compatibility import check_deck_match, current_reference
 from ivoryos.parsers.py_to_json import convert_to_cards, extract_functions_and_convert
 from ivoryos.parsers.introspection import load_interface_schema, _inspect_class, get_return_type, get_arg_type
 from ivoryos.parsers.returns import extract_return_variables
@@ -30,6 +31,20 @@ design.register_blueprint(steps)
 design.register_blueprint(agent)
 
 global_state = GlobalState()
+
+
+@design.context_processor
+def inject_compatibility_helpers():
+    """Let the canvas explain a workflow built against a different deck.
+
+    Per-step findings ride along on the canvas buttons; this covers the one
+    thing that is about the workflow as a whole rather than any single step.
+    """
+    def deck_compatibility_note(script):
+        return check_deck_match(script, current_reference())
+
+    return {"deck_compatibility_note": deck_compatibility_note}
+
 
 # ---- Main Design Routes ----
 
@@ -104,7 +119,7 @@ def experiment_builder():
         flash(f"Error in Python script: {e}")
     # session['python_code'] = exec_string
 
-    design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
+    design_buttons = create_action_buttons(script)
 
     return render_template('experiment_builder.html', off_line=off_line, history=deck_list,
                            script=script, defined_variables=deck_variables, buttons_dict=design_buttons,
@@ -235,7 +250,7 @@ def update_ui_state():
         post_script_file(script)
 
         # Re-render only the part of the page you want to update
-        design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
+        design_buttons = create_action_buttons(script)
         rendered_html = render_template("components/canvas.html", script=script, buttons_dict=design_buttons)
         return jsonify({"html": rendered_html})
 
@@ -553,7 +568,7 @@ def methods_handler(instrument: str = ''):
         msg = f"Compilation failed: {str(e)}"
     # exec_string = ScriptRenderer(script).compile(current_app.config['SCRIPT_FOLDER'])
     # session['python_code'] = exec_string
-    design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
+    design_buttons = create_action_buttons(script)
     html = render_template("components/canvas_main.html", script=script, buttons_dict=design_buttons)
     return jsonify({"html": html, "success": success, "error": msg})
 

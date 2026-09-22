@@ -17,8 +17,9 @@ from ivoryos.parsers.type_conversions import check_config_duplicate, web_config_
 from ivoryos.parsers.bo_campaign import parse_optimization_form
 from ivoryos.models import db, SingleStep, WorkflowRun, WorkflowStep, WorkflowPhase
 from ivoryos.runtime.state import GlobalState
-from ivoryos.forms.dynamic_forms import create_action_button
 from ivoryos.script import ScriptEditor, ScriptRenderer
+from ivoryos.script.compatibility import (check_deck_match, current_reference,
+                                          script_issue_summary)
 from ivoryos.socket_handlers import runner, retry, pause, abort_pending, abort_current
 
 
@@ -53,7 +54,12 @@ def experiment_run():
     off_line = current_app.config["OFF_LINE"]
     deck_list = import_history(os.path.join(current_app.config["OUTPUT_FOLDER"], 'deck_history.txt'))
     optimizers_schema = {k: v.get_schema() for k, v in global_state.optimizers.items()}
-    design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
+    # No step buttons here: experiment_run.html stopped rendering them when the
+    # accordion was removed (ce38c7b). The compatibility findings it does want -
+    # this is the last screen before a run.
+    reference = current_reference()
+    compat_steps = script_issue_summary(script, reference)
+    compat_deck_note = check_deck_match(script, reference)
     config_preview = []
     config_file_list = [i for i in os.listdir(current_app.config["CSV_FOLDER"]) if not i == ".gitkeep"]
 
@@ -241,7 +247,8 @@ def experiment_run():
                                dot_py=exec_string, line_collection=line_collection,
                                return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                                config_preview=config_preview, data_list=data_list, config_type_list=config_type_list,
-                               no_deck_warning=no_deck_warning, dismiss=dismiss, design_buttons=design_buttons,
+                               no_deck_warning=no_deck_warning, dismiss=dismiss,
+                               compat_steps=compat_steps, compat_deck_note=compat_deck_note,
                                history=deck_list, pause_status=runner.pause_status(), optimizer_schema=optimizers_schema)
 
 

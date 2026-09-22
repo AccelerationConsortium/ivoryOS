@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 
 from ivoryos.models import db
 from ivoryos.script import Script, ScriptRenderer
+from ivoryos.script.compatibility import current_reference, script_issue_summary
 from ivoryos.services.draft_service import get_script_file, post_script_file
 
 library = Blueprint('library', __name__, template_folder='templates')
@@ -143,7 +144,39 @@ def load_from_database():
     else:
         # return HTML
         return render_template("library.html", scripts=scripts, deck_list=deck_list, current_deck_name=deck_name,
-                               current_sort_by=sort_by, current_order=order, current_per_page=per_page)
+                               current_sort_by=sort_by, current_order=order, current_per_page=per_page,
+                               compat=_compatibility_by_name(scripts.items))
+
+
+def _compatibility_by_name(scripts):
+    """``{workflow name: {...}}`` for the listed workflows that no longer fit the deck.
+
+    Only workflows belonging to the loaded deck are checked. One saved against a
+    different deck is not broken, it is simply for another platform - the deck
+    column already says so, and flagging every one of them would make the whole
+    table red.
+
+    Checking is limited to the current page of results, which the route has
+    already paginated.
+    """
+    reference = current_reference()
+    if not reference.enabled or not reference.deck_name:
+        return {}
+
+    flagged = {}
+    for script in scripts:
+        if script.deck != reference.deck_name:
+            continue
+        steps = script_issue_summary(script, reference)
+        if not steps:
+            continue
+        flagged[script.name] = {
+            "count": len(steps),
+            "blocking": any(step["blocking"] for step in steps),
+            "detail": [f"step {step['id']}: {step['summary']}" for step in steps],
+        }
+    return flagged
+
 
 @library.post("/", strict_slashes=False)
 @login_required

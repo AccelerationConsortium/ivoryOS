@@ -309,6 +309,15 @@ class ScriptRunnerStepMixin:
                         # return_var = step.get("return", "")
                         # if return_var:
                         #     context[return_var] = result
+                    else:
+                        # The module is still here but this method is not, so the
+                        # deck was edited after the step was saved. Without this
+                        # the step would fall off the end of the branch, record no
+                        # error and be reported as a successful no-op.
+                        raise AttributeError(
+                            f"Method '{action}' no longer exists on '{instrument}'. "
+                            f"The deck has changed since this step was saved."
+                        )
 
                 elif instrument_type == "blocks" and instrument in BUILDING_BLOCKS.keys():
                     # Inject all block categories
