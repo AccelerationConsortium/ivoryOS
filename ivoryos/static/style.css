@@ -542,3 +542,18 @@ hr.vertical {
 
 
 
+
+/* Reasons a step no longer matches the deck are one per line; the same text is
+   the element's title attribute, so it still reads if the tooltip never binds. */
+.step-issue-tooltip .tooltip-inner {
+    white-space: pre-line;
+    text-align: left;
+    max-width: 24rem;
+}
+
+/* Replaces Bootstrap's default 2rem ul indent, which buys nothing here - the
+   items have no list markers - and pushed every row in from the banner above
+   while the row buttons stayed flush right. */
+ul.reorder {
+    padding-left: 0.4rem;
+}

@@ -8,6 +8,21 @@
     </div>
     {% if action %}
     <h5> {{ action['action'] | format_name }} </h5>
+    {# Why this step no longer matches the deck, shown where it gets fixed #}
+    {% if issues %}
+        {% set blocking = issues | selectattr('severity', 'equalto', 'error') | list %}
+        <div class="alert {{ 'alert-danger' if blocking else 'alert-warning' }} py-2 px-3 small">
+            <div class="fw-semibold mb-1">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                {{ 'Step will fail' if blocking else 'Step may not run as designed' }}
+            </div>
+            <ul class="mb-0 ps-3">
+                {% for issue in issues %}
+                    <li>{{ issue.message }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
     <form role="form" method='POST' name="{{instrument}}" 
           action="{{ url_for('design.design_steps.get_step', uuid=action['uuid']) }}"
           onsubmit="submitEditForm(event); return false;">
