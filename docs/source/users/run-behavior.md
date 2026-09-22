@@ -42,6 +42,8 @@ A workflow can pause for human intervention, or IvoryOS can pause after an execu
 
 When this happens, use the UI to continue, retry, stop, or otherwise resolve the paused run. **Retry** repeats the failed step when the current paused step recorded an error.
 
+A common cause is a workflow that no longer matches the deck, because the deck was edited after the workflow was saved. The execution page warns about those steps before you start a run. See [Workflow step warnings](deck-compatibility.md) for what each warning means.
+
 ## Stop pending
 
 Use **Stop pending** when the current iteration should finish but future iterations should be skipped.

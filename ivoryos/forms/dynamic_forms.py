@@ -13,6 +13,7 @@ from wtforms import StringField, FloatField, HiddenField, BooleanField, IntegerF
 from wtforms.form import BaseForm
 
 from ivoryos.script import Script, ScriptEditor, ScriptRenderer
+from ivoryos.script.compatibility import check_action, current_reference
 from ivoryos.runtime.state import GlobalState
 
 from ivoryos.parsers.introspection import get_return_type
@@ -1162,22 +1163,41 @@ def create_workflow_forms(script, autofill: bool = False, design: bool = False):
     return functions, workflow_forms
 
 
-def create_action_button(script, stype=None):
+def create_action_buttons(script, reference=None):
+    """
+    Creates the design canvas buttons for every phase of a script.
+
+    The deck is inspected once here and shared across the phases, so opening the
+    canvas costs one compatibility lookup rather than one per phase.
+
+    :param script: Script object
+    :param reference: DeckReference to check steps against; looked up when omitted
+    """
+    if reference is None:
+        reference = current_reference()
+    return {stype: create_action_button(script, stype, reference=reference) for stype in script.stypes}
+
+
+def create_action_button(script, stype=None, reference=None):
     """
     Creates action buttons for design route (design canvas)
     :param script: Script object
     :param stype: script type (script, prep, cleanup)
+    :param reference: DeckReference to check steps against; looked up when omitted
     """
     stype = stype or script.editing_type
     variables = ScriptEditor(script).get_variables()
-    return [_action_button(i, variables) for i in script.get_script(stype)]
+    if reference is None:
+        reference = current_reference()
+    return [_action_button(i, variables, reference) for i in script.get_script(stype)]
 
 
-def _action_button(action: dict, variables: dict):
+def _action_button(action: dict, variables: dict, reference=None):
     """
     Creates action button for one action
     :param action: Action dict
     :param variables: created variable dict
+    :param reference: DeckReference to check the step against
     """
     style = {
         "repeat": "background-color: lightsteelblue",
@@ -1225,4 +1245,7 @@ def _action_button(action: dict, variables: dict):
             else:
                 arg_string = f"= {action['args']}"
         text = f"{prefix}{action_text}  {arg_string}"
-    return dict(label=text, style=style, uuid=action["uuid"], id=action["id"], instrument=action['instrument'], disabled=action.get('disabled', False))
+    issues = check_action(action, reference)
+    return dict(label=text, style=style, uuid=action["uuid"], id=action["id"],
+                instrument=action['instrument'], disabled=action.get('disabled', False),
+                issues=issues)

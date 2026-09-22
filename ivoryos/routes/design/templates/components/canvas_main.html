@@ -2,6 +2,43 @@
 
 <!-- partials/canvas_content.html -->
 
+{% set phase_labels = {"prep": "Prep", "script": "Experiment", "cleanup": "Clean up"} %}
+
+{# Steps that no longer line up with the deck that is loaded. The deck is edited
+   independently of the workflows built on top of it, so a saved step can point
+   at a module, method or parameter that has since changed. #}
+{% set compat = namespace(flagged=0, blocking=0, phases=[]) %}
+{% for phase, phase_buttons in (buttons_dict or {}).items() %}
+    {% for entry in phase_buttons or [] %}
+        {% if entry.get('issues') %}
+            {% set compat.flagged = compat.flagged + 1 %}
+            {% if entry['issues'] | selectattr('severity', 'equalto', 'error') | list %}
+                {% set compat.blocking = compat.blocking + 1 %}
+            {% endif %}
+            {% if phase not in compat.phases %}
+                {% set compat.phases = compat.phases + [phase] %}
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+{% endfor %}
+
+{% set deck_note = deck_compatibility_note(script) if deck_compatibility_note is defined else none %}
+
+{% if deck_note or compat.flagged %}
+<div class="alert {{ 'alert-danger' if compat.blocking else 'alert-warning' }} py-2 px-3 mt-3 mb-0 small"
+     id="deck-compatibility-banner">
+    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+    {% if deck_note %}<span>{{ deck_note }}</span>{% endif %}
+    {% if compat.flagged %}
+        <span>
+            {{ compat.flagged }} step{{ 's' if compat.flagged != 1 }}
+            no longer match{{ '' if compat.flagged != 1 else 'es' }} the deck
+            ({% for phase in compat.phases %}{{ phase_labels.get(phase, phase) }}{{ ', ' if not loop.last }}{% endfor %}).
+            Hover the icon beside a step for the reason.
+        </span>
+    {% endif %}
+</div>
+{% endif %}
 
 <div class="list-group" id="list" style="margin-top: 20px">
     <ul class="reorder">
@@ -15,9 +52,26 @@
     {% endif %}
 
     {% for button in buttons %}
+        {% set issues = button.get('issues') or [] %}
+        {% set blocking = issues | selectattr('severity', 'equalto', 'error') | list %}
         <li id="{{ button['id'] }}" style="list-style-type: none;" class="d-flex align-items-center mb-1">
             <span class="line-number d-none">{{ button['id'] }}.</span>
-            <a href="#" onclick="editAction('{{ button['uuid'] }}'); return false;" type="button" class="btn btn-light flex-grow-1 text-start text-wrap text-break {% if button.get('disabled', False) %}text-muted text-decoration-line-through{% endif %}" style="{{ button['style'] }} {% if button.get('disabled', False) %}background-color: #e9ecef;{% endif %}">{{ button['label'] }}</a>
+            {# Always rendered so the step labels stay aligned whether or not a step is flagged.
+               A plain span, not a button: the list is a jQuery UI sortable, which calls
+               preventDefault on mousedown, so anything here that needs focus or a click
+               would never fire. #}
+            <span class="step-issue-marker me-1 {{ '' if issues else 'invisible' }}"
+                  {% if issues %}
+                  data-bs-toggle="tooltip" data-bs-placement="bottom"
+                  data-bs-custom-class="step-issue-tooltip"
+                  role="img"
+                  aria-label="{{ issues | length }} reason{{ 's' if issues | length != 1 }} this step does not match the deck"
+                  title="{% for issue in issues %}{{ '- ' if issues | length > 1 }}{{ issue.message }}
+{% endfor %}"
+                  {% endif %}>
+                <span class="bi {{ 'bi-exclamation-octagon-fill text-danger' if blocking else 'bi-exclamation-triangle-fill text-warning' }}"></span>
+            </span>
+            <a href="#" onclick="editAction('{{ button['uuid'] }}'); return false;" type="button" class="btn btn-light flex-grow-1 text-start text-wrap text-break {% if issues %}border {{ 'border-danger' if blocking else 'border-warning' }}{% endif %} {% if button.get('disabled', False) %}text-muted text-decoration-line-through{% endif %}" style="{{ button['style'] }} {% if button.get('disabled', False) %}background-color: #e9ecef;{% endif %}">{{ button['label'] }}</a>
             {% if not button["instrument"] in ["if","while","repeat"] %}
                 <button onclick="toggleCommentAction('{{ button['uuid'] }}')" type="button" class="btn btn-light" title="Toggle Execution">
                     {% if button.get('disabled', False) %}

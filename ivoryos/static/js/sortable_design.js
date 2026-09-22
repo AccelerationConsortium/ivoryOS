@@ -134,7 +134,24 @@ function initializeCanvas() {
         document.activeElement?.blur();
         triggerModal(formHtml, actionName, actionId, state.dropTargetId);
     });
+    initializeStepIssueTooltips();
     getCodePreview();
+}
+
+// The canvas is re-rendered as raw HTML on every edit, so the tooltips that
+// explain why a step no longer matches the deck have to be bound again each time.
+// Hover is the only trigger that works here: the list is a jQuery UI sortable,
+// which calls preventDefault on mousedown and so suppresses focus.
+function initializeStepIssueTooltips() {
+    if (typeof bootstrap === "undefined") return;
+
+    // a shown tooltip lives on <body>, so it outlives the step that opened it
+    document.querySelectorAll("body > .tooltip.step-issue-tooltip").forEach(el => el.remove());
+
+    document.querySelectorAll('#canvas-action-wrapper [data-bs-toggle="tooltip"]').forEach(el => {
+        bootstrap.Tooltip.getInstance(el)?.dispose();
+        new bootstrap.Tooltip(el, { container: "body", trigger: "hover" });
+    });
 }
 
 function insertDropPlaceholder($target) {

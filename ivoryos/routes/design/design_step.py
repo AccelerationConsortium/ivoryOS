@@ -3,9 +3,10 @@ from flask_login import login_required
 
 from ivoryos.services.draft_service import get_script_file, post_script_file
 from ivoryos.forms.dynamic_forms import (BATCH_ACTION_FIELD, CONSOLIDATE_ARGS_FIELD,
-                                          create_form_from_action, create_action_button)
+                                          create_form_from_action, create_action_buttons)
 from ivoryos.parsers.returns import extract_return_variables
 from ivoryos.script import ScriptEditor, ScriptRenderer
+from ivoryos.script.compatibility import check_action, current_reference
 
 
 steps = Blueprint('design_steps', __name__)
@@ -37,7 +38,8 @@ def get_step(uuid: int):
         return render_template("components/edit_action_form.html",
                                action=action,
                                forms=forms,
-                               script=script)
+                               script=script,
+                               issues=check_action(action, current_reference()))
 
 
 
@@ -90,7 +92,7 @@ def save_step(uuid: int):
         exec_string = {}
         warning = f"Compilation failed: {str(e)}"
     # session['python_code'] = exec_string
-    design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
+    design_buttons = create_action_buttons(script)
     return render_template("components/canvas_main.html",
                            script=script,
                            buttons_dict=design_buttons,
@@ -123,7 +125,7 @@ def delete_step(uuid: int):
         exec_string = {}
         warning = f"Compilation failed: {str(e)}"
     # session['python_code'] = exec_string
-    design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
+    design_buttons = create_action_buttons(script)
     return render_template("components/canvas_main.html",
                                script=script,
                                buttons_dict=design_buttons, warning=warning)
@@ -155,7 +157,7 @@ def duplicate_action(uuid: int):
         exec_string = {}
         warning = f"Compilation failed: {str(e)}"
     # session['python_code'] = exec_string
-    design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
+    design_buttons = create_action_buttons(script)
 
     return render_template("components/canvas_main.html",
                          script=script,
@@ -191,7 +193,7 @@ def toggle_comment_action(uuid: int):
         exec_string = {}
         warning = f"Compilation failed: {str(e)}"
     
-    design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
+    design_buttons = create_action_buttons(script)
 
     return render_template("components/canvas_main.html",
                          script=script,
@@ -240,7 +242,7 @@ def update_list():
     # session['python_code'] = exec_string
 
     # Return the updated canvas HTML instead of JSON
-    design_buttons = {stype: create_action_button(script, stype) for stype in script.stypes}
+    design_buttons = create_action_buttons(script)
     return render_template("components/canvas_main.html",
                            script=script,
                            buttons_dict=design_buttons, warning=warning)
