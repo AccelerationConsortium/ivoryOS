@@ -130,14 +130,13 @@ class TaskRunner:
                     output = await asyncio.to_thread(function_executable, **kwargs)
                 output = sanitize_for_json(output)
                 step.output = output
-                step.end_time = datetime.now()
                 success = True
             except Exception as e:
                 step.run_error = str(e)
-                step.end_time = datetime.now()
                 success = False
                 output = str(e)
             finally:
+                step.end_time = datetime.now()
                 db.session.commit()
                 if acquired:
                     self.lock.release()
