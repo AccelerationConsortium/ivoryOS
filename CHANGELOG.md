@@ -1,4 +1,10 @@
 # Changelog
+## 1.6.13 (September 23rd, 2026)
+- !201 **[Bug]** resolve task end time not recorded when executing task from ivoryos client
+- !200 **[New]** flag workflow steps incompatible with the loaded deck
+- !199 **[Bug]** resolve method args dropped from the form when named like step settings (e.g. `batch_action`)
+- !198 **[Bug]** resolve method args dropped by argument-name filtering when two args are similarly named
+
 ## 1.6.12 (September 8th, 2026)
 - !197 **[QoL]** add experiment name upon starting execution
 - !196 **[QoL]** remove sequence id order in json
