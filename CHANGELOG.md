@@ -1,4 +1,9 @@
 # Changelog
+## 1.6.14 (September 29th, 2026)
+- !204 **[Bug]** resolve Ax plot error
+- !203 **[QoL]** update to latest UI dependencies
+- !202 **[Bug]** resolve error with SQLAlchemy >= 2.1
+
 ## 1.6.13 (September 23rd, 2026)
 - !201 **[Bug]** resolve task end time not recorded when executing task from ivoryos client
 - !200 **[New]** flag workflow steps incompatible with the loaded deck
