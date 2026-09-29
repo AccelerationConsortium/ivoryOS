@@ -1,8 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy_utils import JSONType
 
-from ivoryos.models.base import db
+from ivoryos.models.base import db, JSONType
 
 
 class WorkflowRun(db.Model):

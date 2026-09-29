@@ -1,7 +1,6 @@
 from flask_login import UserMixin
-from sqlalchemy_utils import JSONType
 
-from ivoryos.models.base import db
+from ivoryos.models.base import db, JSONType
 
 
 class User(db.Model, UserMixin):
