@@ -427,7 +427,11 @@
                         cardHeader.innerText = plotName;
                         
                         const cardBody = document.createElement('div');
-                        cardBody.className = "card-body overflow-auto d-flex justify-content-center";
+                        cardBody.className = "card-body overflow-auto d-flex";
+                        // Ax figures have fixed widths. Plain centering would push a figure wider
+                        // than the card past its left edge, where it can't be scrolled to;
+                        // "safe" left-aligns it instead (older browsers ignore this and left-align).
+                        cardBody.style.justifyContent = "safe center";
                         cardBody.innerHTML = htmlSnippet;
                         
                         plotWrapper.appendChild(cardHeader);

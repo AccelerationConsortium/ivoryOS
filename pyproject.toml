@@ -27,14 +27,14 @@ dependencies = [
 
 [project.optional-dependencies]
 optimizer-ax = ["ax-platform"]
-optimizer-baybe = ["baybe"]
+optimizer-baybe = ["baybe>=0.15.0"]
 optimizer-nimo = ["nimo"]
 db = ["psycopg2-binary"]
 llm = ["openai"]
 
 optimizers = [
     "ax-platform>=1.1.2",
-    "baybe>=0.14.0",
+    "baybe>=0.15.0",
     "nimo>=2.0.5"
 ]
 doc = [
