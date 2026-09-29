@@ -1,6 +1,5 @@
-from sqlalchemy_utils import JSONType
 
-from ivoryos.models.base import db
+from ivoryos.models.base import db, JSONType
 
 
 class SingleStep(db.Model):

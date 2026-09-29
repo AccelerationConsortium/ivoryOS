@@ -6,7 +6,6 @@ Flask-Session
 Flask-SocketIO
 Flask-SQLAlchemy
 Flask-WTF
-SQLAlchemy-Utils
 pandas
 
 # pyproject.toml is the source of truth for package metadata and optional

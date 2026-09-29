@@ -51,7 +51,7 @@ pip install ivoryos
 <details>
 <summary>Dependency groups</summary>
 
-- Core: Flask, Flask-Login, Flask-Session, Flask-SocketIO, Flask-SQLAlchemy, Flask-WTF, WTForms, SQLAlchemy-Utils, bcrypt, python-dotenv, pandas.
+- Core: Flask, Flask-Login, Flask-Session, Flask-SocketIO, Flask-SQLAlchemy, Flask-WTF, WTForms, bcrypt, python-dotenv, pandas.
 - Optimizers: `optimizer-ax`, `optimizer-baybe`, `optimizer-nimo`, or `optimizers` for all supported optimizer adapters.
 - Database: `db` for PostgreSQL support.
 - LLM design agent: `llm` for the optional in-app text-to-workflow feature.
