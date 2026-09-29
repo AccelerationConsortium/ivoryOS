@@ -2,7 +2,7 @@
 {% block title %}IvoryOS | Design execution{% endblock %}
 
 {% block body %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+{# socket.io is loaded once, globally, from base.html #}
 
 {% if no_deck_warning and not dismiss %}
 {# auto pop import when there is no deck#}
