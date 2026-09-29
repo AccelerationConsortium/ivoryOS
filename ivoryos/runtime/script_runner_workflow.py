@@ -415,7 +415,11 @@ class ScriptRunnerWorkflowMixin:
         if optimizer:
             try:
                 plots = optimizer.get_plots('all')
-                if plots:
+                if isinstance(plots, dict) and "error" in plots:
+                    # Don't save the error as plots: the data panel would render it as a plot card
+                    if self.logger:
+                        self.logger.warning(f'Could not generate optimizer plots: {plots["error"]}')
+                elif plots:
                     plots_file_path = os.path.join(output_path, f"{filename.replace('.csv', '')}_plots.json")
                     import json
                     with open(plots_file_path, 'w') as f:
