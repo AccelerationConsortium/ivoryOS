@@ -29,6 +29,7 @@ class ScriptRunner(ScriptRunnerQueueMixin, ScriptRunnerWorkflowMixin, ScriptRunn
         self.last_iteration = None
         self.last_total = None
         self.last_execution_section = None
+        self.current_batch = []
         self.waiting_for_input = False
         self.input_value = None
         self.current_task = None

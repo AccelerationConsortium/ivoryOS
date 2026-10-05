@@ -76,8 +76,7 @@ class ScriptRunnerStepMixin:
                         # print("context", context)
                         # print("substituted_args", substituted_args)
                     if step.get("batch_action", False):
-                        if len(contexts) > 1 and getattr(self, 'socketio', None):
-                            self.socketio.emit('batch_progress', {'batch_index': 1, 'batch_total': len(contexts), 'shared': True})
+                        self._emit_batch_progress(contexts[0], shared=len(contexts) > 1)
                         before = dict(contexts[0])
                         await self._execute_steps_batched(workflow_steps, [contexts[0]], arg_contexts=[workflow_contexts[0]], phase_id=phase_id, section_name=f"{section_name}-{action_id-1}")
                         self._broadcast_shared_values(contexts, before)
@@ -92,9 +91,8 @@ class ScriptRunnerStepMixin:
                 # Regular action - check if batch
                 if step.get("batch_action", False):
                     # Execute once for all samples
-                    if len(contexts) > 1 and getattr(self, 'socketio', None):
-                        self.socketio.emit('batch_progress', {'batch_index': 1, 'batch_total': len(contexts), 'shared': True})
-                    
+                    self._emit_batch_progress(contexts[0], shared=len(contexts) > 1)
+
                     before = dict(contexts[0])
                     consolidate_keys = step.get("consolidate_batch_args", [])
                     if consolidate_keys:
@@ -146,15 +144,13 @@ class ScriptRunnerStepMixin:
                 else:
                     # Execute for each sample
                     if arg_contexts:
-                        for i, (context, arg_context) in enumerate(zip(contexts, arg_contexts)):
-                            if len(contexts) > 1 and getattr(self, 'socketio', None):
-                                self.socketio.emit('batch_progress', {'batch_index': i + 1, 'batch_total': len(contexts)})
+                        for context, arg_context in zip(contexts, arg_contexts):
+                            self._emit_batch_progress(context)
                             await self._execute_action(step, context, arg_contexts=arg_context, phase_id=phase_id, step_index=action_id,
                                                        section_name=section_name)
                     else:
-                        for i, context in enumerate(contexts):
-                            if len(contexts) > 1 and getattr(self, 'socketio', None):
-                                self.socketio.emit('batch_progress', {'batch_index': i + 1, 'batch_total': len(contexts)})
+                        for context in contexts:
+                            self._emit_batch_progress(context)
                             await self._execute_action(step, context, phase_id=phase_id, step_index=action_id,
                                                        section_name=section_name)
                             self.pause_event.wait()
@@ -223,6 +219,23 @@ class ScriptRunnerStepMixin:
                 f"Repeat runs {times} times: return value(s) {', '.join(dict.fromkeys(names))} are overwritten "
                 f"each iteration, only the value from the last iteration is saved."
             )
+
+    def _emit_batch_progress(self, context: Dict[str, Any], shared=False):
+        """Show the running sample's place in the current batch, or "-" for a shared step.
+
+        Counted against the whole batch rather than the samples passed in, so a smaller
+        leftover batch reads x/3 and a sample inside an if group or a narrowed repeat
+        keeps its own number.
+        """
+        batch = self.current_batch
+        if not batch or not self.socketio:
+            return
+        if shared:
+            self.socketio.emit('batch_progress', {'batch_index': 1, 'batch_total': len(batch), 'shared': True})
+            return
+        index = next((i for i, item in enumerate(batch) if item is context), None)
+        if index is not None:
+            self.socketio.emit('batch_progress', {'batch_index': index + 1, 'batch_total': len(batch)})
 
     @staticmethod
     def _broadcast_shared_values(contexts: List[Dict[str, Any]], before: Dict[str, Any]):

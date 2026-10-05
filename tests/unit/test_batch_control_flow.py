@@ -108,6 +108,36 @@ def test_if_runs_each_branch_once_for_the_samples_that_took_it():
     assert runner.calls == [("heat", "shared"), ("dose", "A"), ("dose", "C"), ("skip", "B")]
 
 
+def test_batch_progress_counts_against_the_whole_batch():
+    runner = RecordingRunner()
+    runner.socketio = MagicMock()
+    contexts = [{"sample": "A", "amount": 2}, {"sample": "B", "amount": 1}, {"sample": "C", "amount": 3}]
+    runner.current_batch = contexts
+    run(runner, [
+        step(1, "deck.sdl", "stir", batch_action=True),
+        step(2, "if", "if", {"statement": "#amount > 1"}, uuid="i"),
+        step(3, "deck.sdl", "dose", {"amount": "#amount"}),
+        step(4, "if", "endif", uuid="i"),
+    ], contexts)
+
+    progress = [call.args[1] for call in runner.socketio.emit.call_args_list if call.args[0] == "batch_progress"]
+    assert progress == [
+        {"batch_index": 1, "batch_total": 3, "shared": True},
+        {"batch_index": 1, "batch_total": 3},
+        {"batch_index": 3, "batch_total": 3},
+    ]
+
+
+def test_leftover_batch_of_one_still_reports_progress():
+    runner = RecordingRunner()
+    runner.socketio = MagicMock()
+    contexts = [{"sample": "A"}]
+    runner.current_batch = contexts
+    run(runner, [step(1, "deck.sdl", "dose", {"amount": 1})], contexts)
+
+    runner.socketio.emit.assert_any_call("batch_progress", {"batch_index": 1, "batch_total": 1})
+
+
 def test_compile_batch_mode_loops_over_param_list_without_variables():
     script = Script(name="untitled", author="tester")
     script.script_dict["script"] = [
