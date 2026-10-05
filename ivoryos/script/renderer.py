@@ -501,10 +501,9 @@ class ScriptRenderer:
                 return f"{self.indent(indent_unit)}{action_name} = {expr}", indent_unit
         else:
             is_async = action.get("coroutine", False)
-            dynamic_arg = len(self.editor.get_variables()) > 0
             workflow_steps = action.get("workflow", None)
         arg_types = action.get('arg_types', {})
-        return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data, is_async, dynamic_arg, batch, batch_action, workflow_steps, interface_schema=interface_schema, arg_types=arg_types)
+        return self._process_instrument_action(indent_unit, instrument, action_name, args, save_data, is_async, batch, batch_action, workflow_steps, interface_schema=interface_schema, arg_types=arg_types)
 
     def _process_args(self, args):
         if isinstance(args, str) and args.startswith("#"):
@@ -560,7 +559,7 @@ class ScriptRenderer:
         cleaned = re.sub(r"#([A-Za-z_]\w*)", r"\1", expr)
         return cleaned
 
-    def _process_instrument_action(self, indent_unit, instrument, action, args, save_data, is_async=False, dynamic_arg=False,
+    def _process_instrument_action(self, indent_unit, instrument, action, args, save_data, is_async=False,
                                    batch=False, batch_action=False, workflow_steps=None, interface_schema=None, arg_types=None):
         async_str = "await " if is_async else ""
 
@@ -643,10 +642,8 @@ class ScriptRenderer:
             arg_list = [args[arg][1:] for arg in args if isinstance(args[arg], str) and args[arg].startswith("#")]
             param_str = [f"param['{arg_list}']" for arg_list in arg_list if arg_list]
             args_str = self.indent(indent_unit + 1) +  ", ".join(arg_list) + " = " + ", ".join(param_str) if arg_list else ""
-            if dynamic_arg:
-                for_string = self.indent(indent_unit) + "for param in param_list:" + args_str
-            else:
-                for_string = self.indent(indent_unit) + "for i in range(n):"
+            # param_list always exists in batch mode: it is the argument, or built from n when there are no parameters
+            for_string = self.indent(indent_unit) + "for param in param_list:" + args_str
             if isinstance(save_data, list):
                 output_code = for_string + self.indent(indent_unit + 1) + f"__ivoryos_result = {single_line}"
                 for index, name in enumerate(save_data):
