@@ -78,13 +78,9 @@ class ScriptRunnerStepMixin:
                     if step.get("batch_action", False):
                         if len(contexts) > 1 and getattr(self, 'socketio', None):
                             self.socketio.emit('batch_progress', {'batch_index': 1, 'batch_total': len(contexts), 'shared': True})
+                        before = dict(contexts[0])
                         await self._execute_steps_batched(workflow_steps, [contexts[0]], arg_contexts=[workflow_contexts[0]], phase_id=phase_id, section_name=f"{section_name}-{action_id-1}")
-                        if len(contexts) > 1:
-                            # Propagate any new values from first context to others
-                            for key, value in contexts[0].items():
-                                for context in contexts[1:]:
-                                    if key not in context:
-                                        context[key] = value
+                        self._broadcast_shared_values(contexts, before)
 
                     else:
                         for context, workflow_context in zip(contexts, workflow_contexts):
@@ -99,6 +95,7 @@ class ScriptRunnerStepMixin:
                     if len(contexts) > 1 and getattr(self, 'socketio', None):
                         self.socketio.emit('batch_progress', {'batch_index': 1, 'batch_total': len(contexts), 'shared': True})
                     
+                    before = dict(contexts[0])
                     consolidate_keys = step.get("consolidate_batch_args", [])
                     if consolidate_keys:
                         # Normalize to list if boolean (backward compat)
@@ -144,12 +141,7 @@ class ScriptRunnerStepMixin:
                         await self._execute_action_once(step, contexts[0], arg_contexts=arg_contexts, phase_id=phase_id, step_index=action_id,
                                                             section_name=section_name)
 
-                    if len(contexts) > 1:
-                        # Propagate any new values from first context to others
-                        for key, value in contexts[0].items():
-                            for context in contexts[1:]:
-                                if key not in context:
-                                    context[key] = value
+                    self._broadcast_shared_values(contexts, before)
 
                 else:
                     # Execute for each sample
@@ -170,34 +162,79 @@ class ScriptRunnerStepMixin:
 
 
     async def _execute_if_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index, section_name):
-        """Execute if/else block for multiple samples."""
-        # Evaluate condition for each sample
+        """Execute if/else block for multiple samples.
+
+        Samples are grouped by their condition result and each branch runs once for its
+        group, so a shared step inside a branch runs once rather than once per sample.
+        """
+        if_contexts, else_contexts = [], []
         for context in contexts:
             condition = self._evaluate_condition(step["args"]["statement"], context)
             if self.logger:
                 self.logger.info(f"Evaluating if {step['args']['statement']}: {condition}")
-            if condition:
-                await self._execute_steps_batched(step["if_block"], [context], phase_id=phase_id, section_name=section_name)
-            else:
-                await self._execute_steps_batched(step["else_block"], [context], phase_id=phase_id, section_name=section_name)
+            (if_contexts if condition else else_contexts).append(context)
+        if if_contexts:
+            await self._execute_steps_batched(step["if_block"], if_contexts, phase_id=phase_id, section_name=section_name)
+        if else_contexts:
+            await self._execute_steps_batched(step["else_block"], else_contexts, phase_id=phase_id, section_name=section_name)
 
 
     async def _execute_repeat_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index, section_name):
-        """Execute repeat block for multiple samples."""
-        for context in contexts:
-            times = step["args"].get("statement", 1)
+        """Execute repeat block for multiple samples.
 
-            if isinstance(times, str) and times.startswith("#"):
-                times = context.get(times[1:])
-            # print("repeat times", times, type(times))
-            for i in range(times):
-                if self.stop_current_event.is_set():
-                    break
-                # Add repeat index to all contexts
-                # for context in contexts:
-                #     context["repeat_index"] = i
+        The whole batch advances through the iterations together, as if the body were
+        written out N times: shared steps run once per iteration, per-sample steps once
+        per sample. When the count comes from a variable that differs between samples,
+        a sample sits out once its own count is reached and the rest carry on as a
+        smaller batch.
+        """
+        times = step["args"].get("statement", 1)
+        if isinstance(times, str) and times.startswith("#"):
+            counts = [int(context.get(times[1:])) for context in contexts]
+        else:
+            counts = [int(times)] * len(contexts)
+        total = max(counts, default=0)
+        self._warn_overwritten_returns(step["repeat_block"], total)
 
-                await self._execute_steps_batched(step["repeat_block"], [context], phase_id=phase_id, section_name=section_name)
+        for i in range(total):
+            if self.stop_current_event.is_set():
+                break
+            active = [context for context, count in zip(contexts, counts) if i < count]
+            await self._execute_steps_batched(step["repeat_block"], active, phase_id=phase_id, section_name=section_name)
+
+    def _warn_overwritten_returns(self, steps: List[Dict], times: int):
+        """Warn that return values saved inside a repeat only keep the last iteration."""
+        if times < 2 or not self.logger:
+            return
+        names = []
+
+        def collect(block):
+            for inner in block:
+                if inner.get("disabled", False):
+                    continue
+                saved = inner.get("return")
+                names.extend(name for name in (saved if isinstance(saved, list) else [saved]) if name)
+                for key in ("if_block", "else_block", "repeat_block", "while_block"):
+                    collect(inner.get(key, []))
+
+        collect(steps)
+        if names:
+            self.logger.warning(
+                f"Repeat runs {times} times: return value(s) {', '.join(dict.fromkeys(names))} are overwritten "
+                f"each iteration, only the value from the last iteration is saved."
+            )
+
+    @staticmethod
+    def _broadcast_shared_values(contexts: List[Dict[str, Any]], before: Dict[str, Any]):
+        """Copy the values a shared step wrote into the first sample to the rest of the batch.
+
+        Values are overwritten rather than only filled in when missing, so inside a repeat
+        every sample gets the latest iteration's value instead of keeping the first one.
+        """
+        written = {key: value for key, value in contexts[0].items()
+                   if key not in before or before[key] is not value}
+        for context in contexts[1:]:
+            context.update(written)
 
 
     async def _execute_while_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index, section_name):
