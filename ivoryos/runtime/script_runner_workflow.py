@@ -217,6 +217,11 @@ class ScriptRunnerWorkflowMixin:
             if self.logger:
                 self.logger.info(f"Skipping cleanup section due to stop signal.")
             return None
+        # a stop without skipping cleanup: lift the stop so the cleanup steps can run
+        if section_name == "cleanup" and self.stop_current_event.is_set():
+            if self.logger:
+                self.logger.info("Proceeding to cleanup after stop.")
+            self.stop_current_event.clear()
 
         phase = WorkflowPhase(
             run_id=run_id,
