@@ -140,6 +140,38 @@ def test_check_early_stop_requires_all_objectives_on_one_row():
     ], [{"name": "loss", "minimize": True}]) is False
 
 
+@pytest.mark.parametrize("cleanup", [False, True])
+def test_stop_execution_only_skips_cleanup_when_not_requested(cleanup):
+    runner = ScriptRunner()
+    runner.logger = MagicMock()
+
+    runner.stop_execution(continue_queue=True, cleanup=cleanup)
+
+    assert runner.stop_current_event.is_set()
+    assert runner.stop_pending_event.is_set()
+    assert runner.stop_cleanup_event.is_set() is not cleanup
+
+
+def test_cleanup_section_runs_after_stop_with_cleanup(monkeypatch):
+    import asyncio
+    from ivoryos.runtime import script_runner_workflow
+
+    runner = ScriptRunner()
+    runner.logger = MagicMock()
+
+    async def fake_exec_steps(script, section_name, phase_id):
+        # steps check this flag and bail out when it is still set
+        assert not runner.stop_current_event.is_set()
+        return [{}]
+
+    runner.exec_steps = fake_exec_steps
+    monkeypatch.setattr(script_runner_workflow, "WorkflowPhase", MagicMock())
+    monkeypatch.setattr(script_runner_workflow, "db", MagicMock())
+
+    runner.stop_execution(cleanup=True)
+    assert asyncio.run(runner._run_actions(MagicMock(), section_name="cleanup", run_id=1)) == [{}]
+
+
 def test_reserved_run_names_cover_running_and_queued_tasks():
     runner = ScriptRunner()
     runner.current_task = {"run_name": "flow"}

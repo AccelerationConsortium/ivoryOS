@@ -283,13 +283,14 @@ class ScriptRunnerQueueMixin:
         self.stop_cleanup_event.set()
         self.logger.info("Abort cleanup")
 
-    def stop_execution(self, continue_queue=True):
-        """Force stop everything, including ongoing tasks."""
+    def stop_execution(self, continue_queue=True, cleanup=False):
+        """Force stop everything, including ongoing tasks. Cleanup still runs when ``cleanup`` is True."""
         if self.logger:
             self.logger.info("Stop execution")
         self.stop_current_event.set()
         self.abort_pending()
-        self.abort_cleanup()
+        if not cleanup:
+            self.abort_cleanup()
         
         has_pending = len(self.execution_queue) > 0
         

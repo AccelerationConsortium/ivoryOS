@@ -19,9 +19,9 @@ def abort_cleanup():
     socketio.emit('log', {'message': "aborted cleanup"})
 
 
-def abort_current(continue_queue=True):
-    runner.stop_execution(continue_queue)
-    socketio.emit('log', {'message': f"stopped next task. continue_queue={continue_queue}"})
+def abort_current(continue_queue=True, cleanup=False):
+    runner.stop_execution(continue_queue, cleanup=cleanup)
+    socketio.emit('log', {'message': f"stopped next task. continue_queue={continue_queue}, cleanup={cleanup}"})
 
 def pause():
     runner.retry = False
@@ -51,7 +51,8 @@ def handle_abort_current(data=None):
     if data is None:
         data = {}
     continue_queue = data.get('continue_queue', True)
-    abort_current(continue_queue)
+    cleanup = data.get('cleanup', False)
+    abort_current(continue_queue, cleanup)
 
 @socketio.on('pause')
 def handle_pause():

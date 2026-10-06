@@ -455,9 +455,11 @@ document.addEventListener("DOMContentLoaded", function () {
         abortCurrentBtn.addEventListener('click', function () {
             const modalEl = document.getElementById('stopWorkflowModal');
             const continueQueueEl = document.getElementById('continueQueueCheckbox');
+            const cleanupEl = document.getElementById('stopCleanupCheckbox');
 
             if (modalEl && typeof bootstrap !== 'undefined') {
                 if (continueQueueEl) continueQueueEl.checked = false;
+                if (cleanupEl) cleanupEl.checked = false;
                 const modal = new bootstrap.Modal(modalEl);
                 modal.show();
             } else {
@@ -477,14 +479,16 @@ document.addEventListener("DOMContentLoaded", function () {
         stopWorkflowConfirmBtn.addEventListener('click', function() {
             const continueQueueEl = document.getElementById('continueQueueCheckbox');
             const continueQueue = continueQueueEl ? continueQueueEl.checked : false;
+            const cleanupEl = document.getElementById('stopCleanupCheckbox');
+            const doCleanup = cleanupEl ? cleanupEl.checked : false;
             const modalEl = document.getElementById('stopWorkflowModal');
             if (modalEl) {
                 const modal = bootstrap.Modal.getInstance(modalEl);
                 if (modal) modal.hide();
             }
             if (typeof window.clearActiveInput === 'function') window.clearActiveInput();
-            socket.emit('abort_current', { continue_queue: continueQueue });
-            console.log('Stop action sent to server. Continue queue:', continueQueue);
+            socket.emit('abort_current', { continue_queue: continueQueue, cleanup: doCleanup });
+            console.log('Stop action sent to server. Continue queue:', continueQueue, 'Cleanup:', doCleanup);
         });
     }
 
