@@ -73,7 +73,7 @@ class NIMOOptimizer(OptimizerBase):
             if p["type"] == "choice" and isinstance(p["bounds"], list):
                 param_values.append(p["bounds"])
             elif p["type"] == "range" and len(p["bounds"]) == 3:
-                values = self._create_discrete_search_space(range_with_step=p["bounds"],value_type=p["value_type"])
+                values = self._create_discrete_search_space(range_with_step=p["bounds"],value_type=p.get("value_type", "float"))
                 param_values.append(values)
             else:
                 raise ValueError(f"Unsupported parameter format: {p}")
@@ -103,7 +103,7 @@ class NIMOOptimizer(OptimizerBase):
                        output_file = self.proposals,
                        num_objectives = self.n_objectives,
                        num_proposals = n,
-                       **self.additional_params
+                       **(self.additional_params or {})
                        )
         self.current_step += 1
         # Read proposals from CSV file
@@ -152,6 +152,8 @@ class NIMOOptimizer(OptimizerBase):
         if self.n_candidates > self.MAX_PHASE_DIAGRAM_CANDIDATES:
             return {"error": f"Phase diagram skipped: the search space has {self.n_candidates} candidates, "
                              f"more than the {self.MAX_PHASE_DIAGRAM_CANDIDATES} it can plot in reasonable time."}
+        nimo.visualization.plot_phase_diagram.plot(input_file=self.candidates,
+                                                   fig_folder=os.path.join(self.datapath, "nimo_data"))
         files = sorted(glob.glob(os.path.join(os.path.join(self.datapath, "nimo_data"), "phase_diagram_*.png")))
         if not files:
             return None
