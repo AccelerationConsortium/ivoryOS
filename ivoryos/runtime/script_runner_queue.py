@@ -106,6 +106,17 @@ class ScriptRunnerQueueMixin:
 
         return queue_status
 
+    def reserved_run_names(self):
+        """Run names already claimed by the running task and the queued ones.
+
+        A run is only recorded in the database once it starts, so a name picked
+        for a new task has to avoid these as well as the names of past runs.
+        """
+        tasks = list(self.execution_queue)
+        if self.current_task:
+            tasks.append(self.current_task)
+        return {task["run_name"] for task in tasks if task.get("run_name")}
+
     def get_current_task_details(self):
         """Returns the full details for the currently executing task"""
         try:

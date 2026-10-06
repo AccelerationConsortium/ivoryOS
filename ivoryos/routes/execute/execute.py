@@ -30,6 +30,18 @@ execute.register_blueprint(files)
 global_state = GlobalState()
 
 
+def _unique_run_name(name):
+    """``name``, or ``name_N`` if a past, running or queued run already uses it."""
+    base_name = ScriptEditor.validate_function_name(name)
+    taken = runner.reserved_run_names()
+    final_name = base_name
+    counter = 1
+    while final_name in taken or WorkflowRun.query.filter_by(name=final_name).first() is not None:
+        final_name = f"{base_name}_{counter}"
+        counter += 1
+    return final_name
+
+
 @execute.route("/executions/config", methods=['GET', 'POST'])
 @login_required
 def experiment_run():
@@ -194,15 +206,8 @@ def experiment_run():
         try:
         # if True:
             datapath = current_app.config["DATA_FOLDER"]
-            base_name = display_name if (display_name and display_name.strip()) else run_name
-            base_name = ScriptEditor.validate_function_name(base_name)
-            final_name = base_name
-            counter = 1
-            while WorkflowRun.query.filter_by(name=final_name).first() is not None:
-                final_name = f"{base_name}_{counter}"
-                counter += 1
-            run_name = final_name
-            
+            run_name = _unique_run_name(display_name if (display_name and display_name.strip()) else run_name)
+
             socketio_instance = g.socketio
             def on_start_callback():
                 # This runs inside the thread with app context pushed
@@ -355,15 +360,8 @@ def run_bo():
     # if True:
     try:
         datapath = current_app.config["DATA_FOLDER"]
-        base_name = display_name if (display_name and display_name.strip()) else run_name
-        base_name = ScriptEditor.validate_function_name(base_name)
-        final_name = base_name
-        counter = 1
-        while WorkflowRun.query.filter_by(name=final_name).first() is not None:
-            final_name = f"{base_name}_{counter}"
-            counter += 1
-        run_name = final_name
-        
+        run_name = _unique_run_name(display_name if (display_name and display_name.strip()) else run_name)
+
         Optimizer = global_state.optimizers.get(optimizer_type, None)
         if not Optimizer:
             raise ValueError(f"Optimizer {optimizer_type} is not supported or not found.")

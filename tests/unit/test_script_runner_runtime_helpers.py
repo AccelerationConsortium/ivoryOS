@@ -138,3 +138,11 @@ def test_check_early_stop_requires_all_objectives_on_one_row():
     assert runner._check_early_stop([
         {"loss": 0.1, "score": 0.95},
     ], [{"name": "loss", "minimize": True}]) is False
+
+
+def test_reserved_run_names_cover_running_and_queued_tasks():
+    runner = ScriptRunner()
+    runner.current_task = {"run_name": "flow"}
+    runner.execution_queue = [{"run_name": "flow_1"}, {"run_name": None}, {"run_name": "flow_2"}]
+
+    assert runner.reserved_run_names() == {"flow", "flow_1", "flow_2"}
