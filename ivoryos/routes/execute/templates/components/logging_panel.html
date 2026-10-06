@@ -140,17 +140,21 @@
 
 <!-- Queue Details Modal -->
 <div class="modal fade" id="queueDetailsModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Task Details</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
+        <div id="conditions-error" class="alert alert-danger py-2 d-none" role="alert"></div>
         <pre id="queue-details-content" class="bg-light p-3 border rounded"></pre>
+        <div id="conditions-editor" class="d-none"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary d-none" id="cancel-conditions-btn" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary d-none" id="save-conditions-btn" onclick="saveConditions()">Save</button>
+        <button type="button" class="btn btn-secondary" id="close-details-btn" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -220,13 +224,10 @@
         }
     }
 
-  let currentDetailsMsg = null;
-  let currentTaskId = null;
-
+  // Read-only details of the running task. Queued tasks open in the edit form instead.
   function renderTaskDetails(details, fullConfig = null) {
     const content = document.getElementById('queue-details-content');
     content.innerHTML = '';
-    currentDetailsMsg = details; // Store for reloading
 
     if (!details) {
       content.innerText = "No details available.";
@@ -238,7 +239,7 @@
     const tbody = document.createElement('tbody');
 
     for (const [key, value] of Object.entries(details)) {
-      if (key === 'Config Preview (First 5)' || key === 'Full Config') continue;
+      if (key === 'Full Config') continue;
 
       const row = document.createElement('tr');
       const th = document.createElement('th');
@@ -246,24 +247,7 @@
       th.innerText = key;
       const td = document.createElement('td');
 
-      if (key === 'Task Name') {
-          // Add edit button for name
-          td.innerHTML = `
-              <div class="d-flex align-items-center">
-                  <span id="task-name-display-${currentTaskId}" class="me-2">${value}</span>
-                  <input type="text" id="task-name-input-${currentTaskId}" class="form-control form-control-sm d-none w-auto" value="${value}">
-                  <button class="btn btn-sm btn-outline-primary ms-2" id="edit-task-name-btn-${currentTaskId}" onclick="toggleEditTaskName(${currentTaskId})">
-                      <i class="bi bi-pencil"></i>
-                  </button>
-                  <button class="btn btn-sm btn-success d-none ms-2" id="save-task-name-btn-${currentTaskId}" onclick="saveTaskName(${currentTaskId})">
-                      Save
-                  </button>
-                  <button class="btn btn-sm btn-secondary d-none ms-1" id="cancel-task-name-btn-${currentTaskId}" onclick="cancelEditTaskName(${currentTaskId}, '${value.replace(/'/g, "\\'")}')">
-                      Cancel
-                  </button>
-              </div>
-          `;
-      } else if (typeof value === 'object' && value !== null) {
+      if (typeof value === 'object' && value !== null) {
         td.innerHTML = `<pre class="m-0" style="max-height: 200px; overflow: auto;">${JSON.stringify(value, null, 2)}</pre>`;
       } else {
         td.innerText = value;
@@ -275,7 +259,6 @@
     table.appendChild(tbody);
     content.appendChild(table);
 
-    // Handle Config Display
     if (fullConfig) {
       const configContainer = document.createElement('div');
       configContainer.className = 'mt-3';
@@ -287,136 +270,7 @@
       pre.innerText = JSON.stringify(fullConfig, null, 2);
       configContainer.appendChild(pre);
       content.appendChild(configContainer);
-
-    } else if (details['Config Preview (First 5)']) {
-      const configContainer = document.createElement('div');
-      configContainer.className = 'mt-3';
-      configContainer.innerHTML = '<h6>Configuration Preview (First 5):</h6>';
-      const pre = document.createElement('pre');
-      pre.className = 'bg-white p-2 border rounded';
-      pre.innerText = JSON.stringify(details['Config Preview (First 5)'], null, 2);
-      configContainer.appendChild(pre);
-
-      const loadBtn = document.createElement('button');
-      loadBtn.className = 'btn btn-sm btn-primary mt-2';
-      loadBtn.innerText = 'Load Full Config';
-      loadBtn.onclick = () => loadFullConfig(currentTaskId);
-      configContainer.appendChild(loadBtn);
-
-      content.appendChild(configContainer);
     }
-  }
-
-  function showQueueDetails(details, taskId) {
-    currentTaskId = taskId;
-    renderTaskDetails(details);
-    const modalHeader = document.querySelector('#queueDetailsModal .modal-title');
-    if (modalHeader) {
-        modalHeader.innerText = "Task Details";
-    }
-    const modal = new bootstrap.Modal(document.getElementById('queueDetailsModal'));
-    modal.show();
-  }
-
-  function loadFullConfig(taskId) {
-    if (taskId === null) return;
-    const btn = document.querySelector('#queue-details-content button');
-    if (btn) {
-      btn.disabled = true;
-      btn.innerText = 'Loading...';
-    }
-
-    // Use a dummy ID 0 to generate the base URL, then replace it with the actual taskId
-    const baseUrl = "{{ url_for('execute.get_queue_task_details', task_id=0) }}".slice(0, -1);
-    fetch(`${baseUrl}${taskId}`)
-      .then(response => response.json())
-      .then(data => {
-        if (data && data["Full Config"]) {
-          renderTaskDetails(currentDetailsMsg, data["Full Config"]);
-        } else {
-          alert('Failed to load full configuration.');
-          if (btn) {
-            btn.disabled = false;
-            btn.innerText = 'Load Full Config';
-          }
-        }
-      })
-      .catch(err => {
-        console.error(err);
-        alert('Error loading configuration.');
-        if (btn) {
-          btn.disabled = false;
-          btn.innerText = 'Load Full Config';
-        }
-      });
-  }
-
-  function cancelEditTaskName(id, originalName) {
-      document.getElementById('task-name-display-' + id).classList.remove('d-none');
-      document.getElementById('edit-task-name-btn-' + id).classList.remove('d-none');
-      
-      const input = document.getElementById('task-name-input-' + id);
-      input.classList.add('d-none');
-      input.value = originalName; // reset to original
-      
-      document.getElementById('save-task-name-btn-' + id).classList.add('d-none');
-      document.getElementById('cancel-task-name-btn-' + id).classList.add('d-none');
-  }
-
-  function renameTask(id, newName) {
-    fetch("{{ url_for('execute.rename_queue_task') }}", {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ id: id, new_name: newName })
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === 'ok') {
-            // Update successful, refresh queue and update modal UI
-            document.getElementById('task-name-display-' + id).innerText = newName;
-            document.getElementById('task-name-input-' + id).value = newName;
-            // update original name parameter dynamically
-            document.getElementById('cancel-task-name-btn-' + id).setAttribute("onclick", `cancelEditTaskName(${id}, '${newName.replace(/'/g, "\\'")}')`);
-            
-            cancelEditTaskName(id, newName); // return to non-edit mode using the new name
-            // No need to call updateQueue() here as the server will emit queue_status
-        } else {
-          console.error('Rename failed:', data.error);
-          alert('Failed to rename task: ' + data.error);
-          cancelEditTaskName(id, document.getElementById('task-name-display-' + id).innerText);
-        }
-      })
-      .catch(error => {
-          console.error('Error renaming task:', error);
-          cancelEditTaskName(id, document.getElementById('task-name-display-' + id).innerText);
-      });
-  }
-
-  function toggleEditTaskName(id) {
-      document.getElementById('task-name-display-' + id).classList.add('d-none');
-      document.getElementById('edit-task-name-btn-' + id).classList.add('d-none');
-      document.getElementById('task-name-input-' + id).classList.remove('d-none');
-      document.getElementById('save-task-name-btn-' + id).classList.remove('d-none');
-      document.getElementById('cancel-task-name-btn-' + id).classList.remove('d-none');
-      document.getElementById('task-name-input-' + id).focus();
-  }
-
-  function saveTaskName(id) {
-      const newName = document.getElementById('task-name-input-' + id).value.trim();
-      const oldName = document.getElementById('task-name-display-' + id).innerText;
-      
-      if (!newName || newName === oldName) {
-          cancelEditTaskName(id, oldName); // Do nothing if blank or unchanged
-          return;
-      }
-      
-      const saveBtn = document.getElementById('save-task-name-btn-' + id);
-      saveBtn.disabled = true;
-      saveBtn.innerText = "Saving...";
-      
-      renameTask(id, newName);
   }
 
   function renderQueue(data) {
@@ -434,7 +288,7 @@
 
       const infoDiv = document.createElement('div');
       infoDiv.style.cursor = 'pointer';
-      infoDiv.setAttribute('title', 'Click to view details');
+      infoDiv.setAttribute('title', 'Click to edit');
 
       let batchBadge = '';
       if (task.details && task.details['Batch Size']) {
@@ -448,13 +302,12 @@
           <br>
           <small class="text-muted ms-4">${task.args}</small>
       `;
-      infoDiv.onclick = () => showQueueDetails(task.details, index); 
+      infoDiv.onclick = () => openQueuedTask(task.uid);
       item.appendChild(infoDiv);
 
       const controlsDiv = document.createElement('div');
-      const safeName = task.name.replace(/'/g, "\\'");
       controlsDiv.innerHTML = `
-          <button class="btn btn-sm btn-outline-primary" onclick="promptRenameTask(${index}, '${safeName}')">
+          <button class="btn btn-sm btn-outline-primary" title="Edit" onclick="openQueuedTask('${task.uid}')">
             <i class="bi bi-pencil"></i>
           </button>
           <button class="btn btn-sm btn-outline-secondary" onclick="reorderTask(${index}, 'up')" ${index === 0 ? 'disabled' : ''}>
@@ -515,12 +368,339 @@
       .catch(error => console.error('Error reordering task:', error));
   }
 
-  function promptRenameTask(id, currentName) {
-      const newName = prompt("Enter a new name for this task:", currentName);
-      if (newName !== null && newName.trim() !== '' && newName.trim() !== currentName) {
-          renameTask(id, newName.trim());
-      }
+  // ---- Editing a queued task ----
+  // A queued task keeps its name, repeat count, config entries or optimization
+  // settings untouched until it starts, so they can all still be changed.
+  let currentTaskUid = null;
+  let editedConditions = null;
+
+  function conditionsUrl(uid) {
+    return "{{ url_for('execute.get_queue_task_conditions', uid='__uid__') }}".replace('__uid__', encodeURIComponent(uid));
   }
+
+  function el(tag, props = {}, children = []) {
+    const node = document.createElement(tag);
+    for (const [key, value] of Object.entries(props)) {
+      if (value === undefined || value === null) continue;
+      if (key === 'dataset') Object.assign(node.dataset, value);
+      else if (key === 'style') node.setAttribute('style', value);
+      else if (key in node) node[key] = value;
+      else node.setAttribute(key, value);
+    }
+    for (const child of [].concat(children)) {
+      if (child === null || child === undefined || child === false) continue;
+      node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+    }
+    return node;
+  }
+
+  function showConditionsError(message) {
+    const box = document.getElementById('conditions-error');
+    box.textContent = message || '';
+    box.classList.toggle('d-none', !message);
+  }
+
+  // The modal shows either the edit form of a queued task or the read-only
+  // details of the running one.
+  function showTaskModal(view, title) {
+    const editing = view === 'form';
+    document.getElementById('queue-details-content').classList.toggle('d-none', editing);
+    document.getElementById('conditions-editor').classList.toggle('d-none', !editing);
+    document.getElementById('cancel-conditions-btn').classList.toggle('d-none', !editing);
+    document.getElementById('save-conditions-btn').classList.toggle('d-none', !editing || !editedConditions);
+    document.getElementById('close-details-btn').classList.toggle('d-none', editing);
+    document.querySelector('#queueDetailsModal .modal-title').innerText = title;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('queueDetailsModal')).show();
+  }
+
+  function openQueuedTask(uid) {
+    currentTaskUid = uid;
+    editedConditions = null;
+    showConditionsError('');
+    const editor = document.getElementById('conditions-editor');
+    fetch(conditionsUrl(uid))
+      .then(response => response.json().then(data => ({ ok: response.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok) throw new Error(data.error || 'Could not load this task.');
+        editedConditions = data;
+        editor.replaceChildren(...buildConditionsEditor(data));
+      })
+      .catch(error => {
+        editor.replaceChildren();
+        showConditionsError(error.message);
+      })
+      .finally(() => showTaskModal('form', 'Queued Task'));
+  }
+
+  function resetTaskModal() {
+    currentTaskUid = null;
+    editedConditions = null;
+    showConditionsError('');
+  }
+
+  function saveConditions() {
+    if (!currentTaskUid || !editedConditions) return;
+    const saveButton = document.getElementById('save-conditions-btn');
+    saveButton.disabled = true;
+    showConditionsError('');
+    fetch(conditionsUrl(currentTaskUid), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(collectConditions()),
+    })
+      .then(response => response.json().then(data => ({ ok: response.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok) throw new Error(data.error || 'Could not save this task.');
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('queueDetailsModal')).hide();
+        updateQueue();
+      })
+      .catch(error => showConditionsError(error.message))
+      .finally(() => { saveButton.disabled = false; });
+  }
+
+  function editorSection(title, children) {
+    return el('div', { className: 'mb-4' }, [
+      el('h6', { className: 'fw-bold border-bottom pb-2 mb-3 text-secondary' }, title),
+      ...[].concat(children),
+    ]);
+  }
+
+  function editorNumber(id, label, value) {
+    return el('div', { className: 'col-sm-4' }, [
+      el('label', { className: 'form-label small fw-bold mb-1', htmlFor: id }, label),
+      el('input', { type: 'number', className: 'form-control form-control-sm', id, min: '1', step: '1', value: value ?? '' }),
+    ]);
+  }
+
+  const MODE_LABELS = { repeat: 'Repeated execution', config: 'Configuration list', optimizer: 'Bayesian optimization' };
+
+  function buildConditionsEditor(c) {
+    const runFields = [
+      el('div', { className: 'col-12' }, [
+        el('label', { className: 'form-label small fw-bold mb-1', htmlFor: 'cond-name' }, 'Experiment name'),
+        el('input', { type: 'text', className: 'form-control form-control-sm', id: 'cond-name', value: c.name ?? '' }),
+      ]),
+    ];
+    if (c.mode !== 'config') {
+      runFields.push(editorNumber('cond-repeat-count', c.mode === 'optimizer' ? 'Iterations' : 'Repeat count', c.repeat_count));
+    }
+    runFields.push(editorNumber('cond-batch-size', 'Batch size', c.batch_size));
+    if (c.history) {
+      runFields.push(el('div', { className: 'col-12 small text-muted' }, ['Existing data: ', el('span', { className: 'font-monospace' }, c.history)]));
+    }
+    const mode = [MODE_LABELS[c.mode], c.optimizer].filter(Boolean).join(' · ');
+    const parts = [editorSection(`Run · ${mode}`, el('div', { className: 'row g-2' }, runFields))];
+    if (c.mode === 'config') parts.push(editorSection('Config entries', configEditor(c)));
+    if (c.mode === 'optimizer') parts.push(...optimizerEditor(c));
+    return parts;
+  }
+
+  function configEditor(c) {
+    const body = el('tbody', { id: 'cond-config-rows' });
+    c.rows.forEach(values => body.append(configRow(c.fields, values)));
+    renumberConfigRows(body);
+    const header = el('tr', {}, [
+      el('th', { className: 'small text-muted', style: 'width: 2.5em' }, '#'),
+      ...c.fields.map(field => el('th', { className: 'small text-nowrap' }, [
+        field,
+        c.types[field] ? el('span', { className: 'text-muted fw-normal ms-1' }, `(${c.types[field]})`) : null,
+      ])),
+      el('th', { style: 'width: 2.5em' }),
+    ]);
+    const addButton = el('button', {
+      type: 'button', className: 'btn btn-sm btn-outline-secondary',
+      onclick: () => { body.append(configRow(c.fields, [])); renumberConfigRows(body); },
+    }, [el('i', { className: 'bi bi-plus-lg me-1' }), 'Add entry']);
+    return [
+      el('div', { className: 'table-responsive' },
+        el('table', { className: 'table table-sm table-bordered align-middle mb-2' }, [
+          el('thead', { className: 'table-light' }, header),
+          body,
+        ])),
+      addButton,
+    ];
+  }
+
+  function configRow(fields, values) {
+    const row = el('tr');
+    row.append(
+      el('td', { className: 'small text-muted row-number' }),
+      ...fields.map((field, i) => el('td', { className: 'p-1' },
+        el('input', { type: 'text', className: 'form-control form-control-sm', value: values[i] ?? '', dataset: { field } }))),
+      el('td', { className: 'p-1 text-center' },
+        el('button', {
+          type: 'button', className: 'btn btn-sm btn-outline-danger', title: 'Remove this entry',
+          onclick: () => { const body = row.parentNode; row.remove(); renumberConfigRows(body); },
+        }, el('i', { className: 'bi bi-x-lg' }))),
+    );
+    return row;
+  }
+
+  function renumberConfigRows(body) {
+    body.querySelectorAll('.row-number').forEach((cell, i) => { cell.textContent = i + 1; });
+  }
+
+  function optimizerEditor(c) {
+    const parts = [
+      editorSection('Parameters', el('table', { className: 'table table-sm align-middle mb-0' },
+        el('tbody', { id: 'cond-parameters' }, c.parameters.map(p => parameterRow(p, c.requires_step))))),
+      editorSection('Objectives', el('table', { className: 'table table-sm align-middle mb-0' },
+        el('tbody', { id: 'cond-objectives' }, c.objectives.map(objectiveRow)))),
+    ];
+    if (c.supports_constraints || c.constraints.length) {
+      const list = el('div', { id: 'cond-constraints' }, c.constraints.map(constraintRow));
+      parts.push(editorSection('Constraints', [list,
+        el('button', { type: 'button', className: 'btn btn-sm btn-outline-secondary', onclick: () => list.append(constraintRow('')) },
+          [el('i', { className: 'bi bi-plus-lg me-1' }), 'Add constraint'])]));
+    }
+    if (c.steps.length) {
+      parts.push(editorSection('Model configuration', el('div', { className: 'row g-2' }, c.steps.map(stepCard))));
+    }
+    if (c.additional_params.length) {
+      parts.push(editorSection('Advanced', el('div', { className: 'row g-2', id: 'cond-additional' }, c.additional_params.map(additionalField))));
+    }
+    return parts;
+  }
+
+  function parameterRow(p, requiresStep) {
+    const input = (role, placeholder, value) =>
+      el('input', { type: 'text', className: 'form-control form-control-sm', placeholder, value, dataset: { role } });
+    const type = el('select', { className: 'form-select form-select-sm', dataset: { role: 'type' } },
+      p.types.map(t => el('option', { value: t, selected: t === p.type }, t)));
+    const range = el('div', { className: 'input-group input-group-sm', dataset: { kind: 'range' } }, [
+      input('min', 'Min', p.min),
+      input('max', 'Max', p.max),
+      input('step', requiresStep ? 'Step (required)' : 'Step (optional)', p.step),
+    ]);
+    const choices = el('div', { dataset: { kind: 'choice' } }, input('choices', 'Choices, comma separated', p.choices));
+    const fixed = el('div', { dataset: { kind: 'fixed' } }, input('value', 'Fixed value', p.value));
+    const showInputs = () => {
+      const kind = type.value === 'substance' ? 'choice' : type.value;
+      [range, choices, fixed].forEach(node => node.classList.toggle('d-none', node.dataset.kind !== kind));
+    };
+    type.addEventListener('change', showInputs);
+    showInputs();
+    return el('tr', { dataset: { name: p.name } }, [
+      el('td', { className: 'small fw-medium' }, [p.name, el('span', { className: 'text-muted fw-normal ms-1' }, `(${p.value_type})`)]),
+      el('td', { style: 'width: 9em' }, type),
+      el('td', {}, [range, choices, fixed]),
+    ]);
+  }
+
+  function objectiveRow(o) {
+    return el('tr', { dataset: { name: o.name } }, [
+      el('td', { className: 'small fw-medium' }, o.name),
+      el('td', { style: 'width: 9em' }, el('select', { className: 'form-select form-select-sm', dataset: { role: 'goal' } },
+        ['minimize', 'maximize', 'none'].map(goal => el('option', { value: goal, selected: goal === o.goal }, goal)))),
+      el('td', {}, el('input', {
+        type: 'number', step: 'any', className: 'form-control form-control-sm',
+        placeholder: 'Early stop threshold (optional)', value: o.early_stop, dataset: { role: 'early_stop' },
+      })),
+    ]);
+  }
+
+  function constraintRow(expression) {
+    const row = el('div', { className: 'input-group input-group-sm mb-2' });
+    row.append(
+      el('input', { type: 'text', className: 'form-control', placeholder: 'e.g. a + b <= 80', value: expression }),
+      el('button', { type: 'button', className: 'btn btn-outline-danger', title: 'Remove this constraint', onclick: () => row.remove() },
+        el('i', { className: 'bi bi-x-lg' })),
+    );
+    return row;
+  }
+
+  function stepCard(step) {
+    const fields = [
+      el('label', { className: 'form-label small fw-bold mb-1' }, 'Model'),
+      el('select', { className: 'form-select form-select-sm mb-2', dataset: { role: 'model' } }, [
+        step.model ? null : el('option', { value: '', selected: true }, '-- Default --'),
+        ...step.models.map(model => el('option', { value: model, selected: model === step.model }, model)),
+      ]),
+    ];
+    if (step.has_num_samples) {
+      fields.push(
+        el('label', { className: 'form-label small fw-bold mb-1' }, 'Num samples'),
+        el('input', { type: 'number', min: '0', step: '1', className: 'form-control form-control-sm', value: step.num_samples, dataset: { role: 'num_samples' } }),
+      );
+    }
+    return el('div', { className: 'col-md-6' }, el('div', { className: 'card bg-light border h-100', dataset: { step: step.key } }, [
+      el('div', { className: 'card-header py-1 bg-white' }, el('small', { className: 'fw-bold text-muted' }, step.label)),
+      el('div', { className: 'card-body py-2' }, fields),
+    ]));
+  }
+
+  function additionalField(field) {
+    const isList = field.type.startsWith('list');
+    let input;
+    if (field.type === 'choice' && field.options.length) {
+      input = el('select', { className: 'form-select form-select-sm' }, [
+        el('option', { value: '', selected: !field.value }, 'Default'),
+        ...field.options.map(option => el('option', { value: String(option), selected: String(option) === field.value }, String(option))),
+      ]);
+    } else {
+      const isNumber = field.type === 'int' || field.type === 'float';
+      input = el('input', {
+        type: isNumber ? 'number' : 'text', step: isNumber ? (field.type === 'float' ? 'any' : '1') : undefined,
+        className: 'form-control form-control-sm', placeholder: isList ? 'e.g. 1, 2, 3' : 'Optional', value: field.value,
+      });
+    }
+    input.dataset.name = field.name;
+    return el('div', { className: 'col-md-6' }, [
+      el('label', { className: 'form-label small fw-bold mb-1' }, isList ? `${field.name} (comma-separated)` : field.name),
+      input,
+    ]);
+  }
+
+  function collectConditions() {
+    const c = editedConditions;
+    const editor = document.getElementById('conditions-editor');
+    const payload = {
+      name: editor.querySelector('#cond-name').value,
+      batch_size: editor.querySelector('#cond-batch-size').value,
+    };
+    if (c.mode !== 'config') payload.repeat_count = editor.querySelector('#cond-repeat-count').value;
+    if (c.mode === 'config') {
+      payload.config = [...editor.querySelectorAll('#cond-config-rows tr')].map(row => {
+        const entry = {};
+        row.querySelectorAll('input[data-field]').forEach(input => { entry[input.dataset.field] = input.value; });
+        return entry;
+      });
+    }
+    if (c.mode === 'optimizer') {
+      payload.parameters = [...editor.querySelectorAll('#cond-parameters tr')].map(row => {
+        const value = role => row.querySelector(`[data-role="${role}"]`).value;
+        return {
+          name: row.dataset.name, type: value('type'),
+          min: value('min'), max: value('max'), step: value('step'), choices: value('choices'), value: value('value'),
+        };
+      });
+      payload.objectives = [...editor.querySelectorAll('#cond-objectives tr')].map(row => ({
+        name: row.dataset.name,
+        goal: row.querySelector('[data-role="goal"]').value,
+        early_stop: row.querySelector('[data-role="early_stop"]').value,
+      }));
+      const constraints = editor.querySelector('#cond-constraints');
+      if (constraints) payload.constraints = [...constraints.querySelectorAll('input')].map(input => input.value);
+      const steps = editor.querySelectorAll('[data-step]');
+      if (steps.length) {
+        payload.steps = {};
+        steps.forEach(card => {
+          const entry = { model: card.querySelector('[data-role="model"]').value };
+          const samples = card.querySelector('[data-role="num_samples"]');
+          if (samples) entry.num_samples = samples.value;
+          payload.steps[card.dataset.step] = entry;
+        });
+      }
+      const additional = editor.querySelectorAll('#cond-additional [data-name]');
+      if (additional.length) {
+        payload.additional_params = {};
+        additional.forEach(input => { payload.additional_params[input.dataset.name] = input.value; });
+      }
+    }
+    return payload;
+  }
+
+  document.getElementById('queueDetailsModal').addEventListener('hidden.bs.modal', resetTaskModal);
 
   // Listen for queue updates via WebSocket
   document.addEventListener('DOMContentLoaded', () => {
@@ -549,17 +729,10 @@
           if (data.error) {
               throw new Error(data.error);
           }
-          // Prepare the modal with 'data'
-          // Using existing renderTaskDetails function meant for queued tasks
-          const fullConfig = data["Full Config"] || null;
-          renderTaskDetails(data, fullConfig);
-          // Update modal title logic
-          const modalHeader = document.querySelector('#queueDetailsModal .modal-title');
-          if (modalHeader) {
-              modalHeader.innerText = "Current Run Details";
-          }
-          const modal = new bootstrap.Modal(document.getElementById('queueDetailsModal'));
-          modal.show();
+          // the running task can no longer be edited, so it gets the read-only view
+          resetTaskModal();
+          renderTaskDetails(data, data["Full Config"] || null);
+          showTaskModal('details', 'Current Run Details');
       })
       .catch(error => {
           alert('Error: ' + error.message);

@@ -1,5 +1,7 @@
 import threading
+import uuid
 
+from ivoryos.runtime import task_conditions
 from ivoryos.runtime.runner_runtime import ensure_deck
 
 
@@ -52,6 +54,7 @@ class ScriptRunnerQueueMixin:
             # Basic info
             info = {
                 "id": i,
+                "uid": task.get("uid"),
                 "name": task.get("run_name", "untitled"),
                 "status": "pending",
                 "args": f"{task.get('repeat_count', 1)} iteration(s)" if not task.get('config') else f"Config: {len(task.get('config'))} entries"
@@ -116,6 +119,34 @@ class ScriptRunnerQueueMixin:
         if self.current_task:
             tasks.append(self.current_task)
         return {task["run_name"] for task in tasks if task.get("run_name")}
+
+    def _queued_task(self, uid):
+        return next((task for task in self.execution_queue if task.get("uid") == uid), None)
+
+    def get_task_conditions(self, uid):
+        """The editable run conditions of a queued task, or ``None`` once it left the queue."""
+        task = self._queued_task(uid)
+        return None if task is None else task_conditions.editable_conditions(task)
+
+    def update_task_conditions(self, uid, changes, unique_name=None):
+        """Apply an edited name and run conditions to a queued task.
+
+        ``unique_name`` is passed on to :func:`task_conditions.parse_changes`.
+        Returns ``False`` when the task has already started or was removed, and
+        raises ``ValueError`` with a message for the user when a value is unusable.
+        """
+        task = self._queued_task(uid)
+        if task is None:
+            return False
+        updates = task_conditions.parse_changes(task, changes, unique_name=unique_name)
+        if self._queued_task(uid) is not task:
+            # it started while the changes were being checked
+            return False
+        task.update(updates)
+        if self.logger:
+            self.logger.info(f"Updated run conditions of queued task: {task.get('run_name')}")
+        self._emit_queue_status()
+        return True
 
     def get_current_task_details(self):
         """Returns the full details for the currently executing task"""
@@ -350,7 +381,9 @@ class ScriptRunnerQueueMixin:
             "optimizer_cls": optimizer_cls,
             "additional_params": additional_params,
             "on_start": on_start,
-            "display_name": display_name
+            "display_name": display_name,
+            # positions shift as the queue advances; this keeps naming the same task
+            "uid": uuid.uuid4().hex,
         }
         # handle status when workflow queued during single task execution
         was_busy = self.lock.locked() or self.queue_paused
@@ -409,7 +442,7 @@ class ScriptRunnerQueueMixin:
 
         thread = threading.Thread(
             target=self._run_with_stop_check,
-            kwargs=task
+            kwargs={key: value for key, value in task.items() if key != "uid"}
         )
         self._emit_busy_status()
         thread.start()
