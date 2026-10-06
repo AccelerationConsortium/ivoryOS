@@ -50,6 +50,8 @@ class ScriptRunnerWorkflowMixin:
             results = kwargs_list.copy()
         else:
             results = [{} for _ in range(batch_size)]
+        # batch progress is reported against this list; left empty outside batch mode
+        self.current_batch = results if int(batch_size or 1) > 1 else []
         nested_steps = validate_and_nest_control_flow(script.script_dict.get(section_name, []))
 
         await self._execute_steps_batched(nested_steps, results, phase_id=phase_id, section_name=section_name)
@@ -288,7 +290,7 @@ class ScriptRunnerWorkflowMixin:
                 phase_id = phase.id
                 db.session.commit()
 
-                output = await self.exec_steps(script, "script", phase_id, kwargs_list=kwargs_list, )
+                output = await self.exec_steps(script, "script", phase_id, kwargs_list=kwargs_list, batch_size=batch_size)
                 # print(output)
                 phase = db.session.get(WorkflowPhase, phase_id)
                 if output:
@@ -377,7 +379,7 @@ class ScriptRunnerWorkflowMixin:
                     phase.parameters = sanitize_for_json(parameters)
                     db.session.commit() # Commit parameters early? Or wait? Let's commit to be safe if exec_steps crashes
 
-                    output = await self.exec_steps(script, "script",  phase_id, kwargs_list=parameters)
+                    output = await self.exec_steps(script, "script",  phase_id, kwargs_list=parameters, batch_size=batch_size)
                     if output:
                         optimizer.observe(output)
                         

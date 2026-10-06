@@ -170,3 +170,11 @@ def test_cleanup_section_runs_after_stop_with_cleanup(monkeypatch):
 
     runner.stop_execution(cleanup=True)
     assert asyncio.run(runner._run_actions(MagicMock(), section_name="cleanup", run_id=1)) == [{}]
+
+
+def test_reserved_run_names_cover_running_and_queued_tasks():
+    runner = ScriptRunner()
+    runner.current_task = {"run_name": "flow"}
+    runner.execution_queue = [{"run_name": "flow_1"}, {"run_name": None}, {"run_name": "flow_2"}]
+
+    assert runner.reserved_run_names() == {"flow", "flow_1", "flow_2"}

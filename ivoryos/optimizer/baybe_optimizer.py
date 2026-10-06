@@ -13,7 +13,7 @@ class BaybeOptimizer(OptimizerBase):
                 "Install it with `pip install baybe`."
             ) from e
 
-        super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, parameter_constraints, additional_params)
+        super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, parameter_constraints, datapath, additional_params)
         self._trial_id = 0
         self._trials = {}
 
@@ -30,13 +30,31 @@ class BaybeOptimizer(OptimizerBase):
 
     def observe(self, results, index=None):
         """
-        Observes the results of a trial and updates the experiment.
-        :param results: A dictionary containing the results of the trial.
-        :param index: The index of the trial in the DataFrame, if applicable.
+        Record a round's results: one dict per suggested trial, holding the parameter values it
+        ran with and its objective values (the queue sends both; BayBE needs both).
 
+        A trial with an objective missing failed and is left out: BayBE has no failed status
+        (a missing target is refused as an incomplete measurement) and records only
+        measurements. That is what Ax's mark_trial_failed amounts to as well -- a failed trial
+        teaches neither model anything, and neither offers its point again in a discrete space
+        (BayBE does not re-recommend a point it already recommended). Only the bookkeeping
+        differs, and the run's own record holds the failed step, so this says so and moves on.
         """
-        df = DataFrame(results)
-        self.experiment.add_measurements(df)
+        targets = [o["name"] for o in self.objective_config]
+        params = [p["name"] for p in self.parameter_space]
+        rows = [r for r in results if all(r.get(t) is not None for t in targets)]
+        for r in results:
+            if r not in rows:
+                point = {p: r.get(p) for p in params}
+                print(f"[optimizer] baybe: trial {point} gave no result; BayBE keeps no record of a failed "
+                      f"experiment, so it is left out of the model.")
+        if not rows:
+            return
+        df = DataFrame(rows)
+        missing = [p for p in params if p not in df.columns]
+        if missing:
+            raise ValueError(f"BayBE needs each result's parameter values too; missing {missing}.")
+        self.experiment.add_measurements(df[params + targets])
 
     def append_existing_data(self, existing_data: DataFrame, file_path: str = None):
         """
@@ -76,21 +94,22 @@ class BaybeOptimizer(OptimizerBase):
         from baybe.searchspace import SearchSpace
         parameters = []
         for p in parameter_space:
+            value_type = p.get("value_type", "float")
             if p["type"] == "range":
                 if len(p["bounds"]) == 3:
-                    values = self._create_discrete_search_space(range_with_step=p["bounds"],value_type=p["value_type"])
+                    values = self._create_discrete_search_space(range_with_step=p["bounds"],value_type=value_type)
                     parameters.append(NumericalDiscreteParameter(name=p["name"], values=values))
-                elif p["value_type"] == "float":
-                    parameters.append(NumericalContinuousParameter(name=p["name"], bounds=p["bounds"]))
-                elif p["value_type"] == "int":
+                elif value_type == "int":
                     values = tuple([int(v) for v in range(p["bounds"][0], p["bounds"][1] + 1)])
                     parameters.append(NumericalDiscreteParameter(name=p["name"], values=values))
+                else:
+                    parameters.append(NumericalContinuousParameter(name=p["name"], bounds=p["bounds"]))
 
             elif p["type"] == "choice":
-                if p["value_type"] == "str":
-                    parameters.append(CategoricalParameter(name=p["name"], values=p["bounds"]))
-                elif p["value_type"] in ["int", "float"]:
+                if value_type in ["int", "float"]:
                     parameters.append(NumericalDiscreteParameter(name=p["name"], values=p["bounds"]))
+                else:
+                    parameters.append(CategoricalParameter(name=p["name"], values=p["bounds"]))
         return SearchSpace.from_product(parameters)
 
     def _convert_objective_to_baybe_format(self, objective_config):
@@ -146,9 +165,14 @@ class BaybeOptimizer(OptimizerBase):
             step_2_recommender = NaiveHybridSpaceRecommender()
         elif step_2.get("model") == "BOTorch":
             step_2_recommender = BotorchRecommender()
+        # How long step 1 lasts. BayBE switches once this many measurements are on record
+        # (existing data counts, a failed trial does not) and takes only a real int of at
+        # least 1, which is also its default. The Optimize page sends 0 for an emptied field.
+        switch_after = max(1, int(step_1.get("num_samples") or 1))
         return TwoPhaseMetaRecommender(
             initial_recommender=step_1_recommender,
-            recommender=step_2_recommender
+            recommender=step_2_recommender,
+            switch_after=switch_after,
         )
 
     def get_plots(self, plot_type):

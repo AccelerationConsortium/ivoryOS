@@ -556,7 +556,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (batchDisplay && window.currentBatchSize > 1) {
             if (data.shared) {
                 batchDisplay.innerText = ` | Batch: -/${data.batch_total}`;
-            } else if (data.batch_total && data.batch_total > 1) {
+            } else if (data.batch_total) {
                 batchDisplay.innerText = ` | Batch: ${data.batch_index}/${data.batch_total}`;
             }
         }
