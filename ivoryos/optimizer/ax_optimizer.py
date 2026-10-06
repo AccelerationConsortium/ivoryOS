@@ -17,7 +17,7 @@ class AxOptimizer(OptimizerBase):
                 "Install it with `pip install ax-platform`."
             ) from e
         super().__init__(experiment_name, parameter_space, objective_config, optimizer_config, parameter_constraints,
-                         additional_params)
+                         datapath, additional_params)
 
         self.client = Client()
         # 2. Configure where Ax will search.
@@ -52,24 +52,25 @@ class AxOptimizer(OptimizerBase):
         from ax import RangeParameterConfig, ChoiceParameterConfig
         ax_params = []
         for p in parameter_space:
+            value_type = p.get("value_type", "float")
             if p["type"] == "range":
                 # if step is used here, convert to ChoiceParameterConfig
                 if  len(p["bounds"]) == 3:
-                    values = self._create_discrete_search_space(range_with_step=p["bounds"],value_type=p["value_type"])
+                    values = self._create_discrete_search_space(range_with_step=p["bounds"],value_type=value_type)
                     ax_params.append(ChoiceParameterConfig(name=p["name"], values=values, parameter_type="float", is_ordered=True))
                 else:
                     ax_params.append(
                         RangeParameterConfig(
                             name=p["name"],
                             bounds=tuple(p["bounds"]),
-                            parameter_type=p["value_type"]
+                            parameter_type=value_type
                         ))
             elif p["type"] == "choice":
                 ax_params.append(
                     ChoiceParameterConfig(
                         name=p["name"],
                         values=p["bounds"],
-                        parameter_type=p["value_type"],
+                        parameter_type=value_type,
                     )
                 )
         return ax_params
