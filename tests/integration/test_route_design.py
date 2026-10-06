@@ -358,3 +358,24 @@ def test_execution_page_is_quiet_when_the_workflow_matches_the_deck(auth, test_d
     body = auth.get('/ivoryos/executions/config', follow_redirects=True).get_data(as_text=True)
 
     assert 'run-compatibility-warning' not in body
+
+
+def test_run_names_skip_queued_tasks_not_yet_in_the_database(app, init_database, monkeypatch):
+    """
+    GIVEN one finished run named 'flow' and another task already queued as 'flow_1'
+    WHEN a name is picked for the next task
+    THEN it skips both, rather than reusing the queued task's name
+    """
+    from datetime import datetime
+
+    from ivoryos.models import WorkflowRun
+    from ivoryos.routes.execute import execute as execute_module
+
+    monkeypatch.setattr(execute_module.runner, "execution_queue", [{"run_name": "flow_1"}])
+    monkeypatch.setattr(execute_module.runner, "current_task", None)
+
+    with app.app_context():
+        db.session.add(WorkflowRun(name='flow', platform='deck', start_time=datetime.now()))
+        db.session.commit()
+
+        assert execute_module._unique_run_name('flow') == 'flow_2'
