@@ -68,6 +68,7 @@ function changeDeck(deck) {
     .then(data => {
         if (data.html) {
             document.getElementById("sidebar-wrapper").innerHTML = data.html;
+            initializeToolbox();
         }
     })
     .catch(error => console.error("Failed to change deck", error));
@@ -76,25 +77,21 @@ function changeDeck(deck) {
 
 
 function toggleAutoFill() {
-    const instrumentValue = document.querySelector('.form-check.form-switch').dataset.instrument;
-
     fetch(scriptUIStateUrl, {
         method: "PATCH",
         headers: {
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
-            autofill: document.getElementById("autoFillCheck").checked,
-            instrument: instrumentValue
+            autofill: document.getElementById("autoFillCheck").checked
         })
     })
     .then(res => res.json())
     .then(data => {
-        if (data.html) {
-            document.getElementById("instrument-panel").innerHTML = data.html;
-            initializeDragHandlers()
-        }
+        // the open groups' forms are filled in, or not, from now on
+        if (data.success) reloadToolboxActions();
     })
+    .catch(error => console.error("Failed to change auto fill", error));
 }
 // Restore state on page load
 document.addEventListener('DOMContentLoaded', () => {

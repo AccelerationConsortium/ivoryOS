@@ -1,10 +1,6 @@
-{# Autofill toggle component #}
-<div class="d-flex justify-content-between align-items-center " style="margin-bottom: 1vh;margin-top: 1vh;">
-    <div class="form-check form-switch" data-instrument="{{ instrument }}">
-{#        <input type="hidden" id="autofill" name="autofill" value="temp_value">#}
-        <input class="form-check-input" type="checkbox" id="autoFillCheck" name="autoFillCheck" onchange="toggleAutoFill()"
-               value="temp_value"
-                {{ "checked" if session["autofill"] else "" }}>
-        <label class="form-check-label" for="autoFillCheck">Auto fill</label>
-    </div>
+{# Auto fill: new actions in the toolbox come with each field set to a workflow input of its name #}
+<div class="form-check form-switch my-2">
+    <input class="form-check-input" type="checkbox" id="autoFillCheck" name="autoFillCheck" onchange="toggleAutoFill()"
+           {{ "checked" if session["autofill"] else "" }}>
+    <label class="form-check-label" for="autoFillCheck">Auto fill</label>
 </div>

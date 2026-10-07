@@ -1,7 +1,7 @@
 // Move triggerModal to global scope
 function triggerModal(formHtml, actionName, actionId, dropTargetId) {
     if (formHtml && formHtml.trim() !== "") {
-        var $form = $("<div>").html(formHtml);
+        var $wrapper = $("<div>").html(formHtml);
 
         var $hiddenInput = $("<input>")
             .attr("type", "hidden")
@@ -9,9 +9,14 @@ function triggerModal(formHtml, actionName, actionId, dropTargetId) {
             .attr("id", "dropTargetInput")
             .val(dropTargetId);
 
-        $form.find("button[type='submit']").before($hiddenInput);
+        // This copy of the toolbox form gets an id of its own, so the footer's Add (beside
+        // Cancel) submits it rather than the toolbox form it was copied from.
+        var $form = $wrapper.find("form").first();
+        $form.attr("id", "dropModalForm");
+        $form.find("button[type='submit']").remove();
+        $form.append($hiddenInput);
 
-        $("#modalFormFields").empty().append($form.children());
+        $("#modalFormFields").empty().append($wrapper.children());
 
         const $modal = $("#dropModal");
 
@@ -96,15 +101,6 @@ function initializeCanvas() {
         }
     });
 
-    // Make Entire Accordion Item Draggable
-    $(".accordion-item").off("dragstart").on("dragstart", function (event) {
-        let formHtml = $(this).find(".accordion-body").html();
-        event.originalEvent.dataTransfer.setData("form", formHtml || "");
-        event.originalEvent.dataTransfer.setData("action", $(this).find(".draggable-action").data("action"));
-        event.originalEvent.dataTransfer.setData("id", $(this).find(".draggable-action").attr("id"));
-        $(this).addClass("dragging");
-    });
-
     $("#list ul, .canvas").off("dragover").on("dragover", function (event) {
         event.preventDefault();
         let $target = $(event.target).closest("li");
@@ -159,13 +155,13 @@ function insertDropPlaceholder($target) {
     $("<li class='drop-placeholder'></li>").insertBefore($target);
 }
 
-// Add this function to sortable_design.js
+// The toolbox's actions drag onto the canvas; called again whenever a group loads its actions
 function initializeDragHandlers() {
-    const $cards = $(".accordion-item.design-control");
+    const $cards = $(".toolbox-action");
 
-    // Toggle draggable based on mouse/touch position
+    // An action drags by its row; its open form stays free for typing and selecting text
     $cards.off("mousedown touchstart").on("mousedown touchstart", function (event) {
-        this.setAttribute("draggable", $(event.target).closest(".input-group").length ? "false" : "true");
+        this.setAttribute("draggable", $(event.target).closest(".toolbox-action-toggle").length ? "true" : "false");
     });
 
     // Handle the actual drag
@@ -176,12 +172,12 @@ function initializeDragHandlers() {
                 return false;
             }
 
-            const formHtml = $(this).find(".accordion-body form").prop("outerHTML");
+            const formHtml = $(this).find(".toolbox-action-body form").prop("outerHTML");
             if (!formHtml) return false;
 
             event.originalEvent.dataTransfer.setData("form", formHtml);
-            event.originalEvent.dataTransfer.setData("action", $(this).find(".draggable-action").data("action"));
-            event.originalEvent.dataTransfer.setData("id", $(this).find(".draggable-action").attr("id"));
+            event.originalEvent.dataTransfer.setData("action", $(this).find(".toolbox-action-toggle").data("action"));
+            event.originalEvent.dataTransfer.setData("id", $(this).find(".toolbox-action-toggle").attr("aria-controls"));
 
             $(this).addClass("dragging");
         },
@@ -191,7 +187,7 @@ function initializeDragHandlers() {
     });
 
     // Prevent form inputs from being draggable
-    $(".accordion-item input, .accordion-item select").attr("draggable", "false");
+    $(".toolbox-action input, .toolbox-action select").attr("draggable", "false");
 }
 
 // Make sure it's called in the document ready function

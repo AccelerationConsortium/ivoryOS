@@ -110,54 +110,48 @@
             </div>
         </div>
 
-        <!-- RIGHT COLUMN: SYSTEM QUICK ACTIONS -->
+        <!-- RIGHT COLUMN: GETTING STARTED -->
+        {# What to do, in the order a lab does it; each row goes there. Not a tour: it is all
+           here at once, and anyone who knows the way just clicks where they are going. #}
+        {% macro step(number, url, title, text) %}
+            <a href="{{ url }}" class="list-group-item list-group-item-action py-3 d-flex align-items-start gap-3 border-bottom px-0">
+                <span class="getting-started-number">{{ number }}</span>
+                <div class="flex-grow-1">
+                    <div style="font-weight: 600; color: #2c3e50;">{{ title }}</div>
+                    <div class="small text-muted">{{ text }}</div>
+                </div>
+                <i class="bi bi-chevron-right text-muted small align-self-center"></i>
+            </a>
+        {% endmacro %}
         <div class="col-lg-4">
             <div class="card border border-teal-light h-100" style="border-radius: 8px;">
                 <div class="card-body p-4 d-flex flex-column">
-                    <h5 class="card-title mb-3" style="font-weight: 600; color: #2c3e50;">
-                        Quick Actions
+                    <h5 class="card-title mb-2" style="font-weight: 600; color: #2c3e50;">
+                        Getting Started
                     </h5>
-                    
+
+                    {% set n = namespace(step=0) %}
                     <div class="list-group list-group-flush flex-fill">
-                        
-                        <!-- Action 1: Create New Workflow -->
-                        <a href="{{ url_for('design.experiment_builder') }}" class="list-group-item list-group-item-action py-3 d-flex align-items-center justify-content-between border-bottom px-0">
-                            <div class="d-flex align-items-center gap-3">
-                                <i class="bi bi-pencil-square fs-5 text-secondary"></i>
-                                <div>
-                                    <div style="font-weight: 600; color: #2c3e50;">Experiment Builder</div>
-                                    <div class="small text-muted">Create new pipeline designs</div>
-                                </div>
-                            </div>
-                            <i class="bi bi-chevron-right text-muted small"></i>
-                        </a>
-
-                        <!-- Action 2: Direct Device Control -->
                         {% if not off_line %}
-                        <a href="{{ url_for('control.deck_controllers') }}" class="list-group-item list-group-item-action py-3 d-flex align-items-center justify-content-between border-bottom px-0">
-                            <div class="d-flex align-items-center gap-3">
-                                <i class="bi bi-sliders fs-5 text-secondary"></i>
-                                <div>
-                                    <div style="font-weight: 600; color: #2c3e50;">Deck Controllers</div>
-                                    <div class="small text-muted">Manually trigger valves & pumps</div>
-                                </div>
-                            </div>
-                            <i class="bi bi-chevron-right text-muted small"></i>
-                        </a>
+                            {% set n.step = n.step + 1 %}
+                            {{ step(n.step, url_for('control.deck_controllers'), 'Try Your Instruments',
+                                    'Call methods directly.') }}
                         {% endif %}
-
-                        <!-- Action 3: View Past Data -->
-                        <a href="{{ url_for('data.list_workflows') }}" class="list-group-item list-group-item-action py-3 d-flex align-items-center justify-content-between border-0 px-0">
-                            <div class="d-flex align-items-center gap-3">
-                                <i class="bi bi-journal-text fs-5 text-secondary"></i>
-                                <div>
-                                    <div style="font-weight: 600; color: #2c3e50;">Experiment Logs</div>
-                                    <div class="small text-muted">Analyze recent runs & export CSVs</div>
-                                </div>
-                            </div>
-                            <i class="bi bi-chevron-right text-muted small"></i>
-                        </a>
+                        {% set n.step = n.step + 1 %}
+                        {{ step(n.step, url_for('design.experiment_builder'), 'Build a Workflow',
+                                'Drag actions in; #name makes an input.') }}
+                        {% set n.step = n.step + 1 %}
+                        {{ step(n.step, url_for('execute.experiment_run'), 'Run It',
+                                'Repeat, a table of values, or an optimizer.') }}
+                        {% set n.step = n.step + 1 %}
+                        {{ step(n.step, url_for('data.list_workflows'), 'Review the Results',
+                                'Every step and value; export CSV.') }}
                     </div>
+
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill align-self-start mt-3"
+                            data-bs-toggle="modal" data-bs-target="#tipsModal">
+                        <i class="bi bi-lightbulb me-1"></i>Workflow tips
+                    </button>
                 </div>
             </div>
         </div>
@@ -165,4 +159,23 @@
 
 
 </div>
+
+<style>
+    .getting-started-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 1.75rem;
+        height: 1.75rem;
+        border: 1px solid #387e81;
+        border-radius: 50%;
+        color: #387e81;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+</style>
+
+{# the same tips as the workflow designer's "?" #}
+{% include 'components/info_modal.html' %}
 {% endblock %}

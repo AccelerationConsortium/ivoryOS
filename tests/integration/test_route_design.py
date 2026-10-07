@@ -437,6 +437,68 @@ def test_renaming_a_queued_task_keeps_run_names_unique(auth, monkeypatch):
     assert second['run_name'] == 'flow_1'
 
 
+def test_the_toolbox_lists_flow_control_instruments_and_workflows(auth, test_deck):
+    with auth.application.app_context():
+        post_script_for_user('testuser', Script(author='testuser', deck='test_deck'))
+
+    page = auth.get('/ivoryos/draft').get_data(as_text=True)
+
+    # each group sits under a divider and loads its actions from here when first shown
+    assert 'data-url="/ivoryos/draft/instruments/flow_control"' in page
+    assert 'data-url="/ivoryos/draft/instruments/deck.dummy"' in page
+    assert 'data-url="/ivoryos/draft/instruments/workflows"' in page
+    # flow control starts folded; the instruments and the workflows start open
+    assert 'id="toolbox-flow_control" class="toolbox-group-body" hidden' in page
+    assert 'id="toolbox-deck-dummy" class="toolbox-group-body">' in page
+    assert 'id="toolbox-workflows" class="toolbox-group-body">' in page
+    assert page.index('>Flow control<') < page.index('>Dummy<') < page.index('>Workflows<')
+    # the groups are dividers, folded by a plain toggle rather than Bootstrap's collapse
+    toolbox = auth.get('/ivoryos/draft/instruments').get_json()['html']
+    assert 'class="toolbox-divider"' in toolbox
+    assert 'accordion' not in toolbox and 'data-bs-toggle' not in toolbox
+    # a step is edited in a pop-up, not in the toolbox
+    assert 'id="editStepModal"' in page
+
+
+def test_a_toolbox_group_holds_only_its_actions(auth, test_deck):
+    html = auth.get('/ivoryos/draft/instruments/deck.dummy').get_json()['html']
+
+    # no way back to step out of, and ids that cannot clash with another open group
+    assert 'bi-arrow-return-left' not in html
+    assert 'id="actions-deck-dummy"' in html
+    assert 'aria-controls="actions-deck-dummy-1"' in html and 'id="actions-deck-dummy-1"' in html
+    # each action is a row whose form opens under it, not an accordion item
+    assert 'class="toolbox-action"' in html and 'accordion' not in html
+    # an Enum field's choices are named after its action, not just its field
+    assert 'list="actions-deck-dummy-' in html and 'list="arg_options"' not in html
+
+
+def test_auto_fill_is_one_setting_for_the_toolbox(auth, test_deck):
+    assert auth.patch('/ivoryos/draft/ui-state', json={'autofill': True}).get_json() == {'success': True}
+
+    html = auth.get('/ivoryos/draft/instruments/deck.dummy').get_json()['html']
+    assert 'value="#arg"' in html
+
+
+def test_a_step_opens_in_a_pop_up_with_save_and_cancel(auth, test_deck):
+    script = Script(author='testuser')
+    ScriptEditor(script).add_action({
+        'instrument': 'deck.dummy', 'action': 'int_method',
+        'args': {'arg': 1}, 'return': '', 'arg_types': {'arg': 'int'},
+    })
+    with auth.application.app_context():
+        post_script_for_user('testuser', script)
+        uuid = get_script_for_user('testuser').script_dict['script'][0]['uuid']
+
+    body = auth.get(f'/ivoryos/draft/steps/{uuid}').get_data(as_text=True)
+
+    assert 'class="modal-header"' in body and 'id="editStepTitle"' in body
+    assert 'form="edit-step-form"' in body and 'data-bs-dismiss="modal">Cancel' in body
+    assert 'id="back"' not in body
+    # the step's own variables, apart from the toolbox's
+    assert 'list="step_variables"' in body
+
+
 def test_running_config_table_can_be_read_and_edited(auth, monkeypatch):
     """
     GIVEN a config run in progress, with its first row running
