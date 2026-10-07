@@ -30,16 +30,29 @@ execute.register_blueprint(files)
 global_state = GlobalState()
 
 
-def _unique_run_name(name):
-    """``name``, or ``name_N`` if a past, running or queued run already uses it."""
+def _unique_run_name(name, keep=None):
+    """``name``, or ``name_N`` if a past, running or queued run already uses it.
+
+    ``keep`` is the current name of a queued task being renamed; that task does not
+    count as already using it.
+    """
     base_name = ScriptEditor.validate_function_name(name)
-    taken = runner.reserved_run_names()
+    taken = runner.reserved_run_names() - {keep}
     final_name = base_name
     counter = 1
     while final_name in taken or WorkflowRun.query.filter_by(name=final_name).first() is not None:
         final_name = f"{base_name}_{counter}"
         counter += 1
     return final_name
+
+
+def _start_task_info(queued_run_name, queued_batch_size):
+    """Name and batch size of the task now starting; both may have been edited while it was queued."""
+    task = runner.current_task or {}
+    return {
+        'run_name': task.get('run_name') or queued_run_name,
+        'batch_size': int(task.get('batch_size') or queued_batch_size),
+    }
 
 
 @execute.route("/executions/config", methods=['GET', 'POST'])
@@ -215,8 +228,7 @@ def experiment_run():
                 line_collection = ScriptRenderer(script).render_nested_script_lines(script.script_dict, interface_schema=interface_schema)
                 progress_panel_html = render_template('components/progress_panel.html', line_collection=line_collection)
                 socketio_instance.emit('start_task', {
-                    'run_name': run_name,
-                    'batch_size': int(batch_size),
+                    **_start_task_info(run_name, batch_size),
                     'progress_panel_html': progress_panel_html
                 })
 
@@ -373,8 +385,7 @@ def run_bo():
             line_collection = ScriptRenderer(script).render_nested_script_lines(script.script_dict, interface_schema=interface_schema)
             progress_panel_html = render_template('components/progress_panel.html', line_collection=line_collection)
             socketio_instance.emit('start_task', {
-                'run_name': run_name,
-                'batch_size': int(batch_size),
+                **_start_task_info(run_name, batch_size),
                 'progress_panel_html': progress_panel_html
             })
 
@@ -554,6 +565,66 @@ def rename_queue_task():
         return jsonify({"error": "Failed to rename task"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+TASK_NOT_QUEUED = "This task is no longer in the queue; it has started or was removed."
+
+
+@execute.route("/executions/queue/task/<uid>/conditions", methods=["GET"])
+@login_required
+def get_queue_task_conditions(uid):
+    """
+    .. :quickref: Workflow Execution Queue; Get editable conditions of a queued task
+
+    .. http:get:: /executions/queue/task/<uid>/conditions
+
+    Retrieve the experiment name and run conditions of a queued task in a shape
+    that can be edited: its repeat count, its config entries, or its optimization
+    campaign settings.
+
+    :param uid: Queue task UID, as listed by :http:get:`/executions/queue`.
+    :status 200: Returns the task's conditions.
+    :status 404: The task has started or was removed from the queue.
+    """
+    conditions = runner.get_task_conditions(uid)
+    if conditions is None:
+        return jsonify({"error": TASK_NOT_QUEUED}), 404
+    return jsonify(conditions)
+
+
+@execute.route("/executions/queue/task/<uid>/conditions", methods=["POST"])
+@login_required
+def update_queue_task_conditions(uid):
+    """
+    .. :quickref: Workflow Execution Queue; Edit conditions of a queued task
+
+    .. http:post:: /executions/queue/task/<uid>/conditions
+
+    Change the experiment name and run conditions of a task that has not started
+    yet. Only the fields sent are changed, and nothing is changed if any of them
+    is invalid.
+
+    :param uid: Queue task UID, as listed by :http:get:`/executions/queue`.
+    :json name: Experiment name the run is saved under; made unique like a new run's.
+    :json repeat_count: Repeat count, or iterations of an optimization campaign.
+    :json batch_size: Batch size.
+    :json config: Config entries, as a list of ``{input name: value}``.
+    :json parameters: Campaign parameters, as ``{name, type, min, max, step, choices, value}``.
+    :json objectives: Campaign objectives, as ``{name, goal, early_stop}``.
+    :json constraints: Campaign constraint expressions.
+    :json steps: Optimizer steps, as ``{step key: {model, num_samples}}``.
+    :json additional_params: Optimizer settings, as ``{name: value}``.
+    :status 200: Conditions updated.
+    :status 400: A value is not usable; the error says which.
+    :status 404: The task has started or was removed from the queue.
+    """
+    try:
+        updated = runner.update_task_conditions(uid, request.get_json(silent=True), unique_name=_unique_run_name)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    if not updated:
+        return jsonify({"error": TASK_NOT_QUEUED}), 404
+    return jsonify({"status": "ok"})
 
 
 @execute.route("/executions/status", methods=["GET"])

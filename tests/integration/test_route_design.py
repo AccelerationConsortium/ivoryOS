@@ -379,3 +379,59 @@ def test_run_names_skip_queued_tasks_not_yet_in_the_database(app, init_database,
         db.session.commit()
 
         assert execute_module._unique_run_name('flow') == 'flow_2'
+
+
+def test_queued_task_conditions_can_be_read_and_edited(auth, monkeypatch):
+    """
+    GIVEN a config task waiting in the queue
+    WHEN its conditions are read, then edited with a bad and a good value
+    THEN the bad edit is refused with a reason and the good one is applied
+    """
+    from ivoryos.routes.execute import execute as execute_module
+
+    script = Script(author='testuser')
+    script.script_dict['script'] = [{
+        'id': 1, 'uuid': 1, 'instrument': 'deck.reactor', 'action': 'run',
+        'args': {'temperature': '#temperature'}, 'return': '', 'arg_types': {'temperature': 'float'},
+    }]
+    task = {'uid': 'abc', 'script': script, 'run_name': 'flow', 'repeat_count': None,
+            'batch_size': 1, 'compiled': False, 'config': [{'temperature': '25'}]}
+    monkeypatch.setattr(execute_module.runner, 'execution_queue', [task])
+    monkeypatch.setattr(execute_module.runner, 'socketio', None)
+    url = '/ivoryos/executions/queue/task/abc/conditions'
+
+    assert auth.get(url).get_json()['rows'] == [['25']]
+
+    refused = auth.post(url, json={'config': [{'temperature': 'hot'}]})
+    assert refused.status_code == 400
+    assert 'Entry 1' in refused.get_json()['error']
+    assert task['config'] == [{'temperature': '25'}]
+
+    assert auth.post(url, json={'config': [{'temperature': '30'}, {'temperature': '35'}]}).status_code == 200
+    assert task['config'] == [{'temperature': '30'}, {'temperature': '35'}]
+
+    assert auth.get('/ivoryos/executions/queue/task/gone/conditions').status_code == 404
+    assert auth.post('/ivoryos/executions/queue/task/gone/conditions', json={}).status_code == 404
+
+
+def test_renaming_a_queued_task_keeps_run_names_unique(auth, monkeypatch):
+    """
+    GIVEN two queued tasks, 'flow' and 'other'
+    WHEN 'other' is renamed to 'flow', and then to 'flow 1', which cleans up to its own name
+    THEN it becomes 'flow_1', and stays 'flow_1' rather than clashing with itself
+    """
+    from ivoryos.routes.execute import execute as execute_module
+
+    first = {'uid': 'a', 'script': Script(author='testuser'), 'run_name': 'flow', 'repeat_count': 2, 'config': None}
+    second = {'uid': 'b', 'script': Script(author='testuser'), 'run_name': 'other', 'repeat_count': 2,
+              'config': None, 'display_name': 'Other'}
+    monkeypatch.setattr(execute_module.runner, 'execution_queue', [first, second])
+    monkeypatch.setattr(execute_module.runner, 'current_task', None)
+    monkeypatch.setattr(execute_module.runner, 'socketio', None)
+    url = '/ivoryos/executions/queue/task/b/conditions'
+
+    assert auth.post(url, json={'name': 'flow'}).status_code == 200
+    assert (second['run_name'], second['display_name']) == ('flow_1', None)
+
+    assert auth.post(url, json={'name': 'flow 1'}).status_code == 200
+    assert second['run_name'] == 'flow_1'
