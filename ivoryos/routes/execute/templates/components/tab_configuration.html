@@ -126,7 +126,12 @@
                                         <th style="width: 30px;"></th>
                                         <th style="width: 40px;">#</th>
                                         {% for column in config_list %}
-                                        <th class="text-nowrap" style="min-width: 100px;">{{ column }}</th>
+                                        <th class="text-nowrap" style="min-width: 100px;">{{ column }}
+                                            {# the safety limits of the step fields this column is passed to #}
+                                            {% for limit in (column_limits or {}).get(column, []) %}
+                                            <div class="small text-muted fw-normal" title="Safety limit on {{ limit.source }}">{{ limit | limit_hint }}</div>
+                                            {% endfor %}
+                                        </th>
                                         {% endfor %}
                                         <th style="width: 50px;"></th>
                                     </tr>
@@ -216,6 +221,8 @@
     var rowCount = 0;
     var configColumns = {{ config_list| tojson }};
     var configTypes = {{ config_type_list| tojson }};
+    // {column: [limit]}: the instruments' safety limits, through the steps each column is passed to
+    var configLimits = {{ (column_limits or {}) | tojson }};
 
     // State management
     var originalFileData = null;
@@ -595,10 +602,30 @@
         return expected.length ? 'Must be ' + expected.join(' or ') + '.' : null;
     }
 
+    // Why a value is past one of its column's limits, or null.
+    function limitProblem(value, limits) {
+        var text = value.trim();
+        for (var i = 0; i < (limits || []).length; i++) {
+            var limit = limits[i];
+            var unit = limit.unit ? ' ' + limit.unit : '';
+            if (limit.min !== undefined || limit.max !== undefined) {
+                var number = Number(text);
+                if (!isFinite(number)) return 'Must be a number: this field has a limit.';
+                if (limit.min !== undefined && number < limit.min) return 'Below the minimum of ' + limit.min + unit + '.';
+                if (limit.max !== undefined && number > limit.max) return 'Above the maximum of ' + limit.max + unit + '.';
+            }
+            if (limit.allowed && limit.allowed.map(String).indexOf(text) === -1) {
+                return 'Not allowed here (allowed: ' + limit.allowed.join(', ') + ').';
+            }
+        }
+        return null;
+    }
+
     function cellProblem(cell, rowFilled) {
         if (!rowFilled) return null;
         if (cell.value.trim() === '') return 'Missing value: a row needs every value to run.';
-        return valueProblem(cell.value, configTypes[cell.name.substring(0, cell.name.indexOf('['))]);
+        var column = cell.name.substring(0, cell.name.indexOf('['));
+        return valueProblem(cell.value, configTypes[column]) || limitProblem(cell.value, configLimits[column]);
     }
 
     // Marks what is wrong in a row and returns it. `mark` is 'all' to mark every

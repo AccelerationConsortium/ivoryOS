@@ -88,6 +88,7 @@
         <input type="text" id="methodSearch" class="form-control" placeholder="Search methods...">
       </div>
       <div class="grid-container" id="sortable-grid"
+        data-guard-url="{{ url_for('control.save_limit', instrument=instrument) }}"
         style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1rem; width: 100%;">
         {% set hidden = session.get('hidden_functions', {}) %}
         {% set hidden_instrument = hidden.get(instrument, []) %}
@@ -132,6 +133,17 @@
                     </datalist>
                     {% else %}
                     {{ field(class="form-control") }}
+                    {% endif %}
+                    {% set shield = (guard_fields.get(function) or {}).get(field.name) %}
+                    {% if shield %}
+                    {# the field's safety limit: a faint shield to add one, the limit itself to change it #}
+                    <button type="button" class="input-group-text guard-shield{{ ' is-set' if shield.limit }}"
+                      data-method="{{ function }}" data-param="{{ field.name }}" data-kind="{{ shield.kind }}"
+                      data-limit='{{ shield.limit | tojson }}' aria-expanded="false"
+                      title="{{ 'Safety limit: click to change or remove' if shield.limit else 'Add a safety limit' }}">
+                      <i class="bi {{ 'bi-shield-check' if shield.limit else 'bi-shield-plus' }}"></i>
+                      {% if shield.limit %}<span class="ms-1">{{ shield.limit | limit_hint }}</span>{% endif %}
+                    </button>
                     {% endif %}
                   </div>
                   {% endif %}
@@ -227,6 +239,15 @@
       </script>
       <script src="{{ url_for('static', filename='js/sortable_card.js') }}"></script>
       <script src="{{ url_for('static', filename='js/overlay.js') }}"></script>
+      <datalist id="guard-units">
+        {% for group in unit_groups %}{% for unit in group.units %}<option value="{{ unit }}">{{ unit }} ({{ group.label }})</option>{% endfor %}{% endfor %}
+      </datalist>
+      <style>
+        .guard-shield { color: var(--bs-tertiary-color); background-color: transparent; }
+        .guard-shield:hover, .guard-shield:focus-visible, .guard-shield[aria-expanded="true"] { color: var(--bs-body-color); }
+        .guard-shield.is-set { color: var(--bs-primary-text-emphasis); background-color: var(--bs-primary-bg-subtle); font-size: 0.875rem; }
+      </style>
+      <script src="{{ url_for('static', filename='js/safety_guard.js') }}"></script>
       {% else %}
       <div class="alert alert-teal mt-4"><i class="bi bi-info-circle-fill"></i> Select an instrument to view its
         methods.</div>

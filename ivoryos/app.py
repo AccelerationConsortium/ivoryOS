@@ -10,6 +10,7 @@ from flask_login import AnonymousUserMixin
 from sqlalchemy import inspect, text
 
 from ivoryos.utils.logger import start_logger
+from ivoryos.runtime.safety import FILE_NAME as SAFETY_FILE, describe as describe_limit, guard
 from ivoryos.models import db, User
 from ivoryos.socket_handlers import socketio
 from ivoryos.routes.auth.auth import auth, login_manager
@@ -160,6 +161,8 @@ def create_app(config_class=None):
 
     # Additional setup
     create_ivoryos_folders(app.config['OUTPUT_FOLDER'])
+    # the instruments' safety limits live beside the data, set from the shields on the Instruments page
+    guard.configure(os.path.join(app.config['OUTPUT_FOLDER'], SAFETY_FILE))
 
     # logger_list = app.config["LOGGERS"]
     logger_path = os.path.join(app.config["OUTPUT_FOLDER"], app.config["LOGGERS_PATH"])
@@ -196,6 +199,11 @@ def create_app(config_class=None):
     @app.route('/')
     def redirect_to_prefix():
         return redirect(url_for('main.index', version=ivoryos_version))  # Assuming 'index' is a route in your blueprint
+
+    @app.template_filter('limit_hint')
+    def limit_hint(constraint):
+        """An instrument's limit as a short hint: ``mL · 0 to 10``."""
+        return describe_limit(constraint or {})
 
     @app.template_filter('format_name')
     def format_name(name):

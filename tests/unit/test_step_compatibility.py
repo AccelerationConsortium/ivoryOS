@@ -1,8 +1,6 @@
 import inspect
 from enum import Enum
 
-import pytest
-
 from ivoryos.parsers.introspection import _inspect_class
 from ivoryos.script import Script, ScriptEditor
 from ivoryos.script.compatibility import (
@@ -14,7 +12,6 @@ from ivoryos.script.compatibility import (
     WORKFLOW_MISSING,
     DeckReference,
     check_action,
-    check_deck_match,
     check_script,
     summarize_issues,
 )
@@ -269,26 +266,6 @@ def test_check_script_keys_findings_by_step_uuid():
     broken = script.script_dict["script"][1]
     assert set(findings) == {broken["uuid"]}
     assert codes(findings[broken["uuid"]]) == [METHOD_MISSING]
-
-
-@pytest.mark.parametrize("expected,loaded,flagged", [
-    ("sdl_deck", "sdl_deck", False),
-    ("sdl_deck", "other_deck", True),
-    (None, "sdl_deck", False),
-    ("sdl_deck", None, False),
-])
-def test_deck_mismatch_note(expected, loaded, flagged):
-    script = Script(author="tester", deck=expected)
-    note = check_deck_match(script, reference(deck_name=loaded))
-
-    assert bool(note) is flagged
-    if flagged:
-        assert expected in note and loaded in note
-
-
-def test_deck_mismatch_note_is_silent_without_a_reference():
-    script = Script(author="tester", deck="sdl_deck")
-    assert check_deck_match(script, DeckReference()) is None
 
 
 def test_a_renamed_argument_is_reported_once_not_as_both_removed_and_missing():

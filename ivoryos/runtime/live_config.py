@@ -18,7 +18,7 @@ import threading
 from datetime import datetime
 
 from ivoryos.parsers.type_conversions import convert_config_type
-from ivoryos.runtime.task_conditions import blank_row, config_field_problems, config_row_problem, text_of, type_label
+from ivoryos.runtime.task_conditions import blank_row, column_label, config_field_problems, config_row_problem, text_of
 
 PENDING = "pending"
 RUNNING = "running"
@@ -58,13 +58,15 @@ class LiveConfig:
     from its own thread while edits arrive from web requests.
     """
 
-    def __init__(self, rows, arg_types, converted=False):
+    def __init__(self, rows, arg_types, converted=False, limits=None):
         """``rows`` as the task holds them. ``converted`` means they already carry
         their argument types, as a run submitted through the API does, and are
-        used as they are rather than converted from text."""
+        used as they are rather than converted from text. ``limits`` are the
+        instruments' safety limits as ``{input: [constraint]}``; a value past one cannot run."""
         self.lock = threading.Lock()
         self.arg_types = dict(arg_types or {})
         self.fields = list(self.arg_types)
+        self.limits = dict(limits or {})
         self.entries = []
         self._last_id = 0
         for row in rows or []:
@@ -90,7 +92,7 @@ class LiveConfig:
             "pending_edits": {},
             "edited_while_running": False,
             # {input: why its value cannot run}, so a table can mark the cell itself
-            "invalid": {} if values is not None else config_field_problems(text, self.fields, self.arg_types),
+            "invalid": {} if values is not None else config_field_problems(text, self.fields, self.arg_types, self.limits),
         }
 
     def _numbered(self):
@@ -105,7 +107,7 @@ class LiveConfig:
             for number, entry in self._numbered():
                 if entry["status"] != PENDING or entry["values"] is not None:
                     continue
-                problem = config_row_problem(entry["text"], self.fields, self.arg_types)
+                problem = config_row_problem(entry["text"], self.fields, self.arg_types, self.limits)
                 if problem:
                     found.append((number, problem))
         return found
@@ -124,7 +126,7 @@ class LiveConfig:
                 if entry["status"] != PENDING:
                     continue
                 if entry["values"] is None:
-                    problem = config_row_problem(entry["text"], self.fields, self.arg_types)
+                    problem = config_row_problem(entry["text"], self.fields, self.arg_types, self.limits)
                     if problem is None:
                         try:
                             entry["values"] = convert_config_type(dict(entry["text"]), self.arg_types)
@@ -233,7 +235,7 @@ class LiveConfig:
                 })
             return {
                 "fields": columns,
-                "types": {field: type_label(self.arg_types.get(field)) for field in self.fields},
+                "types": {field: column_label(self.arg_types.get(field), self.limits.get(field)) for field in self.fields},
                 "rows": rows,
                 "counts": counts,
             }
@@ -272,7 +274,7 @@ class LiveConfig:
                     if text != {key: self._shown(entry).get(key, "") for key in text}:
                         notes.append(f"Row {number} finished before the changes were saved, so it ran as it was.")
                     continue
-                problem = config_row_problem(text, self.fields, self.arg_types)
+                problem = config_row_problem(text, self.fields, self.arg_types, self.limits)
                 if problem:
                     raise ValueError(f"Row {number}: {problem}")
                 planned.append((number, entry, text))

@@ -287,3 +287,14 @@ def test_a_submitted_config_table_is_checked_cell_by_cell():
     assert len(problems) == 2
     assert problems[0].startswith("Row 2, 'temperature': ") and "hot" in problems[0]
     assert problems[1] == "Row 3, 'solvent': No value."
+
+
+def test_a_submitted_config_table_is_checked_against_the_limits():
+    from ivoryos.runtime.task_conditions import config_form_problems
+
+    limits = {"temperature": [{"min": -50, "max": 250, "unit": "°C"}]}
+    form = {"temperature[1]": "25", "solvent[1]": "water", "temperature[2]": "300", "solvent[2]": "water"}
+
+    problems = config_form_problems(form, ["temperature", "solvent"], {"temperature": "float", "solvent": "str"}, limits)
+
+    assert problems == ["Row 2, 'temperature': 300 is above the maximum of 250 °C."]

@@ -7,6 +7,8 @@ from ivoryos.routes.control.control_file import control_file
 from ivoryos.routes.control.control_new_device import control_temp
 from ivoryos.routes.control.utils import post_session_by_instrument, get_session_by_instrument, find_instrument_by_name
 from ivoryos.forms.dynamic_forms import create_form_from_module, create_form_from_pseudo
+from ivoryos.parsers.introspection import _inspect_class
+from ivoryos.runtime.safety import UNIT_GROUPS, describe, guard, instrument_name
 from ivoryos.runtime.task_runner import TaskRunner
 from ivoryos.runtime.state import GlobalState
 from ivoryos.models import db, SingleStep
@@ -19,6 +21,15 @@ control = Blueprint('control', __name__, template_folder='templates')
 control.register_blueprint(control_file)
 control.register_blueprint(control_temp)
 
+
+def _limitable_functions(instrument):
+    """An instrument's methods for its fields' shields; None for what cannot be limited."""
+    if instrument_name(instrument) is None:
+        return None
+    if instrument.startswith("deck."):
+        return global_state.interface_schema.get(instrument)
+    obj = global_state.defined_variables.get(instrument)
+    return _inspect_class(obj) if obj is not None else None
 
 
 @control.route("/", strict_slashes=False, methods=["GET", "POST"])
@@ -66,6 +77,9 @@ async def deck_controllers(instrument: str = None):
                 order.append(function)
         post_session_by_instrument('card_order', instrument, order)
         forms = {name: forms[name] for name in order if name in forms}
+    # each field's shield: {method: {param: {"kind", "limit"}}}, empty for building blocks
+    limitable = _limitable_functions(instrument) if instrument else None
+    guard_fields = guard.field_guards(instrument, limitable) if limitable is not None else {}
 
     if request.method == "POST":
         if not forms:
@@ -91,6 +105,8 @@ async def deck_controllers(instrument: str = None):
                     temp_variables=global_state.defined_variables.keys(),
                     instrument=instrument,
                     forms=forms,
+                    guard_fields=guard_fields,
+                    unit_groups=UNIT_GROUPS,
                     session=session
                 )
             else:
@@ -131,8 +147,38 @@ async def deck_controllers(instrument: str = None):
         temp_variables=global_state.defined_variables.keys(),
         instrument=instrument,
         forms=forms,
+        guard_fields=guard_fields,
+        unit_groups=UNIT_GROUPS,
         session=session
     )
+
+
+@control.route("/<string:instrument>/limits", methods=["POST"])
+@login_required
+def save_limit(instrument: str):
+    """
+    .. :quickref: Direct Control; set one field's safety limit
+
+    .. http:post:: /instruments/<string:instrument>/limits
+
+        Set the limit on one field of one method, or remove it when the limit sets nothing.
+
+        :json method: the method, ``<name>_(setter)`` for a property setter
+        :json param: the field
+        :json limit: ``{min, max, unit, allowed}``
+        :status 200: ``{"limit": {...}, "hint": "°C · -50 to 250"}``
+        :status 400: ``{"errors": [{"message", "method", "param"}]}``, nothing saved
+    """
+    if _limitable_functions(instrument) is None:
+        return jsonify({"errors": [{"message": f"'{instrument}' has no limits to set."}]}), 404
+    data = request.get_json(silent=True) or {}
+    method, param = str(data.get("method") or ""), str(data.get("param") or "")
+    errors = guard.save_limit(instrument, method, param, data.get("limit"))
+    if errors:
+        return jsonify({"errors": errors}), 400
+    limit = guard.constraints(instrument, method).get(param, {})
+    return jsonify({"limit": limit, "hint": describe(limit)})
+
 
 @control.route('/<string:instrument>/actions/order', methods=['POST'])
 def save_order(instrument: str):

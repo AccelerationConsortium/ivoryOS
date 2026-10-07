@@ -381,21 +381,6 @@ def script_issue_summary(script, reference, include_disabled=False):
     return summary
 
 
-def check_deck_match(script, reference):
-    """A warning when the workflow was built against another deck, else ``None``.
-
-    Steps are still checked in that case; this just explains up front why so
-    many of them are suddenly flagged.
-    """
-    if reference is None or not reference.enabled:
-        return None
-    expected = getattr(script, "deck", None)
-    if not expected or not reference.deck_name or expected == reference.deck_name:
-        return None
-    return (f"This workflow was designed for deck '{expected}', but '{reference.deck_name}' "
-            f"is loaded. Steps are checked against the loaded deck.")
-
-
 def _check_call_action(action, reference):
     instrument = action["instrument"]
     functions = reference.functions_for(instrument)

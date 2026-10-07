@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 
 from ivoryos.runtime.control_flow import validate_and_nest_control_flow
 from ivoryos.runtime.run_events import ERROR, INTERVENTION
+from ivoryos.runtime.safety import SafetyViolation, guard
 from ivoryos.runtime.runner_runtime import HumanInterventionRequired, ensure_deck, global_state, pause
 from ivoryos.models import WorkflowStep, db
 from ivoryos.parsers.returns import store_return_value
@@ -321,16 +322,18 @@ class ScriptRunnerStepMixin:
         if self._halted():
             return context
         
-        if override_args is not None:
-            substituted_args = override_args
-        elif arg_contexts:
-            # If arg_contexts is a list, use the first element for substitution
-            if isinstance(arg_contexts, list):
-                substituted_args = self._substitute_params(step["args"], arg_contexts[0])
-            else:
-                substituted_args = self._substitute_params(step["args"], arg_contexts)
-        else:
-            substituted_args = self._substitute_params(step["args"], context)
+        def substitute():
+            if override_args is not None:
+                return override_args
+            if arg_contexts:
+                # If arg_contexts is a list, use the first element for substitution
+                if isinstance(arg_contexts, list):
+                    return self._substitute_params(step["args"], arg_contexts[0])
+                return self._substitute_params(step["args"], arg_contexts)
+            return self._substitute_params(step["args"], context)
+
+        substituted_args = substitute()
+        retrying = False
 
         # Get the component and method
         instrument = step.get("instrument", "")
@@ -342,6 +345,10 @@ class ScriptRunnerStepMixin:
         current_deck = ensure_deck(required=instrument_type == "deck")
         # Execute the action
         while True:
+            if retrying:
+                # a value fixed in the running table since the step failed is used on retry
+                self._apply_live_row_edits()
+                substituted_args = substitute()
             step_db = WorkflowStep(
                 phase_id=phase_id,
                 step_index=step_index,
@@ -372,6 +379,8 @@ class ScriptRunnerStepMixin:
 
                 elif instrument_type == "deck" and hasattr(current_deck, instrument):
                     component = getattr(current_deck, instrument)
+                    # the lab's limits hold whatever the value's source; see ivoryos.runtime.safety
+                    guard.enforce(step["instrument"], step["action"], substituted_args)
                     if "_(setter)" in action:
                         action = action.replace("_(setter)", "")
                     if hasattr(component, action):
@@ -425,6 +434,7 @@ class ScriptRunnerStepMixin:
                     module = global_state.defined_variables.get(instrument, None)
                     if module is None:
                         raise ValueError(f"Unknown instrument '{instrument}'")
+                    guard.enforce(instrument, action, substituted_args)
                     method = getattr(module, action)
                     if step.get("coroutine", False):
                         result = await method(**substituted_args)
@@ -444,7 +454,8 @@ class ScriptRunnerStepMixin:
                 self.toggle_pause()
 
             except Exception as e:
-                self.logger.error(f"Error during script execution: {e}", exc_info=True)
+                # a refusal by the limits is not a crash, so it gets no traceback
+                self.logger.error(f"Error during script execution: {e}", exc_info=not isinstance(e, SafetyViolation))
                 self.record_event(ERROR, f"{step.get('instrument')}.{step.get('action')}: {e}")
                 self.socketio.emit('error', {'message': str(e)})
                 
@@ -466,6 +477,7 @@ class ScriptRunnerStepMixin:
                 # only retry if it errored out
                 if step_db.run_error:
                     self.retry = False
+                    retrying = True
                     continue
                 if self.socketio:
                     self.socketio.emit('error_resolved')

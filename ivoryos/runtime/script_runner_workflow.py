@@ -10,6 +10,7 @@ import pandas as pd
 from ivoryos.runtime.control_flow import validate_and_nest_control_flow
 from ivoryos.runtime.live_config import DONE, FAILED, STOPPED, LiveConfig
 from ivoryos.runtime.run_events import EARLY_STOP, ROWS_NOT_RUN, outcome as run_outcome
+from ivoryos.runtime.safety import guard
 from ivoryos.runtime.runner_runtime import ensure_deck, global_state, pause
 from ivoryos.models import WorkflowRun, WorkflowPhase, db
 from ivoryos.script import Script, ScriptEditor, ScriptRenderer
@@ -265,7 +266,7 @@ class ScriptRunnerWorkflowMixin:
         # be edited while the run goes on; see ivoryos.runtime.live_config. Every
         # entry the run reaches becomes an iteration in table order, a failed one
         # included, so the iterations are the record of the table as it ran.
-        live = LiveConfig(config, arg_type, converted=compiled)
+        live = LiveConfig(config, arg_type, converted=compiled, limits=guard.column_limits(script))
         batch_size = int(batch_size)
         iteration = 0
         self.live_config = live
