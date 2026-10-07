@@ -1,15 +1,15 @@
-{# Action form component #}
-<div class="accordion-item design-control">
-    <h2 class="accordion-header">
-        <button class="accordion-button collapsed draggable-action" type="button" data-bs-toggle="collapse"
-            data-bs-target="#{{name}}" aria-expanded="false" aria-controls="collapseExample" data-action="{{ name }}">
-            {{ form.original_name if form.original_name else name | format_name }}
-        </button>
-    </h2>
-    <div id="{{name}}" class="accordion-collapse collapse" data-bs-parent="#accordionActions">
-        <div class="accordion-body">
+{# Action form component: one action in a toolbox group (actions_panel.html sets action_id).
+   Its row opens the form in place and drags onto the canvas; see action_handlers.js. #}
+<div class="toolbox-action">
+    <button class="toolbox-action-toggle" type="button" aria-expanded="false" aria-controls="{{ action_id }}"
+            data-action="{{ name }}">
+        <i class="bi bi-grip-vertical toolbox-grip" aria-hidden="true"></i>
+        <span class="toolbox-action-name">{{ form.original_name if form.original_name else name | format_name }}</span>
+        <i class="bi bi-chevron-down toolbox-chevron" aria-hidden="true"></i>
+    </button>
+    <div id="{{ action_id }}" class="toolbox-action-body" hidden>
             <form role="form" method='POST' action="{{ url_for('design.methods_handler', instrument=instrument) }}"
-                name="add" id="add-{{name}}" onsubmit="addMethodToDesign(event, this); return false;">
+                name="add" id="add-{{ action_id }}" onsubmit="addMethodToDesign(event, this); return false;">
                 <div class="form-group">
                     {{ form.hidden_tag() }}
                     {% for field in form %}
@@ -28,10 +28,11 @@
                                     {{ field(class="form-check-input") }}
                                 {% elif field.type in ["FlexibleEnumField", "FlexibleLiteralField"] %}
                                     <input type="text" id="{{ field.id }}" name="{{ field.name }}" value="{{ field._value() }}"
-                                           list="{{ field.id }}_options"
+                                           list="{{ action_id }}-{{ field.id }}-options"
                                            placeholder="{{ field.render_kw.placeholder if field.render_kw and field.render_kw.placeholder }}"
                                            class="form-control" oninput="updateConsolidateVisibility(this)">
-                                    <datalist id="{{ field.id }}_options">
+                                    {# per action, so two open groups with an Enum field of the same name keep their own choices #}
+                                    <datalist id="{{ action_id }}-{{ field.id }}-options">
                                         {% for key in field.choices %}
                                             <option value="{{ key }}">{{ key }}</option>
                                         {% endfor %}
@@ -95,6 +96,5 @@
                     </i>
                 {% endif %}
             </form>
-        </div>
     </div>
 </div> 

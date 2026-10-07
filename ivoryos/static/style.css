@@ -11,7 +11,10 @@
 
     /* Workflow Design Component Accordions */
     --design-control-bg: #b3dad9;
-    --design-control-collapsed-bg: #c1f2f1;
+    /* a soft tint of --design-control-bg for the toolbox's closed actions */
+    --design-control-collapsed-bg: #dcebea;
+    /* a light grey with a trace of the same teal, under an open action's form */
+    --design-control-open-bg: #f2f5f5;
     --design-agent-bg: #cdc1f2;
     --design-agent-hover-bg: #b8afdc;
 }
@@ -208,16 +211,198 @@ hr.vertical {
     -webkit-overflow-scrolling: touch;
 }
 
-.accordion-item.design-control .accordion-button.collapsed {
-    background-color: var(--design-control-collapsed-bg) !important;
+/* designer toolbox: flow control, each instrument and the workflows under a divider of their
+   own, which folds the group away when clicked; each action is a compact row whose form opens
+   under it. Folding is instant (no height animation), see action_handlers.js. */
+.toolbox-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    margin: 0.75rem 0 0.25rem;
+    padding: 0.25rem 0;
+    border: 0;
+    background: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--bs-secondary-color);
+    text-align: left;
 }
 
-.accordion-item.design-control .accordion-button {
-    background-color: var(--design-control-bg) !important;
+.toolbox-divider::after {
+    content: "";
+    flex: 1;
+    order: 1;
+    border-top: 1px solid var(--bs-border-color);
 }
 
-.accordion-item.design-control .accordion-button:hover {
-    background-color: var(--design-control-bg) !important;
+.toolbox-divider .toolbox-chevron {
+    order: 2;
+}
+
+.toolbox-divider:hover {
+    color: var(--bs-body-color);
+}
+
+.toolbox-chevron {
+    font-size: 0.75rem;
+    transition: transform 0.15s;
+}
+
+.toolbox-divider[aria-expanded="false"] .toolbox-chevron {
+    transform: rotate(-90deg);
+}
+
+.toolbox-action-toggle[aria-expanded="true"] .toolbox-chevron {
+    transform: rotate(180deg);
+}
+
+.toolbox-action {
+    margin-bottom: 3px;
+}
+
+.toolbox-action-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.35rem 0.6rem;
+    border: 0;
+    border-radius: 6px;
+    background-color: var(--design-control-collapsed-bg);
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: grab;
+}
+
+.toolbox-action-toggle:hover,
+.toolbox-action-toggle[aria-expanded="true"] {
+    background-color: var(--design-control-bg);
+}
+
+.toolbox-action-toggle[aria-expanded="true"] {
+    border-radius: 6px 6px 0 0;
+}
+
+.toolbox-action-name {
+    flex: 1;
+}
+
+.toolbox-grip {
+    color: var(--bs-secondary-color);
+}
+
+/* an open action is one teal card: the darker row over a lighter body */
+.toolbox-action-body {
+    padding: 0.5rem 0.6rem;
+    border-radius: 0 0 6px 6px;
+    background-color: var(--design-control-open-bg);
+    font-size: 0.85rem;
+}
+
+/* In the toolbox only (the same form copied into the drop pop-up keeps Bootstrap's look):
+   labels as plain text beside their fields, everything at one size, Add on the right. The
+   method's arguments line up in a column; the step's own options sit under them, one line
+   each. */
+.toolbox-action-body form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 0.5rem;
+}
+
+.toolbox-action-body form > * {
+    flex: 0 0 100%;
+}
+
+.toolbox-action-body form > button[type="button"] {
+    flex: 0 0 auto;
+}
+
+.toolbox-action-body form > .bi-info-circle {
+    flex: 0 0 auto;
+    order: 1;
+    margin: 0 auto 0 0 !important;
+    color: var(--bs-secondary-color);
+}
+
+.toolbox-action-body form > button[type="submit"] {
+    flex: 0 0 auto;
+    order: 2;
+    margin-left: auto;
+}
+
+.toolbox-action-body .input-group {
+    align-items: center;
+    margin-bottom: 0.4rem !important;
+}
+
+.toolbox-action-body .input-group-text {
+    padding: 0 0.5rem 0 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font-size: inherit;
+    line-height: 1.2;
+    text-align: left;
+}
+
+/* the arguments: labels in a column as wide as the longest one, up to 45% of the card */
+.toolbox-action-body .form-group {
+    display: grid;
+    grid-template-columns: fit-content(45%) minmax(0, 1fr);
+    gap: 0.4rem 0.5rem;
+    align-items: center;
+    margin-bottom: 0.4rem;
+}
+
+.toolbox-action-body .form-group > .input-group {
+    display: contents;
+}
+
+/* plain text, not Bootstrap's flex row, so a required field's * follows the last word even
+   when the label wraps */
+.toolbox-action-body .form-group .input-group-text {
+    display: block;
+    padding: 0;
+    white-space: normal;
+}
+
+.toolbox-action-body .input-group-text .text-danger {
+    margin-left: 0 !important;
+}
+
+/* Bootstrap sizes a field in an input group at 1% and lets flexbox grow it; in the grid it
+   fills its column instead */
+.toolbox-action-body .form-group .form-control {
+    width: 100%;
+}
+
+.toolbox-action-body .form-group .form-check-input {
+    justify-self: start;
+}
+
+.toolbox-action-body .form-group .consolidate-wrapper {
+    grid-column: 2;
+}
+
+/* the step's options, one line each */
+.toolbox-action-body form > .input-group {
+    flex-wrap: nowrap;
+}
+
+.toolbox-action-body .form-control,
+.toolbox-action-body .btn {
+    padding: 0.2rem 0.5rem;
+    font-size: inherit;
+}
+
+.toolbox-action-body .input-group > .form-control {
+    border-radius: var(--bs-border-radius-sm) !important;
+}
+
+.toolbox-action-body .input-group > .form-check-input {
+    margin: 0;
 }
 
 .accordion-item.design-agent .accordion-button.collapsed {

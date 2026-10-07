@@ -33,3 +33,23 @@ def test_prefix_redirect(auth):
     """
     response = auth.get('/', follow_redirects=True)
     assert response.status_code == 200
+
+def test_the_home_page_says_what_to_do_first(auth, app, monkeypatch):
+    monkeypatch.setitem(app.config, "OFF_LINE", False)
+    page = auth.get('/ivoryos/').get_data(as_text=True)
+
+    # the steps, in the order a lab goes through them, each a link to where it happens
+    steps = ['Try Your Instruments', 'Build a Workflow', 'Run It', 'Review the Results']
+    assert [page.index(step) for step in steps] == sorted(page.index(step) for step in steps)
+    for url in ('/ivoryos/instruments', '/ivoryos/draft', '/ivoryos/executions', '/ivoryos/executions/records'):
+        assert f'href="{url}' in page
+    # and the designer's tips, a click away
+    assert 'data-bs-target="#tipsModal"' in page and 'id="tipsModal"' in page
+
+
+def test_offline_there_are_no_instruments_to_try(auth):
+    page = auth.get('/ivoryos/').get_data(as_text=True)
+
+    assert 'Try Your Instruments' not in page
+    # the steps are numbered from one all the same
+    assert '<span class="getting-started-number">1</span>' in page and '>Build a Workflow<' in page

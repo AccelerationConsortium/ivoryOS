@@ -1,109 +1,56 @@
-{# Operations panel component #}
-<div style="margin-bottom: 4vh;"></div>
-<div class="accordion accordion-flush">
-    {% if design_agent_enabled %}
-    {% include 'components/design_agent_panel.html' %}
-    {% endif %}
-    <div class="accordion-item design-control">
-        <h5 class="accordion-header">
-            <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#flow" role="button"
-                aria-expanded="false" aria-controls="collapseExample">
-                Flow control
-            </button>
-        </h5>
-        <div class="accordion-collapse collapse show" id="flow">
-            <ul class="list-group">
-                <button class="list-group-item list-group-item-action"
-                        type="button"
-                        name="device"
-                        value="flow_control"
-                        data-get-url="{{ url_for('design.get_operation_sidebar', instrument='flow_control') }}"
-                        onclick="updateInstrumentPanel(this)">
-                    Flow control
-                </button>
-            </ul>
-        </div>
-        <h5 class="accordion-header">
-            <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#deck" role="button"
-                aria-expanded="false" aria-controls="collapseExample">
-                Instruments
-            </button>
-        </h5>
-        <div class="accordion-collapse collapse show" id="deck">
-            <ul class="list-group">
-                {% for instrument in defined_variables %}
-                        <button class="list-group-item list-group-item-action"
-                                type="button"
-                                name="device"
-                                value="{{instrument}}"
-                                data-get-url="{{ url_for('design.get_operation_sidebar', instrument=instrument) }}"
-                                onclick="updateInstrumentPanel(this)">
-                            {{ instrument | format_name }}
-                        </button>
-                {% endfor %}
-            </ul>
-        </div>
-    </div>
-    <div class="accordion-item design-control">
-        <h5 class="accordion-header">
-            <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#workflow" role="button"
-                aria-expanded="false" aria-controls="collapseExample">
-                Workflows
-            </button>
-        </h5>
-        <div class="accordion-collapse collapse show" id="workflow">
-            <ul class="list-group">
-                <button class="list-group-item list-group-item-action" type="button" name="device" value="workflows"
-                    data-get-url="{{ url_for('design.get_operation_sidebar', instrument='workflows') }}"
-                    onclick="updateInstrumentPanel(this)">
-                    Workflows
-                </button>
-            </ul>
-        </div>
-    </div>
-    {% if block_variables %}
-    <div class="accordion-item  design-control">
-        <h5 class="accordion-header">
-            <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#block" role="button"
-                aria-expanded="false" aria-controls="collapseExample">
-                Methods
-            </button>
-        </h5>
-        <div class="accordion-collapse collapse show" id="block">
-            <ul class="list-group">
-                {% for category in block_variables %}
-                <button class="list-group-item list-group-item-action" type="button" name="device" value="{{category}}"
-                    data-get-url="{{ url_for('design.get_operation_sidebar', instrument=category) }}"
-                    onclick="updateInstrumentPanel(this)">
-                    {{ category|format_name }}
-                </button>
-                {% endfor%}
-            </ul>
-        </div>
-    </div>
-    {% endif %}
-    {% if local_variables %}
-        <div class="accordion-item  design-control">
-            <h5 class="accordion-header">
-                <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#local" role="button"
-                    aria-expanded="false" aria-controls="collapseExample">
-                    Temp instruments
-                </button>
-            </h5>
-            <div class="accordion-collapse collapse show" id="local">
-                <ul class="list-group">
-                    {% for instrument in local_variables %}
-                        <button class="list-group-item list-group-item-action"
-                                type="button"
-                                name="device"
-                                value="{{instrument}}"
-                                data-get-url="{{ url_for('design.get_operation_sidebar', instrument=instrument) }}"
-                                onclick="updateInstrumentPanel(this)">
-                            {{instrument}}
-                        </button>
-                    {% endfor%}
-                </ul>
+{# The toolbox: what can be added to the workflow. Flow control, each instrument, each method
+   category and the workflows sit under a divider of their own, which folds them away when
+   clicked. Every group's actions load with the page, folded or not, so opening one is
+   instant (see action_handlers.js). #}
+{% macro group(key, label, open=True) %}
+    {% set group_id = 'toolbox-' ~ (key | replace('.', '-')) %}
+    <div class="toolbox-group">
+        <button class="toolbox-divider" type="button"
+                aria-expanded="{{ 'true' if open else 'false' }}" aria-controls="{{ group_id }}">
+            <span>{{ label }}</span>
+            <i class="bi bi-chevron-down toolbox-chevron" aria-hidden="true"></i>
+        </button>
+        <div id="{{ group_id }}" class="toolbox-group-body"{{ '' if open else ' hidden' }}>
+            <div class="toolbox-actions" data-url="{{ url_for('design.get_operation_sidebar', instrument=key) }}">
+                <div class="small text-muted py-2 px-3">Loading…</div>
             </div>
         </div>
+    </div>
+{% endmacro %}
+
+<div class="toolbox" id="toolbox">
+    {% if design_agent_enabled %}
+        <div class="accordion accordion-flush mb-2">
+            {% include 'components/design_agent_panel.html' %}
+        </div>
     {% endif %}
+
+    {% include 'components/autofill_toggle.html' %}
+
+    {{ group('flow_control', 'Flow control', open=False) }}
+
+    {% for instrument in defined_variables %}
+        {{ group(instrument, instrument | format_name) }}
+    {% else %}
+        <div class="small text-muted px-2 my-2">No instruments on this deck.</div>
+    {% endfor %}
+
+    {% for instrument in local_variables %}
+        {{ group(instrument, instrument) }}
+    {% endfor %}
+
+    {% for category in block_variables %}
+        {{ group(category, category | format_name) }}
+    {% endfor %}
+
+    {{ group('workflows', 'Workflows') }}
+
+    {# the workflow's variables, suggested in every action's fields; refreshed as steps are added #}
+    <datalist id="variables_datalist">
+        {% if script %}
+            {% for var_name in script.get_autocomplete_variables() %}
+                <option value="{{ var_name }}">{{ var_name }}</option>
+            {% endfor %}
+        {% endif %}
+    </datalist>
 </div>

@@ -1,37 +1,18 @@
-{# Instrument panel component #}
-<div>
-    <div class="d-flex justify-content-between align-items-center " style="margin-bottom: 1vh;margin-top: 1vh;">
-        <a type="button"
-                data-get-url="{{ url_for('design.get_operation_sidebar') }}"
-                onclick="updateInstrumentPanel(this)">
-            <i class="bi bi-arrow-return-left"></i>
-        </a>
-        {{ instrument | format_name }}
-    </div>
-
-    {% if script.editing_type == "script" %}
-        {# Auto Fill Toggle #}
-        {% include 'components/autofill_toggle.html' %}
-    {% endif %}
-
-    {% if forms|length > 10 %}
-        <div class="mb-3">
-            <input type="text" id="actionSearch" class="form-control" placeholder="Search actions...">
-        </div>
-    {% endif %}
-
-    {# accordion for instrument #}
-    <div class="accordion accordion-flush" id="accordionActions">
-
-        {% for name, form in forms.items() %}
-            {% include 'components/action_form.html' %}
-        {% endfor %}
-    </div>
-    <datalist id="variables_datalist">
-        {% if script %}
-        {% for var_name in script.get_autocomplete_variables() %}
-        <option value="{{ var_name }}">{{ var_name }}</option>
-        {% endfor %}
-        {% endif %}
-    </datalist>
+{# One toolbox group's actions: each opens in place to its form, or drags onto the canvas.
+   Ids are numbered within the group, so two instruments with a method of the same name
+   can be open side by side. #}
+{% set panel = 'actions-' ~ (instrument | replace('.', '-')) %}
+{% if forms | length > 10 %}
+    <input type="text" class="form-control form-control-sm my-2 action-search" placeholder="Search actions...">
+{% endif %}
+<div class="toolbox-action-list" id="{{ panel }}">
+    {% for name, form in forms.items() %}
+        {% set action_id = panel ~ '-' ~ loop.index %}
+        {% include 'components/action_form.html' %}
+    {% endfor %}
 </div>
+{% if not forms %}
+    <div class="small text-muted py-2 px-3">
+        {{ 'No registered workflows for this deck.' if instrument == 'workflows' else 'Nothing to add.' }}
+    </div>
+{% endif %}

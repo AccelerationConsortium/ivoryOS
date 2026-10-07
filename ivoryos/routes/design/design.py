@@ -222,7 +222,7 @@ def update_ui_state():
 
     :form show_code: Whether to show the code overlay (bool).
     :form editing_type: The type of editing to set (prep, script, cleanup).
-    :form autofill: Whether to enable autofill (bool).
+    :form autofill: Whether new actions come with each field set to a workflow input (bool).
     :form deck_name: The name of the pseudo-deck to select.
     :status 200: Updates the UI state successfully.
     """
@@ -244,13 +244,9 @@ def update_ui_state():
         return jsonify({"html": rendered_html})
 
     if "autofill" in data:
-        script = get_script_file()
-        instrument = data.get("instrument", '')
-        autofill = data.get("autofill", False)
-        session['autofill'] = autofill
-        _, forms = _create_forms(instrument, script, autofill)
-        rendered_html = render_template("components/actions_panel.html", forms=forms, script=script, instrument=instrument)
-        return jsonify({"html": rendered_html})
+        # the toolbox reloads the groups it has open, so their forms follow the setting
+        session['autofill'] = bool(data["autofill"])
+        return jsonify({"success": True})
 
     if "deck_name" in data:
         pkl_name = data.get('deck_name', "")
@@ -267,7 +263,7 @@ def update_ui_state():
         pseudo_deck = load_interface_schema(pseudo_deck_path)
         deck_variables = list(pseudo_deck.keys()) if pseudo_deck else []
         deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
-        html = render_template("components/sidebar.html", history=deck_list,
+        html = render_template("components/sidebar.html", history=deck_list, script=script,
                                defined_variables=deck_variables, local_variables = global_state.defined_variables,
                                block_variables=global_state.building_blocks, design_agent_enabled=current_app.config.get("ENABLE_AGENT"))
         return jsonify({"html": html})
@@ -575,7 +571,8 @@ def get_operation_sidebar(instrument: str = ''):
 
     .. http:get:: /draft/instruments/<string:instrument>
 
-       Get the action forms for a specific instrument or workflow source.
+       Get the actions of one toolbox group: an instrument, ``flow_control``, ``workflows``
+       or a building-block category.
 
     :param instrument: Optional instrument or workflow source name.
     :type instrument: str
@@ -604,7 +601,7 @@ def get_operation_sidebar(instrument: str = ''):
 
 
     if instrument:
-        html = render_template("components/sidebar.html", forms=forms, instrument=instrument, script=script)
+        html = render_template("components/actions_panel.html", forms=forms, instrument=instrument, script=script)
     else:
         pseudo_deck_name = session.get('pseudo_deck', '')
         pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)

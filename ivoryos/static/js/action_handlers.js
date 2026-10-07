@@ -2,7 +2,6 @@
 // STATE MANAGEMENT
 // ============================================================================
 
-let previousHtmlState = null;  // Store previous instrument panel state
 let lastFocusedElement = null; // Track focus for modal management
 
 // ============================================================================
@@ -141,19 +140,64 @@ function updateActionCanvas(html) {
     initializeCanvas();
 }
 
-function updateInstrumentPanel(link) {
-    const url = link.dataset.getUrl;
+// ============================================================================
+// TOOLBOX
+// ============================================================================
 
-    fetch(url)
+// Every group's actions load with the page, folded ones too, so opening a group shows them at
+// once instead of growing around a "Loading…" line.
+function loadToolboxActions(container) {
+    container.dataset.loaded = "loading";
+    return fetch(container.dataset.url)
         .then(res => res.json())
         .then(data => {
-            if (data.html) {
-                document.getElementById("sidebar-wrapper").innerHTML = data.html;
-                initializeDragHandlers();
-            }
+            container.innerHTML = data.html || "";
+            container.dataset.loaded = "true";
+            initializeDragHandlers();
         })
-        .catch(err => console.error("Error updating instrument panel:", err));
+        .catch(err => {
+            container.dataset.loaded = "";
+            console.error("Error loading toolbox actions:", err);
+        });
 }
+
+function initializeToolbox() {
+    document.querySelectorAll(".toolbox-actions").forEach(loadToolboxActions);
+}
+
+// load again what is already loaded, e.g. once auto fill changes how forms are filled
+function reloadToolboxActions() {
+    document.querySelectorAll('.toolbox-actions[data-loaded="true"]').forEach(loadToolboxActions);
+}
+
+// Folding is a plain show and hide, with no height animation to wait for or jump
+function setToolboxOpen(button, open) {
+    button.setAttribute("aria-expanded", open ? "true" : "false");
+    document.getElementById(button.getAttribute("aria-controls")).hidden = !open;
+}
+
+document.addEventListener("click", function (event) {
+    const divider = event.target.closest(".toolbox-divider");
+    if (divider) {
+        const open = divider.getAttribute("aria-expanded") !== "true";
+        setToolboxOpen(divider, open);
+        // a group whose actions failed to load tries again when opened
+        const container = document.getElementById(divider.getAttribute("aria-controls")).querySelector(".toolbox-actions");
+        if (open && container && !container.dataset.loaded) loadToolboxActions(container);
+        return;
+    }
+    const toggle = event.target.closest(".toolbox-action-toggle");
+    if (toggle) {
+        const open = toggle.getAttribute("aria-expanded") !== "true";
+        // one form open per group keeps the list short
+        if (open) {
+            toggle.closest(".toolbox-action-list")
+                .querySelectorAll('.toolbox-action-toggle[aria-expanded="true"]')
+                .forEach(other => setToolboxOpen(other, false));
+        }
+        setToolboxOpen(toggle, open);
+    }
+});
 
 // ============================================================================
 // WORKFLOW MANAGEMENT
@@ -244,6 +288,7 @@ function addMethodToDesign(event, form) {
         .catch(error => console.error('Error:', error));
 }
 
+// A step is edited in a pop-up, so the toolbox stays as it was left
 function editAction(uuid) {
     if (window.isSorting) {
         return;
@@ -253,9 +298,6 @@ function editAction(uuid) {
         console.error('Invalid UUID');
         return;
     }
-
-    // Store current state for rollback
-    previousHtmlState = document.getElementById('instrument-panel').innerHTML;
 
     fetch(scriptStepUrl.replace('0', uuid), {
         method: 'GET',
@@ -269,30 +311,15 @@ function editAction(uuid) {
                     if (err.warning) {
                         alert(err.warning);
                     }
-                    // Restore panel so user isn't stuck
-                    if (previousHtmlState) {
-                        document.getElementById('instrument-panel').innerHTML = previousHtmlState;
-                        previousHtmlState = null;
-                    }
                     throw new Error("Step fetch failed: " + response.status);
                 });
             }
             return response.text();
         })
         .then(html => {
-            document.getElementById('instrument-panel').innerHTML = html;
-
-            // Set up back button
-            const backButton = document.getElementById('back');
-            if (backButton) {
-                backButton.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    if (previousHtmlState) {
-                        document.getElementById('instrument-panel').innerHTML = previousHtmlState;
-                        previousHtmlState = null;
-                    }
-                });
-            }
+            const modal = document.getElementById('editStepModal');
+            modal.querySelector('.modal-content').innerHTML = html;
+            bootstrap.Modal.getOrCreateInstance(modal).show();
         })
         .catch(error => console.error('Error:', error));
 }
@@ -309,18 +336,18 @@ function submitEditForm(event) {
     })
         .then(response => response.text())
         .then(html => {
-            if (html) {
-                updateActionCanvas(html);
-
-                // Restore previous instrument panel state
-                if (previousHtmlState) {
-                    document.getElementById('instrument-panel').innerHTML = previousHtmlState;
-                    previousHtmlState = null;
-                }
-
-                // Check for warnings
-                showWarningIfExists(html);
+            if (!html) return;
+            updateActionCanvas(html);
+            const warning = warningIn(html);
+            if (warning) {
+                // the pop-up stays open with the reason, so nothing typed is lost
+                const box = document.getElementById('edit-step-warning');
+                box.textContent = warning;
+                box.classList.remove('d-none');
+                return;
             }
+            bootstrap.Modal.getInstance(document.getElementById('editStepModal'))?.hide();
+            refreshSidebarVariables();
         })
         .catch(error => console.error('Error:', error));
 }
@@ -408,13 +435,17 @@ function hideModal() {
 // UTILITY FUNCTIONS
 // ============================================================================
 
-function showWarningIfExists(html) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
+// The warning a re-rendered canvas carries, or null
+function warningIn(html) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
     const warningDiv = doc.querySelector('#warning');
+    return warningDiv && warningDiv.textContent.trim() ? warningDiv.textContent.trim() : null;
+}
 
-    if (warningDiv && warningDiv.textContent.trim()) {
-        alert(warningDiv.textContent.trim());
+function showWarningIfExists(html) {
+    const warning = warningIn(html);
+    if (warning) {
+        alert(warning);
     }
 }
 
@@ -438,11 +469,13 @@ function addDynamicArg(btn) {
 
     if (!container) return;
 
+    // a step being edited suggests the variables set before it; a new action, all of them
+    const listId = container.closest('form')?.querySelector('#step_variables') ? 'step_variables' : 'variables_datalist';
     const div = document.createElement("div");
     div.className = "input-group mb-2 dynamic-arg-row";
     div.innerHTML = `
         <input type="text" class="form-control" name="extra_key[]" placeholder="Parameter Name" required>
-        <input type="text" class="form-control" name="extra_value[]" list="variables_datalist" placeholder="Value" required>
+        <input type="text" class="form-control" name="extra_value[]" list="${listId}" placeholder="Value" required>
         <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">X</button>
     `;
     container.appendChild(div);
@@ -454,19 +487,21 @@ function addDynamicArg(btn) {
 
 document.addEventListener("DOMContentLoaded", function () {
     getCodePreview();
+    initializeToolbox();
 });
 
 // ============================================================================
 // SEARCH BAR DELEGATION
 // ============================================================================
 
+// Each group with many actions has its own search box, which filters only that group
 document.addEventListener('input', function (e) {
-    if (e.target && e.target.id === 'actionSearch') {
+    if (e.target && e.target.classList.contains('action-search')) {
         const searchTerm = e.target.value.toLowerCase();
-        const actions = document.querySelectorAll('.design-control');
+        const actions = e.target.closest('.toolbox-actions').querySelectorAll('.toolbox-action');
 
         actions.forEach(action => {
-            const button = action.querySelector('.accordion-button');
+            const button = action.querySelector('.toolbox-action-toggle');
             if (button) {
                 const name = button.innerText.toLowerCase();
                 if (name.includes(searchTerm)) {
