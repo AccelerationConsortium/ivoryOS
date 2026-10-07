@@ -106,7 +106,7 @@ def test_config_edits_are_stored_as_text_for_the_runner_to_convert():
 
 @pytest.mark.parametrize("entries, message", [
     ([{"temperature": "hot", "solvent": "water"}], "Entry 1"),
-    ([{"temperature": "25", "solvent": "water"}, {"temperature": "25", "solvent": ""}], "Entry 2 has no value for 'solvent'"),
+    ([{"temperature": "25", "solvent": "water"}, {"temperature": "25", "solvent": ""}], "Entry 2: no value for 'solvent'"),
     ([{"temperature": "25", "solvent": "water", "pressure": "1"}], "'pressure' is not an input"),
     ([{"temperature": "", "solvent": ""}], "at least one config entry"),
 ])
@@ -256,3 +256,34 @@ def test_renaming_changes_the_name_the_run_is_saved_under():
     unique = lambda name, keep: calls.append((name, keep)) or "taken_1"
     assert task_conditions.parse_changes(task, {"name": "taken"}, unique_name=unique)["run_name"] == "taken_1"
     assert calls == [("taken", "screen")]
+
+
+def test_field_problems_point_at_the_values_that_cannot_run():
+    from ivoryos.runtime.task_conditions import config_field_problems
+
+    problems = config_field_problems({"temperature": "3er", "solvent": "", "pressure": "1"},
+                                     ["temperature", "solvent"], {"temperature": "float", "solvent": "str"})
+
+    assert set(problems) == {"temperature", "solvent", "pressure"}
+    assert "3er" in problems["temperature"]
+    assert problems["solvent"] == "No value."
+    assert config_field_problems({"temperature": "30", "solvent": "water"}, ["temperature", "solvent"],
+                                 {"temperature": "float", "solvent": "str"}) == {}
+
+
+def test_a_submitted_config_table_is_checked_cell_by_cell():
+    from ivoryos.runtime.task_conditions import config_form_problems
+
+    form = {
+        "online-config": "", "batch_size": "1",
+        "temperature[1]": "25", "solvent[1]": "water",
+        "temperature[2]": "hot", "solvent[2]": "ethanol",
+        "temperature[3]": "40", "solvent[3]": "",
+        "temperature[4]": "", "solvent[4]": "",  # an empty row is ignored
+    }
+
+    problems = config_form_problems(form, ["temperature", "solvent"], {"temperature": "float", "solvent": "str"})
+
+    assert len(problems) == 2
+    assert problems[0].startswith("Row 2, 'temperature': ") and "hot" in problems[0]
+    assert problems[1] == "Row 3, 'solvent': No value."

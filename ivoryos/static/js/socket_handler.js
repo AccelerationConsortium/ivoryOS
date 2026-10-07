@@ -233,12 +233,16 @@ document.addEventListener("DOMContentLoaded", function () {
         var progress = data.progress;
         console.log(progress);
         
-        if (data.iteration && data.total) {
-            document.getElementById('iteration-display').innerText = `Iteration: ${data.iteration}/${data.total}`;
-        } else {
-            document.getElementById('iteration-display').innerText = 'Currently not running any tasks';
-            var batchDisplay = document.getElementById('batch-display');
-            if (batchDisplay) batchDisplay.innerText = '';
+        // this script runs on every page, but only the execution page shows progress
+        var iterationDisplay = document.getElementById('iteration-display');
+        if (iterationDisplay) {
+            if (data.iteration && data.total) {
+                iterationDisplay.innerText = `Iteration: ${data.iteration}/${data.total}`;
+            } else {
+                iterationDisplay.innerText = 'Currently not running any tasks';
+                var batchDisplay = document.getElementById('batch-display');
+                if (batchDisplay) batchDisplay.innerText = '';
+            }
         }
 
         // Update the progress bar's width and appearance
@@ -423,6 +427,27 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    // Something the user should know that does not stop the run, such as config
+    // rows that cannot run. Notices that arrive while one is open are added to it.
+    socket.on('notice', function (data) {
+        const modalEl = document.getElementById('flashModal');
+        if (!modalEl) return;
+        const body = document.getElementById('flashModalBody');
+        const title = document.getElementById('flashModalLabel');
+        const open = modalEl.classList.contains('show');
+        const entry = document.createElement('div');
+        entry.style.whiteSpace = 'pre-line';
+        entry.textContent = data.message;
+        if (open) {
+            entry.classList.add('mt-3', 'pt-3', 'border-top');
+            body.appendChild(entry);
+        } else {
+            body.replaceChildren(entry);
+            title.innerText = data.title || 'Notification';
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        }
+    });
+
     const abortPendingBtn = document.getElementById('abort-pending');
     if (abortPendingBtn) {
         abortPendingBtn.addEventListener('click', function () {
@@ -513,12 +538,14 @@ document.addEventListener("DOMContentLoaded", function () {
     socket.on('start_task', function (data) {
         console.log("New task started:", data.run_name);
 
-        // Reset progress bar
+        // Reset progress bar, on the pages that have one
         var progressBar = document.getElementById('progress-bar-inner');
-        progressBar.style.width = '0%';
-        // progressBar.textContent = 'Starting...';
-        progressBar.classList.remove('bg-success', 'bg-danger', 'bg-warning');
-        progressBar.classList.add('progress-bar-animated', 'bg-primary');
+        if (progressBar) {
+            progressBar.style.width = '0%';
+            // progressBar.textContent = 'Starting...';
+            progressBar.classList.remove('bg-success', 'bg-danger', 'bg-warning');
+            progressBar.classList.add('progress-bar-animated', 'bg-primary');
+        }
 
         clearStepHighlights();
 

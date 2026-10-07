@@ -1,11 +1,49 @@
 import threading
 import uuid
 
+from ivoryos.models import WorkflowRun, db
+from ivoryos.parsers.serialize import sanitize_for_json
 from ivoryos.runtime import task_conditions
+from ivoryos.runtime.live_config import describe as describe_change
+from ivoryos.runtime.run_events import TABLE_EDITED, event as run_event
 from ivoryos.runtime.runner_runtime import ensure_deck
 
 
 class ScriptRunnerQueueMixin:
+    # events of the run in progress (see ivoryos.runtime.run_events); None between runs
+    run_events = None
+    # database id of the run in progress, which its events are saved to
+    run_id = None
+    # events arrive from requests and from the runner; one save at a time, so a
+    # slow save cannot write an older list over a newer one
+    _events_lock = threading.Lock()
+
+    def record_event(self, kind, detail=None, **data):
+        """Note something that happened to the run in progress, such as the user
+        pausing or stopping it, and save it with the run straight away, so it is
+        kept even if the run never gets to finish. Does nothing between runs."""
+        events = self.run_events
+        if events is None:
+            return
+        with self._events_lock:
+            events.append(run_event(kind, detail, **data))
+            self._save_run_events(list(events))
+
+    def _save_run_events(self, events):
+        if self.run_id is None or self.current_app is None:
+            return
+        try:
+            # an app context of its own gives the save its own session, so it neither
+            # commits nor discards anything the runner has in progress
+            with self.current_app.app_context():
+                run = db.session.get(WorkflowRun, self.run_id)
+                if run is not None:
+                    run.events = sanitize_for_json(events)
+                    db.session.commit()
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Could not save the run's events: {e}")
+
     def handle_input_submission(self, value):
         """Resume execution with user input"""
         if self.waiting_for_input:
@@ -147,6 +185,42 @@ class ScriptRunnerQueueMixin:
             self.logger.info(f"Updated run conditions of queued task: {task.get('run_name')}")
         self._emit_queue_status()
         return True
+
+    def _running_config(self, uid=None):
+        """The running task and its live config table, if it runs a config table."""
+        live, task = self.live_config, self.current_task
+        if live is None or task is None or (uid is not None and task.get("uid") != uid):
+            return None, None
+        return task, live
+
+    def get_running_config(self):
+        """The config table of the running task with each row's status, or ``None``
+        when no config run is in progress."""
+        task, live = self._running_config()
+        if live is None:
+            return None
+        return {"uid": task.get("uid"), "name": task.get("run_name"),
+                "batch_size": task.get("batch_size") or 1, **live.view()}
+
+    def edit_running_config(self, uid, rows):
+        """Apply an edited table to the rows of the running task that have not finished.
+
+        Returns notes about changes the run had already moved past, or ``None``
+        when task ``uid`` is not the one running. Raises ``ValueError`` with a
+        message for the user when a value cannot run; then nothing changes.
+        """
+        task, live = self._running_config(uid)
+        if live is None:
+            return None
+        changes, notes = live.edit(rows)
+        if changes:
+            self.record_event(TABLE_EDITED, "\n".join(describe_change(change) for change in changes), changes=changes)
+        if self.logger:
+            for change in changes:
+                self.logger.info(f"Config table edited: {describe_change(change)}")
+            for note in notes:
+                self.logger.warning(note)
+        return notes
 
     def get_current_task_details(self):
         """Returns the full details for the currently executing task"""

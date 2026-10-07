@@ -6,9 +6,20 @@ from flask import Blueprint, request, render_template, current_app, jsonify, sen
 from flask_login import login_required
 
 from ivoryos.models import db, WorkflowRun, WorkflowPhase
+from ivoryos.runtime.run_events import LABELS as RUN_EVENT_LABELS, ROWS_NOT_RUN, TABLE_EDITED
+from ivoryos.runtime.state import GlobalState
 from ivoryos.script.editor import ScriptEditor
 
 data = Blueprint('data', __name__, template_folder='templates')
+
+
+def _running_run_id():
+    """Id of the workflow run in progress, or ``None``; its outcome is only kept once it ends."""
+    state = GlobalState()
+    status = state.runner_status
+    if not state.runner_lock.locked() or not status or status.get("type") != "workflow":
+        return None
+    return status.get("id")
 
 
 
@@ -64,7 +75,8 @@ def list_workflows():
         })
     else:
         return render_template('workflow_database.html', workflows=workflows, deck_name=None,
-                               current_per_page=per_page, current_sort_by=sort_by, current_order=order)
+                               current_per_page=per_page, current_sort_by=sort_by, current_order=order,
+                               running_run_id=_running_run_id())
 @data.get("/executions/records/<int:workflow_id>")
 def workflow_logs(workflow_id:int):
     """
@@ -136,7 +148,55 @@ def workflow_logs(workflow_id:int):
             "csv_file_name": f"{workflow.data_path}"
         })
     else:
-        return render_template("workflow_view.html", workflow=workflow, grouped=grouped)
+        run_events = [{**event, "label": RUN_EVENT_LABELS.get(event.get("kind"), event.get("kind"))}
+                      for event in workflow.events or []]
+        # each line of a table edit's event is one change, already described
+        config_changes = [(event["time"], line) for event in run_events if event.get("kind") == TABLE_EDITED
+                          for line in (event.get("detail") or "").split("\n") if line]
+        return render_template("workflow_view.html", workflow=workflow, grouped=grouped,
+                               running_run_id=_running_run_id(), run_events=run_events,
+                               config_results=_config_results(workflow, grouped["script"]),
+                               config_changes=config_changes)
+
+
+def _config_results(workflow, iterations):
+    """A config run's table as the run worked through it, read from its iterations.
+
+    Every row the run reached became an iteration, in table order, holding the
+    values its last steps used, so the rows are the iterations' parameters one
+    after another, and what a row returned is what its output holds besides its
+    inputs. Rows the run never reached are kept with its "rows not run" event.
+    ``None`` for runs that did not run a config table.
+    """
+    if workflow.repeat_mode != "batch":
+        return None
+    rows = []
+    # whether rows ran several to an iteration, so the table marks where each batch begins
+    batched = False
+    for iteration in sorted(iterations):
+        for phase in iterations[iteration]:
+            samples = phase.parameters if isinstance(phase.parameters, list) else [phase.parameters or {}]
+            outputs = phase.outputs if isinstance(phase.outputs, list) else [phase.outputs]
+            status = phase.status or ("done" if phase.end_time else "running")
+            error = phase.error or {}
+            for index, values in enumerate(samples):
+                values = values or {}
+                returned = outputs[index] if index < len(outputs) and isinstance(outputs[index], dict) else {}
+                rows.append({"iteration": iteration, "status": status, "values": values,
+                             "outputs": {key: value for key, value in returned.items() if key not in values},
+                             "reason": error.get("message"), "invalid": error.get("fields") or {},
+                             "starts_batch": index == 0})
+            batched = batched or len(samples) > 1
+    for event in workflow.events or []:
+        if event.get("kind") == ROWS_NOT_RUN:
+            rows.extend({"status": "pending", "values": values, "outputs": {}, "starts_batch": index == 0}
+                        for index, values in enumerate(event.get("rows") or []))
+    columns, outputs = [], []
+    for number, row in enumerate(rows, start=1):
+        row["row"] = number
+        columns.extend(key for key in row["values"] if key not in columns)
+        outputs.extend(key for key in row["outputs"] if key not in outputs)
+    return {"rows": rows, "columns": columns, "outputs": outputs, "batched": batched}
 
 
 @data.get("/executions/records/<int:workflow_id>/steps_data_csv")

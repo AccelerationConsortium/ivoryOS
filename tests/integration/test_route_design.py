@@ -435,3 +435,68 @@ def test_renaming_a_queued_task_keeps_run_names_unique(auth, monkeypatch):
 
     assert auth.post(url, json={'name': 'flow 1'}).status_code == 200
     assert second['run_name'] == 'flow_1'
+
+
+def test_running_config_table_can_be_read_and_edited(auth, monkeypatch):
+    """
+    GIVEN a config run in progress, with its first row running
+    WHEN its table is read, then edited with a bad and a good value
+    THEN the bad edit is refused, the good one applied, and another task's uid is turned away
+    """
+    from ivoryos.routes.execute import execute as execute_module
+    from ivoryos.runtime.live_config import LiveConfig
+
+    url = '/ivoryos/executions/current_task/config'
+    monkeypatch.setattr(execute_module.runner, 'live_config', None)
+    assert auth.get(url).status_code == 404
+
+    live = LiveConfig([{'temperature': '25'}, {'temperature': '40'}], {'temperature': 'float'})
+    live.start_batch(1)
+    monkeypatch.setattr(execute_module.runner, 'live_config', live)
+    monkeypatch.setattr(execute_module.runner, 'current_task', {'uid': 'abc', 'run_name': 'flow', 'batch_size': 1})
+
+    table = auth.get(url).get_json()
+    assert [(row['status'], row['values']) for row in table['rows']] == [('running', ['25']), ('pending', ['40'])]
+    rows = [{'id': row['id'], 'values': {'temperature': row['values'][0]}, 'number': n}
+            for n, row in enumerate(table['rows'], start=1)]
+
+    rows[1]['values'] = {'temperature': 'warm'}
+    refused = auth.post(url, json={'uid': 'abc', 'rows': rows})
+    assert refused.status_code == 400 and 'Row 2' in refused.get_json()['error']
+
+    rows[1]['values'] = {'temperature': '45'}
+    saved = auth.post(url, json={'uid': 'abc', 'rows': rows + [{'id': None, 'values': {'temperature': '60'}, 'number': 3}]})
+    assert saved.get_json() == {'status': 'ok', 'notes': []}
+    assert [row['values'] for row in auth.get(url).get_json()['rows']] == [['25'], ['45'], ['60']]
+
+    assert auth.post(url, json={'uid': 'other', 'rows': rows}).status_code == 404
+
+
+def test_a_config_table_that_cannot_run_is_not_started(auth, test_deck, monkeypatch):
+    """
+    GIVEN a workflow with a float input
+    WHEN a config table with a value that is not a number is submitted
+    THEN nothing is started and the page says which row to fix; once fixed, it runs
+    """
+    from unittest.mock import MagicMock
+    from ivoryos.routes.execute import execute as execute_module
+
+    script = Script(author='testuser')
+    ScriptEditor(script).add_action({
+        'instrument': 'deck.dummy', 'action': 'float_method',
+        'args': {'arg': '#temperature'}, 'return': '', 'arg_types': {'arg': 'float'},
+    })
+    with auth.application.app_context():
+        post_script_for_user('testuser', script)
+    run_script = MagicMock(return_value='queued')
+    monkeypatch.setattr(execute_module.runner, 'run_script', run_script)
+
+    form = {'online-config': '', 'batch_size': '1', 'temperature[1]': '25', 'temperature[2]': 'hot'}
+    body = auth.post('/ivoryos/executions/config', data=form, follow_redirects=True).get_data(as_text=True)
+
+    run_script.assert_not_called()
+    assert "Nothing was started" in body and "Row 2, &#39;temperature&#39;" in body
+
+    form['temperature[2]'] = '30'
+    auth.post('/ivoryos/executions/config', data=form, follow_redirects=True)
+    assert run_script.call_args.kwargs['config'] == [{'temperature': '25'}, {'temperature': '30'}]

@@ -15,6 +15,11 @@ class WorkflowRun(db.Model):
     end_time = db.Column(db.DateTime)
     data_path = db.Column(db.String(256))
     repeat_mode = db.Column(db.String(64), default="none")  # static_repeat, sweep, optimizer
+    # 'completed', 'stopped' or 'error'; None for runs from before it was kept
+    status = db.Column(db.String(32))
+    # the user's pauses and stops and what else happened besides the steps, with
+    # times (see ivoryos.runtime.run_events)
+    events = db.Column(JSONType)
 
     # A run contains multiple iterations
     phases = db.relationship(
@@ -42,6 +47,11 @@ class WorkflowPhase(db.Model):
 
     parameters = db.Column(JSONType)  # Use db.JSON for general support
     outputs = db.Column(JSONType)
+    # 'done', 'stopped' when a stop cut its steps off, or 'failed'; None for
+    # iterations from before it was kept
+    status = db.Column(db.String(32))
+    # why a failed iteration failed: {"message": ..., "fields": {input: why}}
+    error = db.Column(JSONType)
     start_time = db.Column(db.DateTime, default=datetime.now)
     end_time = db.Column(db.DateTime)
 
