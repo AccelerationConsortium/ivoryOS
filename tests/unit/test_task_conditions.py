@@ -106,7 +106,7 @@ def test_config_edits_are_stored_as_text_for_the_runner_to_convert():
 
 @pytest.mark.parametrize("entries, message", [
     ([{"temperature": "hot", "solvent": "water"}], "Entry 1"),
-    ([{"temperature": "25", "solvent": "water"}, {"temperature": "25", "solvent": ""}], "Entry 2 has no value for 'solvent'"),
+    ([{"temperature": "25", "solvent": "water"}, {"temperature": "25", "solvent": ""}], "Entry 2: no value for 'solvent'"),
     ([{"temperature": "25", "solvent": "water", "pressure": "1"}], "'pressure' is not an input"),
     ([{"temperature": "", "solvent": ""}], "at least one config entry"),
 ])

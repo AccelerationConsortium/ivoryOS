@@ -627,6 +627,58 @@ def update_queue_task_conditions(uid):
     return jsonify({"status": "ok"})
 
 
+NO_CONFIG_RUN = "No config table run is in progress; it may have just finished."
+
+
+@execute.route("/executions/current_task/config", methods=["GET"])
+@login_required
+def get_running_config():
+    """
+    .. :quickref: Workflow Execution Queue; Get the running task's config table
+
+    .. http:get:: /executions/current_task/config
+
+    Retrieve the config table of the running task, with each row's status:
+    ``done``, ``running``, ``pending``, or ``skipped`` with the reason.
+
+    :status 200: Returns the table.
+    :status 404: The running task does not run a config table, or nothing runs.
+    """
+    table = runner.get_running_config()
+    if table is None:
+        return jsonify({"error": NO_CONFIG_RUN}), 404
+    return jsonify(table)
+
+
+@execute.route("/executions/current_task/config", methods=["POST"])
+@login_required
+def edit_running_config():
+    """
+    .. :quickref: Workflow Execution Queue; Edit the running task's config table
+
+    .. http:post:: /executions/current_task/config
+
+    Edit, add, remove or reorder the rows the running task has not finished.
+    Edits to the running row reach the steps it has not run yet. Rows that
+    finished are left as they ran.
+
+    :json uid: UID of the running task, as returned by :http:get:`/executions/current_task/config`.
+    :json rows: The running and pending rows in their new order, as ``{id, values, number}``,
+                with ``id`` null for a new row.
+    :status 200: Applied; ``notes`` lists changes the run had already moved past.
+    :status 400: A value cannot run; the error says which, and nothing changed.
+    :status 404: That task is no longer running.
+    """
+    payload = request.get_json(silent=True) or {}
+    try:
+        notes = runner.edit_running_config(payload.get("uid"), payload.get("rows"))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    if notes is None:
+        return jsonify({"error": NO_CONFIG_RUN}), 404
+    return jsonify({"status": "ok", "notes": notes})
+
+
 @execute.route("/executions/status", methods=["GET"])
 def runner_status():
     """

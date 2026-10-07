@@ -129,6 +129,67 @@
             </a>
         </div>
 
+        <!-- Config table changes made while the run was in progress -->
+        {% if config_history %}
+            <div class="mb-4" id="config-history">
+                <h4 class="text-secondary mb-2">
+                    <i class="bi bi-table me-2"></i>Config table changes
+                </h4>
+                <p class="text-muted small mb-2">
+                    The config table changed while this run was in progress. Each iteration below
+                    records the values it finished with.
+                </p>
+                {% if config_changes %}
+                    <ul class="list-group mb-2 small">
+                        {% for change in config_history.changes %}
+                            <li class="list-group-item py-1">
+                                <span class="text-muted me-2">{{ change.time | replace('T', ' ') }}</span>{{ config_changes[loop.index0] }}
+                                {% if change.used == true %}
+                                    <span class="text-muted">(used by the steps after the change)</span>
+                                {% elif change.used == false %}
+                                    <span class="text-warning">(came after the row's last step, not used)</span>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+                {% for row in config_history.final if row.status == 'skipped' %}
+                    <div class="text-danger small">Row {{ row.row }} was skipped: {{ row.reason }}</div>
+                {% endfor %}
+                <details class="small mt-2">
+                    <summary>Table as submitted and as it ended</summary>
+                    <div class="row g-3 mt-1">
+                        <div class="col-lg-6">
+                            <div class="fw-bold mb-1">As submitted</div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0">
+                                    <thead class="table-light"><tr><th>#</th>{% for column in config_columns %}<th>{{ column }}</th>{% endfor %}</tr></thead>
+                                    <tbody>
+                                        {% for values in config_history.initial %}
+                                            <tr><td>{{ loop.index }}</td>{% for column in config_columns %}<td>{{ values.get(column, '') }}</td>{% endfor %}</tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="fw-bold mb-1">As it ended</div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0">
+                                    <thead class="table-light"><tr><th>#</th><th>Status</th>{% for column in config_columns %}<th>{{ column }}</th>{% endfor %}</tr></thead>
+                                    <tbody>
+                                        {% for row in config_history.final %}
+                                            <tr><td>{{ row.row }}</td><td>{{ row.status }}</td>{% for column in config_columns %}<td>{{ row['values'].get(column, '') }}</td>{% endfor %}</tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+            </div>
+        {% endif %}
+
         <!-- Prep Phase -->
         {% if grouped.prep %}
             <div class="mb-4">

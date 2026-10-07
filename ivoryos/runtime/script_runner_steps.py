@@ -12,6 +12,24 @@ from ivoryos.utils.decorators import BUILDING_BLOCKS
 
 
 class ScriptRunnerStepMixin:
+    # the editable config table of the running task, if it has one
+    live_config = None
+    # how many shared steps are running nested steps right now; see _apply_live_row_edits
+    _shared_step_depth = 0
+
+    def _apply_live_row_edits(self):
+        """Hand edits made to the running config rows to the steps still to come.
+
+        Only between steps, and never inside a shared step's nested steps: a shared
+        step copies whatever changed in the first sample to the whole batch when it
+        ends, which would spread an edit made to one row across all of them.
+        """
+        if self.live_config is None or self._shared_step_depth:
+            return
+        for line in self.live_config.apply_running_edits():
+            if self.logger:
+                self.logger.info(line)
+
     async def _execute_steps_batched(self, steps: List[Dict], contexts: List[Dict[str, Any]], phase_id, section_name, arg_contexts:List[Dict[str, Any]] = None):
         """
         Execute a list of steps for multiple samples, batching where appropriate.
@@ -19,6 +37,7 @@ class ScriptRunnerStepMixin:
         for step in steps:
             if self.stop_current_event.is_set():
                 break
+            self._apply_live_row_edits()
             if step.get("disabled", False):
                 if self.logger:
                     self.logger.info(f"Skipping disabled step: {step.get('action')}")
@@ -78,7 +97,11 @@ class ScriptRunnerStepMixin:
                     if step.get("batch_action", False):
                         self._emit_batch_progress(contexts[0], shared=len(contexts) > 1)
                         before = dict(contexts[0])
-                        await self._execute_steps_batched(workflow_steps, [contexts[0]], arg_contexts=[workflow_contexts[0]], phase_id=phase_id, section_name=f"{section_name}-{action_id-1}")
+                        self._shared_step_depth += 1
+                        try:
+                            await self._execute_steps_batched(workflow_steps, [contexts[0]], arg_contexts=[workflow_contexts[0]], phase_id=phase_id, section_name=f"{section_name}-{action_id-1}")
+                        finally:
+                            self._shared_step_depth -= 1
                         self._broadcast_shared_values(contexts, before)
 
                     else:

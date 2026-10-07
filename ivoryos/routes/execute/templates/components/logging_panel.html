@@ -373,6 +373,10 @@
   // settings untouched until it starts, so they can all still be changed.
   let currentTaskUid = null;
   let editedConditions = null;
+  // the running task's config table, while its live editor is open
+  let liveTable = null;
+  let liveRefresh = null;
+  const LIVE_CONFIG_URL = "{{ url_for('execute.get_running_config') }}";
 
   function conditionsUrl(uid) {
     return "{{ url_for('execute.get_queue_task_conditions', uid='__uid__') }}".replace('__uid__', encodeURIComponent(uid));
@@ -394,8 +398,10 @@
     return node;
   }
 
-  function showConditionsError(message) {
+  function showConditionsError(message, tone = 'danger') {
     const box = document.getElementById('conditions-error');
+    box.className = `alert alert-${tone} py-2`;
+    box.style.whiteSpace = 'pre-line';
     box.textContent = message || '';
     box.classList.toggle('d-none', !message);
   }
@@ -407,7 +413,7 @@
     document.getElementById('queue-details-content').classList.toggle('d-none', editing);
     document.getElementById('conditions-editor').classList.toggle('d-none', !editing);
     document.getElementById('cancel-conditions-btn').classList.toggle('d-none', !editing);
-    document.getElementById('save-conditions-btn').classList.toggle('d-none', !editing || !editedConditions);
+    document.getElementById('save-conditions-btn').classList.toggle('d-none', !editing || !(editedConditions || liveTable));
     document.getElementById('close-details-btn').classList.toggle('d-none', editing);
     document.querySelector('#queueDetailsModal .modal-title').innerText = title;
     bootstrap.Modal.getOrCreateInstance(document.getElementById('queueDetailsModal')).show();
@@ -435,10 +441,14 @@
   function resetTaskModal() {
     currentTaskUid = null;
     editedConditions = null;
+    liveTable = null;
+    clearInterval(liveRefresh);
+    liveRefresh = null;
     showConditionsError('');
   }
 
   function saveConditions() {
+    if (liveTable) return saveRunningConfig();
     if (!currentTaskUid || !editedConditions) return;
     const saveButton = document.getElementById('save-conditions-btn');
     saveButton.disabled = true;
@@ -495,12 +505,14 @@
     return parts;
   }
 
-  function configEditor(c) {
+  // `live` is the running task's table, whose rows carry an id and a status
+  function configEditor(c, live = false) {
     const body = el('tbody', { id: 'cond-config-rows' });
-    c.rows.forEach(values => body.append(configRow(c.fields, values)));
+    c.rows.forEach(row => body.append(live ? configRow(c.fields, row.values, row) : configRow(c.fields, row)));
     renumberConfigRows(body);
     const header = el('tr', {}, [
       el('th', { className: 'small text-muted', style: 'width: 2.5em' }, '#'),
+      live ? el('th', { className: 'small text-muted', style: 'width: 6em' }, 'Status') : null,
       ...c.fields.map(field => el('th', { className: 'small text-nowrap' }, [
         field,
         c.types[field] ? el('span', { className: 'text-muted fw-normal ms-1' }, `(${c.types[field]})`) : null,
@@ -509,7 +521,10 @@
     ]);
     const addButton = el('button', {
       type: 'button', className: 'btn btn-sm btn-outline-secondary',
-      onclick: () => { body.append(configRow(c.fields, [])); renumberConfigRows(body); },
+      onclick: () => {
+        body.append(configRow(c.fields, [], live ? { id: null, status: 'new' } : undefined));
+        renumberConfigRows(body);
+      },
     }, [el('i', { className: 'bi bi-plus-lg me-1' }), 'Add entry']);
     return [
       el('div', { className: 'table-responsive' },
@@ -521,23 +536,168 @@
     ];
   }
 
-  function configRow(fields, values) {
+  // `meta` ({id, status, reason}) is given for a row of the running task's table
+  function configRow(fields, values, meta) {
     const row = el('tr');
     row.append(
       el('td', { className: 'small text-muted row-number' }),
+      meta ? el('td', { className: 'p-1' }, [el('span', { className: 'badge row-status' }), el('div', { className: 'small text-danger row-reason' })]) : null,
       ...fields.map((field, i) => el('td', { className: 'p-1' },
         el('input', { type: 'text', className: 'form-control form-control-sm', value: values[i] ?? '', dataset: { field } }))),
       el('td', { className: 'p-1 text-center' },
         el('button', {
-          type: 'button', className: 'btn btn-sm btn-outline-danger', title: 'Remove this entry',
+          type: 'button', className: 'btn btn-sm btn-outline-danger row-remove', title: 'Remove this entry',
           onclick: () => { const body = row.parentNode; row.remove(); renumberConfigRows(body); },
         }, el('i', { className: 'bi bi-x-lg' }))),
     );
+    if (meta) {
+      if (meta.id != null) row.dataset.id = meta.id;
+      setRowStatus(row, meta);
+    }
     return row;
+  }
+
+  const ROW_STATUS = {
+    done: { label: 'done', badge: 'text-bg-success', row: 'table-light' },
+    skipped: { label: 'skipped', badge: 'text-bg-danger', row: 'table-light' },
+    running: { label: 'running', badge: 'text-bg-primary', row: 'table-primary' },
+    pending: { label: 'pending', badge: 'text-bg-secondary', row: '' },
+    new: { label: 'new', badge: 'text-bg-info', row: '' },
+  };
+
+  const isFinished = status => status === 'done' || status === 'skipped';
+
+  // Rows that ran are locked; the running row can be edited but not removed.
+  function setRowStatus(row, meta) {
+    const look = ROW_STATUS[meta.status] || ROW_STATUS.pending;
+    row.className = look.row;
+    row.dataset.status = meta.status;
+    row.querySelectorAll('input').forEach(input => { input.disabled = isFinished(meta.status); });
+    const badge = row.querySelector('.row-status');
+    badge.className = `badge row-status ${look.badge}`;
+    badge.textContent = look.label;
+    row.querySelector('.row-reason').textContent = meta.reason || '';
+    row.querySelector('.row-remove').classList.toggle('invisible', isFinished(meta.status) || meta.status === 'running');
   }
 
   function renumberConfigRows(body) {
     body.querySelectorAll('.row-number').forEach((cell, i) => { cell.textContent = i + 1; });
+  }
+
+  // ---- Editing the running task's config table ----
+  // The run takes rows one batch at a time, so rows it has not reached can be
+  // edited, added or removed, and the running row's changes reach its remaining
+  // steps. The table refreshes its row statuses while it is open.
+
+  function fetchRunningConfig() {
+    return fetch(LIVE_CONFIG_URL + '?t=' + Date.now())
+      .then(response => response.json().then(data => ({ ok: response.ok, data })));
+  }
+
+  // Resolves to whether the running task has a config table to show.
+  function openRunningConfig() {
+    return fetchRunningConfig().then(({ ok, data }) => {
+      if (!ok) return false;
+      resetTaskModal();
+      liveTable = data;
+      document.getElementById('conditions-editor').replaceChildren(
+        editorSection(`Progress · ${data.name}`, [
+          el('div', { id: 'live-progress' }, liveProgress(data.counts)),
+          el('div', { className: 'small text-muted mt-2' },
+            'Rows that ran are locked. Changes to the running row reach the steps it has not run yet.'),
+        ]),
+        editorSection('Config entries', configEditor(data, true)),
+      );
+      showTaskModal('form', 'Current Run');
+      liveRefresh = setInterval(refreshRunningConfig, 2000);
+      return true;
+    }).catch(() => false);
+  }
+
+  function liveProgress(counts) {
+    const total = counts.done + counts.skipped + counts.running + counts.pending;
+    const share = n => `${total ? (n * 100) / total : 0}%`;
+    const segment = (n, bar) => el('div', { className: 'progress', role: 'progressbar', style: `width: ${share(n)}` },
+      el('div', { className: `progress-bar ${bar}` }));
+    const summary = [`${counts.done} of ${total} rows done`];
+    if (counts.skipped) summary.push(`${counts.skipped} skipped`);
+    if (counts.running) summary.push(`${counts.running} running`);
+    return [
+      el('div', { className: 'small text-muted mb-1' }, summary.join(' · ')),
+      el('div', { className: 'progress-stacked', style: 'height: 10px' }, [
+        segment(counts.done, 'bg-success'),
+        segment(counts.skipped, 'bg-danger'),
+        segment(counts.running, 'progress-bar-striped progress-bar-animated'),
+      ]),
+    ];
+  }
+
+  // Updates row statuses and progress without touching what is being typed,
+  // except in rows that just finished: they show the values they ran with.
+  function refreshRunningConfig() {
+    if (!liveTable) return;
+    fetchRunningConfig().then(({ ok, data }) => {
+      if (!liveTable) return;
+      if (!ok || data.uid !== liveTable.uid) {
+        clearInterval(liveRefresh);
+        liveRefresh = null;
+        liveTable = null;
+        document.getElementById('save-conditions-btn').classList.add('d-none');
+        document.querySelectorAll('#cond-config-rows input, #cond-config-rows button, #conditions-editor > div > button')
+          .forEach(control => { control.disabled = true; });
+        showConditionsError('The run has finished, so its table can no longer be edited.', 'info');
+        return;
+      }
+      document.getElementById('live-progress').replaceChildren(...liveProgress(data.counts));
+      const lost = [];
+      data.rows.forEach(server => {
+        const row = document.querySelector(`#cond-config-rows tr[data-id="${server.id}"]`);
+        if (!row || row.dataset.status === server.status) return;
+        if (isFinished(server.status)) {
+          const inputs = row.querySelectorAll('input[data-field]');
+          if ([...inputs].some((input, i) => input.value !== (server.values[i] ?? ''))) lost.push(row.querySelector('.row-number').textContent);
+          inputs.forEach((input, i) => { input.value = server.values[i] ?? ''; });
+        }
+        setRowStatus(row, server);
+      });
+      if (lost.length) {
+        showConditionsError(`Row ${lost.join(', ')} finished before your changes were saved, so it ran as it was.`, 'warning');
+      }
+    }).catch(() => {});
+  }
+
+  function collectLiveRows() {
+    return [...document.querySelectorAll('#cond-config-rows tr')]
+      .map((row, i) => ({ row, number: i + 1 }))
+      .filter(({ row }) => !isFinished(row.dataset.status))
+      .map(({ row, number }) => {
+        const values = {};
+        row.querySelectorAll('input[data-field]').forEach(input => { values[input.dataset.field] = input.value; });
+        return { id: row.dataset.id ? Number(row.dataset.id) : null, values, number };
+      });
+  }
+
+  function saveRunningConfig() {
+    const saveButton = document.getElementById('save-conditions-btn');
+    saveButton.disabled = true;
+    showConditionsError('');
+    fetch(LIVE_CONFIG_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid: liveTable.uid, rows: collectLiveRows() }),
+    })
+      .then(response => response.json().then(data => ({ ok: response.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok) throw new Error(data.error || 'Could not save the table.');
+        if (!data.notes || !data.notes.length) {
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('queueDetailsModal')).hide();
+          return;
+        }
+        // the rest was saved; show the table as it is now, with what was not applied
+        return openRunningConfig().then(() => showConditionsError(`Saved, except:\n${data.notes.join('\n')}`, 'warning'));
+      })
+      .catch(error => showConditionsError(error.message))
+      .finally(() => { saveButton.disabled = false; });
   }
 
   function optimizerEditor(c) {
@@ -716,8 +876,13 @@
   });
   updateQueue(); // Initial call
   
-  // Current Run Configuration Logic
+  // Current Run Configuration Logic: a config table run opens as an editable
+  // table; anything else shows its details read-only
   document.getElementById('view-current-config').addEventListener('click', function() {
+    openRunningConfig().then(opened => { if (!opened) showCurrentRunDetails(); });
+  });
+
+  function showCurrentRunDetails() {
     fetch("{{ url_for('execute.get_current_task_details') }}")
       .then(response => {
           if (!response.ok) {
@@ -729,7 +894,6 @@
           if (data.error) {
               throw new Error(data.error);
           }
-          // the running task can no longer be edited, so it gets the read-only view
           resetTaskModal();
           renderTaskDetails(data, data["Full Config"] || null);
           showTaskModal('details', 'Current Run Details');
@@ -737,5 +901,5 @@
       .catch(error => {
           alert('Error: ' + error.message);
       });
-  });
+  }
 </script>

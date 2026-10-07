@@ -31,7 +31,7 @@ def task_mode(task):
     return REPEAT
 
 
-def _text(value):
+def text_of(value):
     """A stored value as it reads in an input box."""
     if value is None:
         return ""
@@ -40,14 +40,15 @@ def _text(value):
     return repr(value)
 
 
+
 def _list_text(values):
-    return ", ".join(_text(value) for value in values or [])
+    return ", ".join(text_of(value) for value in values or [])
 
 
-def _type_label(arg_type):
+def type_label(arg_type):
     """A config argument type as a short hint for a column header."""
     if isinstance(arg_type, (list, tuple)):
-        return " | ".join(_type_label(item) for item in arg_type if item != "NoneType")
+        return " | ".join(type_label(item) for item in arg_type if item != "NoneType")
     text = "" if arg_type is None else str(arg_type)
     if text.startswith("Enum:"):
         return text.rsplit(".", 1)[-1]
@@ -91,6 +92,31 @@ def _blank(value):
     return value is None or str(value).strip() == ""
 
 
+def blank_row(values):
+    """Whether a config entry is empty, like one added and never filled in."""
+    return all(_blank(value) for value in values.values())
+
+
+def config_row_problem(values, fields, arg_types):
+    """Why a config entry cannot run, or ``None`` if it can.
+
+    ``values`` is the entry as text, typed in or loaded from a spreadsheet. It is
+    converted on a copy, the way the runner converts it when the entry starts.
+    """
+    unknown = [key for key in values if key not in arg_types]
+    if unknown:
+        return f"'{unknown[0]}' is not an input of this workflow."
+    missing = [field for field in fields if _blank(values.get(field))]
+    if missing:
+        names = ", ".join(f"'{field}'" for field in missing)
+        return f"no value for {names}."
+    try:
+        convert_config_type(dict(values), arg_types)
+    except Exception as e:
+        return str(e)
+    return None
+
+
 # --- reading --------------------------------------------------------------
 
 
@@ -124,8 +150,8 @@ def _config_view(task):
     columns = [*fields, *extra]
     return {
         "fields": columns,
-        "types": {field: _type_label(arg_types.get(field)) for field in fields},
-        "rows": [[_text(row.get(field)) for field in columns] for row in rows],
+        "types": {field: type_label(arg_types.get(field)) for field in fields},
+        "rows": [[text_of(row.get(field)) for field in columns] for row in rows],
     }
 
 
@@ -145,12 +171,12 @@ def _optimizer_view(task):
             "min": "", "max": "", "step": "", "choices": "", "value": "",
         }
         if kind == "range":
-            view["min"], view["max"] = (_text(bound) for bound in (bounds + [None, None])[:2])
-            view["step"] = _text(bounds[2]) if len(bounds) > 2 else ""
+            view["min"], view["max"] = (text_of(bound) for bound in (bounds + [None, None])[:2])
+            view["step"] = text_of(bounds[2]) if len(bounds) > 2 else ""
         elif kind in LIST_KINDS:
             view["choices"] = _list_text(bounds)
         elif kind == "fixed":
-            view["value"] = _text(parameter.get("value"))
+            view["value"] = text_of(parameter.get("value"))
         parameters.append(view)
 
     current = {objective.get("name"): objective for objective in task.get("objectives") or []}
@@ -164,7 +190,7 @@ def _optimizer_view(task):
         objectives.append({
             "name": name,
             "goal": goal,
-            "early_stop": _text((objective or {}).get("early_stop")),
+            "early_stop": text_of((objective or {}).get("early_stop")),
         })
 
     steps = []
@@ -182,7 +208,7 @@ def _optimizer_view(task):
             "model": saved.get("model", ""),
             "models": models,
             "has_num_samples": "num_samples" in spec or "num_samples" in saved,
-            "num_samples": _text(saved.get("num_samples")),
+            "num_samples": text_of(saved.get("num_samples")),
         })
 
     fields = schema.get("additional_field") or {}
@@ -195,7 +221,7 @@ def _optimizer_view(task):
             "name": name,
             "type": spec.get("type", ""),
             "options": list(spec.get("options") or []),
-            "value": _list_text(value) if isinstance(value, (list, tuple)) else _text(value),
+            "value": _list_text(value) if isinstance(value, (list, tuple)) else text_of(value),
         })
 
     return {
@@ -270,22 +296,13 @@ def _parse_config(task, rows):
         if not isinstance(row, dict):
             raise ValueError(f"Entry {number} is not a set of input values.")
         values = {str(key): "" if value is None else str(value) for key, value in row.items()}
-        if all(_blank(value) for value in values.values()):
-            # an entry added and never filled in
+        if blank_row(values):
             continue
-        unknown = [key for key in values if key not in arg_types]
-        if unknown:
-            raise ValueError(f"Entry {number}: '{unknown[0]}' is not an input of this workflow.")
-        missing = [field for field in fields if _blank(values.get(field))]
-        if missing:
-            names = ", ".join(f"'{field}'" for field in missing)
-            raise ValueError(f"Entry {number} has no value for {names}.")
-        try:
-            # converted on a copy only to find bad values now; the runner converts
-            # the text itself when the task starts
-            convert_config_type(dict(values), arg_types)
-        except Exception as e:
-            raise ValueError(f"Entry {number}: {e}") from None
+        # checked now so a bad value is caught here; the runner converts the
+        # text itself when the entry starts
+        problem = config_row_problem(values, fields, arg_types)
+        if problem:
+            raise ValueError(f"Entry {number}: {problem}")
         entries.append(values)
     if not entries:
         raise ValueError("Keep at least one config entry. To drop the task, remove it from the queue.")

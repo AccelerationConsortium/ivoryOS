@@ -423,6 +423,27 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    // Something the user should know that does not stop the run, such as config
+    // rows that cannot run. Notices that arrive while one is open are added to it.
+    socket.on('notice', function (data) {
+        const modalEl = document.getElementById('flashModal');
+        if (!modalEl) return;
+        const body = document.getElementById('flashModalBody');
+        const title = document.getElementById('flashModalLabel');
+        const open = modalEl.classList.contains('show');
+        const entry = document.createElement('div');
+        entry.style.whiteSpace = 'pre-line';
+        entry.textContent = data.message;
+        if (open) {
+            entry.classList.add('mt-3', 'pt-3', 'border-top');
+            body.appendChild(entry);
+        } else {
+            body.replaceChildren(entry);
+            title.innerText = data.title || 'Notification';
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        }
+    });
+
     const abortPendingBtn = document.getElementById('abort-pending');
     if (abortPendingBtn) {
         abortPendingBtn.addEventListener('click', function () {

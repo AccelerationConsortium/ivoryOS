@@ -15,6 +15,9 @@ class WorkflowRun(db.Model):
     end_time = db.Column(db.DateTime)
     data_path = db.Column(db.String(256))
     repeat_mode = db.Column(db.String(64), default="none")  # static_repeat, sweep, optimizer
+    # a config run's table as submitted and as it ended, with the changes made while
+    # it ran; only kept when they differ (see ivoryos.runtime.live_config)
+    config_history = db.Column(JSONType)
 
     # A run contains multiple iterations
     phases = db.relationship(

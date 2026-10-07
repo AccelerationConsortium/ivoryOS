@@ -148,3 +148,50 @@ def test_workflow_phase_data_csv_logs_and_delete(auth):
     missing_delete = auth.delete(f'/ivoryos/executions/records/{run_id}')
     assert missing_delete.status_code == 404
     assert missing_delete.get_json() == {'error': 'Workflow run not found', 'success': False}
+
+
+def test_existing_database_gets_the_config_history_column(app, tmp_path):
+    """
+    GIVEN a database from before runs kept their config table's history
+    WHEN the app checks the schema at start
+    THEN the column is added, so queries on runs keep working
+    """
+    from sqlalchemy import create_engine, inspect, text
+    from ivoryos.app import reset_old_schema
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'old.db'}")
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE workflow_runs (id INTEGER PRIMARY KEY, name VARCHAR(128), platform VARCHAR(128))"))
+        conn.execute(text("CREATE TABLE workflow_phases (id INTEGER PRIMARY KEY, run_id INTEGER)"))
+
+    with app.app_context():
+        reset_old_schema(engine, str(tmp_path))
+
+    assert 'config_history' in {column['name'] for column in inspect(engine).get_columns('workflow_runs')}
+
+
+def test_workflow_view_shows_config_table_changes(auth):
+    """
+    GIVEN a run whose config table was edited while it ran
+    WHEN its page is opened
+    THEN the changes, the skipped row and both versions of the table are shown
+    """
+    history = {
+        'initial': [{'temperature': '25'}, {'temperature': 'hot'}],
+        'final': [{'row': 1, 'status': 'done', 'values': {'temperature': 30.0}},
+                  {'row': 2, 'status': 'skipped', 'values': {'temperature': 'hot'}, 'reason': "cannot convert 'hot'"}],
+        'changes': [{'time': '2026-10-06T10:00:00', 'row': 1, 'action': 'edit', 'field': 'temperature',
+                     'from': '25', 'to': '30', 'while_running': True, 'used': True}],
+    }
+    with auth.application.app_context():
+        run = WorkflowRun(name='edited', platform='deck', start_time=datetime.now(), config_history=history)
+        db.session.add(run)
+        db.session.commit()
+        run_id = run.id
+
+    body = auth.get(f'/ivoryos/executions/records/{run_id}').get_data(as_text=True)
+
+    assert 'Config table changes' in body
+    assert "Row 1: &#39;temperature&#39; changed from &#39;25&#39; to &#39;30&#39; while it was running" in body
+    assert '(used by the steps after the change)' in body
+    assert "Row 2 was skipped: cannot convert &#39;hot&#39;" in body

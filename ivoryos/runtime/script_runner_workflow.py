@@ -7,11 +7,11 @@ from datetime import datetime
 import pandas as pd
 
 from ivoryos.runtime.control_flow import validate_and_nest_control_flow
+from ivoryos.runtime.live_config import LiveConfig
 from ivoryos.runtime.runner_runtime import ensure_deck, global_state, pause
 from ivoryos.models import WorkflowRun, WorkflowPhase, db
 from ivoryos.script import Script, ScriptEditor, ScriptRenderer
 from ivoryos.parsers.serialize import sanitize_for_json
-from ivoryos.parsers.type_conversions import convert_config_type
 
 
 class ScriptRunnerWorkflowMixin:
@@ -246,42 +246,35 @@ class ScriptRunnerWorkflowMixin:
 
     async def _run_config_section(self, config, arg_type, output_list, script, run_name, run_id, filename, return_list, output_path,
                                   compiled=True, batch_mode=False, batch_size=1):
-        if not compiled:
-            for i in config:
-                try:
-                    i = convert_config_type(i, arg_type)
-                    compiled = True
-                except Exception as e:
-                    if self.logger:
-                        if isinstance(e, SyntaxError):
-                            self.logger.error(f"Error in configuration data: {e.args}")
-                            self.logger.error(
-                                f"{e.msg} at line {e.lineno}, column {e.offset}: {e.text.strip()}"
-                            )
-                        else:
-                            self.logger.error(e)
-                    compiled = False
-                    break
-        if compiled:
-            batch_size = int(batch_size)
-            nested_list = [config[i:i + batch_size] for i in range(0, len(config), batch_size)]
-
-            for i, kwargs_list in enumerate(nested_list):
-                # kwargs = dict(kwargs)
+        # entries are taken a batch at a time, so the ones not reached yet can still
+        # be edited while the run goes on; see ivoryos.runtime.live_config
+        live = LiveConfig(config, arg_type, converted=compiled)
+        batch_size = int(batch_size)
+        self.live_config = live
+        try:
+            self._report_unrunnable_rows(live.problems(), ahead=True)
+            while True:
                 if self.stop_pending_event.is_set():
+                    iteration, total = live.progress(batch_size)
                     if self.logger:
-                        self.logger.info(f'Stopping execution during {run_name}: {i + 1}/{len(config)}')
+                        self.logger.info(f'Stopping execution during {run_name}: {iteration + 1}/{total}')
                     break
+                batch, skipped = live.start_batch(batch_size)
+                self._report_unrunnable_rows(skipped)
+                if not batch:
+                    break
+                kwargs_list = [entry["values"] for entry in batch]
+                iteration, total = live.progress(batch_size)
                 if self.logger:
-                    self.logger.info(f'Executing {i + 1} of {len(nested_list)} with kwargs = {kwargs_list}')
-                progress = ((i + 1) * 100 / len(nested_list)) - 0.1
-                self._emit_progress(progress, iteration=i + 1, total=len(nested_list))
+                    self.logger.info(f'Executing {iteration} of {total} with kwargs = {live.inputs(batch)}')
+                progress = (iteration * 100 / total) - 0.1
+                self._emit_progress(progress, iteration=iteration, total=total)
 
                 phase = WorkflowPhase(
                     run_id=run_id,
                     name="main",
-                    repeat_index=i + 1,
-                    parameters=sanitize_for_json(kwargs_list),
+                    repeat_index=iteration,
+                    parameters=sanitize_for_json(live.inputs(batch)),
                     start_time=datetime.now()
                 )
                 db.session.add(phase)
@@ -298,8 +291,14 @@ class ScriptRunnerWorkflowMixin:
                     for output_dict in output:
                         output_list.append(output_dict)
                     phase.outputs = sanitize_for_json(output)
+                if live.edited_while_running(batch):
+                    # the values the last steps used are the ground truth
+                    phase.parameters = sanitize_for_json(live.inputs(batch))
                 phase.end_time = datetime.now()
                 db.session.commit()
+                for line in live.finish_batch(batch):
+                    if self.logger:
+                        self.logger.warning(line)
 
                 # save results
             # if not script.python_script and any(output_list):
@@ -307,8 +306,47 @@ class ScriptRunnerWorkflowMixin:
             #         self._save_results(filename, arg_type, return_list, output_list, output_path)
             #     else:
             #         self._save_results_last_row(filename, arg_type, return_list, output_list, output_path)
+        finally:
+            self.live_config = None
+            self._save_config_history(live, run_id)
 
         return output_list
+
+    def _report_unrunnable_rows(self, rows, ahead=False):
+        """Tell the user which config rows cannot run, and why.
+
+        ``ahead`` is the check when the run starts, while the rows can still be
+        fixed in the run's table; otherwise the rows were just skipped.
+        """
+        if not rows:
+            return
+        lines = [f"Row {number}: {reason}" for number, reason in rows]
+        if ahead:
+            title = "Some rows can't run as entered"
+            intro = ("Fix them in the current run's table before the run reaches them, "
+                     "or they will be skipped.")
+        else:
+            title = "Row skipped" if len(rows) == 1 else "Rows skipped"
+            intro = "These rows were not run:"
+        if self.logger:
+            for line in lines:
+                self.logger.warning(f"{title}. {line}")
+        if self.socketio:
+            self.socketio.emit('notice', {'title': title, 'message': "\n".join([intro, *lines])})
+
+    def _save_config_history(self, live, run_id):
+        """Keep the config table as submitted, as it ended, and the changes between,
+        when they differ."""
+        if not live.has_history():
+            return
+        try:
+            run = db.session.get(WorkflowRun, run_id)
+            run.config_history = sanitize_for_json(live.history())
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            if self.logger:
+                self.logger.error(f"Could not save the config table's history: {e}")
 
     async def _run_repeat_section(self, repeat_count, arg_types, output_list, script, run_name, return_list, compiled,
                                   history, output_path, run_id, filename,

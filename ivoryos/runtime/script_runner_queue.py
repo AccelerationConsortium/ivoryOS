@@ -2,6 +2,7 @@ import threading
 import uuid
 
 from ivoryos.runtime import task_conditions
+from ivoryos.runtime.live_config import describe as describe_change
 from ivoryos.runtime.runner_runtime import ensure_deck
 
 
@@ -147,6 +148,40 @@ class ScriptRunnerQueueMixin:
             self.logger.info(f"Updated run conditions of queued task: {task.get('run_name')}")
         self._emit_queue_status()
         return True
+
+    def _running_config(self, uid=None):
+        """The running task and its live config table, if it runs a config table."""
+        live, task = self.live_config, self.current_task
+        if live is None or task is None or (uid is not None and task.get("uid") != uid):
+            return None, None
+        return task, live
+
+    def get_running_config(self):
+        """The config table of the running task with each row's status, or ``None``
+        when no config run is in progress."""
+        task, live = self._running_config()
+        if live is None:
+            return None
+        return {"uid": task.get("uid"), "name": task.get("run_name"),
+                "batch_size": task.get("batch_size") or 1, **live.view()}
+
+    def edit_running_config(self, uid, rows):
+        """Apply an edited table to the rows of the running task that have not finished.
+
+        Returns notes about changes the run had already moved past, or ``None``
+        when task ``uid`` is not the one running. Raises ``ValueError`` with a
+        message for the user when a value cannot run; then nothing changes.
+        """
+        task, live = self._running_config(uid)
+        if live is None:
+            return None
+        changes, notes = live.edit(rows)
+        if self.logger:
+            for change in changes:
+                self.logger.info(f"Config table edited: {describe_change(change)}")
+            for note in notes:
+                self.logger.warning(note)
+        return notes
 
     def get_current_task_details(self):
         """Returns the full details for the currently executing task"""

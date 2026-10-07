@@ -85,6 +85,16 @@ def reset_old_schema(engine, db_dir):
             conn.execute(text("ALTER TABLE script ADD COLUMN uuid TEXT"))
         except Exception:
             pass
+    # Checked against the live columns and run on its own: every query on runs
+    # names this column, so it must exist, and on PostgreSQL a failed statement
+    # would abort any other statement sharing its transaction.
+    current = inspect(engine)
+    if 'workflow_runs' in current.get_table_names():
+        columns = {column['name'] for column in current.get_columns('workflow_runs')}
+        if 'config_history' not in columns:
+            column_type = "JSON" if engine.dialect.name == "postgresql" else "TEXT"
+            with engine.begin() as conn:
+                conn.execute(text(f"ALTER TABLE workflow_runs ADD COLUMN config_history {column_type}"))
     # Recreate new schema
     db.create_all()  # creates workflow_runs, workflow_phases, workflow_steps
 

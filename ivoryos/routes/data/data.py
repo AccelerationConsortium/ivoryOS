@@ -6,6 +6,7 @@ from flask import Blueprint, request, render_template, current_app, jsonify, sen
 from flask_login import login_required
 
 from ivoryos.models import db, WorkflowRun, WorkflowPhase
+from ivoryos.runtime.live_config import describe as describe_change
 from ivoryos.script.editor import ScriptEditor
 
 data = Blueprint('data', __name__, template_folder='templates')
@@ -136,7 +137,14 @@ def workflow_logs(workflow_id:int):
             "csv_file_name": f"{workflow.data_path}"
         })
     else:
-        return render_template("workflow_view.html", workflow=workflow, grouped=grouped)
+        config_history = workflow.config_history or {}
+        config_columns = []
+        for values in [*config_history.get("initial", []),
+                       *(row.get("values", {}) for row in config_history.get("final", []))]:
+            config_columns.extend(key for key in values if key not in config_columns)
+        return render_template("workflow_view.html", workflow=workflow, grouped=grouped,
+                               config_history=config_history, config_columns=config_columns,
+                               config_changes=[describe_change(change) for change in config_history.get("changes", [])])
 
 
 @data.get("/executions/records/<int:workflow_id>/steps_data_csv")
