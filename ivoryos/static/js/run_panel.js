@@ -410,15 +410,14 @@ function configRow(fields, values, meta) {
 
 const ROW_STATUS = {
   done: { label: 'done', badge: 'text-bg-success', row: 'table-light' },
-  skipped: { label: 'skipped', badge: 'text-bg-danger', row: 'table-light' },
   stopped: { label: 'stopped', badge: 'text-bg-warning', row: 'table-light' },
-  error: { label: 'error', badge: 'text-bg-danger', row: 'table-light' },
+  failed: { label: 'failed', badge: 'text-bg-danger', row: 'table-light' },
   running: { label: 'running', badge: 'text-bg-primary', row: 'table-primary' },
   pending: { label: 'pending', badge: 'text-bg-secondary', row: '' },
   new: { label: 'new', badge: 'text-bg-info', row: '' },
 };
 
-const isFinished = status => ['done', 'skipped', 'stopped', 'error'].includes(status);
+const isFinished = status => ['done', 'stopped', 'failed'].includes(status);
 
 // Rows that ran are locked; the running row can be edited but not removed.
 function setRowStatus(row, meta) {
@@ -482,12 +481,12 @@ function scrollToRunningRow() {
 
 function liveProgress(counts) {
   const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
-  const unfinished = (counts.skipped || 0) + (counts.stopped || 0) + (counts.error || 0);
+  const unfinished = (counts.failed || 0) + (counts.stopped || 0);
   const share = n => `${total ? (n * 100) / total : 0}%`;
   const segment = (n, bar) => el('div', { className: 'progress', role: 'progressbar', style: `width: ${share(n)}` },
     el('div', { className: `progress-bar ${bar}` }));
   const summary = [`${counts.done} of ${total} rows done`];
-  if (counts.skipped) summary.push(`${counts.skipped} skipped`);
+  if (counts.failed) summary.push(`${counts.failed} failed`);
   if (counts.running) summary.push(`${counts.running} running`);
   return [
     el('div', { className: 'small text-muted mb-1' }, summary.join(' · ')),

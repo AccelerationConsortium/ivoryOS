@@ -470,3 +470,33 @@ def test_running_config_table_can_be_read_and_edited(auth, monkeypatch):
     assert [row['values'] for row in auth.get(url).get_json()['rows']] == [['25'], ['45'], ['60']]
 
     assert auth.post(url, json={'uid': 'other', 'rows': rows}).status_code == 404
+
+
+def test_a_config_table_that_cannot_run_is_not_started(auth, test_deck, monkeypatch):
+    """
+    GIVEN a workflow with a float input
+    WHEN a config table with a value that is not a number is submitted
+    THEN nothing is started and the page says which row to fix; once fixed, it runs
+    """
+    from unittest.mock import MagicMock
+    from ivoryos.routes.execute import execute as execute_module
+
+    script = Script(author='testuser')
+    ScriptEditor(script).add_action({
+        'instrument': 'deck.dummy', 'action': 'float_method',
+        'args': {'arg': '#temperature'}, 'return': '', 'arg_types': {'arg': 'float'},
+    })
+    with auth.application.app_context():
+        post_script_for_user('testuser', script)
+    run_script = MagicMock(return_value='queued')
+    monkeypatch.setattr(execute_module.runner, 'run_script', run_script)
+
+    form = {'online-config': '', 'batch_size': '1', 'temperature[1]': '25', 'temperature[2]': 'hot'}
+    body = auth.post('/ivoryos/executions/config', data=form, follow_redirects=True).get_data(as_text=True)
+
+    run_script.assert_not_called()
+    assert "Nothing was started" in body and "Row 2, &#39;temperature&#39;" in body
+
+    form['temperature[2]'] = '30'
+    auth.post('/ivoryos/executions/config', data=form, follow_redirects=True)
+    assert run_script.call_args.kwargs['config'] == [{'temperature': '25'}, {'temperature': '30'}]

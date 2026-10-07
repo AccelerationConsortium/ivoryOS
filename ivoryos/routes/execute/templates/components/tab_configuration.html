@@ -337,6 +337,7 @@
     function onInputChange(inputElement) {
         if (inputElement) {
             var row = inputElement.closest('tr');
+            checkConfigRow(row, null);
             var inputs = row.querySelectorAll('input, select, textarea');
             var hasData = false;
             for (var i = 0; i < inputs.length; i++) {
@@ -488,6 +489,8 @@
             // clearSavedData(); // Keep saved data for persistence across reloads
         }
 
+        // values from a file or an earlier session are marked right away
+        Array.from(tableBody.rows).forEach(function (row) { checkConfigRow(row, 'all'); });
         updateStatusIndicators();
     }
 
@@ -559,6 +562,93 @@
     initializeSortable();
     }
 
+    // ---- Checking values before the run ----
+    // Only numbers and True/False can be typed wrong: a dropdown offers only valid
+    // choices, and text takes anything. A wrong value is marked when its box is
+    // left, and the run is held back until the table is fixed; the server checks
+    // the table again the way the run converts it.
+
+    // Why `value` cannot be read as `type`, or null if it can. A list of types
+    // is a union, read as any of them.
+    function valueProblem(value, type) {
+        var text = value.trim();
+        var types = Array.isArray(type) ? type : [type];
+        var expected = [];
+        for (var i = 0; i < types.length; i++) {
+            var t = types[i];
+            if (t === 'int') {
+                if (/^[+-]?\d+$/.test(text)) return null;
+                expected.push('a whole number');
+            } else if (t === 'float') {
+                if (isFinite(Number(text))) return null;
+                expected.push('a number');
+            } else if (t === 'bool') {
+                if (text === 'True' || text === 'False') return null;
+                expected.push('True or False');
+            } else if (t === 'NoneType') {
+                if (text === 'None') return null;
+            } else {
+                // text, lists, dropdown choices and anything untyped take any value
+                return null;
+            }
+        }
+        return expected.length ? 'Must be ' + expected.join(' or ') + '.' : null;
+    }
+
+    function cellProblem(cell, rowFilled) {
+        if (!rowFilled) return null;
+        if (cell.value.trim() === '') return 'Missing value: a row needs every value to run.';
+        return valueProblem(cell.value, configTypes[cell.name.substring(0, cell.name.indexOf('['))]);
+    }
+
+    // Marks what is wrong in a row and returns it. `mark` is 'all' to mark every
+    // problem, a cell to mark only that one, or null to only clear fixed ones, so
+    // a value is not marked while it is still being typed.
+    function checkConfigRow(row, mark) {
+        var cells = Array.from(row.querySelectorAll('input[name], select[name]'));
+        var filled = cells.some(function (cell) { return cell.value.trim() !== ''; });
+        var problems = [];
+        cells.forEach(function (cell) {
+            var problem = cellProblem(cell, filled);
+            if (!problem) {
+                cell.classList.remove('is-invalid');
+                cell.removeAttribute('title');
+                return;
+            }
+            problems.push({ cell: cell, problem: problem });
+            if (mark === 'all' || mark === cell || cell.classList.contains('is-invalid')) {
+                cell.classList.add('is-invalid');
+                cell.title = problem;
+            }
+        });
+        return problems;
+    }
+
+    // Checks the whole table before it is run. Returns whether it can run; if not,
+    // marks the problems and lists them.
+    function checkConfigTable() {
+        var lines = [];
+        var first = null;
+        Array.from(document.getElementById('tableBody').rows).forEach(function (row, index) {
+            checkConfigRow(row, 'all').forEach(function (found) {
+                var column = found.cell.name.substring(0, found.cell.name.indexOf('['));
+                lines.push('Row ' + (index + 1) + ', ' + column + ': ' + found.problem);
+                first = first || found.cell;
+            });
+        });
+        if (!lines.length) return true;
+        var modalEl = document.getElementById('flashModal');
+        document.getElementById('flashModalLabel').innerText = 'Fix these before running';
+        document.getElementById('flashModalBody').replaceChildren.apply(
+            document.getElementById('flashModalBody'),
+            lines.map(function (line) { var div = document.createElement('div'); div.textContent = line; return div; })
+        );
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        first.scrollIntoView({ block: 'center' });
+        return false;
+    }
+    window.checkConfigTable = checkConfigTable;
+
     // Handle page unload
     window.addEventListener('beforeunload', function () {
         saveFormData();
@@ -567,6 +657,9 @@
     // Initialize table when page loads
     document.addEventListener("DOMContentLoaded", function () {
         loadConfigData();
+        document.getElementById('tableBody').addEventListener('change', function (event) {
+            checkConfigRow(event.target.closest('tr'), event.target);
+        });
         
         var savedBatchSize = localStorage.getItem('ivoryos_batch_size');
         var batchSizeInputs = document.querySelectorAll('input[name="batch_size"]');

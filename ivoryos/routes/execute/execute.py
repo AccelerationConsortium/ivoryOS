@@ -8,12 +8,14 @@ import importlib
 from flask import Blueprint, redirect, url_for, flash, jsonify, request, render_template, session, \
     current_app, g, send_file
 from flask_login import login_required
+from markupsafe import Markup
 from werkzeug.utils import secure_filename
 
 from ivoryos.routes.execute.execute_file import files
 from ivoryos.services.draft_service import get_script_file
 from ivoryos.services.connection_history import import_history
 from ivoryos.parsers.type_conversions import check_config_duplicate, web_config_entry_wrapper
+from ivoryos.runtime.task_conditions import config_form_problems
 from ivoryos.parsers.bo_campaign import parse_optimization_form
 from ivoryos.models import db, SingleStep, WorkflowRun, WorkflowStep, WorkflowPhase
 from ivoryos.runtime.state import GlobalState
@@ -191,6 +193,7 @@ def experiment_run():
         # bo_args = None
         compiled = False
         display_name = None
+        config_problems = []
         if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
             payload_json = request.get_json()
             compiled = True
@@ -213,44 +216,52 @@ def experiment_run():
                 config_args.pop("batch_size", None)
                 config_args.pop("display_name", None)
                 config = web_config_entry_wrapper(config_args, config_list)
+                # the page checks the table before sending it; this repeats the check
+                # the way the run converts values, for anything the page let through
+                config_problems = config_form_problems(config_args, *ScriptEditor(script).config("script"))
             batch_size = int(request.form.get('batch_size', 1))
             repeat = request.form.get('repeat', None)
 
-        try:
-        # if True:
-            datapath = current_app.config["DATA_FOLDER"]
-            run_name = _unique_run_name(display_name if (display_name and display_name.strip()) else run_name)
+        if config_problems:
+            # rendered as HTML, so the values quoted from the table are escaped
+            flash(Markup("Nothing was started: some config rows can't run. Fix them and run again.<br>")
+                  + Markup("<br>").join(config_problems))
+        else:
+            try:
+            # if True:
+                datapath = current_app.config["DATA_FOLDER"]
+                run_name = _unique_run_name(display_name if (display_name and display_name.strip()) else run_name)
 
-            socketio_instance = g.socketio
-            def on_start_callback():
-                # This runs inside the thread with app context pushed
-                interface_schema = global_state.interface_schema
-                line_collection = ScriptRenderer(script).render_nested_script_lines(script.script_dict, interface_schema=interface_schema)
-                progress_panel_html = render_template('components/progress_panel.html', line_collection=line_collection)
-                socketio_instance.emit('start_task', {
-                    **_start_task_info(run_name, batch_size),
-                    'progress_panel_html': progress_panel_html
-                })
+                socketio_instance = g.socketio
+                def on_start_callback():
+                    # This runs inside the thread with app context pushed
+                    interface_schema = global_state.interface_schema
+                    line_collection = ScriptRenderer(script).render_nested_script_lines(script.script_dict, interface_schema=interface_schema)
+                    progress_panel_html = render_template('components/progress_panel.html', line_collection=line_collection)
+                    socketio_instance.emit('start_task', {
+                        **_start_task_info(run_name, batch_size),
+                        'progress_panel_html': progress_panel_html
+                    })
 
-            result = runner.run_script(script=script, run_name=run_name, config=config,
-                              logger=g.logger, socketio=g.socketio, repeat_count=repeat,
-                              output_path=datapath, compiled=compiled, history=existing_data,
-                              current_app=current_app._get_current_object(), batch_size=batch_size,
-                              on_start=on_start_callback, display_name=display_name
-                              )
+                result = runner.run_script(script=script, run_name=run_name, config=config,
+                                  logger=g.logger, socketio=g.socketio, repeat_count=repeat,
+                                  output_path=datapath, compiled=compiled, history=existing_data,
+                                  current_app=current_app._get_current_object(), batch_size=batch_size,
+                                  on_start=on_start_callback, display_name=display_name
+                                  )
 
-            # remove queue flash, handled in html/js
-            # if result == "queued":
-            #     flash(f"System busy. Task {run_name} added to queue.", "popup")
-            # else:
-            #     flash(f"Task '{run_name}' started.")
-            if check_config_duplicate(config):
-                flash(f"WARNING: Duplicate in config entries.")
-        except Exception as e:
-            if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
-                return jsonify({"error": e.__str__()})
-            else:
-                flash(e)
+                # remove queue flash, handled in html/js
+                # if result == "queued":
+                #     flash(f"System busy. Task {run_name} added to queue.", "popup")
+                # else:
+                #     flash(f"Task '{run_name}' started.")
+                if check_config_duplicate(config):
+                    flash(f"WARNING: Duplicate in config entries.")
+            except Exception as e:
+                if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+                    return jsonify({"error": e.__str__()})
+                else:
+                    flash(e)
 
     if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
         # wait to get a workflow ID

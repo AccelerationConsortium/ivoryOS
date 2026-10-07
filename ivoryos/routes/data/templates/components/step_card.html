@@ -1,9 +1,15 @@
-<div class="card mb-2 {{ 'border-danger text-danger bg-light' if phase.run_error else 'border-secondary' }}">
+<div class="card mb-2 {{ 'border-danger bg-light' if phase.status == 'failed' else 'border-secondary' }}">
     <div class="card-body p-2">
         <small class="text-muted">
             <i class="fas fa-play-circle me-1"></i> Start: {{ phase.start_time.strftime('%H:%M:%S') if phase.start_time else 'N/A' }}
             <i class="fas fa-stop-circle ms-2 me-1"></i> End: {{ phase.end_time.strftime('%H:%M:%S') if phase.end_time else 'N/A' }}
         </small>
+        {% if phase.status == 'failed' %}
+            <span class="badge text-bg-danger ms-2">failed</span>
+            {% if phase.error and phase.error.message %}<div class="small text-danger mt-1">{{ phase.error.message }}</div>{% endif %}
+        {% elif phase.status == 'stopped' %}
+            <span class="badge text-bg-warning ms-2">stopped mid-iteration</span>
+        {% endif %}
         {% if phase.parameters %}
         <div class="mt-2">
             <strong>Parameters: </strong>

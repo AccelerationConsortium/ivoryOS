@@ -2,8 +2,9 @@
 
 Steps are recorded one by one already. What they do not show is why a run went
 the way it did: the user pausing it or stopping it, an error that paused it,
-rows of its config table skipped or edited. Those are kept on the run as events
-with a time, so its page can put them on the timeline next to the iterations.
+its config table being edited, rows of the table it never reached. Those are
+kept on the run as events with a time, so its page can put them on the timeline
+next to the iterations.
 """
 
 from datetime import datetime
@@ -19,8 +20,9 @@ TABLE_EDITED = "table_edited"
 # what the run ran into
 ERROR = "error"
 INTERVENTION = "intervention"
-ROW_SKIPPED = "row_skipped"
 EARLY_STOP = "early_stop"
+# config rows left when the run ended, kept with the event as "rows"
+ROWS_NOT_RUN = "rows_not_run"
 
 LABELS = {
     PAUSED: "Paused",
@@ -32,8 +34,8 @@ LABELS = {
     TABLE_EDITED: "Table edited",
     ERROR: "Error",
     INTERVENTION: "Intervention needed",
-    ROW_SKIPPED: "Row skipped",
     EARLY_STOP: "Early stop",
+    ROWS_NOT_RUN: "Rows not run",
 }
 
 # how a run ended
@@ -42,8 +44,10 @@ STOPPED = "stopped"
 FAILED = "error"
 
 
-def event(kind, detail=None):
-    return {"time": datetime.now().isoformat(timespec="seconds"), "kind": kind, "detail": detail}
+def event(kind, detail=None, **data):
+    """An event as kept on the run; ``data`` adds whatever else it needs to keep,
+    such as the changes of a table edit."""
+    return {"time": datetime.now().isoformat(timespec="seconds"), "kind": kind, "detail": detail, **data}
 
 
 def outcome(error, cut_short, stopped):

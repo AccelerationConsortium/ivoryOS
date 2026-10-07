@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import math
 import os
 import time
 from datetime import datetime
@@ -7,8 +8,8 @@ from datetime import datetime
 import pandas as pd
 
 from ivoryos.runtime.control_flow import validate_and_nest_control_flow
-from ivoryos.runtime.live_config import LiveConfig
-from ivoryos.runtime.run_events import EARLY_STOP, ROW_SKIPPED, outcome as run_outcome
+from ivoryos.runtime.live_config import DONE, FAILED, STOPPED, LiveConfig
+from ivoryos.runtime.run_events import EARLY_STOP, ROWS_NOT_RUN, outcome as run_outcome
 from ivoryos.runtime.runner_runtime import ensure_deck, global_state, pause
 from ivoryos.models import WorkflowRun, WorkflowPhase, db
 from ivoryos.script import Script, ScriptEditor, ScriptRenderer
@@ -139,6 +140,7 @@ class ScriptRunnerWorkflowMixin:
             output_list = []
             # what happens besides the steps, and whether a stop leaves work undone
             self.run_events = []
+            self.run_id = run_id
             self._cut_short = False
             try:
             # if True:
@@ -196,7 +198,9 @@ class ScriptRunnerWorkflowMixin:
 
                 # taken before the next task starts, which resets both
                 status = run_outcome(error_flag, self._cut_short, self.stop_current_event.is_set())
-                events, self.run_events = self.run_events, None
+                with self._events_lock:
+                    # nothing recorded after this point belongs to this run
+                    events, self.run_events, self.run_id = self.run_events, None, None
 
                 # Check for next task in queue
                 self._process_queue()
@@ -257,29 +261,37 @@ class ScriptRunnerWorkflowMixin:
 
     async def _run_config_section(self, config, arg_type, output_list, script, run_name, run_id, filename, return_list, output_path,
                                   compiled=True, batch_mode=False, batch_size=1):
-        # entries are taken a batch at a time, so the ones not reached yet can still
-        # be edited while the run goes on; see ivoryos.runtime.live_config
-        live = LiveConfig(config, arg_type, converted=compiled, outputs=return_list)
+        # Entries are taken a batch at a time, so the ones not reached yet can still
+        # be edited while the run goes on; see ivoryos.runtime.live_config. Every
+        # entry the run reaches becomes an iteration in table order, a failed one
+        # included, so the iterations are the record of the table as it ran.
+        live = LiveConfig(config, arg_type, converted=compiled)
         batch_size = int(batch_size)
+        iteration = 0
         self.live_config = live
         self._emit_live_config(True)
         try:
             self._report_unrunnable_rows(live.problems(), ahead=True)
             while True:
                 if self.stop_pending_event.is_set():
-                    iteration, total = live.progress(batch_size)
-                    if total > iteration:
+                    waiting = live.waiting()
+                    if waiting:
                         # rows were left; a stop during the last one changes nothing
                         self._cut_short = True
                         if self.logger:
+                            total = iteration + math.ceil(waiting / batch_size)
                             self.logger.info(f'Stopping execution during {run_name}: {iteration + 1}/{total}')
                     break
-                batch, skipped = live.start_batch(batch_size)
-                self._report_unrunnable_rows(skipped)
+                batch, failed = live.start_batch(batch_size)
+                for _, entry in failed:
+                    iteration += 1
+                    self._record_failed_row(run_id, iteration, entry)
+                self._report_unrunnable_rows([(number, entry["reason"]) for number, entry in failed])
                 if not batch:
                     break
                 kwargs_list = [entry["values"] for entry in batch]
-                iteration, total = live.progress(batch_size)
+                iteration += 1
+                total = iteration + math.ceil(live.waiting() / batch_size)
                 if self.logger:
                     self.logger.info(f'Executing {iteration} of {total} with kwargs = {live.inputs(batch)}')
                 progress = (iteration * 100 / total) - 0.1
@@ -299,7 +311,11 @@ class ScriptRunnerWorkflowMixin:
                 db.session.commit()
 
                 self.steps_cut_off = False
-                output = await self.exec_steps(script, "script", phase_id, kwargs_list=kwargs_list, batch_size=batch_size)
+                try:
+                    output = await self.exec_steps(script, "script", phase_id, kwargs_list=kwargs_list, batch_size=batch_size)
+                except Exception as e:
+                    self._close_failed_phase(phase_id, e)
+                    raise
                 # print(output)
                 phase = db.session.get(WorkflowPhase, phase_id)
                 if output:
@@ -310,6 +326,7 @@ class ScriptRunnerWorkflowMixin:
                 if live.edited_while_running(batch):
                     # the values the last steps used are the ground truth
                     phase.parameters = sanitize_for_json(live.inputs(batch))
+                phase.status = STOPPED if self.steps_cut_off else DONE
                 phase.end_time = datetime.now()
                 db.session.commit()
                 for line in live.finish_batch(batch, stopped=self.steps_cut_off):
@@ -326,9 +343,35 @@ class ScriptRunnerWorkflowMixin:
             self.live_config = None
             self._emit_live_config(False)
             live.close()
-            self._save_config_history(live, run_id)
+            left = live.remaining()
+            if left:
+                # rows the run never reached have no iteration; this is their only record
+                self.record_event(ROWS_NOT_RUN, f"{len(left)} row(s) of the table were not run.",
+                                  rows=sanitize_for_json(left))
 
         return output_list
+
+    def _record_failed_row(self, run_id, iteration, entry):
+        """Keep a row whose values cannot run as a failed iteration in its place,
+        with the values as entered and what is wrong with them."""
+        now = datetime.now()
+        db.session.add(WorkflowPhase(
+            run_id=run_id, name="main", repeat_index=iteration,
+            parameters=sanitize_for_json([dict(entry["text"])]),
+            status=FAILED, error={"message": entry["reason"], "fields": entry["invalid"]},
+            start_time=now, end_time=now,
+        ))
+        db.session.commit()
+
+    def _close_failed_phase(self, phase_id, error):
+        """Mark an iteration whose steps raised as failed, before the error ends the run."""
+        try:
+            db.session.rollback()
+            phase = db.session.get(WorkflowPhase, phase_id)
+            phase.status, phase.error, phase.end_time = FAILED, {"message": str(error)}, datetime.now()
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
     def _emit_live_config(self, editable):
         """Tell open pages whether the running task has a config table they can edit."""
@@ -339,7 +382,7 @@ class ScriptRunnerWorkflowMixin:
         """Tell the user which config rows cannot run, and why.
 
         ``ahead`` is the check when the run starts, while the rows can still be
-        fixed in the run's table; otherwise the rows were just skipped.
+        fixed in the run's table; otherwise the rows were just reached and failed.
         """
         if not rows:
             return
@@ -347,30 +390,15 @@ class ScriptRunnerWorkflowMixin:
         if ahead:
             title = "Some rows can't run as entered"
             intro = ("Fix them in the current run's table before the run reaches them, "
-                     "or they will be skipped.")
+                     "or they will fail.")
         else:
-            title = "Row skipped" if len(rows) == 1 else "Rows skipped"
-            intro = "These rows were not run:"
+            title = "Row failed" if len(rows) == 1 else "Rows failed"
+            intro = "These rows could not run:"
         if self.logger:
             for line in lines:
                 self.logger.warning(f"{title}. {line}")
-        if not ahead:
-            for line in lines:
-                self.record_event(ROW_SKIPPED, line)
         if self.socketio:
             self.socketio.emit('notice', {'title': title, 'message': "\n".join([intro, *lines])})
-
-    def _save_config_history(self, live, run_id):
-        """Keep the config table as it ended, with what each row returned, and as
-        submitted with the changes made while it ran."""
-        try:
-            run = db.session.get(WorkflowRun, run_id)
-            run.config_history = sanitize_for_json(live.history())
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            if self.logger:
-                self.logger.error(f"Could not save the config table's history: {e}")
 
     async def _run_repeat_section(self, repeat_count, arg_types, output_list, script, run_name, return_list, compiled,
                                   history, output_path, run_id, filename,
@@ -420,6 +448,7 @@ class ScriptRunnerWorkflowMixin:
             db.session.flush()
             phase_id = phase.id
             db.session.commit()
+            self.steps_cut_off = False
 
             if self.logger:
                 self.logger.info(f'Executing {run_name} experiment: {i_progress + 1}/{int(repeat_count)}')
@@ -467,6 +496,7 @@ class ScriptRunnerWorkflowMixin:
                     self.logger.info(f'Output value: {output}')
                 phase.outputs = sanitize_for_json(output)
 
+            phase.status = STOPPED if self.steps_cut_off else DONE
             phase.end_time = datetime.now()
             db.session.commit()
 

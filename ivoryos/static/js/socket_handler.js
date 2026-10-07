@@ -233,12 +233,16 @@ document.addEventListener("DOMContentLoaded", function () {
         var progress = data.progress;
         console.log(progress);
         
-        if (data.iteration && data.total) {
-            document.getElementById('iteration-display').innerText = `Iteration: ${data.iteration}/${data.total}`;
-        } else {
-            document.getElementById('iteration-display').innerText = 'Currently not running any tasks';
-            var batchDisplay = document.getElementById('batch-display');
-            if (batchDisplay) batchDisplay.innerText = '';
+        // this script runs on every page, but only the execution page shows progress
+        var iterationDisplay = document.getElementById('iteration-display');
+        if (iterationDisplay) {
+            if (data.iteration && data.total) {
+                iterationDisplay.innerText = `Iteration: ${data.iteration}/${data.total}`;
+            } else {
+                iterationDisplay.innerText = 'Currently not running any tasks';
+                var batchDisplay = document.getElementById('batch-display');
+                if (batchDisplay) batchDisplay.innerText = '';
+            }
         }
 
         // Update the progress bar's width and appearance
@@ -534,12 +538,14 @@ document.addEventListener("DOMContentLoaded", function () {
     socket.on('start_task', function (data) {
         console.log("New task started:", data.run_name);
 
-        // Reset progress bar
+        // Reset progress bar, on the pages that have one
         var progressBar = document.getElementById('progress-bar-inner');
-        progressBar.style.width = '0%';
-        // progressBar.textContent = 'Starting...';
-        progressBar.classList.remove('bg-success', 'bg-danger', 'bg-warning');
-        progressBar.classList.add('progress-bar-animated', 'bg-primary');
+        if (progressBar) {
+            progressBar.style.width = '0%';
+            // progressBar.textContent = 'Starting...';
+            progressBar.classList.remove('bg-success', 'bg-danger', 'bg-warning');
+            progressBar.classList.add('progress-bar-animated', 'bg-primary');
+        }
 
         clearStepHighlights();
 

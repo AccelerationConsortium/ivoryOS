@@ -28,12 +28,36 @@
         border-color: #d39e00;
         color: #212529;
     }
-    /* run events: the user's pauses and stops, errors, skipped rows, table edits */
+    .vis-item.script.failed {
+        background-color: #dc3545;
+        border-color: #b02a37;
+        color: white;
+    }
+    /* a failed row takes no time, so the next iteration starts on the same spot:
+       drawn above its bar so it is not hidden */
+    #config-results tr.batch-start > td {
+        border-top: 2px solid #6c757d;
+    }
+    .vis-item.vis-point.script.failed {
+        background-color: transparent;
+        z-index: 2;
+    }
+    .vis-item.vis-point.script.failed .vis-dot {
+        border-color: #dc3545;
+        border-width: 6px;
+        border-radius: 6px;
+    }
+    .vis-item.script.stopped {
+        background-color: #ffc107;
+        border-color: #d39e00;
+        color: #212529;
+    }
+    /* run events: the user's pauses and stops, errors, table edits, rows not run */
     .vis-item.event .vis-dot { border-color: #6c757d; }
     .vis-item.event.stop_now .vis-dot,
     .vis-item.event.stop_after_iteration .vis-dot,
     .vis-item.event.error .vis-dot,
-    .vis-item.event.row_skipped .vis-dot { border-color: #dc3545; }
+    .vis-item.event.rows_not_run .vis-dot { border-color: #dc3545; }
     .vis-item.event.paused .vis-dot,
     .vis-item.event.intervention .vis-dot { border-color: #fd7e14; }
     .vis-item.event.resumed .vis-dot,
@@ -78,14 +102,13 @@
         <div id="visualization"></div>
     </div>
 
-    <!-- The config table as the run worked through it -->
-    {% if config_history.final %}
+    <!-- The config table as the run worked through it, read from its iterations -->
+    {% if config_results and config_results.rows %}
         {% set row_looks = {
             'done': ('text-bg-success', 'done'),
-            'running': ('text-bg-danger', 'interrupted'),
-            'error': ('text-bg-danger', 'error'),
+            'running': ('text-bg-primary', 'running'),
             'stopped': ('text-bg-warning', 'stopped mid-row'),
-            'skipped': ('text-bg-danger', 'skipped'),
+            'failed': ('text-bg-danger', 'failed'),
             'pending': ('text-bg-secondary', 'not run'),
         } %}
         <div id="config-results" style="margin-bottom: 2rem;">
@@ -101,14 +124,15 @@
                     <thead class="table-light sticky-top">
                         <tr>
                             <th>#</th><th>Status</th>
-                            {% for column in config_columns %}<th>{{ column }}</th>{% endfor %}
-                            {% for output in config_outputs %}<th class="table-info">{{ output }}</th>{% endfor %}
+                            {% for column in config_results.columns %}<th>{{ column }}</th>{% endfor %}
+                            {% for output in config_results.outputs %}<th class="table-info">{{ output }}</th>{% endfor %}
                         </tr>
                     </thead>
                     <tbody>
-                        {% for row in config_history.final %}
+                        {% for row in config_results.rows %}
                             {% set look = row_looks.get(row.status, ('text-bg-secondary', row.status)) %}
-                            <tr class="{{ '' if row.status == 'done' else 'text-muted' }}">
+                            {# with batches, a line where each batch begins #}
+                            <tr class="{{ '' if row.status == 'done' else 'text-muted' }}{{ ' batch-start' if config_results.batched and row.starts_batch and not loop.first }}">
                                 <td>
                                     {# a row that ran links to its iteration's details below #}
                                     {% if row.iteration %}<a href="#card-iter{{ row.iteration }}" title="Iteration {{ row.iteration }}">{{ row.row }}</a>{% else %}{{ row.row }}{% endif %}
@@ -118,14 +142,14 @@
                                 </td>
                                 {# a value that cannot run is marked in red, the reason on hover #}
                                 {% set invalid = row.invalid or {} %}
-                                {% for column in config_columns %}
+                                {% for column in config_results.columns %}
                                     {% if column in invalid %}
-                                        <td class="text-danger fw-semibold" title="{{ invalid[column] }}">{{ (row['values'] or {}).get(column, '') }}</td>
+                                        <td class="text-danger fw-semibold" title="{{ invalid[column] }}">{{ row['values'].get(column, '') }}</td>
                                     {% else %}
-                                        <td>{{ (row['values'] or {}).get(column, '') }}</td>
+                                        <td>{{ row['values'].get(column, '') }}</td>
                                     {% endif %}
                                 {% endfor %}
-                                {% for output in config_outputs %}<td>{{ (row.outputs or {}).get(output, '') }}</td>{% endfor %}
+                                {% for output in config_results.outputs %}<td>{{ row.outputs.get(output, '') }}</td>{% endfor %}
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -133,30 +157,14 @@
             </div>
             {% if config_changes %}
                 <details class="small">
-                    <summary>Changed during the run ({{ config_changes | length }}), and the table as submitted</summary>
+                    <summary>Edited during the run ({{ config_changes | length }})</summary>
                     <ul class="list-group my-2">
-                        {% for change in config_history.changes %}
+                        {% for time, change in config_changes %}
                             <li class="list-group-item py-1">
-                                <span class="text-muted me-2">{{ change.time | replace('T', ' ') }}</span>{{ config_changes[loop.index0] }}
-                                {% if change.used == true %}
-                                    <span class="text-muted">(used by the steps after the change)</span>
-                                {% elif change.used == false %}
-                                    <span class="text-warning">(came after the row's last step, not used)</span>
-                                {% endif %}
+                                <span class="text-muted me-2">{{ time | replace('T', ' ') }}</span>{{ change }}
                             </li>
                         {% endfor %}
                     </ul>
-                    <div class="fw-bold mb-1">As submitted</div>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered mb-0">
-                            <thead class="table-light"><tr><th>#</th>{% for column in config_columns %}<th>{{ column }}</th>{% endfor %}</tr></thead>
-                            <tbody>
-                                {% for values in config_history.initial %}
-                                    <tr><td>{{ loop.index }}</td>{% for column in config_columns %}<td>{{ values.get(column, '') }}</td>{% endfor %}</tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
                 </details>
             {% endif %}
         </div>
@@ -314,14 +322,28 @@
             {% endif %}
 
             {% for repeat_index, step_list in grouped.script.items()|sort %}
+                {% if step_list[0].status == 'failed' and step_list[0].start_time == step_list[-1].end_time %}
+                {# a row that could not run took no time: a dot, its label on hover so it
+                   does not sit on top of the next iteration #}
+                {
+                    id: 'iter{{ repeat_index }}',
+                    content: '',
+                    title: {{ ('Iteration ' ~ repeat_index ~ ' failed' ~ ((': ' ~ step_list[0].error.message) if step_list[0].error and step_list[0].error.message else '')) | tojson }},
+                    start: '{{ step_list[0].start_time }}',
+                    type: 'point',
+                    className: 'script failed',
+                    group: 'all',
+                },
+                {% else %}
                 {
                     id: 'iter{{ repeat_index }}',
                     content: 'Iteration {{ repeat_index }}',
                     start: '{{ step_list[0].start_time }}',
                     end: '{{ step_list[-1].end_time }}',
-                    className: 'script',
+                    className: 'script {{ step_list[0].status or '' }}',
                     group: 'all',
                 },
+                {% endif %}
                 {% for step in step_list %}
                     {% if step.method_name == "stop" %}
                         {

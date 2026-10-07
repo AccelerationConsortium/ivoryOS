@@ -7,14 +7,13 @@ is running open to edits for the steps it has not run yet. Entries that already
 ran are never touched.
 
 An entry is converted from text to its argument types only when its batch
-starts, so an entry that cannot be converted is skipped on its own, with the
-reason, instead of keeping every entry from running.
+starts, so an entry that cannot be converted fails on its own, with the reason,
+instead of keeping every entry from running.
 
-The run's history keeps the table as it ended, with each row's status and
-outputs, and the table as submitted with every change made in between.
+Nothing here is kept once the run ends: the run's iterations are the record of
+the table, one per entry it reached, and the edits are kept as run events.
 """
 
-import math
 import threading
 from datetime import datetime
 
@@ -24,13 +23,12 @@ from ivoryos.runtime.task_conditions import blank_row, config_field_problems, co
 PENDING = "pending"
 RUNNING = "running"
 DONE = "done"
-SKIPPED = "skipped"
 # cut off by a stop before all its steps ran
 STOPPED = "stopped"
-# its steps raised an error the run could not carry on from
-FAILED = "error"
+# its values could not run, or its steps raised an error the run could not get past
+FAILED = "failed"
 # entries whose turn has passed; their values are what ran, or why nothing did
-FINISHED = (DONE, SKIPPED, STOPPED, FAILED)
+FINISHED = (DONE, STOPPED, FAILED)
 STATUSES = (PENDING, RUNNING, *FINISHED)
 
 
@@ -60,25 +58,20 @@ class LiveConfig:
     from its own thread while edits arrive from web requests.
     """
 
-    def __init__(self, rows, arg_types, converted=False, outputs=()):
+    def __init__(self, rows, arg_types, converted=False):
         """``rows`` as the task holds them. ``converted`` means they already carry
         their argument types, as a run submitted through the API does, and are
-        used as they are rather than converted from text. ``outputs`` names the
-        values the workflow returns, kept with each row once it ran."""
+        used as they are rather than converted from text."""
         self.lock = threading.Lock()
         self.arg_types = dict(arg_types or {})
         self.fields = list(self.arg_types)
-        self.outputs = list(outputs or [])
         self.entries = []
-        self.changes = []
-        self.batches_started = 0
         self._last_id = 0
         for row in rows or []:
             self.entries.append(self._new_entry(
                 {key: text_of(value) for key, value in row.items()},
                 values=row if converted else None,
             ))
-        self.initial = [dict(entry["text"]) for entry in self.entries]
 
     def _new_entry(self, text, values=None):
         self._last_id += 1
@@ -93,9 +86,6 @@ class LiveConfig:
             "values": values,
             # input names when the entry started, to tell its inputs from its outputs
             "inputs": None,
-            # the iteration it ran in, and what it returned
-            "iteration": None,
-            "outputs": None,
             # changes saved for a running entry, handed to it between steps
             "pending_edits": {},
             "edited_while_running": False,
@@ -123,10 +113,10 @@ class LiveConfig:
     def start_batch(self, size):
         """Mark up to ``size`` waiting entries as running and return them.
 
-        Also returns ``[(row number, reason)]`` for entries passed over on the way
-        because they cannot be converted; those are marked skipped.
+        Also returns ``[(row number, entry)]`` for entries reached on the way that
+        cannot be converted; those are marked failed, with the reason.
         """
-        batch, skipped = [], []
+        batch, failed = [], []
         with self.lock:
             for number, entry in self._numbered():
                 if len(batch) >= size:
@@ -141,27 +131,23 @@ class LiveConfig:
                         except Exception as e:
                             problem = str(e)
                     if problem:
-                        entry["status"], entry["reason"] = SKIPPED, problem
-                        skipped.append((number, problem))
+                        entry["status"], entry["reason"] = FAILED, problem
+                        failed.append((number, entry))
                         continue
                 entry["status"] = RUNNING
                 entry["inputs"] = list(entry["values"])
                 batch.append(entry)
-            if batch:
-                self.batches_started += 1
-                for entry in batch:
-                    entry["iteration"] = self.batches_started
-        return batch, skipped
+        return batch, failed
 
-    def progress(self, size):
-        """``(iteration, total)`` in batches, counting the one just started.
-
-        The total is worked out again each time, so entries added or removed
-        during the run move it without disturbing the iterations already done.
-        """
+    def waiting(self):
+        """How many entries the run has not reached yet."""
         with self.lock:
-            waiting = sum(1 for entry in self.entries if entry["status"] == PENDING)
-            return self.batches_started, self.batches_started + math.ceil(waiting / size)
+            return sum(1 for entry in self.entries if entry["status"] == PENDING)
+
+    def remaining(self):
+        """The entries the run has not reached, as text, for when it ends without them."""
+        with self.lock:
+            return [dict(entry["text"]) for entry in self.entries if entry["status"] == PENDING]
 
     def apply_running_edits(self):
         """Hand changes saved for the running entries to the steps still to come.
@@ -177,7 +163,6 @@ class LiveConfig:
                 for field, edit in entry["pending_edits"].items():
                     entry["values"][field] = edit["value"]
                     entry["text"][field] = edit["text"]
-                    edit["change"]["used"] = True
                     lines.append(f"Row {number}: '{field}' is now {edit['text']!r} for the steps still to run.")
                 entry["pending_edits"] = {}
                 entry["edited_while_running"] = True
@@ -192,20 +177,18 @@ class LiveConfig:
         return any(entry["edited_while_running"] for entry in batch)
 
     def finish_batch(self, batch, stopped=False):
-        """Mark the batch done, or ``stopped`` when a stop cut its steps off, and
-        keep what each entry returned. Returns a log line for each change that
-        came after its entry's last step and so was never used."""
+        """Mark the batch done, or ``stopped`` when a stop cut its steps off.
+        Returns a log line for each change that came after its entry's last step
+        and so was never used."""
         lines = []
         with self.lock:
             for number, entry in self._numbered():
                 if not any(entry is done for done in batch):
                     continue
                 for field, edit in entry["pending_edits"].items():
-                    edit["change"]["used"] = False
                     lines.append(f"Row {number}: the change of '{field}' to {edit['text']!r} "
                                  f"came after its last step, so it was not used.")
                 entry["pending_edits"] = {}
-                entry["outputs"] = {name: entry["values"][name] for name in self.outputs if name in entry["values"]}
                 entry["status"] = STOPPED if stopped else DONE
         return lines
 
@@ -317,7 +300,6 @@ class LiveConfig:
                     waiting.append(entry)
             # entries that started keep their place; the waiting ones take the new order
             self.entries = [entry for entry in self.entries if entry["status"] != PENDING] + waiting
-            self.changes.extend(changes)
             return changes, notes
 
     def _field_changes(self, entry, number, text):
@@ -342,30 +324,5 @@ class LiveConfig:
             field = change["field"]
             change["while_running"] = True
             value = convert_config_type({field: text[field]}, self.arg_types)[field]
-            entry["pending_edits"][field] = {"text": text[field], "value": value, "change": change}
+            entry["pending_edits"][field] = {"text": text[field], "value": value}
         return changes
-
-    # --- the run's history -------------------------------------------------
-
-    def history(self):
-        """The table as it ended, as submitted, and every change in between.
-
-        Each entry of the final table has its status, the iteration it ran in, and
-        what it returned. For entries that ran, the values are the ones their last
-        steps used, which is what the run's iterations record as well.
-        """
-        with self.lock:
-            final = []
-            for number, entry in self._numbered():
-                if entry["inputs"] is not None:
-                    values = {key: entry["values"].get(key) for key in entry["inputs"]}
-                else:
-                    values = dict(entry["text"])
-                row = {"row": number, "status": entry["status"], "values": values,
-                       "iteration": entry["iteration"], "outputs": entry["outputs"] or {}}
-                if entry["reason"]:
-                    row["reason"] = entry["reason"]
-                if entry["invalid"]:
-                    row["invalid"] = entry["invalid"]
-                final.append(row)
-            return {"initial": self.initial, "final": final, "changes": self.changes}

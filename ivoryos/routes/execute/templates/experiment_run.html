@@ -187,6 +187,14 @@
 
         runButtons.forEach(btn => {
             btn.addEventListener('click', async function (e) {
+                // a config table with values that cannot run is held back to be fixed
+                if (btn.getAttribute('form') === 'online-config' && window.checkConfigTable && !window.checkConfigTable()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    btn.dataset.processed = "false";
+                    return;
+                }
+
                 // If we already processed this click, let it propagate naturally
                 if (btn.dataset.processed === "true") {
                     return;

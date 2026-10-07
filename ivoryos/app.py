@@ -89,13 +89,20 @@ def reset_old_schema(engine, db_dir):
     # names these columns, so they must exist, and on PostgreSQL a failed statement
     # would abort any other statement sharing its transaction.
     current = inspect(engine)
-    if 'workflow_runs' in current.get_table_names():
-        columns = {column['name'] for column in current.get_columns('workflow_runs')}
-        json_type = "JSON" if engine.dialect.name == "postgresql" else "TEXT"
-        for name, column_type in (("config_history", json_type), ("status", "VARCHAR(32)"), ("events", json_type)):
+    json_type = "JSON" if engine.dialect.name == "postgresql" else "TEXT"
+    new_columns = {
+        'workflow_runs': (("status", "VARCHAR(32)"), ("events", json_type)),
+        'workflow_phases': (("status", "VARCHAR(32)"), ("error", json_type)),
+    }
+    tables = current.get_table_names()
+    for table, wanted in new_columns.items():
+        if table not in tables:
+            continue
+        columns = {column['name'] for column in current.get_columns(table)}
+        for name, column_type in wanted:
             if name not in columns:
                 with engine.begin() as conn:
-                    conn.execute(text(f"ALTER TABLE workflow_runs ADD COLUMN {name} {column_type}"))
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {column_type}"))
     # Recreate new schema
     db.create_all()  # creates workflow_runs, workflow_phases, workflow_steps
 

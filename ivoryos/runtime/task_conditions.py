@@ -115,6 +115,33 @@ def config_field_problems(values, fields, arg_types):
     return problems
 
 
+def config_form_problems(form, fields, arg_types):
+    """``["Row n, 'input': why", ...]`` for a submitted config table, in table order.
+
+    ``form`` holds the table's cells as ``input[row]`` keys, the way the
+    execution page sends them. A row with a value that cannot be converted, or
+    one left partly empty, is reported; the runner would otherwise fail the
+    first and leave out the second without a word. Empty rows are ignored.
+    """
+    rows = {}
+    for key, value in form.items():
+        field, bracket, index = key.partition("[")
+        if not bracket:
+            continue
+        try:
+            rows.setdefault(int(index.rstrip("]")), {})[field] = value
+        except ValueError:
+            continue
+    problems = []
+    for number in sorted(rows):
+        values = rows[number]
+        if blank_row(values):
+            continue
+        for field, reason in config_field_problems(values, fields, arg_types).items():
+            problems.append(f"Row {number}, '{field}': {reason}")
+    return problems
+
+
 def config_row_problem(values, fields, arg_types):
     """Why a config entry cannot run, or ``None`` if it can.
 

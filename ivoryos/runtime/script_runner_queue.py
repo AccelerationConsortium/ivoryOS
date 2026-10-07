@@ -1,6 +1,8 @@
 import threading
 import uuid
 
+from ivoryos.models import WorkflowRun, db
+from ivoryos.parsers.serialize import sanitize_for_json
 from ivoryos.runtime import task_conditions
 from ivoryos.runtime.live_config import describe as describe_change
 from ivoryos.runtime.run_events import TABLE_EDITED, event as run_event
@@ -10,12 +12,37 @@ from ivoryos.runtime.runner_runtime import ensure_deck
 class ScriptRunnerQueueMixin:
     # events of the run in progress (see ivoryos.runtime.run_events); None between runs
     run_events = None
+    # database id of the run in progress, which its events are saved to
+    run_id = None
+    # events arrive from requests and from the runner; one save at a time, so a
+    # slow save cannot write an older list over a newer one
+    _events_lock = threading.Lock()
 
-    def record_event(self, kind, detail=None):
+    def record_event(self, kind, detail=None, **data):
         """Note something that happened to the run in progress, such as the user
-        pausing or stopping it. Does nothing between runs."""
-        if self.run_events is not None:
-            self.run_events.append(run_event(kind, detail))
+        pausing or stopping it, and save it with the run straight away, so it is
+        kept even if the run never gets to finish. Does nothing between runs."""
+        events = self.run_events
+        if events is None:
+            return
+        with self._events_lock:
+            events.append(run_event(kind, detail, **data))
+            self._save_run_events(list(events))
+
+    def _save_run_events(self, events):
+        if self.run_id is None or self.current_app is None:
+            return
+        try:
+            # an app context of its own gives the save its own session, so it neither
+            # commits nor discards anything the runner has in progress
+            with self.current_app.app_context():
+                run = db.session.get(WorkflowRun, self.run_id)
+                if run is not None:
+                    run.events = sanitize_for_json(events)
+                    db.session.commit()
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Could not save the run's events: {e}")
 
     def handle_input_submission(self, value):
         """Resume execution with user input"""
@@ -187,7 +214,7 @@ class ScriptRunnerQueueMixin:
             return None
         changes, notes = live.edit(rows)
         if changes:
-            self.record_event(TABLE_EDITED, "\n".join(describe_change(change) for change in changes))
+            self.record_event(TABLE_EDITED, "\n".join(describe_change(change) for change in changes), changes=changes)
         if self.logger:
             for change in changes:
                 self.logger.info(f"Config table edited: {describe_change(change)}")

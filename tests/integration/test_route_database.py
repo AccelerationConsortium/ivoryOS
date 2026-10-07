@@ -152,9 +152,10 @@ def test_workflow_phase_data_csv_logs_and_delete(auth):
 
 def test_existing_database_gets_the_new_run_columns(app, tmp_path):
     """
-    GIVEN a database from before runs kept their config table, outcome and events
+    GIVEN a database from before runs kept their outcome and events, and
+    iterations their status
     WHEN the app checks the schema at start
-    THEN the columns are added, so queries on runs keep working
+    THEN the columns are added, so queries on runs and iterations keep working
     """
     from sqlalchemy import create_engine, inspect, text
     from ivoryos.app import reset_old_schema
@@ -167,31 +168,38 @@ def test_existing_database_gets_the_new_run_columns(app, tmp_path):
     with app.app_context():
         reset_old_schema(engine, str(tmp_path))
 
-    columns = {column['name'] for column in inspect(engine).get_columns('workflow_runs')}
-    assert {'config_history', 'status', 'events'} <= columns
+    assert {'status', 'events'} <= {column['name'] for column in inspect(engine).get_columns('workflow_runs')}
+    assert {'status', 'error'} <= {column['name'] for column in inspect(engine).get_columns('workflow_phases')}
 
 
-def test_workflow_view_shows_the_config_table_results_outcome_and_events(auth):
+def test_workflow_view_reads_the_config_table_results_from_the_iterations(auth):
     """
-    GIVEN a config run that was edited, skipped a row and was stopped early
+    GIVEN a config run that was edited, had a row fail and was stopped early
     WHEN its page is opened
-    THEN it shows how it ended, every row with its status and outputs, the
-    changes tucked away, and the user's stop on the timeline
+    THEN its table is read from the iterations: each row with its status, values
+    and outputs, the failed value marked, the rows not run from their event, the
+    edits from theirs, and the user's stop on the timeline
     """
-    history = {
-        'initial': [{'temperature': '25'}, {'temperature': 'hot'}, {'temperature': '60'}],
-        'final': [{'row': 1, 'status': 'done', 'iteration': 1, 'values': {'temperature': 30.0}, 'outputs': {'yield_pct': 0.93}},
-                  {'row': 2, 'status': 'skipped', 'iteration': None, 'values': {'temperature': 'hot'}, 'outputs': {},
-                   'reason': "cannot convert 'hot'", 'invalid': {'temperature': "cannot convert 'hot'"}},
-                  {'row': 3, 'status': 'pending', 'iteration': None, 'values': {'temperature': '60'}, 'outputs': {}}],
-        'changes': [{'time': '2026-10-06T10:00:00', 'row': 1, 'action': 'edit', 'field': 'temperature',
-                     'from': '25', 'to': '30', 'while_running': True, 'used': True}],
-    }
-    events = [{'time': '2026-10-06T10:00:05', 'kind': 'stop_after_iteration', 'detail': None}]
+    events = [
+        {'time': '2026-10-06T10:00:02', 'kind': 'table_edited', 'detail': "Row 1: 'temperature' changed from '25' to '30' while it was running",
+         'changes': [{'row': 1, 'action': 'edit', 'field': 'temperature', 'from': '25', 'to': '30', 'while_running': True}]},
+        {'time': '2026-10-06T10:00:05', 'kind': 'stop_after_iteration', 'detail': None},
+        {'time': '2026-10-06T10:00:09', 'kind': 'rows_not_run', 'detail': '1 row(s) of the table were not run.',
+         'rows': [{'temperature': '60'}]},
+    ]
     with auth.application.app_context():
-        run = WorkflowRun(name='edited', platform='deck', start_time=datetime.now(), config_history=history,
+        run = WorkflowRun(name='edited', platform='deck', start_time=datetime.now(), repeat_mode='batch',
                           status='stopped', events=events)
         db.session.add(run)
+        db.session.flush()
+        now = datetime.now()
+        db.session.add_all([
+            WorkflowPhase(run_id=run.id, name='main', repeat_index=1, status='done', start_time=now, end_time=now,
+                          parameters=[{'temperature': 30.0}], outputs=[{'temperature': 30.0, 'yield_pct': 0.93}]),
+            WorkflowPhase(run_id=run.id, name='main', repeat_index=2, status='failed', start_time=now, end_time=now,
+                          parameters=[{'temperature': 'hot'}],
+                          error={'message': "cannot convert 'hot'", 'fields': {'temperature': "cannot convert 'hot'"}}),
+        ])
         db.session.commit()
         run_id = run.id
 
@@ -199,15 +207,17 @@ def test_workflow_view_shows_the_config_table_results_outcome_and_events(auth):
 
     assert 'Stopped early' in body
     assert 'Config table results' in body
-    assert '0.93' in body and 'href="#card-iter1"' in body
-    # the value that could not run is marked in red, its reason on hover rather than spelled out
+    # row 1 ran as iteration 1, with what it returned
+    assert 'href="#card-iter1"' in body and '0.93' in body and '<th class="table-info">yield_pct</th>' in body
+    # row 2 failed as iteration 2, its bad value marked, the reason on hover rather than spelled out
     assert '<td class="text-danger fw-semibold" title="cannot convert &#39;hot&#39;">hot</td>' in body
-    assert '<div class="text-danger">' not in body
-    assert 'not run' in body
-    assert 'Changed during the run (1)' in body
+    assert '>failed</span>' in body
+    # row 3 was never reached
+    assert 'not run' in body and '<td>60</td>' in body
+    assert 'Edited during the run (1)' in body
     assert "Row 1: &#39;temperature&#39; changed from &#39;25&#39; to &#39;30&#39; while it was running" in body
     assert '"Stop after this iteration"' in body and "group: 'events'" in body
-    assert 'Stopped early' in auth.get('/ivoryos/executions/records').get_data(as_text=True)
+    assert "className: 'script failed'" in body
 
 
 def test_run_list_tells_running_and_unfinished_runs_apart(auth):
@@ -240,3 +250,59 @@ def test_run_list_tells_running_and_unfinished_runs_apart(auth):
     assert body.count('title="Running"') == 1
     assert body.count('title="Did not finish"') == 1
     assert 'bg-teal-subtle' not in body
+
+
+def test_run_events_are_saved_as_they_happen(app, init_database):
+    """
+    GIVEN a run in progress
+    WHEN the user pauses and stops it
+    THEN each event is in the database right away, not only when the run ends,
+    and nothing is saved once the run is over
+    """
+    from ivoryos.runtime.script_runner import ScriptRunner
+
+    with app.app_context():
+        run = WorkflowRun(name='live', platform='deck', start_time=datetime.now())
+        db.session.add(run)
+        db.session.commit()
+        run_id = run.id
+
+    runner = ScriptRunner()
+    runner.current_app, runner.logger = app, None
+    runner.run_events, runner.run_id = [], run_id
+
+    runner.record_event('paused')
+    with app.app_context():
+        assert [event['kind'] for event in db.session.get(WorkflowRun, run_id).events] == ['paused']
+    runner.record_event('stop_now', 'Cleanup skipped.')
+    with app.app_context():
+        saved = db.session.get(WorkflowRun, run_id).events
+    assert [(event['kind'], event['detail']) for event in saved] == [('paused', None), ('stop_now', 'Cleanup skipped.')]
+
+    runner.run_events, runner.run_id = None, None
+    runner.record_event('resumed')
+    with app.app_context():
+        assert len(db.session.get(WorkflowRun, run_id).events) == 2
+
+
+def test_results_table_marks_where_each_batch_begins(auth):
+    """
+    GIVEN a config run with two rows to an iteration
+    WHEN its page is opened
+    THEN a line marks where the second batch begins, and only there
+    """
+    with auth.application.app_context():
+        run = WorkflowRun(name='batched', platform='deck', start_time=datetime.now(), repeat_mode='batch', status='completed')
+        db.session.add(run)
+        db.session.flush()
+        now = datetime.now()
+        for index, pair in enumerate([(1, 2), (3, 4)], start=1):
+            db.session.add(WorkflowPhase(run_id=run.id, name='main', repeat_index=index, status='done',
+                                         start_time=now, end_time=now,
+                                         parameters=[{'temperature': value} for value in pair]))
+        db.session.commit()
+        run_id = run.id
+
+    body = auth.get(f'/ivoryos/executions/records/{run_id}').get_data(as_text=True)
+
+    assert body.count(' batch-start"') == 1

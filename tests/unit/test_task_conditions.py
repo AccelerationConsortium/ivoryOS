@@ -269,3 +269,21 @@ def test_field_problems_point_at_the_values_that_cannot_run():
     assert problems["solvent"] == "No value."
     assert config_field_problems({"temperature": "30", "solvent": "water"}, ["temperature", "solvent"],
                                  {"temperature": "float", "solvent": "str"}) == {}
+
+
+def test_a_submitted_config_table_is_checked_cell_by_cell():
+    from ivoryos.runtime.task_conditions import config_form_problems
+
+    form = {
+        "online-config": "", "batch_size": "1",
+        "temperature[1]": "25", "solvent[1]": "water",
+        "temperature[2]": "hot", "solvent[2]": "ethanol",
+        "temperature[3]": "40", "solvent[3]": "",
+        "temperature[4]": "", "solvent[4]": "",  # an empty row is ignored
+    }
+
+    problems = config_form_problems(form, ["temperature", "solvent"], {"temperature": "float", "solvent": "str"})
+
+    assert len(problems) == 2
+    assert problems[0].startswith("Row 2, 'temperature': ") and "hot" in problems[0]
+    assert problems[1] == "Row 3, 'solvent': No value."

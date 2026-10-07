@@ -3,7 +3,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ivoryos.runtime import live_config as live_module
 from ivoryos.runtime.live_config import LiveConfig, describe
 from ivoryos.runtime.script_runner import ScriptRunner
 
@@ -34,44 +33,48 @@ def editable(live, *values):
     return sent
 
 
+# --- the live table ----------------------------------------------------------
+
+
 def test_rows_are_converted_and_started_one_batch_at_a_time():
     live = make_live(row("25", "water"), row("40", "ethanol"), row("60", "toluene"))
 
-    batch, skipped = live.start_batch(2)
+    batch, failed = live.start_batch(2)
 
-    assert skipped == []
+    assert failed == []
     assert [entry["values"] for entry in batch] == [row(25.0, "water"), row(40.0, "ethanol")]
-    assert live.progress(2) == (1, 2)
+    assert live.waiting() == 1
     assert [entry["status"] for entry in live.view()["rows"]] == ["running", "running", "pending"]
 
     live.finish_batch(batch)
     batch, _ = live.start_batch(2)
     assert live.inputs(batch) == [row(60.0, "toluene")]
-    assert live.progress(2) == (2, 2)
+    assert live.waiting() == 0
 
 
-def test_a_row_that_cannot_run_is_skipped_on_its_own_with_the_reason():
+def test_a_row_that_cannot_run_fails_on_its_own_with_the_reason():
     live = make_live(row("25", "water"), row("hot", "ethanol"), row("60", "toluene"))
 
     assert [number for number, _ in live.problems()] == [2]
 
     first, _ = live.start_batch(1)
     live.finish_batch(first)
-    second, skipped = live.start_batch(1)
+    second, failed = live.start_batch(1)
 
-    assert [number for number, _ in skipped] == [2]
-    assert "hot" in skipped[0][1]
+    [(number, entry)] = failed
+    assert number == 2 and "hot" in entry["reason"] and list(entry["invalid"]) == ["temperature"]
+    assert entry["text"] == row("hot", "ethanol")
     assert live.inputs(second) == [row(60.0, "toluene")]
-    assert live.view()["counts"] == {"pending": 0, "running": 1, "done": 1, "skipped": 1, "stopped": 0, "error": 0}
+    assert live.view()["counts"] == {"pending": 0, "running": 1, "done": 1, "stopped": 0, "failed": 1}
 
 
 def test_converted_rows_from_the_api_are_used_as_they_are():
     original = {"temperature": 25.5, "solvent": "water", "note": "extra keys pass through"}
     live = LiveConfig([original], ARG_TYPES, converted=True)
 
-    batch, skipped = live.start_batch(1)
+    batch, failed = live.start_batch(1)
 
-    assert skipped == [] and batch[0]["values"] is original
+    assert failed == [] and batch[0]["values"] is original
 
 
 def test_waiting_rows_can_be_edited_added_removed_and_reordered():
@@ -95,8 +98,7 @@ def test_waiting_rows_can_be_edited_added_removed_and_reordered():
     assert [entry["values"] for entry in live.view()["rows"]] == [
         ["25", "water"], ["65", "toluene"], ["80", "hexane"],
     ]
-    # the total moves with the table; the iteration already started stays counted
-    assert live.progress(1) == (1, 3)
+    assert live.waiting() == 2
 
     live.finish_batch(first)
     assert live.inputs(live.start_batch(1)[0]) == [row(65.0, "toluene")]
@@ -112,7 +114,7 @@ def test_an_edit_with_a_value_that_cannot_run_changes_nothing():
             {"id": 2, "values": row("warm", "ethanol"), "number": 2},
         ])
 
-    assert live.view() == before and live.changes == []
+    assert live.view() == before
 
 
 def test_edits_to_the_running_row_reach_only_the_steps_still_to_run():
@@ -134,7 +136,6 @@ def test_edits_to_the_running_row_reach_only_the_steps_still_to_run():
     assert live.finish_batch(batch) == [
         "Row 1: the change of 'temperature' to '35' came after its last step, so it was not used."]
     assert live.inputs(batch) == [row(30.0, "water")]
-    assert [change.get("used") for change in live.changes] == [True, False]
 
 
 def test_rows_that_finished_meanwhile_are_left_as_they_ran():
@@ -153,37 +154,49 @@ def test_rows_that_finished_meanwhile_are_left_as_they_ran():
     assert live.inputs(first) == [row(25.0, "water")]
 
 
-def test_history_keeps_the_final_and_submitted_tables_and_the_changes():
-    live = LiveConfig([row("25", "water"), row("hot", "ethanol"), row("60", "toluene"), row("70", "water")],
-                      ARG_TYPES, outputs=["yield_pct"])
+def test_values_that_cannot_run_are_marked_where_they_are():
+    live = make_live(row("25", "water"), row("3er", "ethanol"))
 
-    batch, _ = live.start_batch(1)
-    batch[0]["values"]["yield_pct"] = 0.9  # what the steps returned
-    live.finish_batch(batch)
-    batch, skipped = live.start_batch(1)
-    live.edit(editable(live, row("65", "toluene")))
-    live.apply_running_edits()
-    live.finish_batch(batch, stopped=True)
-
-    history = live.history()
-    assert history["initial"] == [row("25", "water"), row("hot", "ethanol"), row("60", "toluene"), row("70", "water")]
-    assert [(entry["status"], entry["iteration"], entry["values"], entry["outputs"]) for entry in history["final"]] == [
-        ("done", 1, row(25.0, "water"), {"yield_pct": 0.9}),
-        ("skipped", None, row("hot", "ethanol"), {}),
-        ("stopped", 2, row(65.0, "toluene"), {}),
-        ("pending", None, row("70", "water"), {}),
-    ]
-    assert "hot" in history["final"][1]["reason"]
-    assert [change["action"] for change in history["changes"]] == ["edit"]
+    view = live.view()["rows"]
+    assert view[0]["invalid"] == {} and list(view[1]["invalid"]) == ["temperature"]
 
 
-def test_rows_still_running_when_the_run_ends_are_marked_as_failed():
+def test_rows_still_running_when_the_run_ends_are_marked_failed_and_the_rest_left():
     live = make_live(row("25", "water"), row("40", "ethanol"))
     live.start_batch(1)
 
     live.close()
 
-    assert [entry["status"] for entry in live.history()["final"]] == ["error", "pending"]
+    assert [entry["status"] for entry in live.view()["rows"]] == ["failed", "pending"]
+    assert live.remaining() == [row("40", "ethanol")]
+
+
+# --- the runner: the iterations are the record of the table -----------------
+
+
+class FakePhase:
+    def __init__(self, **fields):
+        self.status = self.error = self.outputs = self.end_time = None
+        self.__dict__.update(fields)
+
+
+class FakeSession:
+    """Just enough of a session for the config loop: phases kept in order."""
+
+    def __init__(self):
+        self.phases = []
+
+    def add(self, phase):
+        self.phases.append(phase)
+        phase.id = len(self.phases)
+
+    def get(self, model, phase_id):
+        return self.phases[phase_id - 1]
+
+    def flush(self):
+        pass
+
+    commit = rollback = flush
 
 
 def run_config_section(runner, config, exec_steps):
@@ -194,20 +207,28 @@ def run_config_section(runner, config, exec_steps):
 
 @pytest.fixture
 def runner(monkeypatch):
+    from types import SimpleNamespace
     from ivoryos.runtime import script_runner_workflow
 
     runner = ScriptRunner()
     runner.logger = MagicMock()
     runner.socketio = MagicMock()
     runner._emit_progress = MagicMock()
-    phases = []
-    monkeypatch.setattr(script_runner_workflow, "WorkflowPhase", lambda **kwargs: phases.append(kwargs) or MagicMock(**kwargs))
-    monkeypatch.setattr(script_runner_workflow, "db", MagicMock())
-    runner.phases = phases
+    runner.run_events = []  # a run in progress, not saved anywhere
+    session = FakeSession()
+    monkeypatch.setattr(script_runner_workflow, "WorkflowPhase", FakePhase)
+    monkeypatch.setattr(script_runner_workflow, "db", SimpleNamespace(session=session))
+    runner.phases = session.phases
     return runner
 
 
-def test_a_bad_row_no_longer_keeps_the_rest_of_the_table_from_running(runner):
+def finished():
+    async def steps(script, section, phase_id, kwargs_list=None, batch_size=1):
+        return kwargs_list
+    return steps
+
+
+def test_every_row_reached_becomes_an_iteration_in_order_a_failed_one_included(runner):
     ran = []
 
     async def exec_steps(script, section, phase_id, kwargs_list=None, batch_size=1):
@@ -217,14 +238,17 @@ def test_a_bad_row_no_longer_keeps_the_rest_of_the_table_from_running(runner):
     run_config_section(runner, [row("25", "water"), row("hot", "ethanol"), row("60", "toluene")], exec_steps)
 
     assert ran == [row(25.0, "water"), row(60.0, "toluene")]
+    assert [(phase.repeat_index, phase.status) for phase in runner.phases] == [(1, "done"), (2, "failed"), (3, "done")]
+    failed = runner.phases[1]
+    assert failed.parameters == [row("hot", "ethanol")]
+    assert "hot" in failed.error["message"] and list(failed.error["fields"]) == ["temperature"]
     notices = [call.args[1] for call in runner.socketio.emit.call_args_list if call.args[0] == "notice"]
-    # once when the run starts, while it can still be fixed, and once when it is skipped
-    assert [notice["title"] for notice in notices] == ["Some rows can't run as entered", "Row skipped"]
-    assert all("Row 2" in notice["message"] for notice in notices)
+    # once when the run starts, while it can still be fixed, and once when it fails
+    assert [notice["title"] for notice in notices] == ["Some rows can't run as entered", "Row failed"]
     assert runner.live_config is None
 
 
-def test_mid_run_edits_are_recorded_with_the_values_the_row_finished_with(runner):
+def test_an_iteration_keeps_the_values_its_last_steps_used(runner):
     async def exec_steps(script, section, phase_id, kwargs_list=None, batch_size=1):
         live = runner.live_config
         if kwargs_list[0]["solvent"] == "water":
@@ -234,10 +258,67 @@ def test_mid_run_edits_are_recorded_with_the_values_the_row_finished_with(runner
 
     run_config_section(runner, [row("25", "water"), row("40", "ethanol")], exec_steps)
 
-    assert [phase["parameters"] for phase in runner.phases] == [[row(25.0, "water")], [row(45.0, "ethanol")]]
-    from ivoryos.runtime import script_runner_workflow
-    run = script_runner_workflow.db.session.get.return_value
-    assert [entry["values"] for entry in run.config_history["final"]] == [row(30.0, "water"), row(45.0, "ethanol")]
+    assert [phase.parameters for phase in runner.phases] == [[row(30.0, "water")], [row(45.0, "ethanol")]]
+
+
+def test_rows_left_by_a_graceful_stop_are_kept_with_an_event(runner):
+    async def exec_steps(script, section, phase_id, kwargs_list=None, batch_size=1):
+        runner.stop_pending_event.set()  # "stop after this iteration" during row 1
+        return kwargs_list
+
+    runner._cut_short = False
+    run_config_section(runner, [row("25", "water"), row("40", "ethanol")], exec_steps)
+
+    assert [phase.status for phase in runner.phases] == ["done"]
+    assert runner._cut_short
+    [left] = runner.run_events
+    assert (left["kind"], left["rows"]) == ("rows_not_run", [row("40", "ethanol")])
+
+
+def test_a_graceful_stop_during_the_last_row_still_completes(runner):
+    async def exec_steps(script, section, phase_id, kwargs_list=None, batch_size=1):
+        runner.stop_pending_event.set()
+        return kwargs_list
+
+    runner._cut_short = False
+    run_config_section(runner, [row("25", "water")], exec_steps)
+
+    assert not runner._cut_short and runner.run_events == []
+
+
+def test_an_iteration_is_stopped_only_when_a_stop_cut_off_its_steps(runner):
+    async def stop_during_last_step(script, section, phase_id, kwargs_list=None, batch_size=1):
+        runner.stop_current_event.set()  # no step was left to skip
+        return kwargs_list
+
+    async def stop_with_steps_left(script, section, phase_id, kwargs_list=None, batch_size=1):
+        runner.stop_current_event.set()
+        runner._halted()  # the next step sees the stop and is skipped
+        return kwargs_list
+
+    run_config_section(runner, [row("25", "water")], stop_during_last_step)
+    run_config_section(runner, [row("25", "water")], stop_with_steps_left)
+
+    assert [phase.status for phase in runner.phases] == ["done", "stopped"]
+
+
+def test_an_iteration_whose_steps_raise_is_kept_as_failed(runner):
+    async def exec_steps(script, section, phase_id, kwargs_list=None, batch_size=1):
+        raise RuntimeError("pump jammed")
+
+    with pytest.raises(RuntimeError):
+        run_config_section(runner, [row("25", "water"), row("40", "ethanol")], exec_steps)
+
+    [phase] = runner.phases
+    assert (phase.status, phase.error) == ("failed", {"message": "pump jammed"})
+    assert runner.run_events[0]["rows"] == [row("40", "ethanol")]
+
+
+def test_open_pages_are_told_while_the_running_table_can_be_edited(runner):
+    run_config_section(runner, [row("25", "water")], finished())
+
+    told = [call.args[1]["editable"] for call in runner.socketio.emit.call_args_list if call.args[0] == "live_config"]
+    assert told == [True, False]
 
 
 def test_row_edits_wait_while_a_shared_step_runs_nested_steps():
@@ -257,64 +338,27 @@ def test_row_edits_wait_while_a_shared_step_runs_nested_steps():
     assert batch[0]["values"]["temperature"] == 30.0
 
 
-def test_runner_hands_out_the_running_table_only_to_its_own_task():
+def test_runner_hands_out_the_running_table_only_to_its_own_task_and_keeps_its_edits():
     runner = ScriptRunner()
     runner.logger = MagicMock()
     assert runner.get_running_config() is None
 
     runner.current_task = {"uid": "abc", "run_name": "flow", "batch_size": 1}
     runner.live_config = make_live(row("25", "water"))
+    runner.run_events = []
     table = runner.get_running_config()
     assert (table["uid"], table["name"], table["rows"][0]["values"]) == ("abc", "flow", ["25", "water"])
 
     assert runner.edit_running_config("other", []) is None
     assert runner.edit_running_config("abc", editable(runner.live_config, row("30", "water"))) == []
     runner.logger.info.assert_called_with("Config table edited: Row 1: 'temperature' changed from '25' to '30'")
+    [edited] = runner.run_events
+    assert edited["kind"] == "table_edited"
+    assert edited["detail"] == "Row 1: 'temperature' changed from '25' to '30'"
+    assert [(change["field"], change["from"], change["to"]) for change in edited["changes"]] == [("temperature", "25", "30")]
 
 
-def test_a_graceful_stop_leaves_the_rest_of_the_table_not_run(runner):
-    async def exec_steps(script, section, phase_id, kwargs_list=None, batch_size=1):
-        runner.stop_pending_event.set()  # "stop after this iteration" during row 1
-        return kwargs_list
-
-    runner._cut_short = False
-    run_config_section(runner, [row("25", "water"), row("40", "ethanol")], exec_steps)
-
-    from ivoryos.runtime import script_runner_workflow
-    final = script_runner_workflow.db.session.get.return_value.config_history["final"]
-    assert [entry["status"] for entry in final] == ["done", "pending"]
-    assert runner._cut_short
-
-
-def test_a_graceful_stop_during_the_last_row_still_completes(runner):
-    async def exec_steps(script, section, phase_id, kwargs_list=None, batch_size=1):
-        runner.stop_pending_event.set()
-        return kwargs_list
-
-    runner._cut_short = False
-    run_config_section(runner, [row("25", "water")], exec_steps)
-
-    assert not runner._cut_short
-
-
-def test_a_row_is_marked_stopped_only_when_a_stop_cut_off_its_steps(runner):
-    from ivoryos.runtime import script_runner_workflow
-    run = script_runner_workflow.db.session.get.return_value
-
-    async def stop_during_last_step(script, section, phase_id, kwargs_list=None, batch_size=1):
-        runner.stop_current_event.set()  # no step was left to skip
-        return kwargs_list
-
-    async def stop_with_steps_left(script, section, phase_id, kwargs_list=None, batch_size=1):
-        runner.stop_current_event.set()
-        runner._halted()  # the next step sees the stop and is skipped
-        return kwargs_list
-
-    run_config_section(runner, [row("25", "water")], stop_during_last_step)
-    assert run.config_history["final"][0]["status"] == "done"
-
-    run_config_section(runner, [row("25", "water")], stop_with_steps_left)
-    assert run.config_history["final"][0]["status"] == "stopped"
+# --- run outcomes and the user's actions --------------------------------------
 
 
 def test_run_outcomes():
@@ -344,26 +388,3 @@ def test_the_users_actions_are_recorded_only_while_a_run_is_in_progress(monkeypa
     assert [(event["kind"], event["detail"]) for event in socket_handlers.runner.run_events] == [
         ("paused", None), ("stop_after_iteration", None), ("cleanup_skipped", None), ("stop_now", "Cleanup will run."),
     ]
-
-
-def test_open_pages_are_told_while_the_running_table_can_be_edited(runner):
-    async def exec_steps(script, section, phase_id, kwargs_list=None, batch_size=1):
-        return kwargs_list
-
-    run_config_section(runner, [row("25", "water")], exec_steps)
-
-    told = [call.args[1]["editable"] for call in runner.socketio.emit.call_args_list if call.args[0] == "live_config"]
-    assert told == [True, False]
-
-
-def test_values_that_cannot_run_are_marked_where_they_are():
-    live = make_live(row("25", "water"), row("3er", "ethanol"))
-
-    view = live.view()["rows"]
-    assert view[0]["invalid"] == {} and list(view[1]["invalid"]) == ["temperature"]
-
-    first, _ = live.start_batch(1)
-    live.finish_batch(first)
-    live.start_batch(1)
-    skipped = live.history()["final"][1]
-    assert skipped["status"] == "skipped" and list(skipped["invalid"]) == ["temperature"]
