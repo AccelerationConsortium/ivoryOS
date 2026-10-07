@@ -2,6 +2,7 @@ import os
 import uuid
 from flask import current_app
 from flask_socketio import SocketIO
+from ivoryos.runtime import run_events
 from ivoryos.runtime.script_runner import ScriptRunner
 
 SERVER_BOOT_ID = str(uuid.uuid4())
@@ -12,26 +13,31 @@ runner.socketio = socketio
 
 def abort_pending(continue_queue=True):
     runner.abort_pending(continue_queue)
+    runner.record_event(run_events.STOP_AFTER_ITERATION)
     socketio.emit('log', {'message': f"aborted pending iterations, move on to cleanup. continue_queue={continue_queue}"})
 
 def abort_cleanup():
     runner.abort_cleanup()
+    runner.record_event(run_events.CLEANUP_SKIPPED)
     socketio.emit('log', {'message': "aborted cleanup"})
 
 
 def abort_current(continue_queue=True, cleanup=False):
     runner.stop_execution(continue_queue, cleanup=cleanup)
+    runner.record_event(run_events.STOP_NOW, "Cleanup will run." if cleanup else "Cleanup skipped.")
     socketio.emit('log', {'message': f"stopped next task. continue_queue={continue_queue}, cleanup={cleanup}"})
 
 def pause():
     runner.retry = False
     msg = runner.toggle_pause()
+    runner.record_event(run_events.PAUSED if msg == "Paused" else run_events.RESUMED)
     socketio.emit('log', {'message': msg})
     return msg
 
 def retry():
     runner.retry = True
     msg = runner.toggle_pause()
+    runner.record_event(run_events.RETRIED)
     socketio.emit('log', {'message': msg})
 
 # Socket.IO Event Handlers

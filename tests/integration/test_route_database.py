@@ -150,11 +150,11 @@ def test_workflow_phase_data_csv_logs_and_delete(auth):
     assert missing_delete.get_json() == {'error': 'Workflow run not found', 'success': False}
 
 
-def test_existing_database_gets_the_config_history_column(app, tmp_path):
+def test_existing_database_gets_the_new_run_columns(app, tmp_path):
     """
-    GIVEN a database from before runs kept their config table's history
+    GIVEN a database from before runs kept their config table, outcome and events
     WHEN the app checks the schema at start
-    THEN the column is added, so queries on runs keep working
+    THEN the columns are added, so queries on runs keep working
     """
     from sqlalchemy import create_engine, inspect, text
     from ivoryos.app import reset_old_schema
@@ -167,31 +167,76 @@ def test_existing_database_gets_the_config_history_column(app, tmp_path):
     with app.app_context():
         reset_old_schema(engine, str(tmp_path))
 
-    assert 'config_history' in {column['name'] for column in inspect(engine).get_columns('workflow_runs')}
+    columns = {column['name'] for column in inspect(engine).get_columns('workflow_runs')}
+    assert {'config_history', 'status', 'events'} <= columns
 
 
-def test_workflow_view_shows_config_table_changes(auth):
+def test_workflow_view_shows_the_config_table_results_outcome_and_events(auth):
     """
-    GIVEN a run whose config table was edited while it ran
+    GIVEN a config run that was edited, skipped a row and was stopped early
     WHEN its page is opened
-    THEN the changes, the skipped row and both versions of the table are shown
+    THEN it shows how it ended, every row with its status and outputs, the
+    changes tucked away, and the user's stop on the timeline
     """
     history = {
-        'initial': [{'temperature': '25'}, {'temperature': 'hot'}],
-        'final': [{'row': 1, 'status': 'done', 'values': {'temperature': 30.0}},
-                  {'row': 2, 'status': 'skipped', 'values': {'temperature': 'hot'}, 'reason': "cannot convert 'hot'"}],
+        'initial': [{'temperature': '25'}, {'temperature': 'hot'}, {'temperature': '60'}],
+        'final': [{'row': 1, 'status': 'done', 'iteration': 1, 'values': {'temperature': 30.0}, 'outputs': {'yield_pct': 0.93}},
+                  {'row': 2, 'status': 'skipped', 'iteration': None, 'values': {'temperature': 'hot'}, 'outputs': {},
+                   'reason': "cannot convert 'hot'", 'invalid': {'temperature': "cannot convert 'hot'"}},
+                  {'row': 3, 'status': 'pending', 'iteration': None, 'values': {'temperature': '60'}, 'outputs': {}}],
         'changes': [{'time': '2026-10-06T10:00:00', 'row': 1, 'action': 'edit', 'field': 'temperature',
                      'from': '25', 'to': '30', 'while_running': True, 'used': True}],
     }
+    events = [{'time': '2026-10-06T10:00:05', 'kind': 'stop_after_iteration', 'detail': None}]
     with auth.application.app_context():
-        run = WorkflowRun(name='edited', platform='deck', start_time=datetime.now(), config_history=history)
+        run = WorkflowRun(name='edited', platform='deck', start_time=datetime.now(), config_history=history,
+                          status='stopped', events=events)
         db.session.add(run)
         db.session.commit()
         run_id = run.id
 
     body = auth.get(f'/ivoryos/executions/records/{run_id}').get_data(as_text=True)
 
-    assert 'Config table changes' in body
+    assert 'Stopped early' in body
+    assert 'Config table results' in body
+    assert '0.93' in body and 'href="#card-iter1"' in body
+    # the value that could not run is marked in red, its reason on hover rather than spelled out
+    assert '<td class="text-danger fw-semibold" title="cannot convert &#39;hot&#39;">hot</td>' in body
+    assert '<div class="text-danger">' not in body
+    assert 'not run' in body
+    assert 'Changed during the run (1)' in body
     assert "Row 1: &#39;temperature&#39; changed from &#39;25&#39; to &#39;30&#39; while it was running" in body
-    assert '(used by the steps after the change)' in body
-    assert "Row 2 was skipped: cannot convert &#39;hot&#39;" in body
+    assert '"Stop after this iteration"' in body and "group: 'events'" in body
+    assert 'Stopped early' in auth.get('/ivoryos/executions/records').get_data(as_text=True)
+
+
+def test_run_list_tells_running_and_unfinished_runs_apart(auth):
+    """
+    GIVEN a run in progress, one that never finished, and one from before outcomes were kept
+    WHEN the run list is opened
+    THEN the running one shows as running, the unfinished one as not finished,
+    and the old one shows no outcome
+    """
+    from ivoryos.runtime.state import GlobalState
+
+    with auth.application.app_context():
+        running = WorkflowRun(name='now', platform='deck', start_time=datetime.now())
+        unfinished = WorkflowRun(name='crashed', platform='deck', start_time=datetime.now())
+        old = WorkflowRun(name='old', platform='deck', start_time=datetime.now(), end_time=datetime.now())
+        db.session.add_all([running, unfinished, old])
+        db.session.commit()
+        running_id = running.id
+
+    state = GlobalState()
+    previous = state.runner_status
+    state.runner_status = {'id': running_id, 'type': 'workflow'}
+    state.runner_lock.acquire()
+    try:
+        body = auth.get('/ivoryos/executions/records').get_data(as_text=True)
+    finally:
+        state.runner_lock.release()
+        state.runner_status = previous
+
+    assert body.count('title="Running"') == 1
+    assert body.count('title="Did not finish"') == 1
+    assert 'bg-teal-subtle' not in body

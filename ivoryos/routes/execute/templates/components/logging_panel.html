@@ -3,7 +3,7 @@
   <div class="d-flex justify-content-between align-items-center flex-shrink-0">
     <h5>Progress：<span id="iteration-display" class="ms-2 fs-6 text-muted"></span><span id="batch-display" class="ms-2 fs-6 text-secondary"></span></h5>
     <div class="d-flex gap-2 ms-auto">
-      <button id="view-current-config" class="btn border-0 text-secondary" style="background-color: #e9ecef;" title="View Current Run Configuration">
+      <button id="view-current-config" class="btn border-0 text-secondary" style="background-color: #e9ecef;" title="View current run">
         <i class="bi bi-info-circle"></i>
       </button>
       <button id="pause-resume" class="btn btn-info text-white">
@@ -519,21 +519,24 @@
       ])),
       el('th', { style: 'width: 2.5em' }),
     ]);
+    // only the entries scroll, header row in view, so what sits above and the
+    // add button below stay put however long the table is
+    const scroller = el('div', { id: 'cond-config-scroll', className: 'table-responsive border rounded mb-2', style: 'max-height: 50vh; overflow-y: auto;' },
+      el('table', { className: 'table table-sm table-bordered align-middle mb-0' }, [
+        el('thead', { className: 'table-light sticky-top' }, header),
+        body,
+      ]));
     const addButton = el('button', {
       type: 'button', className: 'btn btn-sm btn-outline-secondary',
       onclick: () => {
-        body.append(configRow(c.fields, [], live ? { id: null, status: 'new' } : undefined));
+        const row = configRow(c.fields, [], live ? { id: null, status: 'new' } : undefined);
+        body.append(row);
         renumberConfigRows(body);
+        scroller.scrollTop = scroller.scrollHeight;
+        row.querySelector('input').focus();
       },
     }, [el('i', { className: 'bi bi-plus-lg me-1' }), 'Add entry']);
-    return [
-      el('div', { className: 'table-responsive' },
-        el('table', { className: 'table table-sm table-bordered align-middle mb-2' }, [
-          el('thead', { className: 'table-light' }, header),
-          body,
-        ])),
-      addButton,
-    ];
+    return [scroller, addButton];
   }
 
   // `meta` ({id, status, reason}) is given for a row of the running task's table
@@ -541,9 +544,13 @@
     const row = el('tr');
     row.append(
       el('td', { className: 'small text-muted row-number' }),
-      meta ? el('td', { className: 'p-1' }, [el('span', { className: 'badge row-status' }), el('div', { className: 'small text-danger row-reason' })]) : null,
+      meta ? el('td', { className: 'p-1' }, el('span', { className: 'badge row-status' })) : null,
       ...fields.map((field, i) => el('td', { className: 'p-1' },
-        el('input', { type: 'text', className: 'form-control form-control-sm', value: values[i] ?? '', dataset: { field } }))),
+        el('input', {
+          type: 'text', className: 'form-control form-control-sm', value: values[i] ?? '', dataset: { field },
+          // being fixed, so no longer marked as a value that cannot run
+          oninput: event => { event.target.classList.remove('is-invalid'); event.target.removeAttribute('title'); },
+        }))),
       el('td', { className: 'p-1 text-center' },
         el('button', {
           type: 'button', className: 'btn btn-sm btn-outline-danger row-remove', title: 'Remove this entry',
@@ -560,12 +567,14 @@
   const ROW_STATUS = {
     done: { label: 'done', badge: 'text-bg-success', row: 'table-light' },
     skipped: { label: 'skipped', badge: 'text-bg-danger', row: 'table-light' },
+    stopped: { label: 'stopped', badge: 'text-bg-warning', row: 'table-light' },
+    error: { label: 'error', badge: 'text-bg-danger', row: 'table-light' },
     running: { label: 'running', badge: 'text-bg-primary', row: 'table-primary' },
     pending: { label: 'pending', badge: 'text-bg-secondary', row: '' },
     new: { label: 'new', badge: 'text-bg-info', row: '' },
   };
 
-  const isFinished = status => status === 'done' || status === 'skipped';
+  const isFinished = status => ['done', 'skipped', 'stopped', 'error'].includes(status);
 
   // Rows that ran are locked; the running row can be edited but not removed.
   function setRowStatus(row, meta) {
@@ -576,7 +585,14 @@
     const badge = row.querySelector('.row-status');
     badge.className = `badge row-status ${look.badge}`;
     badge.textContent = look.label;
-    row.querySelector('.row-reason').textContent = meta.reason || '';
+    badge.title = meta.reason || '';
+    // a value that cannot run is outlined in red, the reason on hover
+    const invalid = meta.invalid || {};
+    row.querySelectorAll('input[data-field]').forEach(input => {
+      const reason = invalid[input.dataset.field];
+      input.classList.toggle('is-invalid', Boolean(reason));
+      if (reason) input.title = reason; else input.removeAttribute('title');
+    });
     row.querySelector('.row-remove').classList.toggle('invisible', isFinished(meta.status) || meta.status === 'running');
   }
 
@@ -601,21 +617,28 @@
       resetTaskModal();
       liveTable = data;
       document.getElementById('conditions-editor').replaceChildren(
-        editorSection(`Progress · ${data.name}`, [
-          el('div', { id: 'live-progress' }, liveProgress(data.counts)),
-          el('div', { className: 'small text-muted mt-2' },
-            'Rows that ran are locked. Changes to the running row reach the steps it has not run yet.'),
-        ]),
+        editorSection(`Progress · ${data.name}`, el('div', { id: 'live-progress' }, liveProgress(data.counts))),
         editorSection('Config entries', configEditor(data, true)),
       );
+      // the table scrolls on its own, so bring the row in progress into view
+      const modal = document.getElementById('queueDetailsModal');
+      if (modal.classList.contains('show')) scrollToRunningRow();
+      else modal.addEventListener('shown.bs.modal', scrollToRunningRow, { once: true });
       showTaskModal('form', 'Current Run');
       liveRefresh = setInterval(refreshRunningConfig, 2000);
       return true;
     }).catch(() => false);
   }
 
+  function scrollToRunningRow() {
+    const running = document.querySelector('#cond-config-rows tr[data-status="running"]');
+    const scroller = document.getElementById('cond-config-scroll');
+    if (running && scroller) scroller.scrollTop = Math.max(0, running.offsetTop - scroller.clientHeight / 3);
+  }
+
   function liveProgress(counts) {
-    const total = counts.done + counts.skipped + counts.running + counts.pending;
+    const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
+    const unfinished = (counts.skipped || 0) + (counts.stopped || 0) + (counts.error || 0);
     const share = n => `${total ? (n * 100) / total : 0}%`;
     const segment = (n, bar) => el('div', { className: 'progress', role: 'progressbar', style: `width: ${share(n)}` },
       el('div', { className: `progress-bar ${bar}` }));
@@ -626,7 +649,7 @@
       el('div', { className: 'small text-muted mb-1' }, summary.join(' · ')),
       el('div', { className: 'progress-stacked', style: 'height: 10px' }, [
         segment(counts.done, 'bg-success'),
-        segment(counts.skipped, 'bg-danger'),
+        segment(unfinished, 'bg-danger'),
         segment(counts.running, 'progress-bar-striped progress-bar-animated'),
       ]),
     ];
@@ -892,14 +915,42 @@
       })
       .then(data => {
           if (data.error) {
-              throw new Error(data.error);
+              showRunMessage('Nothing is running right now.');
+              return;
           }
           resetTaskModal();
           renderTaskDetails(data, data["Full Config"] || null);
           showTaskModal('details', 'Current Run Details');
       })
       .catch(error => {
-          alert('Error: ' + error.message);
+          showRunMessage(`Could not load the current run: ${error.message}`, 'danger');
       });
   }
+
+  // A short message in the same modal the info button opens, rather than a browser alert.
+  function showRunMessage(message, tone = 'secondary') {
+    resetTaskModal();
+    showTaskModal('details', 'Current Run');
+    document.getElementById('queue-details-content').classList.add('d-none');
+    showConditionsError(message, tone);
+  }
+
+  // The info button is also the way into the running table's editor, so while
+  // there is a table to edit it shows a pencil and says so.
+  function setInfoButtonEditable(editable) {
+    const button = document.getElementById('view-current-config');
+    button.querySelector('i').className = editable ? 'bi bi-pencil-square' : 'bi bi-info-circle';
+    button.title = editable ? "View or edit the current run's table" : 'View current run';
+    button.classList.toggle('text-primary', editable);
+    button.classList.toggle('text-secondary', !editable);
+  }
+
+  fetchRunningConfig().then(({ ok }) => setInfoButtonEditable(ok)).catch(() => {});
+  document.addEventListener('DOMContentLoaded', () => {
+    const waitForSocket = setInterval(() => {
+      if (!window.socket) return;
+      clearInterval(waitForSocket);
+      window.socket.on('live_config', data => setInfoButtonEditable(Boolean(data.editable)));
+    }, 100);
+  });
 </script>

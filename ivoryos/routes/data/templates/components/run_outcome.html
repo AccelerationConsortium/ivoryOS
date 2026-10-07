@@ -1,0 +1,35 @@
+{# How a run ended, or that it has not: an outcome is only recorded when a run ends.
+   A run without one is either running now, never finished (the app stopped while
+   it ran), or from before outcomes were kept. #}
+{% set outcome_looks = {
+    'completed': ('success', 'Completed'),
+    'stopped': ('warning', 'Stopped early'),
+    'error': ('danger', 'Ended with an error'),
+    'running': ('primary', 'Running'),
+    'unfinished': ('secondary', 'Did not finish'),
+} %}
+
+{% macro _state(workflow, running_id) -%}
+    {%- if workflow.status -%}{{ workflow.status }}
+    {%- elif running_id is not none and workflow.id == running_id -%}running
+    {%- elif workflow.end_time is none -%}unfinished
+    {%- endif -%}
+{%- endmacro %}
+
+{# As a badge, where there is room for the words. #}
+{% macro outcome_badge(workflow, running_id=none) -%}
+    {%- set state = _state(workflow, running_id) -%}
+    {%- if state in outcome_looks -%}
+        <span class="badge text-bg-{{ outcome_looks[state][0] }} align-middle">{{ outcome_looks[state][1] }}</span>
+    {%- endif -%}
+{%- endmacro %}
+
+{# As the color of a run's icon, for lists where words would crowd the row. #}
+{% macro outcome_icon(workflow, icon, running_id=none) -%}
+    {%- set state = _state(workflow, running_id) -%}
+    {%- set tone, label = outcome_looks.get(state, ('secondary', none)) -%}
+    <span class="d-flex align-items-center justify-content-center rounded bg-{{ tone }}-subtle text-{{ tone }}-emphasis p-2"
+          {%- if label %} title="{{ label }}"{% endif %}>
+        <i class="bi {{ icon }}"></i>{% if label %}<span class="visually-hidden">{{ label }}</span>{% endif %}
+    </span>
+{%- endmacro %}

@@ -97,6 +97,24 @@ def blank_row(values):
     return all(_blank(value) for value in values.values())
 
 
+def config_field_problems(values, fields, arg_types):
+    """``{input: why its value cannot run}`` for a config entry, empty if it can run.
+
+    Checked one value at a time, so a table can point at the exact cell rather
+    than describe the whole entry.
+    """
+    problems = {key: "Not an input of this workflow." for key in values if key not in arg_types}
+    for field in fields:
+        if _blank(values.get(field)):
+            problems[field] = "No value."
+            continue
+        try:
+            convert_config_type({field: values[field]}, arg_types)
+        except Exception as e:
+            problems[field] = str(e)
+    return problems
+
+
 def config_row_problem(values, fields, arg_types):
     """Why a config entry cannot run, or ``None`` if it can.
 

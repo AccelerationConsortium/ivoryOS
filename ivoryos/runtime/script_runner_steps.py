@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from ivoryos.runtime.control_flow import validate_and_nest_control_flow
+from ivoryos.runtime.run_events import ERROR, INTERVENTION
 from ivoryos.runtime.runner_runtime import HumanInterventionRequired, ensure_deck, global_state, pause
 from ivoryos.models import WorkflowStep, db
 from ivoryos.parsers.returns import store_return_value
@@ -16,6 +17,17 @@ class ScriptRunnerStepMixin:
     live_config = None
     # how many shared steps are running nested steps right now; see _apply_live_row_edits
     _shared_step_depth = 0
+    # whether a stop has cut off steps that would otherwise have run
+    steps_cut_off = False
+
+    def _halted(self):
+        """Whether a stop was requested. Every place that skips steps because of
+        it asks here, so that a stop arriving during the last step, which skips
+        nothing, is not mistaken for one that cut the work short."""
+        if self.stop_current_event.is_set():
+            self.steps_cut_off = True
+            return True
+        return False
 
     def _apply_live_row_edits(self):
         """Hand edits made to the running config rows to the steps still to come.
@@ -35,7 +47,7 @@ class ScriptRunnerStepMixin:
         Execute a list of steps for multiple samples, batching where appropriate.
         """
         for step in steps:
-            if self.stop_current_event.is_set():
+            if self._halted():
                 break
             self._apply_live_row_edits()
             if step.get("disabled", False):
@@ -216,7 +228,7 @@ class ScriptRunnerStepMixin:
         self._warn_overwritten_returns(step["repeat_block"], total)
 
         for i in range(total):
-            if self.stop_current_event.is_set():
+            if self._halted():
                 break
             active = [context for context, count in zip(contexts, counts) if i < count]
             await self._execute_steps_batched(step["repeat_block"], active, phase_id=phase_id, section_name=section_name)
@@ -279,7 +291,7 @@ class ScriptRunnerStepMixin:
         active_contexts = contexts.copy()
         iteration = 0
 
-        while active_contexts and self.stop_current_event.is_set() is False:
+        while active_contexts and not self._halted():
             # Filter contexts that still meet the condition
             still_active = []
 
@@ -306,7 +318,7 @@ class ScriptRunnerStepMixin:
         """Execute a single action with parameter substitution."""
         # Substitute parameters in args
         result = None
-        if self.stop_current_event.is_set():
+        if self._halted():
             return context
         
         if override_args is not None:
@@ -425,6 +437,7 @@ class ScriptRunnerStepMixin:
 
             except HumanInterventionRequired as e:
                 self.logger.warning(f"Human intervention required: {e}")
+                self.record_event(INTERVENTION, str(e))
                 self.socketio.emit('human_intervention', {'message': str(e)})
                 # Instead of auto-resume, explicitly stay paused until user action
                 # step.run_error = False
@@ -432,6 +445,7 @@ class ScriptRunnerStepMixin:
 
             except Exception as e:
                 self.logger.error(f"Error during script execution: {e}", exc_info=True)
+                self.record_event(ERROR, f"{step.get('instrument')}.{step.get('action')}: {e}")
                 self.socketio.emit('error', {'message': str(e)})
                 
                 # Update error status in a fresh transaction
@@ -577,7 +591,7 @@ class ScriptRunnerStepMixin:
     async def _execute_variable_batched(self, step: Dict, contexts: List[Dict[str, Any]], phase_id, step_index,
                                         section_name):
         """Execute variable assignment for multiple samples."""
-        if self.stop_current_event.is_set():
+        if self._halted():
             return
             
         var_name = step["action"]
@@ -661,13 +675,14 @@ class ScriptRunnerStepMixin:
 
             except Exception as e:
                 self.logger.error(f"Error during variable execution: {e}", exc_info=True)
+                self.record_event(ERROR, f"Variable {var_name}: {e}")
                 if self.socketio:
                     self.socketio.emit('error', {'message': f"Variable error ({var_name}): {str(e)}"})
 
                 self.toggle_pause()
                 self.pause_event.wait()
 
-                if self.stop_current_event.is_set():
+                if self._halted():
                     break
 
                 if self.retry:

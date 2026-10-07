@@ -3,10 +3,20 @@ import uuid
 
 from ivoryos.runtime import task_conditions
 from ivoryos.runtime.live_config import describe as describe_change
+from ivoryos.runtime.run_events import TABLE_EDITED, event as run_event
 from ivoryos.runtime.runner_runtime import ensure_deck
 
 
 class ScriptRunnerQueueMixin:
+    # events of the run in progress (see ivoryos.runtime.run_events); None between runs
+    run_events = None
+
+    def record_event(self, kind, detail=None):
+        """Note something that happened to the run in progress, such as the user
+        pausing or stopping it. Does nothing between runs."""
+        if self.run_events is not None:
+            self.run_events.append(run_event(kind, detail))
+
     def handle_input_submission(self, value):
         """Resume execution with user input"""
         if self.waiting_for_input:
@@ -176,6 +186,8 @@ class ScriptRunnerQueueMixin:
         if live is None:
             return None
         changes, notes = live.edit(rows)
+        if changes:
+            self.record_event(TABLE_EDITED, "\n".join(describe_change(change) for change in changes))
         if self.logger:
             for change in changes:
                 self.logger.info(f"Config table edited: {describe_change(change)}")

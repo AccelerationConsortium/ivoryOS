@@ -256,3 +256,16 @@ def test_renaming_changes_the_name_the_run_is_saved_under():
     unique = lambda name, keep: calls.append((name, keep)) or "taken_1"
     assert task_conditions.parse_changes(task, {"name": "taken"}, unique_name=unique)["run_name"] == "taken_1"
     assert calls == [("taken", "screen")]
+
+
+def test_field_problems_point_at_the_values_that_cannot_run():
+    from ivoryos.runtime.task_conditions import config_field_problems
+
+    problems = config_field_problems({"temperature": "3er", "solvent": "", "pressure": "1"},
+                                     ["temperature", "solvent"], {"temperature": "float", "solvent": "str"})
+
+    assert set(problems) == {"temperature", "solvent", "pressure"}
+    assert "3er" in problems["temperature"]
+    assert problems["solvent"] == "No value."
+    assert config_field_problems({"temperature": "30", "solvent": "water"}, ["temperature", "solvent"],
+                                 {"temperature": "float", "solvent": "str"}) == {}

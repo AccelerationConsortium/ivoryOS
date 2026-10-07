@@ -10,8 +10,8 @@ An entry is converted from text to its argument types only when its batch
 starts, so an entry that cannot be converted is skipped on its own, with the
 reason, instead of keeping every entry from running.
 
-Every change is kept, so the run's history can show the table as submitted, the
-table as it ended, and each change in between.
+The run's history keeps the table as it ended, with each row's status and
+outputs, and the table as submitted with every change made in between.
 """
 
 import math
@@ -19,14 +19,19 @@ import threading
 from datetime import datetime
 
 from ivoryos.parsers.type_conversions import convert_config_type
-from ivoryos.runtime.task_conditions import blank_row, config_row_problem, text_of, type_label
+from ivoryos.runtime.task_conditions import blank_row, config_field_problems, config_row_problem, text_of, type_label
 
 PENDING = "pending"
 RUNNING = "running"
 DONE = "done"
 SKIPPED = "skipped"
+# cut off by a stop before all its steps ran
+STOPPED = "stopped"
+# its steps raised an error the run could not carry on from
+FAILED = "error"
 # entries whose turn has passed; their values are what ran, or why nothing did
-FINISHED = (DONE, SKIPPED)
+FINISHED = (DONE, SKIPPED, STOPPED, FAILED)
+STATUSES = (PENDING, RUNNING, *FINISHED)
 
 
 def describe(change):
@@ -55,13 +60,15 @@ class LiveConfig:
     from its own thread while edits arrive from web requests.
     """
 
-    def __init__(self, rows, arg_types, converted=False):
+    def __init__(self, rows, arg_types, converted=False, outputs=()):
         """``rows`` as the task holds them. ``converted`` means they already carry
         their argument types, as a run submitted through the API does, and are
-        used as they are rather than converted from text."""
+        used as they are rather than converted from text. ``outputs`` names the
+        values the workflow returns, kept with each row once it ran."""
         self.lock = threading.Lock()
         self.arg_types = dict(arg_types or {})
         self.fields = list(self.arg_types)
+        self.outputs = list(outputs or [])
         self.entries = []
         self.changes = []
         self.batches_started = 0
@@ -86,9 +93,14 @@ class LiveConfig:
             "values": values,
             # input names when the entry started, to tell its inputs from its outputs
             "inputs": None,
+            # the iteration it ran in, and what it returned
+            "iteration": None,
+            "outputs": None,
             # changes saved for a running entry, handed to it between steps
             "pending_edits": {},
             "edited_while_running": False,
+            # {input: why its value cannot run}, so a table can mark the cell itself
+            "invalid": {} if values is not None else config_field_problems(text, self.fields, self.arg_types),
         }
 
     def _numbered(self):
@@ -137,6 +149,8 @@ class LiveConfig:
                 batch.append(entry)
             if batch:
                 self.batches_started += 1
+                for entry in batch:
+                    entry["iteration"] = self.batches_started
         return batch, skipped
 
     def progress(self, size):
@@ -177,9 +191,10 @@ class LiveConfig:
     def edited_while_running(self, batch):
         return any(entry["edited_while_running"] for entry in batch)
 
-    def finish_batch(self, batch):
-        """Mark the batch done. Returns a log line for each change that came after
-        its entry's last step and so was never used."""
+    def finish_batch(self, batch, stopped=False):
+        """Mark the batch done, or ``stopped`` when a stop cut its steps off, and
+        keep what each entry returned. Returns a log line for each change that
+        came after its entry's last step and so was never used."""
         lines = []
         with self.lock:
             for number, entry in self._numbered():
@@ -190,8 +205,17 @@ class LiveConfig:
                     lines.append(f"Row {number}: the change of '{field}' to {edit['text']!r} "
                                  f"came after its last step, so it was not used.")
                 entry["pending_edits"] = {}
-                entry["status"] = DONE
+                entry["outputs"] = {name: entry["values"][name] for name in self.outputs if name in entry["values"]}
+                entry["status"] = STOPPED if stopped else DONE
         return lines
+
+    def close(self):
+        """Mark entries still running as failed; only an error leaves any when the run ends."""
+        with self.lock:
+            for entry in self.entries:
+                if entry["status"] == RUNNING:
+                    entry["status"] = FAILED
+                    entry["pending_edits"] = {}
 
     # --- the editor's side -------------------------------------------------
 
@@ -212,7 +236,7 @@ class LiveConfig:
         """The table as the editor shows it, with each entry's status."""
         with self.lock:
             columns = self._columns()
-            counts = {status: 0 for status in (PENDING, RUNNING, DONE, SKIPPED)}
+            counts = {status: 0 for status in STATUSES}
             rows = []
             for entry in self.entries:
                 counts[entry["status"]] += 1
@@ -221,6 +245,7 @@ class LiveConfig:
                     "id": entry["id"],
                     "status": entry["status"],
                     "reason": entry["reason"],
+                    "invalid": entry["invalid"],
                     "values": [shown.get(column, "") for column in columns],
                 })
             return {
@@ -307,6 +332,8 @@ class LiveConfig:
             entry["text"] = text
             # converted again from the new text when the entry starts
             entry["values"] = None
+            # an edit is only accepted when every value can run
+            entry["invalid"] = {}
         return changes
 
     def _edit_running(self, entry, number, text):
@@ -320,16 +347,12 @@ class LiveConfig:
 
     # --- the run's history -------------------------------------------------
 
-    def has_history(self):
-        """Whether the run ended with a table that differs from the one submitted."""
-        with self.lock:
-            return bool(self.changes) or any(entry["status"] == SKIPPED for entry in self.entries)
-
     def history(self):
-        """The table as submitted, as it ended, and every change in between.
+        """The table as it ended, as submitted, and every change in between.
 
-        For entries that ran, the final table holds the values their last steps
-        used, which is what the run's iterations record as well.
+        Each entry of the final table has its status, the iteration it ran in, and
+        what it returned. For entries that ran, the values are the ones their last
+        steps used, which is what the run's iterations record as well.
         """
         with self.lock:
             final = []
@@ -338,8 +361,11 @@ class LiveConfig:
                     values = {key: entry["values"].get(key) for key in entry["inputs"]}
                 else:
                     values = dict(entry["text"])
-                row = {"row": number, "status": entry["status"], "values": values}
+                row = {"row": number, "status": entry["status"], "values": values,
+                       "iteration": entry["iteration"], "outputs": entry["outputs"] or {}}
                 if entry["reason"]:
                     row["reason"] = entry["reason"]
+                if entry["invalid"]:
+                    row["invalid"] = entry["invalid"]
                 final.append(row)
             return {"initial": self.initial, "final": final, "changes": self.changes}

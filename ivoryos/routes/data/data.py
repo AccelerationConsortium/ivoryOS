@@ -7,9 +7,20 @@ from flask_login import login_required
 
 from ivoryos.models import db, WorkflowRun, WorkflowPhase
 from ivoryos.runtime.live_config import describe as describe_change
+from ivoryos.runtime.run_events import LABELS as RUN_EVENT_LABELS
+from ivoryos.runtime.state import GlobalState
 from ivoryos.script.editor import ScriptEditor
 
 data = Blueprint('data', __name__, template_folder='templates')
+
+
+def _running_run_id():
+    """Id of the workflow run in progress, or ``None``; its outcome is only kept once it ends."""
+    state = GlobalState()
+    status = state.runner_status
+    if not state.runner_lock.locked() or not status or status.get("type") != "workflow":
+        return None
+    return status.get("id")
 
 
 
@@ -65,7 +76,8 @@ def list_workflows():
         })
     else:
         return render_template('workflow_database.html', workflows=workflows, deck_name=None,
-                               current_per_page=per_page, current_sort_by=sort_by, current_order=order)
+                               current_per_page=per_page, current_sort_by=sort_by, current_order=order,
+                               running_run_id=_running_run_id())
 @data.get("/executions/records/<int:workflow_id>")
 def workflow_logs(workflow_id:int):
     """
@@ -138,12 +150,18 @@ def workflow_logs(workflow_id:int):
         })
     else:
         config_history = workflow.config_history or {}
-        config_columns = []
-        for values in [*config_history.get("initial", []),
-                       *(row.get("values", {}) for row in config_history.get("final", []))]:
+        final = config_history.get("final", [])
+        config_columns, config_outputs = [], []
+        for values in [*config_history.get("initial", []), *(row.get("values") or {} for row in final)]:
             config_columns.extend(key for key in values if key not in config_columns)
+        for row in final:
+            config_outputs.extend(key for key in row.get("outputs") or {} if key not in config_outputs)
+        run_events = [{**event, "label": RUN_EVENT_LABELS.get(event.get("kind"), event.get("kind"))}
+                      for event in workflow.events or []]
         return render_template("workflow_view.html", workflow=workflow, grouped=grouped,
+                               running_run_id=_running_run_id(),
                                config_history=config_history, config_columns=config_columns,
+                               config_outputs=config_outputs, run_events=run_events,
                                config_changes=[describe_change(change) for change in config_history.get("changes", [])])
 
 
