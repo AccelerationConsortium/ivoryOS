@@ -1,4 +1,14 @@
-# Changelog
+﻿# Changelog
+## 1.7.0 (October 7th, 2026)
+- !212 **[New]** add safety guard system to enforce instrument limits with config file
+- !211 **[QoL]** resolve designer toolbox UX - remove accordion
+- !210 **[QoL]** resolve be able to edit iteration configs during the run
+- !209 **[QoL]** resolve be able to edit pending tasks configs
+- !208 **[Bug]** resolve queue experiment don't have unique name
+- !207 **[Bug]** resolve fix Ax suggestion trial number, BayBE init steps number
+- !206 **[QoL]** resolve allow proceeding to clean up for stop
+- !205 **[Bug]** resolve Repeat block error when batch_size>1
+
 ## 1.6.14 (September 29th, 2026)
 - !204 **[Bug]** resolve Ax plot error
 - !203 **[QoL]** update to latest UI dependencies
