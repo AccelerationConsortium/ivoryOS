@@ -41,6 +41,10 @@
                                     oninput="updateConsolidateVisibility(this)") }}
                                 {% endif %}
 
+                                {% if field.description and field.type != 'BooleanField' %}
+                                    {# the field's safety limit: its unit and allowed range #}
+                                    <span class="input-group-text small text-muted" title="Safety limit: {{ field.description }}">{{ field.description }}</span>
+                                {% endif %}
                                 {% if form.arg_types is defined and form.arg_types and form.arg_types.get(field.name) == 'list' %}
                                     <div class="input-group-text consolidate-wrapper" style="display: none;"
                                         title="Consolidate batch arguments">

@@ -17,6 +17,7 @@ from ivoryos.script.compatibility import check_action, current_reference
 from ivoryos.runtime.state import GlobalState
 
 from ivoryos.parsers.introspection import get_return_type
+from ivoryos.runtime.safety import describe as describe_limit, guard
 
 try:
     from typing import get_origin, get_args
@@ -322,6 +323,11 @@ class FlexibleEnumField(StringField):
             if key in self.choices:
                 # Convert the string key to Enum instance
                 self.data = self.enum_class[key].value
+            elif not isinstance(key, str):
+                # the Enum's own value, as a JSON caller (the downloaded proxy) sends it, e.g. 2
+                if key not in self.value_list:
+                    raise ValueError(self.gettext("Not a valid choice"))
+                self.data = self.enum_class(key).value
             elif key.startswith("#"):
                 # Script variable reference — only valid when a script context exists
                 if self.script is None or not self.script.editing_type == "script":
@@ -483,13 +489,14 @@ def parse_annotation(annotation):
     # Not a Union, just a regular type
     return [annotation], False
 
-def create_form_for_method(method, autofill, script=None, design=True):
+def create_form_for_method(method, autofill, script=None, design=True, limits=None):
     """
     Create forms for each method or signature
     :param method: dict(docstring, signature)
     :param autofill:bool if autofill is enabled
     :param script:Script object
     :param design: if design is enabled
+    :param limits: {param: constraint}, the instrument's safety limits, shown beside each field
     """
 
     class DynamicForm(DynamicBaseForm):
@@ -587,6 +594,10 @@ def create_form_for_method(method, autofill, script=None, design=True):
 
 
         render_kwargs = {"placeholder": placeholder_text}
+        # the unit and allowed range, shown after the input (see the form templates)
+        hint = describe_limit((limits or {}).get(param.name) or {})
+        if hint:
+            field_kwargs["description"] = hint
 
         # Add script to kwargs if supported by field_class or in design mode
         if script and (design or field_class is FlexibleEnumField):
@@ -689,7 +700,7 @@ def _unwrap_literal_args(tp):
                 return get_args(arg)
     return []
 
-def create_add_form(attr, attr_name, autofill: bool, script=None, design: bool = True):
+def create_add_form(attr, attr_name, autofill: bool, script=None, design: bool = True, limits=None):
     """
     Create forms for each method or signature
     :param attr: dict(docstring, signature)
@@ -702,7 +713,7 @@ def create_add_form(attr, attr_name, autofill: bool, script=None, design: bool =
     docstring = attr.get('docstring', "")
     return_type = get_return_type(attr)
     # print(signature, docstring)
-    dynamic_form = create_form_for_method(signature, autofill, script, design)
+    dynamic_form = create_form_for_method(signature, autofill, script, design, limits=limits)
     if design:
         if return_type["kind"] == "tuple" and return_type.get("arity") and return_type["arity"] > 1:
             for index, item_type in enumerate(return_type["types"]):
@@ -744,7 +755,7 @@ def create_form_from_module(sdl_module, autofill: bool = False, script=None, des
     return method_forms
 
 
-def create_form_from_pseudo(pseudo: dict, autofill: bool, script=None, design: bool = True):
+def create_form_from_pseudo(pseudo: dict, autofill: bool, script=None, design: bool = True, limits=None):
     """
     Create forms for pseudo method, used for design routes
     :param pseudo:{'dose_liquid': {
@@ -782,12 +793,14 @@ def create_form_from_pseudo(pseudo: dict, autofill: bool, script=None, design: b
                     'signature': setter_sig,
                     'docstring': f"Set {attr_name}"
                 }
-                form_class_setter = create_add_form(setter_info, setter_name, autofill, script, design)
+                form_class_setter = create_add_form(setter_info, setter_name, autofill, script, design,
+                                                    limits=(limits or {}).get(setter_name))
                 method_forms[setter_name] = form_class_setter()
         else:
             # Regular method
             # signature = info.get('signature', {})
-            form_class = create_add_form(info, attr_name, autofill, script, design)
+            form_class = create_add_form(info, attr_name, autofill, script, design,
+                                         limits=(limits or {}).get(attr_name))
             method_forms[attr_name] = form_class()
     return method_forms
 
@@ -836,6 +849,7 @@ def create_form_from_action(action: dict, script=None, design=True):
                     sig = method_info['signature']
         except Exception:
             pass
+    action_limits = guard.constraints(instrument, action_name) if instrument else {}
 
     for name in arg_order:
         param_type = arg_types[name]
@@ -912,6 +926,10 @@ def create_form_from_action(action: dict, script=None, design=True):
 
 
         render_kwargs = {"placeholder": placeholder_text}
+        # the unit and allowed range, shown after the input (see the form templates)
+        hint = describe_limit(action_limits.get(name) or {})
+        if hint:
+            field_kwargs["description"] = hint
 
         # Add script to kwargs if supported by field_class or in design mode
         if script and (design or field_class is FlexibleEnumField):

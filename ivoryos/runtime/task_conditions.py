@@ -11,6 +11,7 @@ import copy
 
 from ivoryos.parsers.bo_campaign import normalize_value
 from ivoryos.parsers.type_conversions import convert_config_type
+from ivoryos.runtime.safety import check_value, describe, guard
 from ivoryos.script import ScriptEditor
 
 REPEAT = "repeat"
@@ -29,6 +30,11 @@ def task_mode(task):
     if task.get("config") and not task.get("repeat_count"):
         return CONFIG
     return REPEAT
+
+
+def column_label(arg_type, constraints=None):
+    """A config column's type with its unit and range: ``float · mL · 0 to 10``."""
+    return " · ".join(part for part in [type_label(arg_type), *(describe(c) for c in constraints or [])] if part)
 
 
 def text_of(value):
@@ -97,11 +103,12 @@ def blank_row(values):
     return all(_blank(value) for value in values.values())
 
 
-def config_field_problems(values, fields, arg_types):
+def config_field_problems(values, fields, arg_types, limits=None):
     """``{input: why its value cannot run}`` for a config entry, empty if it can run.
 
     Checked one value at a time, so a table can point at the exact cell rather
-    than describe the whole entry.
+    than describe the whole entry. ``limits`` are the instruments' safety
+    limits as ``{input: [constraint]}`` (``guard.column_limits``); a value past one cannot run either.
     """
     problems = {key: "Not an input of this workflow." for key in values if key not in arg_types}
     for field in fields:
@@ -109,13 +116,20 @@ def config_field_problems(values, fields, arg_types):
             problems[field] = "No value."
             continue
         try:
-            convert_config_type({field: values[field]}, arg_types)
+            value = convert_config_type({field: values[field]}, arg_types)[field]
         except Exception as e:
             problems[field] = str(e)
+            continue
+        for constraint in (limits or {}).get(field, []):
+            found = check_value(constraint, value)
+            if found:
+                shown, reason = found[0]
+                problems[field] = f"{shown} {reason}."
+                break
     return problems
 
 
-def config_form_problems(form, fields, arg_types):
+def config_form_problems(form, fields, arg_types, limits=None):
     """``["Row n, 'input': why", ...]`` for a submitted config table, in table order.
 
     ``form`` holds the table's cells as ``input[row]`` keys, the way the
@@ -137,16 +151,17 @@ def config_form_problems(form, fields, arg_types):
         values = rows[number]
         if blank_row(values):
             continue
-        for field, reason in config_field_problems(values, fields, arg_types).items():
+        for field, reason in config_field_problems(values, fields, arg_types, limits).items():
             problems.append(f"Row {number}, '{field}': {reason}")
     return problems
 
 
-def config_row_problem(values, fields, arg_types):
+def config_row_problem(values, fields, arg_types, limits=None):
     """Why a config entry cannot run, or ``None`` if it can.
 
     ``values`` is the entry as text, typed in or loaded from a spreadsheet. It is
-    converted on a copy, the way the runner converts it when the entry starts.
+    converted on a copy, the way the runner converts it when the entry starts, and
+    checked against ``limits`` like ``config_field_problems``.
     """
     unknown = [key for key in values if key not in arg_types]
     if unknown:
@@ -156,9 +171,15 @@ def config_row_problem(values, fields, arg_types):
         names = ", ".join(f"'{field}'" for field in missing)
         return f"no value for {names}."
     try:
-        convert_config_type(dict(values), arg_types)
+        converted = convert_config_type(dict(values), arg_types)
     except Exception as e:
         return str(e)
+    for field, constraints in (limits or {}).items():
+        for constraint in constraints:
+            found = check_value(constraint, converted.get(field))
+            if found:
+                shown, reason = found[0]
+                return f"'{field}' = {shown} {reason}."
     return None
 
 
@@ -193,9 +214,10 @@ def _config_view(task):
     for row in rows:
         extra.extend(key for key in row if key not in fields and key not in extra)
     columns = [*fields, *extra]
+    limits = guard.column_limits(task["script"])
     return {
         "fields": columns,
-        "types": {field: type_label(arg_types.get(field)) for field in fields},
+        "types": {field: column_label(arg_types.get(field), limits.get(field)) for field in fields},
         "rows": [[text_of(row.get(field)) for field in columns] for row in rows],
     }
 
@@ -336,6 +358,7 @@ def _parse_config(task, rows):
     if not isinstance(rows, list):
         raise ValueError("Expected the config entries as a list.")
     fields, arg_types = ScriptEditor(task["script"]).config("script")
+    limits = guard.column_limits(task["script"])
     entries = []
     for number, row in enumerate(rows, start=1):
         if not isinstance(row, dict):
@@ -345,7 +368,7 @@ def _parse_config(task, rows):
             continue
         # checked now so a bad value is caught here; the runner converts the
         # text itself when the entry starts
-        problem = config_row_problem(values, fields, arg_types)
+        problem = config_row_problem(values, fields, arg_types, limits)
         if problem:
             raise ValueError(f"Entry {number}: {problem}")
         entries.append(values)
@@ -359,6 +382,9 @@ def _parse_optimizer(task, changes):
     updates = {}
     if "parameters" in changes:
         updates["parameters"] = _parse_parameters(task, changes["parameters"], schema)
+        problems = guard.check_search_space(task["script"], updates["parameters"])
+        if problems:
+            raise ValueError(f"Past a limit: {problems[0]}")
     if "objectives" in changes:
         updates["objectives"] = _parse_objectives(task, changes["objectives"], schema)
     if "constraints" in changes:

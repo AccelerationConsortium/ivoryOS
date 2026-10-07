@@ -371,3 +371,21 @@ def test_errors_are_reported_under_the_parameter_name(app):
         assert form.validate() is False
         assert list(form.errors) == ["validate"]   # not the internal "param_validate"
 
+
+
+class Speed(Enum):
+    SLOW = 1
+    FAST = 2
+
+
+def test_an_enum_field_takes_the_enums_own_value_from_json(app):
+    """The downloaded proxy sends an Enum as its value: ``set_mode(Speed.FAST)`` posts 2."""
+    def set_mode(mode: Speed):
+        return mode
+
+    form_class = create_form_for_method(inspect.signature(set_mode), autofill=False, design=False)
+
+    with app.test_request_context(method="POST", json={"mode": 2}):
+        assert form_class().mode.data == 2
+    with app.test_request_context(method="POST", json={"mode": 5}):
+        assert form_class().mode.process_errors

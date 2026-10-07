@@ -60,6 +60,10 @@
                             {% else %}
                                 {{ field(class="form-control", list="variables_datalist", oninput="updateConsolidateVisibility(this)") }}
                             {% endif %}
+                            {% if field.description and field.type not in ['BooleanField', 'HiddenField'] %}
+                                {# the field's safety limit: its unit and allowed range #}
+                                <span class="input-group-text small text-muted" title="Safety limit: {{ field.description }}">{{ field.description }}</span>
+                            {% endif %}
                         </div>
                         {% if forms.arg_types and forms.arg_types.get(field.name) == 'list' %}
                             {% set is_consolidated = field.name in (action.get('consolidate_batch_args') or []) %}

@@ -261,7 +261,8 @@ def test_step_edit_form_explains_why_the_step_no_longer_matches(auth, test_deck)
     assert 'no longer takes &#39;dropped_arg&#39;' in body
 
 
-def test_canvas_says_when_the_workflow_belongs_to_another_deck(auth, test_deck):
+def test_a_deck_name_alone_is_not_flagged(auth, test_deck):
+    """Only the steps say whether a workflow fits: a deck keeps its name when its methods change."""
     from ivoryos.runtime.state import global_state
 
     # the fixture's stand-in deck carries no module name of its own
@@ -285,8 +286,7 @@ def test_canvas_says_when_the_workflow_belongs_to_another_deck(auth, test_deck):
         del global_state._deck.__name__
 
     assert response.status_code == 200
-    assert 'deck_it_was_designed_for' in body
-    assert 'current_deck' in body
+    assert 'deck-compatibility-banner' not in body
 
 
 def test_execution_config_page_renders(auth, test_deck):

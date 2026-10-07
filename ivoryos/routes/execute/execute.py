@@ -15,13 +15,13 @@ from ivoryos.routes.execute.execute_file import files
 from ivoryos.services.draft_service import get_script_file
 from ivoryos.services.connection_history import import_history
 from ivoryos.parsers.type_conversions import check_config_duplicate, web_config_entry_wrapper
+from ivoryos.runtime.safety import guard
 from ivoryos.runtime.task_conditions import config_form_problems
 from ivoryos.parsers.bo_campaign import parse_optimization_form
 from ivoryos.models import db, SingleStep, WorkflowRun, WorkflowStep, WorkflowPhase
 from ivoryos.runtime.state import GlobalState
 from ivoryos.script import ScriptEditor, ScriptRenderer
-from ivoryos.script.compatibility import (check_deck_match, current_reference,
-                                          script_issue_summary)
+from ivoryos.script.compatibility import current_reference, script_issue_summary
 from ivoryos.socket_handlers import runner, retry, pause, abort_pending, abort_current
 
 
@@ -86,7 +86,6 @@ def experiment_run():
     # this is the last screen before a run.
     reference = current_reference()
     compat_steps = script_issue_summary(script, reference)
-    compat_deck_note = check_deck_match(script, reference)
     config_preview = []
     config_file_list = [i for i in os.listdir(current_app.config["CSV_FOLDER"]) if not i == ".gitkeep"]
 
@@ -218,13 +217,20 @@ def experiment_run():
                 config = web_config_entry_wrapper(config_args, config_list)
                 # the page checks the table before sending it; this repeats the check
                 # the way the run converts values, for anything the page let through
-                config_problems = config_form_problems(config_args, *ScriptEditor(script).config("script"))
+                config_problems = config_form_problems(config_args, *ScriptEditor(script).config("script"),
+                                                       limits=guard.column_limits(script))
             batch_size = int(request.form.get('batch_size', 1))
             repeat = request.form.get('repeat', None)
 
+        # values written into the steps, and an API run's rows, against the instruments' limits
+        config_problems += guard.check_steps(script)
+        if compiled and config:
+            config_problems += guard.check_rows(script, config)
         if config_problems:
+            if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+                return jsonify({"error": "Nothing was started: some values can't run.", "problems": config_problems}), 400
             # rendered as HTML, so the values quoted from the table are escaped
-            flash(Markup("Nothing was started: some config rows can't run. Fix them and run again.<br>")
+            flash(Markup("Nothing was started: some values can't run. Fix them and run again.<br>")
                   + Markup("<br>").join(config_problems))
         else:
             try:
@@ -272,11 +278,12 @@ def experiment_run():
         # todo if want to be able to optimize more then add something called objectives_list instead, and add that to the tab_bayesian.html, and add in
         #  more than just the return_list in there; e.g. be able to use math or normal or human input variables as objectives
         return render_template('experiment_run.html', script=script.script_dict, filename=filename,
+                               column_limits=guard.column_limits(script),
                                dot_py=exec_string, line_collection=line_collection,
                                return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                                config_preview=config_preview, data_list=data_list, config_type_list=config_type_list,
                                no_deck_warning=no_deck_warning, dismiss=dismiss,
-                               compat_steps=compat_steps, compat_deck_note=compat_deck_note,
+                               compat_steps=compat_steps,
                                history=deck_list, pause_status=runner.pause_status(), optimizer_schema=optimizers_schema)
 
 
@@ -380,6 +387,14 @@ def run_bo():
 
         parameters, objectives, steps, additional_params = parse_optimization_form(payload)
         # print(additional_params)
+    # the steps' own values, and a search range or choices reaching past a limit
+    limit_problems = guard.check_steps(script) + guard.check_search_space(script, parameters)
+    if limit_problems:
+        if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+            return jsonify({"error": "Nothing was started: some values can't run.", "problems": limit_problems}), 400
+        flash(Markup("Nothing was started: some values can't run. Fix them and run again.<br>")
+              + Markup("<br>").join(limit_problems))
+        return redirect(url_for("execute.experiment_run"))
     # if True:
     try:
         datapath = current_app.config["DATA_FOLDER"]

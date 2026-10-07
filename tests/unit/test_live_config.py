@@ -388,3 +388,15 @@ def test_the_users_actions_are_recorded_only_while_a_run_is_in_progress(monkeypa
     assert [(event["kind"], event["detail"]) for event in socket_handlers.runner.run_events] == [
         ("paused", None), ("stop_after_iteration", None), ("cleanup_skipped", None), ("stop_now", "Cleanup will run."),
     ]
+
+
+def test_a_value_past_a_limit_is_marked_and_fails_when_reached():
+    limits = {"temperature": [{"max": 100, "unit": "°C", "source": "reactor.heat.setpoint"}]}
+    live = LiveConfig([row("25", "water"), row("150", "ethanol")], ARG_TYPES, limits=limits)
+
+    assert live.view()["rows"][1]["invalid"] == {"temperature": "150 is above the maximum of 100 °C."}
+    assert live.view()["types"]["temperature"] == "float · °C · at most 100"
+    first, _ = live.start_batch(1)
+    live.finish_batch(first)
+    _, [(number, entry)] = live.start_batch(1)
+    assert number == 2 and "above the maximum of 100 °C" in entry["reason"]

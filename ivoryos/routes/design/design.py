@@ -12,9 +12,9 @@ from ivoryos.forms.dynamic_forms import (BATCH_ACTION_FIELD, CONSOLIDATE_ARGS_FI
                                           create_all_builtin_forms, create_workflow_forms)
 from ivoryos.models import db
 from ivoryos.script import Script, ScriptEditor, ScriptRenderer
-from ivoryos.script.compatibility import check_deck_match, current_reference
 from ivoryos.parsers.py_to_json import convert_to_cards, extract_functions_and_convert
 from ivoryos.parsers.introspection import load_interface_schema, _inspect_class, get_return_type, get_arg_type
+from ivoryos.runtime.safety import guard
 from ivoryos.parsers.returns import extract_return_variables
 
 # Import the new modular components
@@ -33,19 +33,6 @@ design.register_blueprint(agent)
 global_state = GlobalState()
 
 
-@design.context_processor
-def inject_compatibility_helpers():
-    """Let the canvas explain a workflow built against a different deck.
-
-    Per-step findings ride along on the canvas buttons; this covers the one
-    thing that is about the workflow as a whole rather than any single step.
-    """
-    def deck_compatibility_note(script):
-        return check_deck_match(script, current_reference())
-
-    return {"deck_compatibility_note": deck_compatibility_note}
-
-
 # ---- Main Design Routes ----
 
 
@@ -57,7 +44,8 @@ def _create_forms(instrument, script, autofill, pseudo_deck = None):
     elif instrument in global_state.defined_variables.keys():
         _object = global_state.defined_variables.get(instrument)
         functions = _inspect_class(_object)
-        forms = create_form_from_pseudo(pseudo=functions, autofill=autofill, script=script)
+        forms = create_form_from_pseudo(pseudo=functions, autofill=autofill, script=script,
+                                        limits=guard.form_limits(instrument, functions))
     elif instrument.startswith("blocks"):
         forms = create_form_from_pseudo(pseudo=global_state.building_blocks[instrument], autofill=autofill, script=script)
         functions = global_state.building_blocks[instrument]
@@ -68,7 +56,8 @@ def _create_forms(instrument, script, autofill, pseudo_deck = None):
             functions = global_state.interface_schema.get(instrument, {})
         elif pseudo_deck:
             functions = pseudo_deck.get(instrument, {})
-        forms = create_form_from_pseudo(pseudo=functions, autofill=autofill, script=script)
+        forms = create_form_from_pseudo(pseudo=functions, autofill=autofill, script=script,
+                                        limits=guard.form_limits(instrument, functions))
     return functions, forms
 
 @design.route("/draft")

@@ -9,6 +9,7 @@ from datetime import datetime
 
 from ivoryos.utils.decorators import BUILDING_BLOCKS
 from ivoryos.models import db, SingleStep
+from ivoryos.runtime.safety import guard
 from ivoryos.runtime.state import GlobalState
 
 global_state = GlobalState()
@@ -123,6 +124,8 @@ class TaskRunner:
 
             try:
                 kwargs = self._convert_kwargs_type(kwargs, function_executable)
+                # the lab's limits apply to a call from the Instruments page too
+                guard.enforce(component, method, kwargs)
 
                 if inspect.iscoroutinefunction(function_executable):
                     output = await function_executable(**kwargs)

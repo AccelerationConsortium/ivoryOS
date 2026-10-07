@@ -22,21 +22,16 @@
     {% endfor %}
 {% endfor %}
 
-{% set deck_note = deck_compatibility_note(script) if deck_compatibility_note is defined else none %}
-
-{% if deck_note or compat.flagged %}
+{% if compat.flagged %}
 <div class="alert {{ 'alert-danger' if compat.blocking else 'alert-warning' }} py-2 px-3 mt-3 mb-0 small"
      id="deck-compatibility-banner">
     <i class="bi bi-exclamation-triangle-fill me-1"></i>
-    {% if deck_note %}<span>{{ deck_note }}</span>{% endif %}
-    {% if compat.flagged %}
-        <span>
-            {{ compat.flagged }} step{{ 's' if compat.flagged != 1 }}
-            no longer match{{ '' if compat.flagged != 1 else 'es' }} the deck
-            ({% for phase in compat.phases %}{{ phase_labels.get(phase, phase) }}{{ ', ' if not loop.last }}{% endfor %}).
-            Hover the icon beside a step for the reason.
-        </span>
-    {% endif %}
+    <span>
+        {{ compat.flagged }} step{{ 's' if compat.flagged != 1 }}
+        no longer match{{ '' if compat.flagged != 1 else 'es' }} the deck
+        ({% for phase in compat.phases %}{{ phase_labels.get(phase, phase) }}{{ ', ' if not loop.last }}{% endfor %}).
+        Hover the icon beside a step for the reason.
+    </span>
 </div>
 {% endif %}
 
