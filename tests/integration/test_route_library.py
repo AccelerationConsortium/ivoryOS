@@ -1,6 +1,7 @@
 from ivoryos.models import Script, db
 from ivoryos.script import ScriptEditor
-from ivoryos.services.draft_service import post_script_for_user
+from tests.conftest import session_draft_id
+from ivoryos.services.draft_service import get_script_for_user, post_script_for_user
 
 
 def test_save_list_get_and_delete_library_workflow(auth):
@@ -22,7 +23,7 @@ def test_save_list_get_and_delete_library_workflow(auth):
         },
     )
     with auth.application.app_context():
-        post_script_for_user('testuser', draft)
+        post_script_for_user('testuser', draft, draft_id=session_draft_id(auth))
 
     save_response = auth.post(
         '/ivoryos/library/',
@@ -64,7 +65,7 @@ def test_save_list_get_and_delete_library_workflow(auth):
 def test_library_publish_rejects_incomplete_draft(auth):
     draft = Script(author='testuser', deck=None)
     with auth.application.app_context():
-        post_script_for_user('testuser', draft)
+        post_script_for_user('testuser', draft, draft_id=session_draft_id(auth))
 
     response = auth.post(
         '/ivoryos/library/',
@@ -118,3 +119,21 @@ def test_library_flags_a_workflow_that_no_longer_fits_the_loaded_deck(auth, test
     # one marker only: the other-deck workflow is not broken, just not for this platform
     assert body.count('no longer match the current deck') == 2  # aria-label + title
     assert 'missing method method_that_was_deleted' in body
+
+
+def test_loading_a_workflow_only_changes_the_loading_sessions_draft(app, auth):
+    """A Python client and a browser logged in as the same user keep separate drafts."""
+    with app.app_context():
+        db.session.add(Script(name='library_workflow', deck='demo_deck', author='testuser'))
+        db.session.commit()
+        post_script_for_user('testuser', Script(author='testuser', name='browser_wip'),
+                             draft_id=session_draft_id(auth))
+
+    python_client = app.test_client()
+    python_client.post('/ivoryos/auth/login', data={'username': 'testuser', 'password': 'password'})
+    response = python_client.get('/ivoryos/library/library_workflow', headers={'Accept': 'application/json'})
+    assert response.get_json()['script']['name'] == 'library_workflow'
+
+    with app.app_context():
+        assert get_script_for_user('testuser', session_draft_id(python_client)).name == 'library_workflow'
+        assert get_script_for_user('testuser', session_draft_id(auth)).name == 'browser_wip'

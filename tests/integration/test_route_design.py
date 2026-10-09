@@ -2,6 +2,7 @@ import io
 
 from ivoryos.models import Script, db
 from ivoryos.script import ScriptEditor
+from tests.conftest import session_draft_id
 from ivoryos.services.draft_service import get_script_for_user, post_script_for_user
 
 
@@ -73,7 +74,7 @@ def test_get_available_variables_reads_current_user_draft(auth):
     })
 
     with auth.application.app_context():
-        post_script_for_user('testuser', script)
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
 
     response = auth.get('/ivoryos/draft/variables')
 
@@ -106,13 +107,13 @@ def test_reorder_steps_updates_current_draft_order(auth):
     })
 
     with auth.application.app_context():
-        post_script_for_user('testuser', script)
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
 
     response = auth.post('/ivoryos/draft/steps/order', data={'order': '3,1,2'})
 
     assert response.status_code == 200
     with auth.application.app_context():
-        draft = get_script_for_user('testuser')
+        draft = get_script_for_user('testuser', session_draft_id(auth))
     assert [action['args']['statement'] for action in draft.script_dict['script']] == ['third', 'first', 'second']
     assert [action['id'] for action in draft.script_dict['script']] == [1, 2, 3]
 
@@ -187,7 +188,7 @@ def test_canvas_flags_a_step_the_deck_no_longer_offers(auth, test_deck):
     })
 
     with auth.application.app_context():
-        post_script_for_user('testuser', script)
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
 
     response = auth.post('/ivoryos/draft/steps/order', data={'order': '1,2'})
     body = response.get_data(as_text=True)
@@ -211,7 +212,7 @@ def test_clean_steps_keep_an_invisible_marker_slot_so_labels_stay_aligned(auth, 
     })
 
     with auth.application.app_context():
-        post_script_for_user('testuser', script)
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
 
     body = auth.post('/ivoryos/draft/steps/order', data={'order': '1'}).get_data(as_text=True)
 
@@ -229,7 +230,7 @@ def test_canvas_has_no_warnings_when_every_step_matches_the_deck(auth, test_deck
     })
 
     with auth.application.app_context():
-        post_script_for_user('testuser', script)
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
 
     response = auth.post('/ivoryos/draft/steps/order', data={'order': '1'})
     body = response.get_data(as_text=True)
@@ -250,8 +251,8 @@ def test_step_edit_form_explains_why_the_step_no_longer_matches(auth, test_deck)
     })
 
     with auth.application.app_context():
-        post_script_for_user('testuser', script)
-        uuid = get_script_for_user('testuser').script_dict['script'][0]['uuid']
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
+        uuid = get_script_for_user('testuser', session_draft_id(auth)).script_dict['script'][0]['uuid']
 
     response = auth.get(f'/ivoryos/draft/steps/{uuid}')
     body = response.get_data(as_text=True)
@@ -278,7 +279,7 @@ def test_a_deck_name_alone_is_not_flagged(auth, test_deck):
         })
 
         with auth.application.app_context():
-            post_script_for_user('testuser', script)
+            post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
 
         response = auth.post('/ivoryos/draft/steps/order', data={'order': '1'})
         body = response.get_data(as_text=True)
@@ -305,7 +306,7 @@ def test_execution_config_page_renders(auth, test_deck):
     })
 
     with auth.application.app_context():
-        post_script_for_user('testuser', script)
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
 
     response = auth.get('/ivoryos/executions/config', follow_redirects=True)
 
@@ -330,7 +331,7 @@ def test_execution_page_warns_about_steps_that_will_fail(auth, test_deck):
     })
 
     with auth.application.app_context():
-        post_script_for_user('testuser', script)
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
 
     body = auth.get('/ivoryos/executions/config', follow_redirects=True).get_data(as_text=True)
 
@@ -353,7 +354,7 @@ def test_execution_page_is_quiet_when_the_workflow_matches_the_deck(auth, test_d
     })
 
     with auth.application.app_context():
-        post_script_for_user('testuser', script)
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
 
     body = auth.get('/ivoryos/executions/config', follow_redirects=True).get_data(as_text=True)
 
@@ -439,7 +440,7 @@ def test_renaming_a_queued_task_keeps_run_names_unique(auth, monkeypatch):
 
 def test_the_toolbox_lists_flow_control_instruments_and_workflows(auth, test_deck):
     with auth.application.app_context():
-        post_script_for_user('testuser', Script(author='testuser', deck='test_deck'))
+        post_script_for_user('testuser', Script(author='testuser', deck='test_deck'), draft_id=session_draft_id(auth))
 
     page = auth.get('/ivoryos/draft').get_data(as_text=True)
 
@@ -487,8 +488,8 @@ def test_a_step_opens_in_a_pop_up_with_save_and_cancel(auth, test_deck):
         'args': {'arg': 1}, 'return': '', 'arg_types': {'arg': 'int'},
     })
     with auth.application.app_context():
-        post_script_for_user('testuser', script)
-        uuid = get_script_for_user('testuser').script_dict['script'][0]['uuid']
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
+        uuid = get_script_for_user('testuser', session_draft_id(auth)).script_dict['script'][0]['uuid']
 
     body = auth.get(f'/ivoryos/draft/steps/{uuid}').get_data(as_text=True)
 
@@ -549,7 +550,7 @@ def test_a_config_table_that_cannot_run_is_not_started(auth, test_deck, monkeypa
         'args': {'arg': '#temperature'}, 'return': '', 'arg_types': {'arg': 'float'},
     })
     with auth.application.app_context():
-        post_script_for_user('testuser', script)
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
     run_script = MagicMock(return_value='queued')
     monkeypatch.setattr(execute_module.runner, 'run_script', run_script)
 

@@ -3,8 +3,7 @@ from flask_login import login_required, login_user, logout_user, LoginManager, c
 import bcrypt
 
 from ivoryos.models import User, db
-from ivoryos.script import Script
-from ivoryos.services.draft_service import post_script_for_user
+from ivoryos.services.draft_service import discard_draft, new_draft_id
 
 
 login_manager = LoginManager()
@@ -49,11 +48,9 @@ def login():
                 login_user(user)
                 # g.user = user
                 # session['user'] = username
-                script_file = Script(author=username)
-                session["script"] = script_file.as_dict()
                 session['hidden_functions'], session['card_order'], session['prompt'] = {}, {}, {}
                 session['autofill'] = False
-                post_script_for_user(username, script_file)
+                new_draft_id()  # each login session gets its own empty draft
                 return redirect(url_for('main.index'))
         else:
             flash("Incorrect username or password")
@@ -147,6 +144,7 @@ def logout():
 
     :status 302: Redirects to the login page.
     """
+    discard_draft(current_user.get_id(), session.get("draft_id"))
     logout_user()
     session.clear()
     return redirect(url_for('auth.login'))

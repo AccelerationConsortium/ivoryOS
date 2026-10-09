@@ -14,10 +14,13 @@ ivoryos_data/
 |-- pseudo_deck/
 |-- results/
 |-- scripts/
-|   `-- drafts/
 |-- default.log
 `-- ivoryos.db
 ```
+
+Unsaved workflow drafts are not written here: they are kept in server memory, one per
+login session, so the browser and a Python client logged in as the same user edit
+separate drafts. Drafts are lost when the server restarts; save to the library to keep them.
 
 These directories are runtime output. Do not commit newly generated local run data.
 

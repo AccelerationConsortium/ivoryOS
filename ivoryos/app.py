@@ -134,7 +134,7 @@ def create_ivoryos_folders(parent_path):
     Creates folders for ivoryos data
     """
     os.makedirs(parent_path, exist_ok=True)
-    for path in ["config_csv", "scripts", "scripts/drafts", "results", "pseudo_deck", "logs"]:
+    for path in ["config_csv", "scripts", "results", "pseudo_deck", "logs"]:
         os.makedirs(os.path.join(parent_path, path), exist_ok=True)
 
 
