@@ -80,6 +80,12 @@ def auth(client, init_database):
     client.get('/ivoryos/auth/logout', follow_redirects=True)
 
 
+def session_draft_id(client):
+    """The draft slot of a logged-in test client's session."""
+    with client.session_transaction() as sess:
+        return sess["draft_id"]
+
+
 @pytest.fixture
 def socketio_client(app):
     """A test client for Socket.IO."""

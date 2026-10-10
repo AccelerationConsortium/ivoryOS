@@ -9,6 +9,7 @@ import pytest
 from ivoryos.models import Script
 from ivoryos.runtime.safety import guard
 from ivoryos.script import ScriptEditor
+from tests.conftest import session_draft_id
 from ivoryos.services.draft_service import post_script_for_user
 from tests.unit.test_runner_missing_method import _execute, _step
 
@@ -60,7 +61,7 @@ def draft_with(auth, args):
     ScriptEditor(script).add_action({'instrument': 'deck.dummy', 'action': 'float_method',
                                      'args': args, 'return': '', 'arg_types': {'arg': 'float'}})
     with auth.application.app_context():
-        post_script_for_user('testuser', script)
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
 
 
 def test_a_workflow_past_a_limit_is_not_started(auth, test_deck, limits, monkeypatch):
