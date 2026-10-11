@@ -14,13 +14,18 @@ ivoryos_data/
 |-- pseudo_deck/
 |-- results/
 |-- scripts/
+|   `-- drafts/
 |-- default.log
 `-- ivoryos.db
 ```
 
-Unsaved workflow drafts are not written here: they are kept in server memory, one per
-login session, so the browser and a Python client logged in as the same user edit
-separate drafts. Drafts are lost when the server restarts; save to the library to keep them.
+Unsaved workflow drafts live in `scripts/drafts/`, one JSON file per login session
+(`draft_<user>_<draft_id>.json`), so the browser and a Python client logged in as the
+same user edit separate drafts. The server caches them in memory and reads the files
+back after a restart, so a design that was open in the designer is still there when the
+server comes back, as long as the browser is still logged in. Logging out deletes that
+session's draft; files left by sessions that never logged out are pruned oldest-first
+once there are more than 256.
 
 These directories are runtime output. Do not commit newly generated local run data.
 
