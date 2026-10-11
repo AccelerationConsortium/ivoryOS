@@ -3,6 +3,7 @@ import io
 from ivoryos.models import Script, db
 from ivoryos.script import ScriptEditor
 from tests.conftest import session_draft_id
+from ivoryos.services import draft_service
 from ivoryos.services.draft_service import get_script_for_user, post_script_for_user
 
 
@@ -238,6 +239,28 @@ def test_canvas_has_no_warnings_when_every_step_matches_the_deck(auth, test_deck
     assert response.status_code == 200
     assert 'deck-compatibility-banner' not in body
     assert 'data-bs-toggle="tooltip"' not in body
+
+
+def test_the_designer_still_shows_the_draft_after_a_server_restart(auth, test_deck):
+    """Restarting the server must not clear the canvas: the browser never logged out."""
+    script = Script(author='testuser', deck='test_deck')
+    ScriptEditor(script).add_action({
+        'instrument': 'deck.dummy',
+        'action': 'int_method',
+        'args': {'arg': 1},
+        'return': '',
+        'arg_types': {'arg': 'int'},
+    })
+    with auth.application.app_context():
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
+
+    draft_service._drafts.clear()  # the process restarted; the browser cookie is the same
+
+    response = auth.get('/ivoryos/draft')
+    body = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert 'int_method' in body
 
 
 def test_step_edit_form_explains_why_the_step_no_longer_matches(auth, test_deck):
