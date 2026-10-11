@@ -386,6 +386,28 @@ def test_an_enum_field_takes_the_enums_own_value_from_json(app):
     form_class = create_form_for_method(inspect.signature(set_mode), autofill=False, design=False)
 
     with app.test_request_context(method="POST", json={"mode": 2}):
-        assert form_class().mode.data == 2
+        assert form_class().mode.data == "FAST"
     with app.test_request_context(method="POST", json={"mode": 5}):
         assert form_class().mode.process_errors
+
+
+def test_an_enum_step_keeps_its_key_however_it_was_typed(app):
+    """Key or value, a step stores the key, and its edit form shows the key, so saving it
+    again unchanged keeps it as it was. A step saved when steps stored the value shows its key."""
+    def stir(mode: Speed, color: Choice):
+        return mode, color
+
+    form_class = create_form_for_method(inspect.signature(stir), autofill=False, design=False)
+
+    for typed, stored in [({"mode": "SLOW", "color": "RED"}, ("SLOW", "RED")),
+                          ({"mode": "1", "color": "red"}, ("SLOW", "RED"))]:
+        with app.test_request_context(method="POST", data=typed):
+            form = form_class()
+            assert (form.mode.data, form.color.data) == stored
+
+    with app.test_request_context():
+        edit = form_class(data={"mode": 1, "color": "red"})
+        assert (edit.mode._value(), edit.color._value()) == ("SLOW", "RED")
+
+    with app.test_request_context(method="POST", data={"mode": "SLOW", "color": "RED"}):
+        assert form_class().validate()

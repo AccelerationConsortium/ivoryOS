@@ -72,7 +72,7 @@ def test_list_conversion(auth, test_deck):
 
 
 def test_enum_conversion(auth, test_deck):
-    """Tests that a string from a form is converted to an Enum member."""
+    """The form hands over the member's key; the runner calls the driver with the member."""
     with patch('ivoryos.runtime.task_runner.TaskRunner._run_single_step', new_callable=AsyncMock) as mock_run:
         mock_run.return_value = {"success": True, "output": MockEnum.OPTION_B.value}
         response = auth.post(
@@ -81,4 +81,4 @@ def test_enum_conversion(auth, test_deck):
             follow_redirects=True
         )
         assert response.status_code == 200
-        _assert_runner_called(mock_run, "enum_method", {"arg": MockEnum.OPTION_B.value})
+        _assert_runner_called(mock_run, "enum_method", {"arg": "OPTION_B"})

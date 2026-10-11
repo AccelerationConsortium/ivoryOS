@@ -116,7 +116,8 @@ def test_compile_generates_headers_builtins_returns_and_required_imports(tmp_pat
     assert "time.sleep(0.1)" in compiled["script"]
     assert "pause('''Check''')" in compiled["script"]
     assert "total = float(count + 2)" in compiled["script"]
-    assert "__ivoryos_result = deck.pump.dose(**{'amount': total, 'choice': RenderChoice('a')})" in compiled["script"]
+    # the member by its key, also for a step saved when steps stored the value ('a')
+    assert "__ivoryos_result = deck.pump.dose(**{'amount': total, 'choice': RenderChoice.A})" in compiled["script"]
     assert "return {" in compiled["script"]
     assert "'sample':sample" in compiled["script"]
     assert "'first':first" in compiled["script"]
@@ -148,3 +149,12 @@ def test_compile_batch_mode_uses_param_list_and_result_storage():
     assert "configured_amount = param['configured_amount']" in compiled
     assert "param['reading'] = reading" in compiled
     assert "return param_list" in compiled
+
+
+def test_an_optional_enum_argument_is_written_as_its_member():
+    """``Optional[Enum]`` is recorded as a list of types; batch mode writes the same call."""
+    renderer = ScriptRenderer(Script(author="tester"))
+    arg_types = {"choice": ["Enum:tests.unit.test_renderer_behavior.RenderChoice", "NoneType"], "amount": "float"}
+
+    assert renderer._process_dict_args({"choice": "A", "amount": 5.0}, arg_types) == "{'choice': RenderChoice.A, 'amount': 5.0}"
+    assert renderer._process_dict_args({"choice": None}, arg_types) == "{'choice': None}"

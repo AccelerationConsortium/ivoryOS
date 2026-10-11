@@ -18,6 +18,7 @@ from ivoryos.runtime.state import GlobalState
 
 from ivoryos.parsers.introspection import get_return_type
 from ivoryos.runtime.safety import describe as describe_limit, guard
+from ivoryos.utils.enums import enum_class_of, find_member
 
 try:
     from typing import get_origin, get_args
@@ -286,33 +287,25 @@ class FlexibleEnumField(StringField):
         self.script = script
         self.enum_class = self._resolve_enum(choices)
         self.choices = [e.name for e in self.enum_class]
-        self.value_list = [e.value for e in self.enum_class]
 
     def _resolve_enum(self, annotation):
         """Extract Enum from Enum or Optional[Enum]"""
-        # Case: direct Enum
-        if isinstance(annotation, EnumMeta):
-            return annotation
-
-        # Case: Optional / Union
-        origin = get_origin(annotation)
-        if origin is Union:
-            for arg in get_args(annotation):
-                if isinstance(arg, EnumMeta):
-                    return arg
-
-        raise TypeError(f"FlexibleEnumField expected Enum or Optional[Enum], got {annotation!r}")
+        enum_class = enum_class_of(annotation)
+        if enum_class is None:
+            raise TypeError(f"FlexibleEnumField expected Enum or Optional[Enum], got {annotation!r}")
+        return enum_class
 
     def _value(self):
-        """Return empty string for None values instead of 'None'"""
+        """The member's key, whether a key or (in a step saved before keys) a value was stored;
+        empty for None rather than 'None'."""
         if self.data is None:
             return ''
-        if isinstance(self.data, Enum):
-            return self.data.name
-        return str(self.data)
+        member = find_member(self.enum_class, self.data)
+        return member.name if member is not None else str(self.data)
 
     def process_formdata(self, valuelist):
-        # todo right now enum types will be processed to methods as a str, so the method must convert to the enum type
+        # A step keeps the member's key, however it was given: the key from the form, or the value
+        # typed in or sent as JSON by the downloaded proxy. See ivoryos.utils.enums.
         if valuelist:
             key = valuelist[0]
             # Treat empty string or "None" as null value
@@ -320,37 +313,24 @@ class FlexibleEnumField(StringField):
                 self.data = None
                 return
 
-            if key in self.choices:
-                # Convert the string key to Enum instance
-                self.data = self.enum_class[key].value
+            member = find_member(self.enum_class, key)
+            if member is not None:
+                self.data = member.name
             elif not isinstance(key, str):
-                # the Enum's own value, as a JSON caller (the downloaded proxy) sends it, e.g. 2
-                if key not in self.value_list:
-                    raise ValueError(self.gettext("Not a valid choice"))
-                self.data = self.enum_class(key).value
+                raise ValueError(self.gettext("Not a valid choice"))
             elif key.startswith("#"):
                 # Script variable reference — only valid when a script context exists
                 if self.script is None or not self.script.editing_type == "script":
                     raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
                 self.data = key
-            elif isinstance(key, str):
-                # PATCH!! because enum returns are sanitized as str, if they are saved as a return variable
-                # from a different method then they cannot be input in and processed properly unless it is converted
-                # to enum instance again # todo this doesnt handle if the enum value is non-str
-                if key in self.value_list: # need to use self.value_list, using valuelist doesnt work
-                    # the key itself was sanitized into the enum str value, so convert it back into the Enum instance
-                    self.data = self.enum_class(key)
-                else:
-                    # todo can we assume if it isnt an enum value, that it is a non-dynamic variable in the script?
-                    # not in value list, so check if it is a non-dynamic variable in the script
-                    # Guard: script is None in control-panel context (design=False)
-                    if self.script is not None:
-                        variable, variable_type = find_variable(key, self.script)
-                        if variable:
-                            self.data = variable
-                            return
-                    raise ValidationError(f"Invalid choice: '{key}'. Must match one of {list(self.enum_class.__members__.keys())}")
             else:
+                # not a key or a value: a variable set earlier in the script, if there is one
+                # (script is None on the Instruments page)
+                if self.script is not None:
+                    variable, variable_type = find_variable(key, self.script)
+                    if variable:
+                        self.data = variable
+                        return
                 raise ValidationError(f"Invalid choice: '{key}'. Must match one of {list(self.enum_class.__members__.keys())}")
 
 

@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 from ivoryos.runtime.control_flow import validate_and_nest_control_flow
 from ivoryos.runtime.run_events import ERROR, INTERVENTION
 from ivoryos.runtime.safety import SafetyViolation, guard
+from ivoryos.utils.enums import to_members
 from ivoryos.runtime.runner_runtime import HumanInterventionRequired, ensure_deck, global_state, pause
 from ivoryos.models import WorkflowStep, db
 from ivoryos.parsers.returns import store_return_value
@@ -387,11 +388,13 @@ class ScriptRunnerStepMixin:
                         attr = getattr(component, action)
 
                         if callable(attr):
+                            # a step stores an Enum argument's key; the driver gets the member
+                            call_args = to_members(attr, substituted_args)
                             # Execute and handle return value
                             if step.get("coroutine", False):
-                                result = await attr(**substituted_args)
+                                result = await attr(**call_args)
                             else:
-                                result = await asyncio.to_thread(attr, **substituted_args)
+                                result = await asyncio.to_thread(attr, **call_args)
                         else:
                             # Handle property setter/getter
                             if "value" in substituted_args:
@@ -418,13 +421,14 @@ class ScriptRunnerStepMixin:
                     method_collection = BUILDING_BLOCKS[instrument]
                     if action in method_collection.keys():
                         method = method_collection[action]["func"]
+                        call_args = to_members(method, substituted_args)
 
                         # Execute and handle return value
                         # print(step.get("coroutine", False))
                         if step.get("coroutine", False):
-                            result = await method(**substituted_args)
+                            result = await method(**call_args)
                         else:
-                            result = await asyncio.to_thread(method, **substituted_args)
+                            result = await asyncio.to_thread(method, **call_args)
 
                         # # Store return value if specified
                         # return_var = step.get("return", "")
@@ -436,10 +440,11 @@ class ScriptRunnerStepMixin:
                         raise ValueError(f"Unknown instrument '{instrument}'")
                     guard.enforce(instrument, action, substituted_args)
                     method = getattr(module, action)
+                    call_args = to_members(method, substituted_args)
                     if step.get("coroutine", False):
-                        result = await method(**substituted_args)
+                        result = await method(**call_args)
                     else:
-                        result = await asyncio.to_thread(method, **substituted_args)
+                        result = await asyncio.to_thread(method, **call_args)
                         # Store return value if specified
                 return_var = step.get("return", "")
                 if return_var and result is not None:

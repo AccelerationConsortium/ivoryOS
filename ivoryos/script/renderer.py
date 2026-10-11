@@ -9,6 +9,7 @@ except ImportError:
 
 from ivoryos.script.models import Script
 from ivoryos.script.editor import ScriptEditor
+from ivoryos.utils.enums import enum_class_from_type, find_member
 from ivoryos.models.base import db
 
 class ScriptRenderer:
@@ -683,15 +684,17 @@ class ScriptRenderer:
                            val_str = key
                  else:
                       pass
-             elif arg_types and k in arg_types:
+             elif arg_types and k in arg_types and v is not None:
                  type_str = arg_types[k]
-                 if isinstance(type_str, str) and type_str.startswith("Enum:"):
-                     try:
-                        _, full_path = type_str.split(":", 1)
-                        class_name = full_path.split(".")[-1]
-                        val_str = f"{class_name}({repr(v)})"
-                     except:
-                        pass
+                 # an Optional[Enum] is recorded as a list, e.g. ["Enum:deck.Solvent", "NoneType"]
+                 types = type_str if isinstance(type_str, list) else [type_str]
+                 enum_type = next((t for t in types if isinstance(t, str) and t.startswith("Enum:")), None)
+                 if enum_type:
+                     # the member by its key; a step saved before keys holds the value
+                     class_name = enum_type.split(":", 1)[1].split(".")[-1]
+                     enum_class = enum_class_from_type(enum_type)
+                     member = find_member(enum_class, v) if enum_class else None
+                     val_str = f"{class_name}.{member.name}" if member else f"{class_name}[{repr(v)}]"
              items.append(f"'{k}': {val_str}")
         return "{" + ", ".join(items) + "}"
 
