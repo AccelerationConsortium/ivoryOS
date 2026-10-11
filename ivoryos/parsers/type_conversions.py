@@ -1,7 +1,7 @@
 import ast
-import importlib
 from collections import Counter
 from ivoryos.script.editor import ScriptEditor
+from ivoryos.utils.enums import enum_class_from_type, find_member
 
 
 def _convert_by_str(args, arg_types):
@@ -17,19 +17,13 @@ def _convert_by_str(args, arg_types):
             continue
         try:
             if isinstance(arg_type, str) and arg_type.startswith("Enum:"):
-                _, full_path = arg_type.split(":", 1)
-                module_name, class_name = full_path.rsplit(".", 1)
-                try:
-                    mod = importlib.import_module(module_name)
-                except ImportError:
-                    from ivoryos.runtime.state import GlobalState
-                    deck = GlobalState().deck
-                    if deck and (deck.__name__ == module_name or module_name == "__main__"):
-                        mod = deck
-                    else:
-                        raise
-                enum_class = getattr(mod, class_name)
-                return enum_class[args].value
+                # a config cell may hold the key or the value; the row keeps the key, and the
+                # runner calls the driver with the member (ivoryos.utils.enums)
+                enum_class = enum_class_from_type(arg_type)
+                member = find_member(enum_class, args) if enum_class else None
+                if member is None:
+                    raise ValueError(f"'{args}' is not one of {arg_type}")
+                return member.name
             elif isinstance(arg_type, str) and arg_type.startswith("Literal:"):
                 _, options_str = arg_type.split(":", 1)
                 options = options_str.split(",")

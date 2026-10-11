@@ -27,9 +27,9 @@ from abstract_pump import AbstractPump
 
 
 class Solvent(Enum):
-    Methanol = "Methanol"
-    Ethanol = "Ethanol"
-    Acetone = "Acetone"
+    Methanol = 1
+    Ethanol = 2
+    Acetone = 3
 
 
 class AbstractSDL(ABC):
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
     import ivoryos
     # USE CASE 1 - start OS using current module
-    ivoryos.run(__name__)
+    ivoryos.run(__name__, port=8003,)
 
 
 

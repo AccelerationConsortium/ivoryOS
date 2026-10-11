@@ -10,6 +10,7 @@ from datetime import datetime
 from ivoryos.utils.decorators import BUILDING_BLOCKS
 from ivoryos.models import db, SingleStep
 from ivoryos.runtime.safety import guard
+from ivoryos.utils.enums import enum_class_of, find_member
 from ivoryos.runtime.state import GlobalState
 
 global_state = GlobalState()
@@ -175,8 +176,13 @@ class TaskRunner:
         for name, value in kwargs.items():
             if name in sig.parameters:
                 param = sig.parameters[name]
+                enum_class = enum_class_of(param.annotation)
+                if enum_class is not None:
+                    # a key or a value, from the form or JSON: the driver gets the member
+                    member = find_member(enum_class, value)
+                    converted[name] = member if member is not None else value
                 # Check for explicit typing
-                if param.annotation != inspect.Parameter.empty:
+                elif param.annotation != inspect.Parameter.empty:
                     # If explicitly typed, we still want to try smart conversion if the value is a string
                     
                     if isinstance(value, str):
