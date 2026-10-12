@@ -298,3 +298,65 @@ def test_a_submitted_config_table_is_checked_against_the_limits():
     problems = config_form_problems(form, ["temperature", "solvent"], {"temperature": "float", "solvent": "str"}, limits)
 
     assert problems == ["Row 2, 'temperature': 300 is above the maximum of 250 °C."]
+
+
+# --- inputs that take None ---------------------------------------------------
+
+OPTIONAL_TYPES = {"temperature": "float", "solvent": ["str", "NoneType"]}
+
+
+def test_an_input_takes_none_when_its_argument_is_optional():
+    from ivoryos.runtime.task_conditions import accepts_none, optional_inputs
+
+    assert accepts_none(["int", "NoneType"]) and accepts_none(["Enum:lab.Solvent", "NoneType"])
+    assert not accepts_none("int") and not accepts_none("any") and not accepts_none(["int", "float"])
+    assert optional_inputs(OPTIONAL_TYPES) == ["solvent"]
+
+
+def test_an_optional_input_can_be_left_empty_and_any_input_can_be_none():
+    from ivoryos.runtime.task_conditions import config_field_problems, config_row_problem
+
+    fields = ["temperature", "solvent"]
+    assert config_field_problems({"temperature": "25", "solvent": ""}, fields, OPTIONAL_TYPES) == {}
+    assert config_row_problem({"temperature": "25", "solvent": ""}, fields, OPTIONAL_TYPES) is None
+    # a required input still needs a value, though None typed in is a value
+    assert config_field_problems({"temperature": "", "solvent": "water"}, fields, OPTIONAL_TYPES) == {
+        "temperature": "No value."}
+    assert config_row_problem({"temperature": "None", "solvent": ""}, fields, OPTIONAL_TYPES) is None
+
+
+def test_a_submitted_table_runs_an_empty_optional_cell_as_none():
+    from ivoryos.parsers.type_conversions import convert_config_type, web_config_entry_wrapper
+    from ivoryos.runtime.task_conditions import config_form_problems
+
+    form = {"online-config": "", "batch_size": "1",
+            "temperature[1]": "25", "solvent[1]": "water",
+            "temperature[2]": "40", "solvent[2]": "",
+            "temperature[3]": "", "solvent[3]": ""}  # left empty: skipped
+    fields = ["temperature", "solvent"]
+
+    assert config_form_problems(form, fields, OPTIONAL_TYPES) == []
+    rows = web_config_entry_wrapper(form, fields)
+    assert rows == [{"temperature": "25", "solvent": "water"}, {"temperature": "40", "solvent": ""}]
+    assert convert_config_type(dict(rows[1]), OPTIONAL_TYPES) == {"temperature": 40.0, "solvent": None}
+
+
+def test_an_optional_column_says_so_and_none_reads_back_as_none():
+    from ivoryos.runtime.task_conditions import cell_text, column_label
+
+    assert column_label(["float", "NoneType"], [{"min": 0, "max": 10, "unit": "mL"}]).startswith("float · optional")
+    assert column_label("float") == "float"
+    assert cell_text(None) == "None" and cell_text("") == "" and cell_text(2.5) == "2.5"
+
+
+def test_a_queued_entry_can_leave_an_optional_input_empty():
+    task = config_task()
+    task["script"] = Script(author="tester", script_dict={"prep": [], "cleanup": [], "script": [{
+        "id": 1, "uuid": 1, "instrument": "deck.reactor", "action": "heat", "return": "",
+        "args": {"temperature": "#temperature", "solvent": "#solvent"},
+        "arg_types": {"temperature": "float", "solvent": ["str", "NoneType"]},
+    }]})
+
+    updates = task_conditions.parse_changes(task, {"config": [{"temperature": "30", "solvent": ""}]})
+
+    assert updates["config"] == [{"temperature": "30", "solvent": ""}]

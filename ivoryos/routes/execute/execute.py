@@ -16,7 +16,7 @@ from ivoryos.services.draft_service import get_script_file
 from ivoryos.services.connection_history import import_history
 from ivoryos.parsers.type_conversions import check_config_duplicate, web_config_entry_wrapper
 from ivoryos.runtime.safety import guard
-from ivoryos.runtime.task_conditions import config_form_problems
+from ivoryos.runtime.task_conditions import config_form_problems, optional_inputs
 from ivoryos.parsers.bo_campaign import parse_optimization_form
 from ivoryos.models import db, SingleStep, WorkflowRun, WorkflowStep, WorkflowPhase
 from ivoryos.runtime.state import GlobalState
@@ -147,6 +147,8 @@ def experiment_run():
 
     _, return_list = ScriptEditor(script).config_return()
     config_list, config_type_list = ScriptEditor(script).config("script")
+    # read before the Enum columns below are reduced to their choices, which drops the None
+    config_optional = optional_inputs(config_type_list)
 
     for key, type_str in config_type_list.items():
         # Handle Optional/Union types which come as lists
@@ -282,6 +284,7 @@ def experiment_run():
                                dot_py=exec_string, line_collection=line_collection,
                                return_list=return_list, config_list=config_list, config_file_list=config_file_list,
                                config_preview=config_preview, data_list=data_list, config_type_list=config_type_list,
+                               config_optional=config_optional,
                                no_deck_warning=no_deck_warning, dismiss=dismiss,
                                compat_steps=compat_steps,
                                history=deck_list, pause_status=runner.pause_status(), optimizer_schema=optimizers_schema)

@@ -126,7 +126,11 @@
                                         <th style="width: 30px;"></th>
                                         <th style="width: 40px;">#</th>
                                         {% for column in config_list %}
-                                        <th class="text-nowrap" style="min-width: 100px;">{{ column }}
+                                        {% set optional = column in (config_optional or []) %}
+                                        <th class="text-nowrap" style="min-width: 100px;"
+                                            title="{{ 'Optional: left empty in a filled row, it runs as None' if optional else 'Required' }}">{{ column }}
+                                            {#- a mix of required and optional inputs: the required ones are starred #}
+                                            {%- if config_optional and not optional %}<span class="text-danger ms-1" aria-label="required">*</span>{% endif %}
                                             {# the safety limits of the step fields this column is passed to #}
                                             {% for limit in (column_limits or {}).get(column, []) %}
                                             <div class="small text-muted fw-normal" title="Safety limit on {{ limit.source }}">{{ limit | limit_hint }}</div>
@@ -160,6 +164,13 @@
                                 <div class="d-flex gap-3 align-items-center">
                                 </div>
                             </div>
+                            {# a key under the buttons, for a table that mixes required and optional inputs #}
+                            {% if config_optional %}
+                            <div class="small text-muted mt-2" id="configTableKey">
+                                <span class="text-danger">*</span> Required. An empty optional cell runs as None;
+                                type or pick <span class="config-none">None</span> to give it.
+                            </div>
+                            {% endif %}
                         </div>
 
                     </form>
@@ -172,6 +183,13 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.7/Sortable.min.js"></script>
 
 <style>
+    /* None given on purpose, typed or picked */
+    .config-none,
+    #tableBody .config-none {
+        color: var(--bs-secondary-color);
+        font-style: italic;
+    }
+
     .config-drag-handle {
         cursor: move;
         color: #999;
@@ -221,6 +239,10 @@
     var rowCount = 0;
     var configColumns = {{ config_list| tojson }};
     var configTypes = {{ config_type_list| tojson }};
+    // the columns whose argument takes None: in a filled row, an empty cell there runs as None.
+    // None can also be given on purpose (typed, or picked from an optional dropdown), which
+    // also counts as filling the row, so a row of only None still runs.
+    var configOptional = {{ (config_optional or []) | tojson }};
     // {column: [limit]}: the instruments' safety limits, through the steps each column is passed to
     var configLimits = {{ (column_limits or {}) | tojson }};
 
@@ -254,6 +276,8 @@
             var value = data && data[column] ? data[column] : '';
             var configType = configTypes[column] || '';
 
+            var optional = configOptional.indexOf(column) !== -1;
+
             if (typeof configType === "string" && (configType.startsWith('Enum:') || configType.startsWith('Literal:'))) {
                 var prefixLen = configType.startsWith('Enum:') ? 5 : 8;
                 var options = configType.substring(prefixLen).split(',');
@@ -262,17 +286,22 @@
                     var selected = (value === opt) ? 'selected' : '';
                     optionsHtml += '<option value="' + opt + '" ' + selected + '>' + opt + '</option>';
                 });
+                if (optional) {
+                    optionsHtml += '<option value="None" class="config-none"' + (value === 'None' ? ' selected' : '') + '>None</option>';
+                }
 
                 cell.innerHTML = '<select class="form-select form-select-sm" name="' +
                     column + '[' + rowCount + ']" onchange="onInputChange(this)">' +
                     optionsHtml + '</select>';
             } else {
-                var placeholder = configTypes[column] || 'value';
+                var placeholder = typeHint(configType);
                 cell.innerHTML = '<input type="text" class="form-control form-control-sm" name="' +
                     column + '[' + rowCount + ']" value="' + value + '" placeholder="' + placeholder +
                     '" oninput="onInputChange(this)" onchange="onInputChange(this)">';
             }
         });
+
+        newRow.querySelectorAll('input[name], select[name]').forEach(markNone);
 
         // Action cell
         var actionCell = newRow.insertCell(-1);
@@ -341,8 +370,14 @@
         }
     }
 
+    // a None given on purpose reads as a value of its own, not as the word typed
+    function markNone(cell) {
+        cell.classList.toggle('config-none', cell.value.trim() === 'None');
+    }
+
     function onInputChange(inputElement) {
         if (inputElement) {
+            markNone(inputElement);
             var row = inputElement.closest('tr');
             checkConfigRow(row, null);
             var inputs = row.querySelectorAll('input, select, textarea');
@@ -575,6 +610,12 @@
     // left, and the run is held back until the table is fixed; the server checks
     // the table again the way the run converts it.
 
+    // A column's type as a placeholder: "int", or "int | float" for a union.
+    function typeHint(type) {
+        var types = (Array.isArray(type) ? type : [type]).filter(function (t) { return t && t !== 'NoneType'; });
+        return types.length ? types.join(' | ') : 'value';
+    }
+
     // Why `value` cannot be read as `type`, or null if it can. A list of types
     // is a union, read as any of them.
     function valueProblem(value, type) {
@@ -621,10 +662,16 @@
         return null;
     }
 
+    // An empty cell runs as None where the argument takes None, and None can be typed into
+    // any cell; the server reads both the same way (task_conditions.accepts_none).
     function cellProblem(cell, rowFilled) {
         if (!rowFilled) return null;
-        if (cell.value.trim() === '') return 'Missing value: a row needs every value to run.';
         var column = cell.name.substring(0, cell.name.indexOf('['));
+        var text = cell.value.trim();
+        if (text === '') {
+            return configOptional.indexOf(column) !== -1 ? null : 'Missing value: this input needs a value to run.';
+        }
+        if (text === 'None') return null;
         return valueProblem(cell.value, configTypes[column]) || limitProblem(cell.value, configLimits[column]);
     }
 

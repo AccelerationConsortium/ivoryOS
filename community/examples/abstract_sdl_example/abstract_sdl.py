@@ -118,7 +118,7 @@ if __name__ == "__main__":
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
     import ivoryos
     # USE CASE 1 - start OS using current module
-    ivoryos.run(__name__, port=8003,)
+    ivoryos.run(__name__)
 
 
 

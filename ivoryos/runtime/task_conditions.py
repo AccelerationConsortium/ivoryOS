@@ -33,8 +33,25 @@ def task_mode(task):
 
 
 def column_label(arg_type, constraints=None):
-    """A config column's type with its unit and range: ``float · mL · 0 to 10``."""
-    return " · ".join(part for part in [type_label(arg_type), *(describe(c) for c in constraints or [])] if part)
+    """A config column's type with its unit and range: ``float · optional · mL · 0 to 10``."""
+    parts = [type_label(arg_type), "optional" if accepts_none(arg_type) else "",
+             *(describe(c) for c in constraints or [])]
+    return " · ".join(part for part in parts if part)
+
+
+def accepts_none(arg_type):
+    """Whether a workflow input takes None: its argument is ``Optional[...]`` or ``X | None``.
+
+    Such an input can be left empty in a config row and runs as None. Any input can still be
+    given None by typing ``None``.
+    """
+    types = arg_type if isinstance(arg_type, (list, tuple)) else [arg_type]
+    return any(str(t) in ("NoneType", "None") for t in types)
+
+
+def optional_inputs(arg_types):
+    """The workflow inputs that can be left empty in a config row (see :func:`accepts_none`)."""
+    return [field for field, arg_type in (arg_types or {}).items() if accepts_none(arg_type)]
 
 
 def text_of(value):
@@ -44,6 +61,11 @@ def text_of(value):
     if isinstance(value, str):
         return value
     return repr(value)
+
+
+def cell_text(value):
+    """A config value as it reads in its table cell: None is written ``None``, so it reads back as None."""
+    return "None" if value is None else text_of(value)
 
 
 
@@ -113,7 +135,9 @@ def config_field_problems(values, fields, arg_types, limits=None):
     problems = {key: "Not an input of this workflow." for key in values if key not in arg_types}
     for field in fields:
         if _blank(values.get(field)):
-            problems[field] = "No value."
+            # an optional input left empty runs as None
+            if not accepts_none(arg_types.get(field)):
+                problems[field] = "No value."
             continue
         try:
             value = convert_config_type({field: values[field]}, arg_types)[field]
@@ -135,7 +159,8 @@ def config_form_problems(form, fields, arg_types, limits=None):
     ``form`` holds the table's cells as ``input[row]`` keys, the way the
     execution page sends them. A row with a value that cannot be converted, or
     one left partly empty, is reported; the runner would otherwise fail the
-    first and leave out the second without a word. Empty rows are ignored.
+    first and leave out the second without a word. Empty rows are ignored, and so is an
+    empty cell of an input that takes None (see :func:`accepts_none`).
     """
     rows = {}
     for key, value in form.items():
@@ -166,7 +191,7 @@ def config_row_problem(values, fields, arg_types, limits=None):
     unknown = [key for key in values if key not in arg_types]
     if unknown:
         return f"'{unknown[0]}' is not an input of this workflow."
-    missing = [field for field in fields if _blank(values.get(field))]
+    missing = [field for field in fields if _blank(values.get(field)) and not accepts_none(arg_types.get(field))]
     if missing:
         names = ", ".join(f"'{field}'" for field in missing)
         return f"no value for {names}."
@@ -218,7 +243,7 @@ def _config_view(task):
     return {
         "fields": columns,
         "types": {field: column_label(arg_types.get(field), limits.get(field)) for field in fields},
-        "rows": [[text_of(row.get(field)) for field in columns] for row in rows],
+        "rows": [[cell_text(row[field]) if field in row else "" for field in columns] for row in rows],
     }
 
 

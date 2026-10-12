@@ -18,7 +18,8 @@ import threading
 from datetime import datetime
 
 from ivoryos.parsers.type_conversions import convert_config_type
-from ivoryos.runtime.task_conditions import blank_row, column_label, config_field_problems, config_row_problem, text_of
+from ivoryos.runtime.task_conditions import (accepts_none, blank_row, cell_text, column_label, config_field_problems,
+                                             config_row_problem)
 
 PENDING = "pending"
 RUNNING = "running"
@@ -71,7 +72,7 @@ class LiveConfig:
         self._last_id = 0
         for row in rows or []:
             self.entries.append(self._new_entry(
-                {key: text_of(value) for key, value in row.items()},
+                {key: cell_text(value) for key, value in row.items()},
                 values=row if converted else None,
             ))
 
@@ -128,8 +129,11 @@ class LiveConfig:
                 if entry["values"] is None:
                     problem = config_row_problem(entry["text"], self.fields, self.arg_types, self.limits)
                     if problem is None:
+                        # an optional input the entry leaves out runs as None, like one left empty
+                        text = {**{field: "" for field in self.fields if accepts_none(self.arg_types.get(field))},
+                                **entry["text"]}
                         try:
-                            entry["values"] = convert_config_type(dict(entry["text"]), self.arg_types)
+                            entry["values"] = convert_config_type(text, self.arg_types)
                         except Exception as e:
                             problem = str(e)
                     if problem:
