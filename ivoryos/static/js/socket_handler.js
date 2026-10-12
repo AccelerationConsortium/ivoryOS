@@ -236,21 +236,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var PHASE_NAMES = { prep: 'Prep', script: 'Experiment', cleanup: 'Clean up' };
 
-    // Each phase counts as its steps, the experiment phase once per iteration, so the bar moves
-    // through prep and cleanup too, and follows a config table that grows or shrinks while it
-    // runs. A step counts once it is done: the bar moves between steps.
+    // The step running now out of every step in the run, plus one: the first step already
+    // shows progress, and only the end of the run fills the bar. Each phase counts as its steps,
+    // the experiment phase once per iteration, so the bar moves through prep and cleanup too,
+    // and follows a config table that grows or shrinks while it runs.
     function runPercent(p) {
         var steps = p.steps || {};
         var prep = steps.prep || 0, main = steps.script || 0, cleanup = steps.cleanup || 0;
         var iterations = p.iterations || 0;
         var total = prep + main * iterations + cleanup;
         if (!total) return 0;
-        var current = Math.max((p.step || 0) - 1, 0);
-        var done = 0;
-        if (p.phase === 'prep') done = current;
-        else if (p.phase === 'script') done = prep + main * Math.max((p.iteration || 1) - 1, 0) + current;
-        else if (p.phase === 'cleanup') done = prep + main * iterations + current;
-        return Math.min(100, 100 * done / total);
+        var step = p.step || 0;
+        var position = 0;
+        if (p.phase === 'prep') position = step;
+        else if (p.phase === 'script') position = prep + main * Math.max((p.iteration || 1) - 1, 0) + step;
+        else if (p.phase === 'cleanup') position = prep + main * iterations + step;
+        return Math.min(100, 100 * position / (total + 1));
     }
     window.runPercent = runPercent;
 

@@ -28,7 +28,8 @@ The script phase is the part that repeats. Prep and cleanup stay once-per-run.
 
 The progress bar moves between steps, through every phase. Prep and cleanup each count as
 their number of steps, and the script phase counts as its steps times the number of
-iterations. The label beside it says where the run is: `Prep`, `Iteration: 3/12`, or
+iterations. The step running now counts, out of every step plus one, so the bar shows
+progress from the first step and only fills when the run ends. The label beside it says where the run is: `Prep`, `Iteration: 3/12`, or
 `Clean up`, while the workflow beside it marks the step running. When the run ends, the
 label says how: finished, stopped, or ended with an error.
 
