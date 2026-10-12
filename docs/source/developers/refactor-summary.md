@@ -19,6 +19,11 @@ Legacy HTTP polling through `GET /status` and `GET /queue` has been replaced wit
 
 - Real-time events such as `busy_status`, `queue_status`, and `pause_status` are managed centrally in `ivoryos/socket_handlers.py`.
 - Frontend synchronization is handled through `window.platformState` in `socket_handler.js`, reducing server overhead and UI latency.
+- A run's progress is one `progress` event carrying the whole picture: the task, its
+  phase, step, and iterations, and for a parameter table the rows that just started or
+  finished (`ivoryos/runtime/run_progress.py`). The page computes the percentage, and the
+  running table's editor follows the same event instead of polling. A client that connects
+  is sent the current snapshot.
 
 ## Codebase cleanup
 

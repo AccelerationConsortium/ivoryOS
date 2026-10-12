@@ -13,8 +13,11 @@
   <div class="d-flex justify-content-between align-items-center flex-shrink-0">
     <h5>Progress：<span id="iteration-display" class="ms-2 fs-6 text-muted"></span><span id="batch-display" class="ms-2 fs-6 text-secondary"></span></h5>
     <div class="d-flex gap-2 ms-auto">
-      <button id="view-current-config" class="btn border-0 text-secondary" style="background-color: #e9ecef;" title="View current run">
-        <i class="bi bi-info-circle"></i>
+      {# a pencil while the running task has a config table to edit; the progress event keeps it right (run_panel.js) #}
+      <button id="view-current-config" class="btn border-0 {{ 'text-primary' if running_config_editable else 'text-secondary' }}"
+              style="background-color: #e9ecef;" data-editable="{{ 'true' if running_config_editable else 'false' }}"
+              title="{{ "View or edit the current run's table" if running_config_editable else 'View current run' }}">
+        <i class="bi {{ 'bi-pencil-square' if running_config_editable else 'bi-info-circle' }}"></i>
       </button>
       <button id="pause-resume" class="btn btn-info text-white">
         {% if pause_status %}

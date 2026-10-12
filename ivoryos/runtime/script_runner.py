@@ -1,5 +1,6 @@
 import threading
 
+from ivoryos.runtime.run_progress import RunProgress
 from ivoryos.runtime.runner_runtime import global_state
 from ivoryos.runtime.script_runner_queue import ScriptRunnerQueueMixin
 from ivoryos.runtime.script_runner_steps import ScriptRunnerStepMixin
@@ -25,9 +26,8 @@ class ScriptRunner(ScriptRunnerQueueMixin, ScriptRunnerWorkflowMixin, ScriptRunn
         self.paused = False
         self.queue_paused = False
         self.current_app = None
-        self.last_progress = 0
-        self.last_iteration = None
-        self.last_total = None
+        # where the running task is, sent to the pages on every move (see run_progress)
+        self.progress = RunProgress()
         self.last_execution_section = None
         self.current_batch = []
         self.waiting_for_input = False

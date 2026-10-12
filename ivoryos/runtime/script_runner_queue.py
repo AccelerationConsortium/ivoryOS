@@ -215,6 +215,8 @@ class ScriptRunnerQueueMixin:
         changes, notes = live.edit(rows)
         if changes:
             self.record_event(TABLE_EDITED, "\n".join(describe_change(change) for change in changes), changes=changes)
+            # rows added or removed move the total on every page's progress bar
+            self._emit_progress()
         if self.logger:
             for change in changes:
                 self.logger.info(f"Config table edited: {describe_change(change)}")

@@ -1,7 +1,7 @@
 import os
 import uuid
 from flask import current_app
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit
 from ivoryos.runtime import run_events
 from ivoryos.runtime.script_runner import ScriptRunner
 
@@ -81,21 +81,16 @@ def handle_connect():
     runner._emit_queue_status()
     socketio.emit('pause_status', {'paused': runner.paused or runner.queue_paused})
     
-    # Fetch log messages from local file
+    # the last lines of the log, to this page only: every other open page already shows
+    # them, and would append them again
     filename = os.path.join(current_app.config["OUTPUT_FOLDER"], current_app.config["LOGGERS_PATH"])
     with open(filename, 'r') as log_file:
         log_history = log_file.readlines()
     for message in log_history[-10:]:
-        socketio.emit('log', {'message': message})
+        emit('log', {'message': message})
 
-    # Emit last known progress and last known execution section
-    if 0 < runner.last_progress < 100:
-        payload = {'progress': runner.last_progress}
-        if getattr(runner, 'last_iteration', None) is not None:
-            payload['iteration'] = runner.last_iteration
-        if getattr(runner, 'last_total', None) is not None:
-            payload['total'] = runner.last_total
-        socketio.emit('progress', payload)
-        
-        if runner.last_execution_section:
-            socketio.emit('execution', {'section': runner.last_execution_section}) 
+    # where the run is, to this page only: a page that connects, reconnects or is reloaded
+    # mid-run is shown what one that watched from the start shows (see run_progress)
+    emit('progress', runner.progress.snapshot())
+    if runner.progress.state == "running" and runner.last_execution_section:
+        emit('execution', {'section': runner.last_execution_section}) 
