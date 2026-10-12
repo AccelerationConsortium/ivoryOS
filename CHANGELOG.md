@@ -1,4 +1,15 @@
 ﻿# Changelog
+## 1.7.1 (October 12th, 2026)
+- !220 **[New]** tag each run with the user who submitted it, shown in the data panel and queue
+- !219 **[Bug]** resolve config table editors display, with dropdowns for Enum and Literal inputs
+- !218 **[QoL]** update run progress and config table editing over socket
+- !217 **[QoL]** allow optional inputs to be empty or None in the config table
+- !216 **[Bug]** resolve draft lost on server restart
+- !215 **[Bug]** resolve Enum editing issue - number value can't edit
+- !214 **[QoL]** collapse instruments in the toolbox by default
+- !213 **[Bug]** resolve workflow changed by other sessions
+- !187 **[QoL]** add undo/redo while editing the workflow
+
 ## 1.7.0 (October 7th, 2026)
 - !212 **[New]** add safety guard system to enforce instrument limits with config file
 - !211 **[QoL]** resolve designer toolbox UX - remove accordion
