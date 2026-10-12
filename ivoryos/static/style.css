@@ -100,6 +100,23 @@ pre {
     overflow-y: scroll;
 }
 
+/* the designer's sidebar: a column as tall as the canvas whose toolbox scrolls on its own,
+   under a tools row that stays put (see .toolbox-groups) */
+.sidebar-column {
+    display: flex;
+    flex-direction: column;
+    height: 90vh;
+    overflow: hidden;
+}
+
+.sidebar-column .instrument-panel,
+.sidebar-column .toolbox {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
 label {
     display: block
 }
@@ -245,6 +262,8 @@ hr.vertical {
 }
 
 .toolbox-chevron {
+    display: inline-block;
+    line-height: 1; /* a square box: the folded chevron's rotation then stays inside the row */
     font-size: 0.75rem;
     transition: transform 0.15s;
 }
@@ -384,6 +403,16 @@ hr.vertical {
 
 .toolbox-action-body .form-group .consolidate-wrapper {
     grid-column: 2;
+}
+
+/* a field's note sits under its box, in the field column, so it never shifts the grid: the
+   safety limit of an instrument argument, or what a flow-control field takes */
+.toolbox-action-body .form-group .field-help,
+.toolbox-action-body .form-group .field-limit {
+    grid-column: 2;
+    margin-top: -0.2rem;
+    font-size: 0.75rem;
+    line-height: 1.25;
 }
 
 /* the step's options, one line each */
@@ -741,4 +770,65 @@ hr.vertical {
    while the row buttons stayed flush right. */
 ul.reorder {
     padding-left: 0.4rem;
+}
+
+/* the toolbox's tools row: one control above the groups, which scroll on their own below it so
+   the scrollbar starts under the row. The search box across every group, then the auto fill (#)
+   and fold-all toggles, which share the box's border and are lit while on. */
+.toolbox-tools {
+    flex: none;
+    padding: 0 0 0.5rem;
+}
+
+/* in a narrow sidebar the search box gives way; the toggles never wrap to a second line */
+.toolbox-tools .input-group {
+    flex-wrap: nowrap;
+}
+
+.toolbox-groups {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden; /* never a sideways bar, whatever a label or form measures */
+    scrollbar-width: none; /* scrolls by wheel and touch, with no bar taking width or attention */
+}
+
+.toolbox-groups::-webkit-scrollbar {
+    display: none; /* the same for Chrome and Safari builds without scrollbar-width */
+}
+
+.toolbox-tools .toolbox-search {
+    padding-left: 1.9rem;
+    background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%236c757d'%3e%3cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z'/%3e%3c/svg%3e") no-repeat 0.65rem center / 0.8rem;
+    background-color: var(--bs-body-bg);
+}
+
+.toolbox-tools .toolbox-tool-toggle {
+    flex: none;
+    padding: 0 0.5rem;
+    border-color: var(--bs-border-color);
+    color: var(--brand-primary);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.toolbox-tools .toolbox-tool-toggle:hover {
+    background-color: var(--design-control-collapsed-bg);
+}
+
+.toolbox-tools .toolbox-tool-toggle.active {
+    border-color: var(--brand-primary);
+    background-color: var(--brand-primary);
+    color: #ffffff;
+}
+
+/* how many actions a group holds, so a folded group still says what is inside */
+.toolbox-divider .toolbox-count {
+    font-weight: 400;
+    font-size: 0.75rem;
+    opacity: 0.75;
+}
+
+.toolbox-divider .toolbox-count:empty {
+    display: none;
 }

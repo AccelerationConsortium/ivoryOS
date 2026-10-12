@@ -921,7 +921,7 @@ def create_form_from_action(action: dict, script=None, design=True):
             elif instrument == "input":
                 placeholder_text = "Enter prompt message"
             else:
-                placeholder_text = "Enter statement"
+                placeholder_text = "Enter value"
             field_kwargs["validators"] = [InputRequired()]
 
 
@@ -945,7 +945,7 @@ def create_form_from_action(action: dict, script=None, design=True):
     if instrument in ["math_variable", "variable", "input"]:
         # Add variable type dropdown
         type_field = SelectField(
-            'Select Value Type',
+            'Type',
             choices=VARIABLE_TYPE_CHOICES,
             default=arg_types.get("statement", "float" if instrument == "math_variable" else "str")
         )
@@ -1019,11 +1019,13 @@ def create_builtin_form(logic_type, script):
         'pause': 'Human Intervention Message',
         'comment': 'Enter comment to log',
         'input': 'Enter prompt message',
+        'variable': 'Enter value',
         'math': 'Enter math expression, e.g. #x + 5 * (#y - 2)'
     }.get(logic_type, 'Enter statement')
+    # short notes under the field: the toolbox column is narrow (see action_form.html)
     description_text = {
-        'variable': 'Your variable can be numbers, boolean (True or False) or text ("text")',
-        'math': "Enter a math expression using #variables, numbers, or returned variables",
+        'variable': 'A number, True/False, or "text"',
+        'math': "Numbers and #variables",
     }.get(logic_type, '')
     field_class = {
         'wait': VariableOrFloatField,
@@ -1040,10 +1042,10 @@ def create_builtin_form(logic_type, script):
     setattr(BuiltinFunctionForm, "statement", field)
     if logic_type == 'variable':
         variable_field = VariableOrStringField(label=f'variable', validators=[InputRequired()],
-                                     description="Your variable name cannot include space",
-                                     render_kw=render_kwargs, script=script)
+                                     description="No spaces",
+                                     render_kw={"placeholder": "Variable name"}, script=script)
         type_field = SelectField(
-            'Select Input Type',
+            'Type',
             choices=VARIABLE_TYPE_CHOICES,
             default='str',  # Optional default value
             # coerce = lambda x: None if x == "None" else x
@@ -1052,10 +1054,10 @@ def create_builtin_form(logic_type, script):
         setattr(BuiltinFunctionForm, "variable_type", type_field)
     elif logic_type == 'input':
         variable_field = VariableOrStringField(label=f'variable', validators=[InputRequired()],
-                                     description="Variable to save user input",
+                                     description="Saves the answer",
                                      render_kw={"placeholder": "Result variable name"}, script=script)
         type_field = SelectField(
-            'Select Value Type',
+            'Type',
             choices=VARIABLE_TYPE_CHOICES,
             default='str',
         )
@@ -1065,12 +1067,12 @@ def create_builtin_form(logic_type, script):
         math_variable_field = VariableOrStringField(
             label="save_to",
             validators=[InputRequired()],
-            description="Variable name to save the result into",
+            description="Saves the result",
             render_kw={"placeholder": "Result variable name"},
             script=script
         )
         type_field = SelectField(
-            'Select Value Type',
+            'Type',
             choices=VARIABLE_TYPE_CHOICES,
             default='float',
         )

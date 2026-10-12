@@ -154,6 +154,8 @@ function loadToolboxActions(container) {
             container.innerHTML = data.html || "";
             container.dataset.loaded = "true";
             initializeDragHandlers();
+            updateToolboxCount(container);
+            applyToolboxSearch();
         })
         .catch(err => {
             container.dataset.loaded = "";
@@ -162,6 +164,7 @@ function loadToolboxActions(container) {
 }
 
 function initializeToolbox() {
+    applyToolboxFolds();
     document.querySelectorAll(".toolbox-actions").forEach(loadToolboxActions);
 }
 
@@ -176,11 +179,116 @@ function setToolboxOpen(button, open) {
     document.getElementById(button.getAttribute("aria-controls")).hidden = !open;
 }
 
+// How many actions a group holds, on its divider, so a folded group still says what is inside
+function updateToolboxCount(container) {
+    const group = container.closest(".toolbox-group");
+    const count = group ? group.querySelector(".toolbox-count") : null;
+    if (count) {
+        const n = container.querySelectorAll(".toolbox-action").length;
+        count.textContent = n ? String(n) : "";
+    }
+}
+
+// Which groups the user folded is kept per deck in this browser, so the toolbox opens the way
+// it was left. Groups never touched keep the page's default (see instruments_panel.html).
+function toolboxFoldKey() {
+    const toolbox = document.getElementById("toolbox");
+    return "ivoryos.toolboxFolds:" + ((toolbox && toolbox.dataset.deck) || "");
+}
+
+function loadToolboxFolds() {
+    try {
+        return JSON.parse(localStorage.getItem(toolboxFoldKey())) || {};
+    } catch (err) {
+        return {};
+    }
+}
+
+function saveToolboxFold(group, open) {
+    const folds = loadToolboxFolds();
+    folds[group] = open;
+    try {
+        localStorage.setItem(toolboxFoldKey(), JSON.stringify(folds));
+    } catch (err) {
+        // storage off (private window): the fold still holds until the page reloads
+    }
+}
+
+function applyToolboxFolds() {
+    const folds = loadToolboxFolds();
+    document.querySelectorAll(".toolbox-divider").forEach(divider => {
+        if (divider.dataset.group in folds) setToolboxOpen(divider, folds[divider.dataset.group]);
+    });
+    updateFoldAllButton();
+}
+
+// one toggle folds every group; it lights up once every group is folded, and then unfolds them all
+function updateFoldAllButton() {
+    const button = document.querySelector(".toolbox-fold-all");
+    if (!button) return;
+    const anyOpen = Array.from(document.querySelectorAll(".toolbox-divider"))
+        .some(divider => divider.getAttribute("aria-expanded") === "true");
+    button.setAttribute("aria-pressed", anyOpen ? "false" : "true");
+    button.classList.toggle("active", !anyOpen);
+}
+
+function toolboxSearchTerm() {
+    const input = document.querySelector(".toolbox-search");
+    return input ? input.value.trim().toLowerCase() : "";
+}
+
+// One search box for the whole toolbox: while typing, only the matching actions stay, every
+// group that has one shows open and the others hide; clearing it puts the folds back as they were.
+function applyToolboxSearch() {
+    const term = toolboxSearchTerm();
+    document.querySelectorAll(".toolbox-group").forEach(group => {
+        const divider = group.querySelector(".toolbox-divider");
+        let matches = 0;
+        group.querySelectorAll(".toolbox-action").forEach(action => {
+            const toggle = action.querySelector(".toolbox-action-toggle");
+            const text = (toggle.textContent + " " + (toggle.dataset.action || "")).toLowerCase();
+            const hit = !term || text.includes(term);
+            action.hidden = !hit;
+            if (hit) matches++;
+        });
+        if (term) {
+            if (!("openBeforeSearch" in divider.dataset)) {
+                divider.dataset.openBeforeSearch = divider.getAttribute("aria-expanded");
+            }
+            group.hidden = matches === 0;
+            setToolboxOpen(divider, matches > 0);
+        } else {
+            group.hidden = false;
+            if ("openBeforeSearch" in divider.dataset) {
+                setToolboxOpen(divider, divider.dataset.openBeforeSearch === "true");
+                delete divider.dataset.openBeforeSearch;
+            }
+        }
+    });
+}
+
+document.addEventListener("input", function (event) {
+    if (event.target.classList && event.target.classList.contains("toolbox-search")) applyToolboxSearch();
+});
+
 document.addEventListener("click", function (event) {
+    const foldAll = event.target.closest(".toolbox-fold-all");
+    if (foldAll) {
+        const open = foldAll.getAttribute("aria-pressed") === "true";
+        document.querySelectorAll(".toolbox-divider").forEach(divider => {
+            setToolboxOpen(divider, open);
+            saveToolboxFold(divider.dataset.group, open);
+        });
+        updateFoldAllButton();
+        return;
+    }
     const divider = event.target.closest(".toolbox-divider");
     if (divider) {
         const open = divider.getAttribute("aria-expanded") !== "true";
         setToolboxOpen(divider, open);
+        // a search opens groups on its own; only a fold made outside one is worth remembering
+        if (!toolboxSearchTerm()) saveToolboxFold(divider.dataset.group, open);
+        updateFoldAllButton();
         // a group whose actions failed to load tries again when opened
         const container = document.getElementById(divider.getAttribute("aria-controls")).querySelector(".toolbox-actions");
         if (open && container && !container.dataset.loaded) loadToolboxActions(container);
@@ -488,30 +596,6 @@ function addDynamicArg(btn) {
 document.addEventListener("DOMContentLoaded", function () {
     getCodePreview();
     initializeToolbox();
-});
-
-// ============================================================================
-// SEARCH BAR DELEGATION
-// ============================================================================
-
-// Each group with many actions has its own search box, which filters only that group
-document.addEventListener('input', function (e) {
-    if (e.target && e.target.classList.contains('action-search')) {
-        const searchTerm = e.target.value.toLowerCase();
-        const actions = e.target.closest('.toolbox-actions').querySelectorAll('.toolbox-action');
-
-        actions.forEach(action => {
-            const button = action.querySelector('.toolbox-action-toggle');
-            if (button) {
-                const name = button.innerText.toLowerCase();
-                if (name.includes(searchTerm)) {
-                    action.style.display = '';
-                } else {
-                    action.style.display = 'none';
-                }
-            }
-        });
-    }
 });
 
 // ============================================================================

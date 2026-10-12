@@ -33,6 +33,28 @@ design.register_blueprint(agent)
 global_state = GlobalState()
 
 
+# How many instrument methods the toolbox shows unfolded when the designer opens. Instruments
+# open from the top while their methods fit; the rest start folded, so a deck with many
+# instruments is not one long list. The browser remembers what the user folds after that
+# (see action_handlers.js).
+TOOLBOX_OPEN_BUDGET = 12
+
+
+def open_toolbox_groups(instruments, interface_schema, budget=TOOLBOX_OPEN_BUDGET):
+    """
+    Return the instruments whose toolbox group starts open: from the top, while their method
+    count fits the budget. The first instrument always opens.
+    """
+    interface_schema = interface_schema or {}
+    open_groups, shown = [], 0
+    for instrument in instruments:
+        shown += len(interface_schema.get(instrument) or {})
+        if open_groups and shown > budget:
+            break
+        open_groups.append(instrument)
+    return open_groups
+
+
 # ---- Main Design Routes ----
 
 
@@ -112,6 +134,7 @@ def experiment_builder():
 
     return render_template('experiment_builder.html', off_line=off_line, history=deck_list,
                            script=script, defined_variables=deck_variables, buttons_dict=design_buttons,
+                           open_groups=open_toolbox_groups(deck_variables, global_state.interface_schema if deck else pseudo_deck),
                            local_variables=global_state.defined_variables, block_variables=global_state.building_blocks,
                            design_agent_enabled=current_app.config.get("ENABLE_AGENT"))
 
@@ -265,6 +288,7 @@ def update_ui_state():
         deck_variables.remove("deck_name") if len(deck_variables) > 0 else deck_variables
         html = render_template("components/sidebar.html", history=deck_list, script=script,
                                defined_variables=deck_variables, local_variables = global_state.defined_variables,
+                               open_groups=open_toolbox_groups(deck_variables, pseudo_deck),
                                block_variables=global_state.building_blocks, design_agent_enabled=current_app.config.get("ENABLE_AGENT"))
         return jsonify({"html": html})
     return jsonify({"error": "Invalid request"}), 400
@@ -618,6 +642,7 @@ def get_operation_sidebar(instrument: str = ''):
         # edit_action_info = session.get("edit_action")
         html = render_template("components/sidebar.html", off_line=off_line, history=deck_list,
                                defined_variables=deck_variables,
+                               open_groups=open_toolbox_groups(deck_variables, pseudo_deck if off_line else global_state.interface_schema),
                                local_variables=global_state.defined_variables,
                                block_variables=global_state.building_blocks,
                                script=script, 

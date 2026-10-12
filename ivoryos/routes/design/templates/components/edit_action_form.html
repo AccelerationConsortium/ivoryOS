@@ -63,8 +63,13 @@
                                 {{ field(class="form-control", list="step_variables", oninput="updateConsolidateVisibility(this)") }}
                             {% endif %}
                             {% if field.description and field.type not in ['BooleanField', 'HiddenField'] %}
-                                {# the field's safety limit: its unit and allowed range #}
-                                <span class="input-group-text small text-muted" title="Safety limit: {{ field.description }}">{{ field.description }}</span>
+                                {% if 'builtin_name' in forms %}
+                                    {# flow control: what the field takes, on its own line under the field #}
+                                    <div class="form-text field-help w-100">{{ field.description }}</div>
+                                {% else %}
+                                    {# an instrument argument: its safety limit, unit and allowed range #}
+                                    <span class="input-group-text small text-muted field-limit" title="Safety limit: {{ field.description }}">{{ field.description }}</span>
+                                {% endif %}
                             {% endif %}
                         </div>
                         {% if forms.arg_types and forms.arg_types.get(field.name) == 'list' %}

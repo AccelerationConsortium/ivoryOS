@@ -2,9 +2,6 @@
    Ids are numbered within the group, so two instruments with a method of the same name
    can be open side by side. #}
 {% set panel = 'actions-' ~ (instrument | replace('.', '-')) %}
-{% if forms | length > 10 %}
-    <input type="text" class="form-control form-control-sm my-2 action-search" placeholder="Search actions...">
-{% endif %}
 <div class="toolbox-action-list" id="{{ panel }}">
     {% for name, form in forms.items() %}
         {% set action_id = panel ~ '-' ~ loop.index %}
