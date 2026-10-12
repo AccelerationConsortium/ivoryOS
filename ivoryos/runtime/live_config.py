@@ -199,12 +199,44 @@ class LiveConfig:
         return lines
 
     def close(self):
-        """Mark entries still running as failed; only an error leaves any when the run ends."""
+        """Mark entries still running as failed; only an error leaves any when the run ends.
+        Returns the entries it marked."""
+        closed = []
         with self.lock:
             for entry in self.entries:
                 if entry["status"] == RUNNING:
                     entry["status"] = FAILED
                     entry["pending_edits"] = {}
+                    closed.append(entry)
+        return closed
+
+    # --- the progress bar's side --------------------------------------------
+    # what ``RunProgress`` sends the pages, so an open editor follows the run without asking
+
+    def progress(self):
+        """How far the table has got: ``{counts, running, waiting, total}``, ``running`` being
+        the row numbers of the running entries."""
+        with self.lock:
+            counts = {status: 0 for status in STATUSES}
+            running = []
+            for number, entry in self._numbered():
+                counts[entry["status"]] += 1
+                if entry["status"] == RUNNING:
+                    running.append(number)
+            return {"counts": counts, "running": running, "waiting": counts[PENDING], "total": len(self.entries)}
+
+    def row_states(self, entries):
+        """Each entry's place and status as the editor shows it, with the values it holds now:
+        for one that finished, the values it ran with."""
+        with self.lock:
+            numbers = {id(entry): number for number, entry in self._numbered()}
+            return [{"id": entry["id"], "number": numbers.get(id(entry)), "status": entry["status"],
+                     "reason": entry["reason"], "invalid": entry["invalid"], "values": self._shown(entry)}
+                    for entry in entries]
+
+    def final_state(self):
+        """The table as the run left it, every row with its status, once nothing runs any more."""
+        return {**self.progress(), "changed": self.row_states(list(self.entries))}
 
     # --- the editor's side -------------------------------------------------
 

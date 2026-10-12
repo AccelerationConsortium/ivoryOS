@@ -10,6 +10,7 @@ import pandas as pd
 from ivoryos.runtime.control_flow import validate_and_nest_control_flow
 from ivoryos.runtime.live_config import DONE, FAILED, STOPPED, LiveConfig
 from ivoryos.runtime.run_events import EARLY_STOP, ROWS_NOT_RUN, outcome as run_outcome
+from ivoryos.runtime.run_progress import FAILED as RUN_FAILED, state_of
 from ivoryos.runtime.safety import guard
 from ivoryos.runtime.runner_runtime import ensure_deck, global_state, pause
 from ivoryos.models import WorkflowRun, WorkflowPhase, db
@@ -83,7 +84,12 @@ class ScriptRunnerWorkflowMixin:
 
         # _func_str = ScriptRenderer(script).compile()
         # step_list_dict: dict = ScriptRenderer(script).convert_to_lines(_func_str)
-        self._emit_progress(1)
+        if repeat_count:
+            planned = int(repeat_count)
+        else:
+            planned = math.ceil(len(config) / max(int(batch_size or 1), 1)) if config else None
+        self.progress.start((self.current_task or {}).get("uid"), run_name, script, iterations=planned)
+        self._emit_progress()
         filename = f"{run_name}_{datetime.now().strftime('%Y-%m-%d %H-%M')}.csv"
         error_flag = False
         # create a new run entry in the database
@@ -100,7 +106,8 @@ class ScriptRunnerWorkflowMixin:
             except Exception as e:
                 if self.logger:
                     self.logger.error(f"Error during optimizer initialization: {e.__str__()}")
-                self._emit_progress(100)
+                self.progress.finish(RUN_FAILED)
+                self._emit_progress()
                 if self.lock.locked():
                     self.lock.release()
                 return None
@@ -146,6 +153,10 @@ class ScriptRunnerWorkflowMixin:
             try:
             # if True:
                 global_state.runner_status = {"id":run_id, "type": "workflow"}
+                if config and not repeat_count:
+                    # open before prep runs, so a row can be fixed or changed while it does
+                    _, config_types = ScriptEditor(script).config("script")
+                    self._open_live_config(config, config_types, script, compiled, batch_size)
                 # Run "prep" section once
                 asyncio.run(self._run_actions(script, section_name="prep", run_id=run_id))
                 _, arg_type = ScriptEditor(script).config("script")
@@ -178,7 +189,16 @@ class ScriptRunnerWorkflowMixin:
                     self.socketio.emit('error', {'message': error_msg})
                 error_flag = True
             finally:
-                self._emit_progress(100)
+                live = self.live_config
+                if live is not None:
+                    # the run ended before its table did, e.g. on an error in prep
+                    self.live_config = None
+                    live.close()
+                    self.progress.close_table(live.final_state())
+                # taken before the next task starts, which resets both
+                status = run_outcome(error_flag, self._cut_short, self.stop_current_event.is_set())
+                self.progress.finish(state_of(status))
+                self._emit_progress()
                 if self.lock.locked():
                     self.lock.release()
                 self._emit_busy_status()
@@ -197,8 +217,6 @@ class ScriptRunnerWorkflowMixin:
                         pass
                     run_file_handler.close()
 
-                # taken before the next task starts, which resets both
-                status = run_outcome(error_flag, self._cut_short, self.stop_current_event.is_set())
                 with self._events_lock:
                     # nothing recorded after this point belongs to this run
                     events, self.run_events, self.run_id = self.run_events, None, None
@@ -240,6 +258,8 @@ class ScriptRunnerWorkflowMixin:
             if self.logger:
                 self.logger.info("Proceeding to cleanup after stop.")
             self.stop_current_event.clear()
+        self.progress.enter_phase(section_name)
+        self._emit_progress()
 
         phase = WorkflowPhase(
             run_id=run_id,
@@ -266,13 +286,11 @@ class ScriptRunnerWorkflowMixin:
         # be edited while the run goes on; see ivoryos.runtime.live_config. Every
         # entry the run reaches becomes an iteration in table order, a failed one
         # included, so the iterations are the record of the table as it ran.
-        live = LiveConfig(config, arg_type, converted=compiled, limits=guard.column_limits(script))
+        # The table is normally opened when the run starts (see _run_with_stop_check).
+        live = self.live_config or self._open_live_config(config, arg_type, script, compiled, batch_size)
         batch_size = int(batch_size)
         iteration = 0
-        self.live_config = live
-        self._emit_live_config(True)
         try:
-            self._report_unrunnable_rows(live.problems(), ahead=True)
             while True:
                 if self.stop_pending_event.is_set():
                     waiting = live.waiting()
@@ -288,15 +306,18 @@ class ScriptRunnerWorkflowMixin:
                     iteration += 1
                     self._record_failed_row(run_id, iteration, entry)
                 self._report_unrunnable_rows([(number, entry["reason"]) for number, entry in failed])
+                failed_entries = [entry for _, entry in failed]
                 if not batch:
+                    if failed_entries:
+                        self._emit_progress(changed=live.row_states(failed_entries))
                     break
                 kwargs_list = [entry["values"] for entry in batch]
                 iteration += 1
                 total = iteration + math.ceil(live.waiting() / batch_size)
                 if self.logger:
                     self.logger.info(f'Executing {iteration} of {total} with kwargs = {live.inputs(batch)}')
-                progress = (iteration * 100 / total) - 0.1
-                self._emit_progress(progress, iteration=iteration, total=total)
+                self.progress.start_iteration(iteration)
+                self._emit_progress(changed=live.row_states([*failed_entries, *batch]))
 
                 phase = WorkflowPhase(
                     run_id=run_id,
@@ -333,6 +354,8 @@ class ScriptRunnerWorkflowMixin:
                 for line in live.finish_batch(batch, stopped=self.steps_cut_off):
                     if self.logger:
                         self.logger.warning(line)
+                # finished as soon as its steps are, not when the next row starts
+                self._emit_progress(changed=live.row_states(batch))
 
                 # save results
             # if not script.python_script and any(output_list):
@@ -342,8 +365,10 @@ class ScriptRunnerWorkflowMixin:
             #         self._save_results_last_row(filename, arg_type, return_list, output_list, output_path)
         finally:
             self.live_config = None
-            self._emit_live_config(False)
             live.close()
+            # every row as it ended, for the editor to show before it locks
+            self.progress.close_table(live.final_state())
+            self._emit_progress()
             left = live.remaining()
             if left:
                 # rows the run never reached have no iteration; this is their only record
@@ -351,6 +376,17 @@ class ScriptRunnerWorkflowMixin:
                                   rows=sanitize_for_json(left))
 
         return output_list
+
+    def _open_live_config(self, config, arg_types, script, compiled, batch_size):
+        """Put a config run's table where pages can see and edit it. Done as the run starts,
+        before prep, so a row can be fixed or changed while prep runs."""
+        live = LiveConfig(config, arg_types, converted=compiled, limits=guard.column_limits(script))
+        self.live_config = live
+        self.progress.follow_table(live, batch_size)
+        self._emit_progress()
+        # told now, while there is still time to fix them
+        self._report_unrunnable_rows(live.problems(), ahead=True)
+        return live
 
     def _record_failed_row(self, run_id, iteration, entry):
         """Keep a row whose values cannot run as a failed iteration in its place,
@@ -373,11 +409,6 @@ class ScriptRunnerWorkflowMixin:
             db.session.commit()
         except Exception:
             db.session.rollback()
-
-    def _emit_live_config(self, editable):
-        """Tell open pages whether the running task has a config table they can edit."""
-        if self.socketio:
-            self.socketio.emit('live_config', {'editable': editable})
 
     def _report_unrunnable_rows(self, rows, ahead=False):
         """Tell the user which config rows cannot run, and why.
@@ -453,8 +484,8 @@ class ScriptRunnerWorkflowMixin:
 
             if self.logger:
                 self.logger.info(f'Executing {run_name} experiment: {i_progress + 1}/{int(repeat_count)}')
-            progress = (i_progress + 1) * 100 / int(repeat_count) - 0.1
-            self._emit_progress(progress, iteration=i_progress + 1, total=int(repeat_count))
+            self.progress.start_iteration(i_progress + 1)
+            self._emit_progress()
 
             # Optimizer for UI
             if optimizer:
@@ -563,20 +594,11 @@ class ScriptRunnerWorkflowMixin:
     #     if self.logger:
     #         self.logger.info(f'Append to results saved to {file_path}')
 
-    def _emit_progress(self, progress, **kwargs):
-        self.last_progress = progress
-        if 'iteration' in kwargs:
-            self.last_iteration = kwargs['iteration']
-        if 'total' in kwargs:
-            self.last_total = kwargs['total']
-            
-        if progress == 100 or progress == 0:
-            self.last_iteration = None
-            self.last_total = None
-            
-        payload = {'progress': progress}
-        payload.update(kwargs)
-        self.socketio.emit('progress', payload)
+    def _emit_progress(self, changed=None):
+        """Send every page where the run is now (see ivoryos.runtime.run_progress); ``changed``
+        are config rows whose status just changed, for an open table editor."""
+        if self.socketio:
+            self.socketio.emit('progress', self.progress.snapshot(changed))
 
     def safe_sleep(self, duration: float):
         interval = 1  # check every 1 second

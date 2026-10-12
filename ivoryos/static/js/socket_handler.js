@@ -229,39 +229,71 @@ document.addEventListener("DOMContentLoaded", function () {
         updateGlobalStatus();
     });
 
-    socket.on('progress', function (data) {
-        var progress = data.progress;
-        console.log(progress);
-        
+    // ---- Where the run is ----
+    // Every move of the run arrives as one `progress` event holding the whole picture
+    // (ivoryos/runtime/run_progress.py), and a page that connects, reconnects or is reloaded
+    // mid-run is sent the same picture at once. The percentage is worked out here.
+
+    var PHASE_NAMES = { prep: 'Prep', script: 'Experiment', cleanup: 'Clean up' };
+
+    // Each phase counts as its steps, the experiment phase once per iteration, so the bar moves
+    // through prep and cleanup too, and follows a config table that grows or shrinks while it
+    // runs. A step counts once it is done: the bar moves between steps.
+    function runPercent(p) {
+        var steps = p.steps || {};
+        var prep = steps.prep || 0, main = steps.script || 0, cleanup = steps.cleanup || 0;
+        var iterations = p.iterations || 0;
+        var total = prep + main * iterations + cleanup;
+        if (!total) return 0;
+        var current = Math.max((p.step || 0) - 1, 0);
+        var done = 0;
+        if (p.phase === 'prep') done = current;
+        else if (p.phase === 'script') done = prep + main * Math.max((p.iteration || 1) - 1, 0) + current;
+        else if (p.phase === 'cleanup') done = prep + main * iterations + current;
+        return Math.min(100, 100 * done / total);
+    }
+    window.runPercent = runPercent;
+
+    // Where the run is, kept short: the action list already marks the step running.
+    function runLabel(p) {
+        if (!p || p.state === 'idle') return 'Currently not running any tasks';
+        if (p.state === 'done') return 'Finished: ' + p.run_name;
+        if (p.state === 'stopped') return 'Stopped: ' + p.run_name;
+        if (p.state === 'failed') return 'Ended with an error: ' + p.run_name;
+        if (p.phase === 'script' && p.iterations) return 'Iteration: ' + p.iteration + '/' + p.iterations;
+        return PHASE_NAMES[p.phase] || 'Starting…';
+    }
+
+    socket.on('progress', function (p) {
+        window.runProgress = p;
+
         // this script runs on every page, but only the execution page shows progress
         var iterationDisplay = document.getElementById('iteration-display');
         if (iterationDisplay) {
-            if (data.iteration && data.total) {
-                iterationDisplay.innerText = `Iteration: ${data.iteration}/${data.total}`;
-            } else {
-                iterationDisplay.innerText = 'Currently not running any tasks';
+            iterationDisplay.innerText = runLabel(p);
+            // a batch only runs in the experiment phase; prep and cleanup run once
+            if (p.state !== 'running' || p.phase !== 'script') {
                 var batchDisplay = document.getElementById('batch-display');
                 if (batchDisplay) batchDisplay.innerText = '';
             }
         }
 
-        // Update the progress bar's width and appearance
-        var progressBar = document.getElementById('progress-bar-inner');
-        if (progressBar) {
-            progressBar.style.width = progress + '%';
-            progressBar.setAttribute('aria-valuenow', progress);
-            
-            if (progress === 1) {
-                progressBar.classList.remove('bg-success', 'bg-danger');
-                progressBar.classList.add('progress-bar-animated');
-            }
-            if (progress === 100) {
-                progressBar.classList.remove('progress-bar-animated');
-                progressBar.classList.add('bg-success');
-                
-                clearStepHighlights();
-            }
+        var progressBar = getProgressBar();
+        if (!progressBar) return;
+        // a run that stopped or failed stays where it got to
+        var percent = p.state === 'done' ? 100 : p.state === 'idle' ? 0 : runPercent(p);
+        progressBar.style.width = percent + '%';
+        progressBar.setAttribute('aria-valuenow', Math.round(percent));
+        if (p.state === 'running') {
+            // the pause and error handlers keep their own colours while it runs
+            setProgressBarClasses(['progress-bar-animated'], ['bg-success']);
+            return;
         }
+        progressBar.classList.remove('progress-bar-animated');
+        clearStepHighlights();
+        if (p.state === 'done') setProgressBarClasses(['bg-success'], ['bg-danger', 'bg-warning']);
+        else if (p.state === 'stopped') setProgressBarClasses(['bg-warning'], ['bg-success', 'bg-danger']);
+        else if (p.state === 'failed') setProgressBarClasses(['bg-danger'], ['bg-success', 'bg-warning']);
     });
 
     socket.on('error', function (errorData) {
@@ -578,8 +610,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    // the sample's place in its batch: only the experiment phase runs in batches
     socket.on('batch_progress', function (data) {
         var batchDisplay = document.getElementById('batch-display');
+        if (window.runProgress && window.runProgress.phase !== 'script') return;
         if (batchDisplay && window.currentBatchSize > 1) {
             if (data.shared) {
                 batchDisplay.innerText = ` | Batch: -/${data.batch_total}`;

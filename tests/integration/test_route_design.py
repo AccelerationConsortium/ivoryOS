@@ -616,6 +616,58 @@ def test_running_config_table_can_be_read_and_edited(auth, monkeypatch):
     assert auth.post(url, json={'uid': 'other', 'rows': rows}).status_code == 404
 
 
+def test_the_run_page_starts_with_the_right_button_and_never_asks_on_load(auth, test_deck, monkeypatch):
+    """The button over the progress panel is a pencil only while a config table runs, and
+    the page renders it so, rather than asking the running-table endpoint when it loads."""
+    from ivoryos.routes.execute import execute as execute_module
+    from ivoryos.runtime.live_config import LiveConfig
+
+    script = Script(author='testuser')
+    ScriptEditor(script).add_action({
+        'instrument': 'deck.dummy', 'action': 'float_method',
+        'args': {'arg': '#temperature'}, 'return': '', 'arg_types': {'arg': 'float'},
+    })
+    with auth.application.app_context():
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
+
+    monkeypatch.setattr(execute_module.runner, 'live_config', None)
+    page = auth.get('/ivoryos/executions/config').get_data(as_text=True)
+    assert 'data-editable="false"' in page and 'bi-info-circle' in page
+
+    monkeypatch.setattr(execute_module.runner, 'live_config', LiveConfig([{'temperature': '25'}], {'temperature': 'float'}))
+    page = auth.get('/ivoryos/executions/config').get_data(as_text=True)
+    assert 'data-editable="true"' in page and 'bi-pencil-square' in page
+
+
+def test_an_edit_to_the_running_table_moves_every_pages_total(auth, monkeypatch):
+    from unittest.mock import MagicMock
+    from ivoryos.routes.execute import execute as execute_module
+    from ivoryos.runtime.live_config import LiveConfig
+    from ivoryos.runtime.run_progress import RunProgress
+
+    runner = execute_module.runner
+    live = LiveConfig([{'temperature': '25'}, {'temperature': '40'}], {'temperature': 'float'})
+    live.start_batch(1)
+    progress = RunProgress()
+    progress.start('abc', 'flow', Script(author='testuser'), iterations=2)
+    progress.follow_table(live)
+    progress.start_iteration(1)
+    socketio = MagicMock()
+    monkeypatch.setattr(runner, 'live_config', live)
+    monkeypatch.setattr(runner, 'current_task', {'uid': 'abc', 'run_name': 'flow', 'batch_size': 1})
+    monkeypatch.setattr(runner, 'progress', progress)
+    monkeypatch.setattr(runner, 'socketio', socketio)
+
+    table = auth.get('/ivoryos/executions/current_task/config').get_json()
+    rows = [{'id': row['id'], 'values': {'temperature': row['values'][0]}, 'number': n}
+            for n, row in enumerate(table['rows'], start=1)]
+    auth.post('/ivoryos/executions/current_task/config',
+              json={'uid': 'abc', 'rows': rows + [{'id': None, 'values': {'temperature': '60'}, 'number': 3}]})
+
+    [sent] = [call.args[1] for call in socketio.emit.call_args_list if call.args[0] == 'progress']
+    assert sent['iterations'] == 3 and sent['table']['total'] == 3
+
+
 def test_a_config_row_can_leave_an_optional_input_empty(auth, test_deck, monkeypatch):
     """
     GIVEN a workflow whose second input is passed to an Optional argument

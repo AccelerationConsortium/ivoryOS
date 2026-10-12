@@ -1,4 +1,5 @@
 import asyncio
+import threading
 from unittest.mock import MagicMock
 
 import pytest
@@ -314,11 +315,44 @@ def test_an_iteration_whose_steps_raise_is_kept_as_failed(runner):
     assert runner.run_events[0]["rows"] == [row("40", "ethanol")]
 
 
-def test_open_pages_are_told_while_the_running_table_can_be_edited(runner):
-    run_config_section(runner, [row("25", "water")], finished())
+def sent_progress(runner):
+    return [call.args[1] for call in runner.socketio.emit.call_args_list if call.args[0] == "progress"]
 
-    told = [call.args[1]["editable"] for call in runner.socketio.emit.call_args_list if call.args[0] == "live_config"]
-    assert told == [True, False]
+
+def test_open_pages_follow_each_row_from_start_to_finish(runner):
+    """Each row's start and finish reach the pages as it happens, the last row's finish
+    before the table closes, so an open editor never locks with a row still shown running."""
+    runner._emit_progress = ScriptRunner._emit_progress.__get__(runner)
+    runner.progress.start("task-1", "flow", MagicMock(script_dict={"script": [{}, {}]}), iterations=2)
+
+    run_config_section(runner, [row("25", "water"), row("40", "ethanol")], finished())
+
+    sent = sent_progress(runner)
+    changes = [(change["number"], change["status"]) for event in sent if "table" in event and not event["table"].get("closed")
+               for change in event["table"]["changed"]]
+    assert changes == [(1, "running"), (1, "done"), (2, "running"), (2, "done")]
+    # a finished row comes with the values it ran with
+    done_row_2 = [change for event in sent if "table" in event for change in event["table"]["changed"]
+                  if change["number"] == 2 and change["status"] == "done"][0]
+    assert done_row_2["values"] == {"temperature": "40", "solvent": "ethanol"}
+    # the table then closes with every row as it ended, and the iterations are the ones that ran
+    final = sent[-1]
+    assert final["table"]["closed"] and final["iterations"] == 2
+    assert [change["status"] for change in final["table"]["changed"]] == ["done", "done"]
+    assert final["table"]["counts"]["done"] == 2
+    # while it ran, the table was there to edit
+    assert sent[0]["table"]["total"] == 2 and not sent[0]["table"].get("closed")
+
+
+def test_rows_that_cannot_run_are_sent_as_failed_when_reached(runner):
+    runner._emit_progress = ScriptRunner._emit_progress.__get__(runner)
+    runner.progress.start("task-1", "flow", MagicMock(script_dict={}), iterations=1)
+
+    run_config_section(runner, [row("hot", "water")], finished())
+
+    failed = [change for event in sent_progress(runner) if "table" in event and not event["table"].get("closed")
+              for change in event["table"]["changed"]]
+    assert [(change["number"], change["status"]) for change in failed] == [(1, "failed")]
 
 
 def test_row_edits_wait_while_a_shared_step_runs_nested_steps():
@@ -422,3 +456,81 @@ def test_none_from_the_api_reads_back_as_none_in_the_table():
 
     entry = live.view()["rows"][0]
     assert entry["values"][0] == "None"
+
+
+# --- the table is open from the start of the run --------------------------------
+
+
+def run_whole_task(app, monkeypatch, tmp_path, config, prep):
+    """Run a config task through the runner, with ``prep`` standing in for the prep steps
+    and the experiment steps returning what they were given."""
+    from ivoryos.runtime import script_runner_workflow
+    from ivoryos.script import Script
+
+    monkeypatch.setattr(script_runner_workflow.time, "sleep", lambda seconds: None)
+    monkeypatch.setitem(app.config, "LOGGERS", None)
+    runner = ScriptRunner()
+    runner.socketio = MagicMock()
+    runner.logger = None
+    runner.current_task = {"uid": "task-1", "run_name": "flow"}
+    script = Script(author="tester", script_dict={"prep": [], "cleanup": [], "script": [{
+        "id": 1, "uuid": 1, "instrument": "deck.reactor", "action": "heat", "return": "",
+        "args": {"temperature": "#temperature", "solvent": "#solvent"}, "arg_types": ARG_TYPES,
+    }]})
+    ran = []
+
+    async def run_actions(script, section_name="", run_id=None):
+        if section_name == "prep":
+            await prep(runner)
+
+    async def exec_steps(script, section, phase_id, kwargs_list=None, batch_size=1):
+        ran.extend(dict(kwargs) for kwargs in kwargs_list)
+        return kwargs_list
+
+    runner._run_actions, runner.exec_steps = run_actions, exec_steps
+    # on a thread of its own, as the queue runs it: it pushes an app context it leaves to the thread
+    thread = threading.Thread(target=runner._run_with_stop_check, kwargs=dict(
+        script=script, repeat_count=None, run_name="flow", config=config, output_path=str(tmp_path),
+        current_app=app, compiled=False, batch_size=1))
+    thread.start()
+    thread.join(timeout=30)
+    assert not thread.is_alive()
+    return runner, ran
+
+
+def test_the_table_can_be_edited_while_prep_runs(app, init_database, monkeypatch, tmp_path):
+    seen = {}
+
+    async def prep(runner):
+        live = runner.live_config
+        seen["open"] = live is not None and runner.get_running_config()["uid"] == "task-1"
+        live.edit(editable(live, row("30", "water"), row("45", "ethanol")))
+
+    runner, ran = run_whole_task(app, monkeypatch, tmp_path, [row("25", "water"), row("40", "ethanol")], prep)
+
+    assert seen == {"open": True}
+    assert ran == [row(30.0, "water"), row(45.0, "ethanol")]
+    assert runner.live_config is None
+
+
+def test_rows_that_cannot_run_are_reported_before_prep(app, init_database, monkeypatch, tmp_path):
+    seen = {}
+
+    async def prep(runner):
+        seen["notices"] = [call.args[1]["title"] for call in runner.socketio.emit.call_args_list if call.args[0] == "notice"]
+
+    run_whole_task(app, monkeypatch, tmp_path, [row("hot", "water")], prep)
+
+    assert seen["notices"] == ["Some rows can't run as entered"]
+
+
+def test_a_prep_that_fails_closes_the_table_with_its_rows_as_they_were(app, init_database, monkeypatch, tmp_path):
+    async def prep(runner):
+        raise RuntimeError("pump jammed")
+
+    runner, ran = run_whole_task(app, monkeypatch, tmp_path, [row("25", "water"), row("40", "ethanol")], prep)
+
+    assert ran == [] and runner.live_config is None
+    snapshot = runner.progress.snapshot()
+    assert snapshot["state"] == "failed" and snapshot["table"]["closed"]
+    assert [row_state["status"] for row_state in snapshot["table"]["changed"]] == ["pending", "pending"]

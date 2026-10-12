@@ -66,6 +66,10 @@ class ScriptRunnerStepMixin:
             self.last_execution_section = section_id
             if self.socketio:
                 self.socketio.emit('execution', {'section': section_id})
+            # the phase's own steps move the bar; a called workflow's run under a section of their own
+            progress = getattr(self, "progress", None)
+            if progress is not None and progress.at_step(section_name, action_id):
+                self._emit_progress()
             if instrument == "if" and action == "if":
                 await self._execute_if_batched(step, contexts, phase_id=phase_id, step_index=action_id,
                                                section_name=section_name)

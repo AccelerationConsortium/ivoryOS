@@ -219,7 +219,6 @@ let currentTaskUid = null;
 let editedConditions = null;
 // the running task's config table, while its live editor is open
 let liveTable = null;
-let liveRefresh = null;
 const LIVE_CONFIG_URL = PANEL_URLS.runningConfig;
 
 function conditionsUrl(uid) {
@@ -286,8 +285,6 @@ function resetTaskModal() {
   currentTaskUid = null;
   editedConditions = null;
   liveTable = null;
-  clearInterval(liveRefresh);
-  liveRefresh = null;
   showConditionsError('');
 }
 
@@ -446,7 +443,9 @@ function renumberConfigRows(body) {
 // ---- Editing the running task's config table ----
 // The run takes rows one batch at a time, so rows it has not reached can be
 // edited, added or removed, and the running row's changes reach its remaining
-// steps. The table refreshes its row statuses while it is open.
+// steps. While the table is open it follows the run through the `progress`
+// event (see followLiveProgress); it is fetched when it opens, and again only
+// to catch up after the connection drops.
 
 function fetchRunningConfig() {
   return fetch(LIVE_CONFIG_URL + '?t=' + Date.now())
@@ -468,7 +467,6 @@ function openRunningConfig() {
     if (modal.classList.contains('show')) scrollToRunningRow();
     else modal.addEventListener('shown.bs.modal', scrollToRunningRow, { once: true });
     showTaskModal('form', 'Current Run');
-    liveRefresh = setInterval(refreshRunningConfig, 2000);
     return true;
   }).catch(() => false);
 }
@@ -498,37 +496,73 @@ function liveProgress(counts) {
   ];
 }
 
-// Updates row statuses and progress without touching what is being typed,
-// except in rows that just finished: they show the values they ran with.
-function refreshRunningConfig() {
+// Puts one row's state from the server in place without touching what is being typed,
+// except in a row that just finished: it shows the values it ran with. `server.values`
+// is a list in column order from a fetch, or {input: value} from the progress event.
+// Returns the row's number when a change typed into it was lost.
+function applyRowState(server) {
+  const row = document.querySelector(`#cond-config-rows tr[data-id="${server.id}"]`);
+  if (!row || row.dataset.status === server.status) return null;
+  let lost = null;
+  if (isFinished(server.status)) {
+    row.querySelectorAll('input[data-field]').forEach((input, i) => {
+      const ran = Array.isArray(server.values) ? server.values[i] : (server.values || {})[input.dataset.field];
+      if (input.value !== (ran ?? '')) lost = row.querySelector('.row-number').textContent;
+      input.value = ran ?? '';
+    });
+  }
+  setRowStatus(row, server);
+  return lost;
+}
+
+// The table is over: rows as they ended, nothing left to edit.
+function lockLiveTable(message, lost = []) {
+  liveTable = null;
+  document.getElementById('save-conditions-btn').classList.add('d-none');
+  document.querySelectorAll('#cond-config-rows input, #cond-config-rows button, #conditions-editor > div > button')
+    .forEach(control => { control.disabled = true; });
+  const note = lost.length ? ` Row ${lost.join(', ')} finished before your changes were saved, so it ran as it was.` : '';
+  showConditionsError(message + note, lost.length ? 'warning' : 'info');
+}
+
+function warnLostRows(lost) {
+  if (lost.length) {
+    showConditionsError(`Row ${lost.join(', ')} finished before your changes were saved, so it ran as it was.`, 'warning');
+  }
+}
+
+// Follows the run while the table is open: every row that starts or finishes, the moment it
+// does, and the end of the table with its last rows shown as they ended before it locks.
+function followLiveProgress(p) {
+  const table = p.table || {};
+  setInfoButtonEditable(p.state === 'running' && Boolean(p.table) && !table.closed);
+  if (!liveTable) return;
+  if (p.uid !== liveTable.uid) {
+    // another task: its rows are not this table's
+    lockLiveTable('The run has finished, so its table can no longer be edited.');
+    return;
+  }
+  const lost = (table.changed || []).map(applyRowState).filter(Boolean);
+  if (table.counts) document.getElementById('live-progress').replaceChildren(...liveProgress(table.counts));
+  if (!p.table || table.closed || p.state !== 'running') {
+    lockLiveTable(p.state === 'running' ? 'Every row has run, so the table can no longer be edited.'
+                                         : 'The run has finished, so its table can no longer be edited.', lost);
+    return;
+  }
+  warnLostRows(lost);
+}
+
+// After the connection drops, what the table missed: fetched once, the rows put in place.
+function catchUpRunningConfig() {
   if (!liveTable) return;
   fetchRunningConfig().then(({ ok, data }) => {
     if (!liveTable) return;
     if (!ok || data.uid !== liveTable.uid) {
-      clearInterval(liveRefresh);
-      liveRefresh = null;
-      liveTable = null;
-      document.getElementById('save-conditions-btn').classList.add('d-none');
-      document.querySelectorAll('#cond-config-rows input, #cond-config-rows button, #conditions-editor > div > button')
-        .forEach(control => { control.disabled = true; });
-      showConditionsError('The run has finished, so its table can no longer be edited.', 'info');
+      lockLiveTable('The run has finished, so its table can no longer be edited.');
       return;
     }
     document.getElementById('live-progress').replaceChildren(...liveProgress(data.counts));
-    const lost = [];
-    data.rows.forEach(server => {
-      const row = document.querySelector(`#cond-config-rows tr[data-id="${server.id}"]`);
-      if (!row || row.dataset.status === server.status) return;
-      if (isFinished(server.status)) {
-        const inputs = row.querySelectorAll('input[data-field]');
-        if ([...inputs].some((input, i) => input.value !== (server.values[i] ?? ''))) lost.push(row.querySelector('.row-number').textContent);
-        inputs.forEach((input, i) => { input.value = server.values[i] ?? ''; });
-      }
-      setRowStatus(row, server);
-    });
-    if (lost.length) {
-      showConditionsError(`Row ${lost.join(', ')} finished before your changes were saved, so it ran as it was.`, 'warning');
-    }
+    warnLostRows(data.rows.map(applyRowState).filter(Boolean));
   }).catch(() => {});
 }
 
@@ -745,6 +779,11 @@ updateQueue(); // Initial call
 // Current Run Configuration Logic: a config table run opens as an editable
 // table; anything else shows its details read-only
 document.getElementById('view-current-config').addEventListener('click', function() {
+  if (this.dataset.editable !== 'true') {
+    showCurrentRunDetails();
+    return;
+  }
+  // the table may have just finished between the event and the click
   openRunningConfig().then(opened => { if (!opened) showCurrentRunDetails(); });
 });
 
@@ -779,20 +818,23 @@ function showRunMessage(message, tone = 'secondary') {
 }
 
 // The info button is also the way into the running table's editor, so while
-// there is a table to edit it shows a pencil and says so.
+// there is a table to edit it shows a pencil and says so. The page is rendered
+// with the right one (logging_panel.html); the progress event keeps it right.
 function setInfoButtonEditable(editable) {
   const button = document.getElementById('view-current-config');
+  button.dataset.editable = editable ? 'true' : 'false';
   button.querySelector('i').className = editable ? 'bi bi-pencil-square' : 'bi bi-info-circle';
   button.title = editable ? "View or edit the current run's table" : 'View current run';
   button.classList.toggle('text-primary', editable);
   button.classList.toggle('text-secondary', !editable);
 }
 
-fetchRunningConfig().then(({ ok }) => setInfoButtonEditable(ok)).catch(() => {});
 document.addEventListener('DOMContentLoaded', () => {
   const waitForSocket = setInterval(() => {
     if (!window.socket) return;
     clearInterval(waitForSocket);
-    window.socket.on('live_config', data => setInfoButtonEditable(Boolean(data.editable)));
+    window.socket.on('progress', followLiveProgress);
+    // the first connect is the page loading; any later one is the connection coming back
+    window.socket.on('connect', catchUpRunningConfig);
   }, 100);
 });

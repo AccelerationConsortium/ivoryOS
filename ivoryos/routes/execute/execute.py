@@ -280,6 +280,7 @@ def experiment_run():
         # todo if want to be able to optimize more then add something called objectives_list instead, and add that to the tab_bayesian.html, and add in
         #  more than just the return_list in there; e.g. be able to use math or normal or human input variables as objectives
         return render_template('experiment_run.html', script=script.script_dict, filename=filename,
+                               running_config_editable=runner.live_config is not None,
                                column_limits=guard.column_limits(script),
                                dot_py=exec_string, line_collection=line_collection,
                                return_list=return_list, config_list=config_list, config_file_list=config_file_list,
