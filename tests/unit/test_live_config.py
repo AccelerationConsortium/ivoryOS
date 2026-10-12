@@ -400,3 +400,25 @@ def test_a_value_past_a_limit_is_marked_and_fails_when_reached():
     live.finish_batch(first)
     _, [(number, entry)] = live.start_batch(1)
     assert number == 2 and "above the maximum of 100 °C" in entry["reason"]
+
+
+# --- inputs that take None ---------------------------------------------------
+
+
+def test_an_empty_or_missing_optional_input_runs_as_none():
+    arg_types = {"temperature": "float", "solvent": ["str", "NoneType"]}
+    live = LiveConfig([{"temperature": "25", "solvent": ""}, {"temperature": "40"}], arg_types)
+
+    assert live.problems() == []
+    batch, failed = live.start_batch(2)
+
+    assert failed == []
+    assert [entry["values"] for entry in batch] == [{"temperature": 25.0, "solvent": None},
+                                                     {"temperature": 40.0, "solvent": None}]
+
+
+def test_none_from_the_api_reads_back_as_none_in_the_table():
+    live = LiveConfig([{"temperature": None, "solvent": "water"}], ARG_TYPES, converted=True)
+
+    entry = live.view()["rows"][0]
+    assert entry["values"][0] == "None"

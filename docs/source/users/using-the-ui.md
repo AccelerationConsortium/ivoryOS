@@ -52,6 +52,19 @@ IvoryOS chooses the available run configuration based on the workflow shape:
 
 Queued tasks can be named, paused, resumed, or stopped depending on their current state.
 
+In the parameter table, each row is one run of the workflow. A row left entirely empty is
+skipped, so you never have to delete spare rows.
+
+An input is optional when its argument is typed `Optional[...]` or `X | None`. When a
+table has both kinds, the required columns are marked with a red asterisk. In a filled row:
+
+- An empty optional cell runs as `None`.
+- To give `None` on purpose, type `None` in a text cell, or pick **None** at the end of an
+  optional dropdown. It shows in italics. It also counts as filling the row, so a table
+  whose only input is optional runs one row for each `None` you enter.
+- An empty required cell is marked, and the table does not run until it is filled. A
+  required dropdown offers only its choices; a required text cell still accepts `None`.
+
 ```{image} ../_static/execute.png
 :alt: IvoryOS Execute page
 ```

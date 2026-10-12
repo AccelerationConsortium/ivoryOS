@@ -149,6 +149,7 @@ class TestConversion(unittest.TestCase):
 
         wrapped = web_config_entry_wrapper(
             {
+                "online-config": "",
                 "name[0]": "alpha",
                 "value[0]": "1",
                 "name[1]": "incomplete",
@@ -156,7 +157,9 @@ class TestConversion(unittest.TestCase):
             },
             ["name", "value"],
         )
-        self.assertEqual(wrapped, [{"name": "alpha", "value": "1"}])
+        # a row left entirely empty is skipped; an empty cell in a filled row is kept, not its
+        # row dropped: it runs as None where the input takes None, and is reported otherwise
+        self.assertEqual(wrapped, [{"name": "alpha", "value": "1"}, {"name": "incomplete", "value": ""}])
 
 if __name__ == "__main__":
     unittest.main()

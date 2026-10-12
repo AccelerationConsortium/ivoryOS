@@ -101,16 +101,22 @@ def check_config_duplicate(config):
 
 def web_config_entry_wrapper(data: dict, config_type: list):
     """
-    Wrap the data dictionary from web config entries during execution configuration
+    The rows of the execution page's config table, ``{input: text}`` each, in table order.
+
+    ``data`` holds the cells as ``input[row]`` keys. A row left entirely empty is skipped. An
+    empty cell in a filled row is kept as ``""``: an input that takes None runs as None, and
+    any other is reported before the run starts (``task_conditions.config_form_problems``),
+    rather than its row being dropped without a word.
     """
     rows = {}
     for key, value in data.items():
-        if value:
-            field_name, row_index = key.split('[')
-            row_index = int(row_index.rstrip(']'))
-            if row_index not in rows:
-                rows[row_index] = {}
-            rows[row_index][field_name] = value
-
-    filtered_rows = [row for row in rows.values() if len(row) == len(config_type)]
-    return filtered_rows
+        field_name, bracket, row_index = key.partition('[')
+        if not bracket:
+            continue
+        try:
+            index = int(row_index.rstrip(']'))
+        except ValueError:
+            continue
+        rows.setdefault(index, {})[field_name] = value
+    return [{field: row.get(field, "") for field in config_type}
+            for row in rows.values() if any(str(value).strip() for value in row.values())]

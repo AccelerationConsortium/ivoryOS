@@ -1,3 +1,4 @@
+import re
 import io
 
 from ivoryos.models import Script, db
@@ -613,6 +614,98 @@ def test_running_config_table_can_be_read_and_edited(auth, monkeypatch):
     assert [row['values'] for row in auth.get(url).get_json()['rows']] == [['25'], ['45'], ['60']]
 
     assert auth.post(url, json={'uid': 'other', 'rows': rows}).status_code == 404
+
+
+def test_a_config_row_can_leave_an_optional_input_empty(auth, test_deck, monkeypatch):
+    """
+    GIVEN a workflow whose second input is passed to an Optional argument
+    WHEN a config row leaves that cell empty, and another types None into the required one
+    THEN both rows run, with None for those values; a row left entirely empty is skipped
+    """
+    from unittest.mock import MagicMock
+    from ivoryos.routes.execute import execute as execute_module
+
+    script = Script(author='testuser')
+    ScriptEditor(script).add_action({
+        'instrument': 'deck.dummy', 'action': 'float_method',
+        'args': {'arg': '#temperature'}, 'return': '', 'arg_types': {'arg': 'float'},
+    })
+    ScriptEditor(script).add_action({
+        'instrument': 'deck.dummy', 'action': 'str_method',
+        'args': {'arg': '#note'}, 'return': '', 'arg_types': {'arg': ['str', 'NoneType']},
+    })
+    with auth.application.app_context():
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
+    run_script = MagicMock(return_value='queued')
+    monkeypatch.setattr(execute_module.runner, 'run_script', run_script)
+
+    page = auth.get('/ivoryos/executions/config').get_data(as_text=True)
+    assert 'var configOptional = ["note"];' in page
+    # headers stay on one line: the required input is starred, the optional one is not
+    assert 'title="Required">temperature<span class="text-danger ms-1" aria-label="required">*</span>' in page
+    assert re.search(r'title="Optional: left empty in a filled row, it runs as None">note\s*</th>', page)
+    assert 'id="configTableKey"' in page and '>optional</div>' not in page
+
+    form = {'online-config': '', 'batch_size': '1',
+            'temperature[1]': '25', 'note[1]': '',
+            'temperature[2]': 'None', 'note[2]': 'stirred',
+            'temperature[3]': '', 'note[3]': ''}
+    auth.post('/ivoryos/executions/config', data=form, follow_redirects=True)
+
+    assert run_script.call_args.kwargs['config'] == [{'temperature': '25', 'note': ''},
+                                                     {'temperature': 'None', 'note': 'stirred'}]
+
+    # the required input still needs a value: an empty one holds the run back
+    run_script.reset_mock()
+    form['temperature[2]'] = ''
+    body = auth.post('/ivoryos/executions/config', data=form, follow_redirects=True).get_data(as_text=True)
+    run_script.assert_not_called()
+    assert "Row 2, &#39;temperature&#39;: No value." in body
+
+
+def test_a_table_of_one_optional_input_runs_the_rows_given_none_on_purpose(auth, test_deck, monkeypatch):
+    """
+    GIVEN a workflow whose only input is optional
+    WHEN rows are left empty, and one is given None on purpose
+    THEN only that row runs: an empty row is not a None, it is skipped
+    """
+    from unittest.mock import MagicMock
+    from ivoryos.routes.execute import execute as execute_module
+
+    script = Script(author='testuser')
+    ScriptEditor(script).add_action({
+        'instrument': 'deck.dummy', 'action': 'str_method',
+        'args': {'arg': '#note'}, 'return': '', 'arg_types': {'arg': ['str', 'NoneType']},
+    })
+    with auth.application.app_context():
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
+    run_script = MagicMock(return_value='queued')
+    monkeypatch.setattr(execute_module.runner, 'run_script', run_script)
+
+    page = auth.get('/ivoryos/executions/config').get_data(as_text=True)
+    # nothing to star when no input is required
+    assert 'aria-label="required"' not in page
+
+    form = {'online-config': '', 'batch_size': '1',
+            'note[1]': '', 'note[2]': 'None', 'note[3]': 'stirred', 'note[4]': ''}
+    auth.post('/ivoryos/executions/config', data=form, follow_redirects=True)
+
+    assert run_script.call_args.kwargs['config'] == [{'note': 'None'}, {'note': 'stirred'}]
+
+
+def test_a_table_of_required_inputs_looks_as_it_did(auth, test_deck):
+    script = Script(author='testuser')
+    ScriptEditor(script).add_action({
+        'instrument': 'deck.dummy', 'action': 'float_method',
+        'args': {'arg': '#temperature'}, 'return': '', 'arg_types': {'arg': 'float'},
+    })
+    with auth.application.app_context():
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
+
+    page = auth.get('/ivoryos/executions/config').get_data(as_text=True)
+
+    # every input is required, so nothing is starred and there is no key
+    assert 'aria-label="required"' not in page and 'id="configTableKey"' not in page
 
 
 def test_a_config_table_that_cannot_run_is_not_started(auth, test_deck, monkeypatch):
