@@ -18,8 +18,8 @@ import threading
 from datetime import datetime
 
 from ivoryos.parsers.type_conversions import convert_config_type
-from ivoryos.runtime.task_conditions import (accepts_none, blank_row, cell_text, column_label, config_field_problems,
-                                             config_row_problem)
+from ivoryos.runtime.task_conditions import (accepts_none, blank_row, cell_text, column_choices, column_label,
+                                             config_field_problems, config_row_problem, optional_inputs)
 
 PENDING = "pending"
 RUNNING = "running"
@@ -272,6 +272,9 @@ class LiveConfig:
             return {
                 "fields": columns,
                 "types": {field: column_label(self.arg_types.get(field), self.limits.get(field)) for field in self.fields},
+                # an Enum or Literal input is a dropdown; an optional one can also be None
+                "choices": column_choices(self.fields, self.arg_types),
+                "optional": optional_inputs(self.arg_types),
                 "rows": rows,
                 "counts": counts,
             }

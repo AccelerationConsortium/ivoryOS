@@ -349,16 +349,20 @@ function buildConditionsEditor(c) {
 // `live` is the running task's table, whose rows carry an id and a status
 function configEditor(c, live = false) {
   const body = el('tbody', { id: 'cond-config-rows' });
-  c.rows.forEach(row => body.append(live ? configRow(c.fields, row.values, row) : configRow(c.fields, row)));
+  // an Enum or Literal input is a dropdown, as on the execution page
+  const columns = { choices: c.choices || {}, optional: c.optional || [] };
+  c.rows.forEach(row => body.append(live ? configRow(c.fields, row.values, row, columns) : configRow(c.fields, row, undefined, columns)));
   renumberConfigRows(body);
+  // each input's type, unit and range on a second line, so a long one does not stretch the
+  // column; every header has that line, empty or not, so the names stay level
   const header = el('tr', {}, [
-    el('th', { className: 'small text-muted', style: 'width: 2.5em' }, '#'),
-    live ? el('th', { className: 'small text-muted', style: 'width: 6em' }, 'Status') : null,
-    ...c.fields.map(field => el('th', { className: 'small text-nowrap' }, [
-      field,
-      c.types[field] ? el('span', { className: 'text-muted fw-normal ms-1' }, `(${c.types[field]})`) : null,
+    el('th', { className: 'small text-muted align-top', style: 'width: 2.5em' }, '#'),
+    live ? el('th', { className: 'small text-muted align-top', style: 'width: 6em' }, 'Status') : null,
+    ...c.fields.map(field => el('th', { className: 'small text-nowrap align-top' }, [
+      el('div', {}, field),
+      el('div', { className: 'text-muted fw-normal' }, c.types[field] || '\u00a0'),
     ])),
-    el('th', { style: 'width: 2.5em' }),
+    el('th', { className: 'align-top', style: 'width: 2.5em' }),
   ]);
   // only the entries scroll, header row in view, so what sits above and the
   // add button below stay put however long the table is
@@ -370,28 +374,46 @@ function configEditor(c, live = false) {
   const addButton = el('button', {
     type: 'button', className: 'btn btn-sm btn-outline-secondary',
     onclick: () => {
-      const row = configRow(c.fields, [], live ? { id: null, status: 'new' } : undefined);
+      const row = configRow(c.fields, [], live ? { id: null, status: 'new' } : undefined, columns);
       body.append(row);
       renumberConfigRows(body);
       scroller.scrollTop = scroller.scrollHeight;
-      row.querySelector('input').focus();
+      row.querySelector('[data-field]')?.focus();
     },
   }, [el('i', { className: 'bi bi-plus-lg me-1' }), 'Add entry']);
   return [scroller, addButton];
 }
 
-// `meta` ({id, status, reason}) is given for a row of the running task's table
-function configRow(fields, values, meta) {
+// A choice input (an Enum or a Literal) as a dropdown of its values; an optional one can also
+// be None. A value the list lacks, e.g. one sent through the API, is kept rather than dropped.
+function choiceInput(field, value, choices, optional) {
+  const current = value ?? '';
+  const options = [...choices, ...(optional ? ['None'] : [])];
+  if (current && !options.includes(current)) options.push(current);
+  const select = el('select', {
+    className: 'form-select form-select-sm', dataset: { field },
+    // being fixed, so no longer marked as a value that cannot run
+    onchange: event => { event.target.classList.remove('is-invalid'); event.target.removeAttribute('title'); },
+  }, [el('option', { value: '' }, 'Select...'), ...options.map(option => el('option', { value: option }, option))]);
+  select.value = current;
+  return select;
+}
+
+// `meta` ({id, status, reason}) is given for a row of the running task's table; `columns`
+// ({choices, optional}) says which inputs are dropdowns
+function configRow(fields, values, meta, columns = {}) {
   const row = el('tr');
   row.append(
     el('td', { className: 'small text-muted row-number' }),
     meta ? el('td', { className: 'p-1' }, el('span', { className: 'badge row-status' })) : null,
     ...fields.map((field, i) => el('td', { className: 'p-1' },
-      el('input', {
-        type: 'text', className: 'form-control form-control-sm', value: values[i] ?? '', dataset: { field },
-        // being fixed, so no longer marked as a value that cannot run
-        oninput: event => { event.target.classList.remove('is-invalid'); event.target.removeAttribute('title'); },
-      }))),
+      (columns.choices || {})[field]
+        ? choiceInput(field, values[i], columns.choices[field], (columns.optional || []).includes(field))
+        : el('input', {
+          type: 'text', className: 'form-control form-control-sm', value: values[i] ?? '', dataset: { field },
+          // being fixed, so no longer marked as a value that cannot run
+          oninput: event => { event.target.classList.remove('is-invalid'); event.target.removeAttribute('title'); },
+        }))),
     el('td', { className: 'p-1 text-center' },
       el('button', {
         type: 'button', className: 'btn btn-sm btn-outline-danger row-remove', title: 'Remove this entry',
@@ -421,14 +443,14 @@ function setRowStatus(row, meta) {
   const look = ROW_STATUS[meta.status] || ROW_STATUS.pending;
   row.className = look.row;
   row.dataset.status = meta.status;
-  row.querySelectorAll('input').forEach(input => { input.disabled = isFinished(meta.status); });
+  row.querySelectorAll('[data-field]').forEach(input => { input.disabled = isFinished(meta.status); });
   const badge = row.querySelector('.row-status');
   badge.className = `badge row-status ${look.badge}`;
   badge.textContent = look.label;
   badge.title = meta.reason || '';
   // a value that cannot run is outlined in red, the reason on hover
   const invalid = meta.invalid || {};
-  row.querySelectorAll('input[data-field]').forEach(input => {
+  row.querySelectorAll('[data-field]').forEach(input => {
     const reason = invalid[input.dataset.field];
     input.classList.toggle('is-invalid', Boolean(reason));
     if (reason) input.title = reason; else input.removeAttribute('title');
@@ -505,7 +527,7 @@ function applyRowState(server) {
   if (!row || row.dataset.status === server.status) return null;
   let lost = null;
   if (isFinished(server.status)) {
-    row.querySelectorAll('input[data-field]').forEach((input, i) => {
+    row.querySelectorAll('[data-field]').forEach((input, i) => {
       const ran = Array.isArray(server.values) ? server.values[i] : (server.values || {})[input.dataset.field];
       if (input.value !== (ran ?? '')) lost = row.querySelector('.row-number').textContent;
       input.value = ran ?? '';
@@ -519,7 +541,7 @@ function applyRowState(server) {
 function lockLiveTable(message, lost = []) {
   liveTable = null;
   document.getElementById('save-conditions-btn').classList.add('d-none');
-  document.querySelectorAll('#cond-config-rows input, #cond-config-rows button, #conditions-editor > div > button')
+  document.querySelectorAll('#cond-config-rows input, #cond-config-rows select, #cond-config-rows button, #conditions-editor > div > button')
     .forEach(control => { control.disabled = true; });
   const note = lost.length ? ` Row ${lost.join(', ')} finished before your changes were saved, so it ran as it was.` : '';
   showConditionsError(message + note, lost.length ? 'warning' : 'info');
@@ -572,7 +594,7 @@ function collectLiveRows() {
     .filter(({ row }) => !isFinished(row.dataset.status))
     .map(({ row, number }) => {
       const values = {};
-      row.querySelectorAll('input[data-field]').forEach(input => { values[input.dataset.field] = input.value; });
+      row.querySelectorAll('[data-field]').forEach(input => { values[input.dataset.field] = input.value; });
       return { id: row.dataset.id ? Number(row.dataset.id) : null, values, number };
     });
 }
@@ -722,7 +744,7 @@ function collectConditions() {
   if (c.mode === 'config') {
     payload.config = [...editor.querySelectorAll('#cond-config-rows tr')].map(row => {
       const entry = {};
-      row.querySelectorAll('input[data-field]').forEach(input => { entry[input.dataset.field] = input.value; });
+      row.querySelectorAll('[data-field]').forEach(input => { entry[input.dataset.field] = input.value; });
       return entry;
     });
   }

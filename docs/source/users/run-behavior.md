@@ -36,7 +36,8 @@ label says how: finished, stopped, or ended with an error.
 For a parameter table, the total follows the table. Adding or removing rows while it runs
 moves the bar. From the moment the run starts, prep included, the button above the
 progress bar shows a pencil. It opens the table, so a row can be fixed or changed before
-the run reaches it. Each row shows its status as it starts and finishes, and rows that
+the run reaches it. There, and in a queued task's editor, an Enum or Literal input
+is a dropdown of its values, as in the parameter table, and an optional one also offers None. Each row shows its status as it starts and finishes, and rows that
 finished are locked and show the values they ran with. Rows that cannot run as entered
 are reported as soon as the run starts. The batch counter beside the label only shows
 during the script phase.
