@@ -20,6 +20,9 @@ class WorkflowRun(db.Model):
     # the user's pauses and stops and what else happened besides the steps, with
     # times (see ivoryos.runtime.run_events)
     events = db.Column(JSONType)
+    # the username of who submitted the run, from the browser or a client; None for
+    # runs from before it was kept
+    submitted_by = db.Column(db.String(50))
 
     # A run contains multiple iterations
     phases = db.relationship(

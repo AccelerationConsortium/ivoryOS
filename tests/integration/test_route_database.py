@@ -152,7 +152,7 @@ def test_workflow_phase_data_csv_logs_and_delete(auth):
 
 def test_existing_database_gets_the_new_run_columns(app, tmp_path):
     """
-    GIVEN a database from before runs kept their outcome and events, and
+    GIVEN a database from before runs kept their outcome, events and submitter, and
     iterations their status
     WHEN the app checks the schema at start
     THEN the columns are added, so queries on runs and iterations keep working
@@ -168,7 +168,7 @@ def test_existing_database_gets_the_new_run_columns(app, tmp_path):
     with app.app_context():
         reset_old_schema(engine, str(tmp_path))
 
-    assert {'status', 'events'} <= {column['name'] for column in inspect(engine).get_columns('workflow_runs')}
+    assert {'status', 'events', 'submitted_by'} <= {column['name'] for column in inspect(engine).get_columns('workflow_runs')}
     assert {'status', 'error'} <= {column['name'] for column in inspect(engine).get_columns('workflow_phases')}
 
 
@@ -306,3 +306,42 @@ def test_results_table_marks_where_each_batch_begins(auth):
     body = auth.get(f'/ivoryos/executions/records/{run_id}').get_data(as_text=True)
 
     assert body.count(' batch-start"') == 1
+
+
+def test_the_run_list_shows_who_submitted_each_run_and_finds_them_by_it(auth):
+    """
+    GIVEN runs submitted by two users, and one from before the submitter was kept
+    WHEN the run list is shown, searched and sorted
+    THEN each run says who submitted it, and a search for a user finds their runs
+    """
+    with auth.application.app_context():
+        for name, who in [('heat_a', 'alice'), ('heat_b', 'bob'), ('legacy_run', None)]:
+            db.session.add(WorkflowRun(name=name, platform='deck', start_time=datetime.now(), submitted_by=who))
+        db.session.commit()
+
+    page = auth.get('/ivoryos/executions/records').get_data(as_text=True)
+    assert 'Submitted By' in page and 'sort_by=submitted_by' in page
+    assert '</i>alice' in page and '</i>bob' in page
+
+    found = auth.get('/ivoryos/executions/records?keyword=alice').get_data(as_text=True)
+    assert 'heat_a' in found and 'heat_b' not in found and 'legacy_run' not in found
+
+    listed = auth.get('/ivoryos/executions/records?keyword=heat', headers={'Accept': 'application/json'}).get_json()
+    assert sorted(run['submitted_by'] for run in listed['workflow_data'].values()) == ['alice', 'bob']
+
+    by_user = auth.get('/ivoryos/executions/records?sort_by=submitted_by&order=asc').get_data(as_text=True)
+    assert by_user.index('heat_a') < by_user.index('heat_b')
+
+
+def test_a_run_page_says_who_submitted_it(auth):
+    with auth.application.app_context():
+        mine = WorkflowRun(name='mine', platform='deck', start_time=datetime.now(), submitted_by='alice')
+        older = WorkflowRun(name='older', platform='deck', start_time=datetime.now())
+        db.session.add_all([mine, older])
+        db.session.commit()
+        mine_id, older_id = mine.id, older.id
+
+    page = auth.get(f'/ivoryos/executions/records/{mine_id}').get_data(as_text=True)
+    assert 'Submitted by <strong>alice</strong>' in page
+    # a run from before the submitter was kept says nothing rather than guessing
+    assert 'run-submitted-by' not in auth.get(f'/ivoryos/executions/records/{older_id}').get_data(as_text=True)

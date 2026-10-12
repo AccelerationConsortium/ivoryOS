@@ -91,6 +91,11 @@ See [Run behavior](run-behavior.md) for prep, script, cleanup, pause, stop, and 
 
 Use **Data** to inspect completed workflow records, step records, run outputs, logs, and generated result files.
 
+Each run records who submitted it. The run list has a **Submitted By** column you can sort
+by, and the search box finds runs by name or by user. A run's page shows who submitted it
+under its title. The queue on the Execute page also shows who submitted each waiting task.
+Runs from before this was recorded show `-`.
+
 IvoryOS stores run data under `ivoryos_data/` in the working directory. The most commonly inspected folders are:
 
 - `results/`: workflow result CSV files.

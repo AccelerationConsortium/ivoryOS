@@ -760,6 +760,26 @@ def test_a_table_of_required_inputs_looks_as_it_did(auth, test_deck):
     assert 'aria-label="required"' not in page and 'id="configTableKey"' not in page
 
 
+def test_a_submitted_run_is_tagged_with_the_user_who_submitted_it(auth, test_deck, monkeypatch):
+    from unittest.mock import MagicMock
+    from ivoryos.routes.execute import execute as execute_module
+
+    script = Script(author='testuser')
+    ScriptEditor(script).add_action({
+        'instrument': 'deck.dummy', 'action': 'float_method',
+        'args': {'arg': '#temperature'}, 'return': '', 'arg_types': {'arg': 'float'},
+    })
+    with auth.application.app_context():
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
+    run_script = MagicMock(return_value='queued')
+    monkeypatch.setattr(execute_module.runner, 'run_script', run_script)
+
+    auth.post('/ivoryos/executions/config', data={'online-config': '', 'batch_size': '1', 'temperature[1]': '25'},
+              follow_redirects=True)
+
+    assert run_script.call_args.kwargs['submitted_by'] == 'testuser'
+
+
 def test_a_config_table_that_cannot_run_is_not_started(auth, test_deck, monkeypatch):
     """
     GIVEN a workflow with a float input

@@ -65,7 +65,8 @@ class ScriptRunnerWorkflowMixin:
     def _run_with_stop_check(self, script: Script, repeat_count: int, run_name: str, config,
                              output_path, current_app, compiled, history=None, optimizer=None, batch_mode=None,
                              batch_size=None, objectives=None, parameters=None, constraints=None, steps=None,
-                             optimizer_cls=None, additional_params=None, on_start=None, display_name=None):
+                             optimizer_cls=None, additional_params=None, on_start=None, display_name=None,
+                             submitted_by=None):
         if current_app:
             ctx = current_app.app_context()
             ctx.push()
@@ -114,7 +115,7 @@ class ScriptRunnerWorkflowMixin:
 
         with current_app.app_context():
             run = WorkflowRun(name=run_name, platform=script.deck or "deck", start_time=datetime.now(),
-                              repeat_mode=repeat_mode
+                              repeat_mode=repeat_mode, submitted_by=submitted_by
                               )
             db.session.add(run)
             db.session.flush()

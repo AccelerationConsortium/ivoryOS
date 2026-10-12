@@ -87,6 +87,11 @@
         <div>
             <h1 class="h2 mb-1" style="font-weight: 700; color: #2c3e50; letter-spacing: -0.5px;">Workflow: {{ workflow.id }} - {{ workflow.name }}
                 <span class="fs-6">{{ outcome_badge(workflow, running_run_id) }}</span></h1>
+            {% if workflow.submitted_by %}
+            <p class="mb-1" id="run-submitted-by">
+                <i class="bi bi-person text-muted me-1" aria-hidden="true"></i>Submitted by <strong>{{ workflow.submitted_by }}</strong>
+            </p>
+            {% endif %}
             <p class="text-muted mb-0">View execution timelines, download raw datasets and check detailed step information.</p>
         </div>
     </div>

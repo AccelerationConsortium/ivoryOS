@@ -146,6 +146,12 @@ function renderQueue(data) {
         <br>
         <small class="text-muted ms-4">${task.args}</small>
     `;
+    if (task.submitted_by) {
+      const by = document.createElement('small');
+      by.className = 'text-muted';
+      by.textContent = ` · by ${task.submitted_by}`;
+      infoDiv.querySelector('small.text-muted').after(by);
+    }
     infoDiv.onclick = () => openQueuedTask(task.uid);
     item.appendChild(infoDiv);
 
@@ -385,7 +391,9 @@ function configRow(fields, values, meta) {
   const row = el('tr');
   row.append(
     el('td', { className: 'small text-muted row-number' }),
-    meta ? el('td', { className: 'p-1' }, el('span', { className: 'badge row-status' })) : null,
+    // a status cell only in the running table's editor; a queued task's rows have none, and
+    // append() would write a null in as text, pushing every value a column over
+    ...(meta ? [el('td', { className: 'p-1' }, el('span', { className: 'badge row-status' }))] : []),
     ...fields.map((field, i) => el('td', { className: 'p-1' },
       el('input', {
         type: 'text', className: 'form-control form-control-sm', value: values[i] ?? '', dataset: { field },

@@ -5,6 +5,8 @@ import io
 from flask import Blueprint, request, render_template, current_app, jsonify, send_file, Response
 from flask_login import login_required
 
+from sqlalchemy import or_
+
 from ivoryos.models import db, WorkflowRun, WorkflowPhase
 from ivoryos.runtime.run_events import LABELS as RUN_EVENT_LABELS, ROWS_NOT_RUN, TABLE_EDITED
 from ivoryos.runtime.state import GlobalState
@@ -35,14 +37,15 @@ def list_workflows():
 
     Retrieve a list of all past workflow execution records, with optional keyword searching.
 
-    :query keyword: Optional search term to filter workflows by name.
+    :query keyword: Optional search term to filter workflows by name or by who submitted them.
     :query page: The page number for pagination.
     :status 200: Returns a list of workflow records (HTML or JSON).
     """
     query = WorkflowRun.query
     search_term = request.args.get("keyword", None)
     if search_term:
-        query = query.filter(WorkflowRun.name.like(f'%{search_term}%'))
+        query = query.filter(or_(WorkflowRun.name.like(f'%{search_term}%'),
+                                 WorkflowRun.submitted_by.like(f'%{search_term}%')))
 
     sort_by = request.args.get('sort_by', 'id')
     order = request.args.get('order', 'desc')
@@ -50,6 +53,7 @@ def list_workflows():
     sort_mapping = {
         'name': WorkflowRun.name,
         'id': WorkflowRun.id,
+        'submitted_by': WorkflowRun.submitted_by,
         'start_time': WorkflowRun.start_time,
         'end_time': WorkflowRun.end_time
     }
@@ -69,7 +73,8 @@ def list_workflows():
     workflows = query.paginate(page=page, per_page=per_page, error_out=False)
     if request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
         workflows = query.all()
-        workflow_data = {w.id:{"workflow_name":w.name, "start_time":w.start_time} for w in workflows}
+        workflow_data = {w.id: {"workflow_name": w.name, "start_time": w.start_time, "submitted_by": w.submitted_by}
+                         for w in workflows}
         return jsonify({
             "workflow_data": workflow_data,
         })
