@@ -93,3 +93,11 @@
 {% if warning %}
 <div id="warning" style="display:none;">{{ warning }}</div>
 {% endif %}
+
+{# what undo and redo would do now, read by draft_history.js each time the canvas is redrawn #}
+{% set history_state = draft_history() %}
+<div id="draft-history-state" hidden
+     data-can-undo="{{ 'true' if history_state.can_undo else 'false' }}"
+     data-can-redo="{{ 'true' if history_state.can_redo else 'false' }}"
+     data-undo-label="{{ history_state.undo_label or '' }}"
+     data-redo-label="{{ history_state.redo_label or '' }}"></div>

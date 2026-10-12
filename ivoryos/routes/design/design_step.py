@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, render_template, current_app
 from flask_login import login_required
 
 from ivoryos.services.draft_service import get_script_file, post_script_file
+from ivoryos.services.draft_history import step_change
 from ivoryos.forms.dynamic_forms import (BATCH_ACTION_FIELD, CONSOLIDATE_ARGS_FIELD,
                                           create_form_from_action, create_action_buttons)
 from ivoryos.parsers.returns import extract_return_variables
@@ -148,8 +149,11 @@ def duplicate_action(uuid: int):
 
     # back = request.referrer
     script = get_script_file()
-    ScriptEditor(script).duplicate_action(uuid)
-    post_script_file(script)
+    editor = ScriptEditor(script)
+    original = next((step for step in editor.currently_editing_script if step['id'] == int(uuid)), None)
+    editor.duplicate_action(uuid)
+    # a copy reads like a second add of the same action, so the change is named here
+    post_script_file(script, label=step_change("Duplicate", original, script.editing_type) if original else None)
     warning = None
     try:
         exec_string = ScriptRenderer(script).compile(current_app.config['SCRIPT_FOLDER'])

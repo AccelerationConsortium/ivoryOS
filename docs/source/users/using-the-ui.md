@@ -26,6 +26,22 @@ Use **Design** to build workflows from available actions.
 
 If an action returns a fixed-length tuple, the designer can show one save field per returned item so multiple outputs can be named separately.
 
+Every change to the workflow you are editing can be undone: adding, editing, moving,
+disabling, duplicating or deleting a step, and renaming it. Undo goes back to when that
+workflow was opened from the library, imported, or started with **New**, and no further, so
+it never brings back a different workflow. Use the undo and redo buttons beside **Save As**,
+or the keyboard:
+
+| Action | Windows and Linux | macOS |
+|---|---|---|
+| Undo | Ctrl+Z | ⌘Z |
+| Redo | Ctrl+Y or Ctrl+Shift+Z | ⇧⌘Z |
+
+The shortcuts leave text fields alone, so Ctrl+Z while typing undoes the typing. The clock
+button lists every change with its time; pick one to go straight back, or forward, to it.
+The history is kept per browser session and survives a server restart. **Import**,
+**Import Python** and **Export** are under **More**.
+
 ```{image} ../_static/design.png
 :alt: IvoryOS workflow designer
 ```

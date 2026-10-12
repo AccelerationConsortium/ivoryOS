@@ -9,23 +9,38 @@
         </div>
     </div>
 
-    <!-- Center: Main Actions -->
+    <!-- Right: Main Actions, on one row; Import and Export are under More -->
     <div class="btn-toolbar gap-2" role="toolbar">
         <button class="btn border-teal-btn btn-sm d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#newScriptModal">
             <i class="bi bi-file-earmark-plus"></i> New
         </button>
-        
-        <button class="btn border-teal-btn btn-sm d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#jsonModal">
-            <i class="bi bi-upload"></i> Import
-        </button>
-
-        <a class="btn border-teal-btn btn-sm d-flex align-items-center gap-1 shadow-sm" href="{{url_for('design.design_files.download_json', filetype='script')}}">
-            <i class="bi bi-download"></i> Export
-        </a>
 
         <button class="btn border-teal-btn btn-sm d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#saveasModal">
             <i class="bi bi-floppy"></i> Save As
         </button>
+
+        {# undo, redo and this workflow's history; Ctrl+Z and Ctrl+Y too (see draft_history.js) #}
+        {% set history_state = draft_history() %}
+        <div class="btn-group btn-group-sm shadow-sm draft-history-controls" role="group" aria-label="Undo and redo">
+            <button type="button" class="btn border-teal-btn" id="draftUndoButton" onclick="undoDraft()"
+                    aria-label="Undo" title="Undo"{{ '' if history_state.can_undo else ' disabled' }}>
+                <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="btn border-teal-btn" id="draftRedoButton" onclick="redoDraft()"
+                    aria-label="Redo" title="Redo"{{ '' if history_state.can_redo else ' disabled' }}>
+                <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+            </button>
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn border-teal-btn dropdown-toggle" id="draftHistoryButton"
+                        data-bs-toggle="dropdown" aria-expanded="false" aria-label="History" title="History">
+                    <i class="bi bi-clock-history" aria-hidden="true"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end draft-history-menu" id="draftHistoryMenu"
+                    aria-labelledby="draftHistoryButton">
+                    <li><span class="dropdown-item-text small text-muted">Loading…</span></li>
+                </ul>
+            </div>
+        </div>
 
         <div class="btn-group shadow-sm">
             <button class="btn btn-outline-secondary btn-sm dropdown-toggle d-flex align-items-center gap-1" data-bs-toggle="dropdown" aria-expanded="false">
@@ -33,10 +48,21 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
                 <li>
+                    <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#jsonModal">
+                        <i class="bi bi-upload me-2 text-muted"></i>Import
+                    </button>
+                </li>
+                <li>
                     <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#pythonModal">
                         <i class="bi bi-filetype-py me-2 text-muted"></i>Import Python
                     </button>
                 </li>
+                <li>
+                    <a class="dropdown-item" href="{{url_for('design.design_files.download_json', filetype='script')}}">
+                        <i class="bi bi-download me-2 text-muted"></i>Export
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
                 <li>
                     <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#renameModal">
                         <i class="bi bi-pencil me-2 text-muted"></i>Rename
