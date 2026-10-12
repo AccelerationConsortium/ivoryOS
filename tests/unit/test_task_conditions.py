@@ -360,3 +360,33 @@ def test_a_queued_entry_can_leave_an_optional_input_empty():
     updates = task_conditions.parse_changes(task, {"config": [{"temperature": "30", "solvent": ""}]})
 
     assert updates["config"] == [{"temperature": "30", "solvent": ""}]
+
+
+# --- choice inputs are dropdowns in the editors -------------------------------
+
+
+def test_an_enum_or_literal_input_offers_its_values():
+    from ivoryos.runtime.task_conditions import choices_of
+
+    enum = "Enum:tests.unit.test_utils_conversion.MockEnum"
+    assert choices_of(enum) == ["OptionA", "OptionB"]
+    assert choices_of([enum, "NoneType"]) == ["OptionA", "OptionB"]
+    assert choices_of("Literal:Fast,Standard,Slow") == ["Fast", "Standard", "Slow"]
+    # anything else is typed in, an Enum that cannot be found too
+    assert choices_of("float") is None and choices_of(["int", "NoneType"]) is None
+    assert choices_of("Enum:no.such.Thing") is None
+
+
+def test_a_queued_tables_editor_is_told_its_dropdowns():
+    task = config_task()
+    task["script"] = Script(author="tester", script_dict={"prep": [], "cleanup": [], "script": [{
+        "id": 1, "uuid": 1, "instrument": "deck.reactor", "action": "heat", "return": "",
+        "args": {"temperature": "#temperature", "solvent": "#solvent"},
+        "arg_types": {"temperature": "float", "solvent": ["Enum:tests.unit.test_utils_conversion.MockEnum", "NoneType"]},
+    }]})
+    task["config"] = [{"temperature": "25", "solvent": "OptionA"}]
+
+    view = task_conditions.editable_conditions(task)
+
+    assert view["choices"] == {"solvent": ["OptionA", "OptionB"]}
+    assert view["optional"] == ["solvent"]

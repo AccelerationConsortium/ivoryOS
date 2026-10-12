@@ -534,3 +534,11 @@ def test_a_prep_that_fails_closes_the_table_with_its_rows_as_they_were(app, init
     snapshot = runner.progress.snapshot()
     assert snapshot["state"] == "failed" and snapshot["table"]["closed"]
     assert [row_state["status"] for row_state in snapshot["table"]["changed"]] == ["pending", "pending"]
+
+
+def test_the_running_tables_editor_is_told_its_dropdowns():
+    arg_types = {"temperature": "float", "mode": "Literal:Fast,Slow"}
+    view = LiveConfig([{"temperature": "25", "mode": "Fast"}], arg_types).view()
+
+    assert view["choices"] == {"mode": ["Fast", "Slow"]}
+    assert view["optional"] == []

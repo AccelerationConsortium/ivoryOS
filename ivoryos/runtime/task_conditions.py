@@ -13,6 +13,7 @@ from ivoryos.parsers.bo_campaign import normalize_value
 from ivoryos.parsers.type_conversions import convert_config_type
 from ivoryos.runtime.safety import check_value, describe, guard
 from ivoryos.script import ScriptEditor
+from ivoryos.utils.enums import enum_class_from_type
 
 REPEAT = "repeat"
 CONFIG = "config"
@@ -47,6 +48,30 @@ def accepts_none(arg_type):
     """
     types = arg_type if isinstance(arg_type, (list, tuple)) else [arg_type]
     return any(str(t) in ("NoneType", "None") for t in types)
+
+
+def choices_of(arg_type):
+    """The values a choice input takes, for the editors to offer as a dropdown: an Enum's member
+    names, as the execution page shows them, or a Literal's values. None for any other input,
+    or an Enum that cannot be found, which is then typed in."""
+    for item in arg_type if isinstance(arg_type, (list, tuple)) else [arg_type]:
+        text = "" if item is None else str(item)
+        if text.startswith("Enum:"):
+            enum_class = enum_class_from_type(text)
+            return [member.name for member in enum_class] if enum_class else None
+        if text.startswith("Literal:"):
+            return text[len("Literal:"):].split(",")
+    return None
+
+
+def column_choices(fields, arg_types):
+    """``{input: [value]}`` for the choice inputs among ``fields`` (see :func:`choices_of`)."""
+    choices = {}
+    for field in fields:
+        options = choices_of((arg_types or {}).get(field))
+        if options:
+            choices[field] = options
+    return choices
 
 
 def optional_inputs(arg_types):
@@ -243,6 +268,9 @@ def _config_view(task):
     return {
         "fields": columns,
         "types": {field: column_label(arg_types.get(field), limits.get(field)) for field in fields},
+        # an Enum or Literal input is a dropdown; an optional one can also be None
+        "choices": column_choices(fields, arg_types),
+        "optional": optional_inputs(arg_types),
         "rows": [[cell_text(row[field]) if field in row else "" for field in columns] for row in rows],
     }
 
