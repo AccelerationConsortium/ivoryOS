@@ -1,6 +1,7 @@
 import io
 
 from ivoryos.models import Script, db
+from ivoryos.runtime.state import global_state
 from ivoryos.script import ScriptEditor
 from tests.conftest import session_draft_id
 from ivoryos.services import draft_service
@@ -484,6 +485,44 @@ def test_the_toolbox_lists_flow_control_instruments_and_workflows(auth, test_dec
     assert 'id="editStepModal"' in page
 
 
+def test_the_toolbox_has_one_search_box_and_a_count_on_each_divider(auth, test_deck):
+    with auth.application.app_context():
+        post_script_for_user('testuser', Script(author='testuser', deck='test_deck'), draft_id=session_draft_id(auth))
+
+    page = auth.get('/ivoryos/draft').get_data(as_text=True)
+
+    # one control at the top: a search across every group, the auto fill toggle and the fold-all toggle
+    assert 'class="input-group input-group-sm"' in page
+    assert 'class="form-control toolbox-search"' in page
+    assert 'toolbox-autofill"' in page and 'id="autoFillToggle" aria-pressed="false"' in page
+    assert 'class="btn toolbox-tool-toggle toolbox-fold-all"' in page
+    # the groups scroll on their own under that row
+    assert 'class="toolbox-groups"' in page and page.index('toolbox-tools') < page.index('toolbox-groups')
+    assert 'form-check-input" type="checkbox" id="autoFillCheck"' not in page
+    # each divider names its group, for the browser to remember its fold, and shows its size
+    assert 'data-group="deck.dummy"' in page and 'class="toolbox-count"' in page
+    assert 'data-deck="test_deck"' in page
+    # a group no longer has a search box of its own
+    html = auth.get('/ivoryos/draft/instruments/deck.dummy').get_json()['html']
+    assert 'action-search' not in html
+
+
+def test_a_busy_deck_starts_with_only_the_instruments_that_fit_open(auth, test_deck):
+    """Instruments open from the top while their methods fit a screen; the rest start folded."""
+    methods = lambda n: {f"method_{i}": {} for i in range(n)}
+    global_state._interface_schema = {"deck.a": methods(5), "deck.b": methods(5), "deck.c": methods(5)}
+    with auth.application.app_context():
+        post_script_for_user('testuser', Script(author='testuser', deck='test_deck'), draft_id=session_draft_id(auth))
+
+    page = auth.get('/ivoryos/draft').get_data(as_text=True)
+
+    assert 'id="toolbox-deck-a" class="toolbox-group-body">' in page
+    assert 'id="toolbox-deck-b" class="toolbox-group-body">' in page
+    assert 'id="toolbox-deck-c" class="toolbox-group-body" hidden' in page
+    # the budget is about instruments: the workflows still start open
+    assert 'id="toolbox-workflows" class="toolbox-group-body">' in page
+
+
 def test_a_toolbox_group_holds_only_its_actions(auth, test_deck):
     html = auth.get('/ivoryos/draft/instruments/deck.dummy').get_json()['html']
 
@@ -497,11 +536,29 @@ def test_a_toolbox_group_holds_only_its_actions(auth, test_deck):
     assert 'list="actions-deck-dummy-' in html and 'list="arg_options"' not in html
 
 
+def test_a_flow_control_field_explains_itself_under_the_field_not_as_a_limit(auth, test_deck):
+    html = auth.get('/ivoryos/draft/instruments/flow_control').get_json()['html']
+
+    assert 'class="form-text field-help">No spaces</div>' in html
+    assert 'class="form-text field-help">Numbers and #variables</div>' in html
+    # the type select has a label that fits the narrow label column
+    assert 'Select Value Type' not in html and 'Select Input Type' not in html
+    assert '<label class="input-group-text">Type' in html
+    # help text is not a safety limit, and never sits inside the label-and-field row
+    assert 'Safety limit' not in html
+    assert 'input-group-text small text-muted' not in html
+
+
 def test_auto_fill_is_one_setting_for_the_toolbox(auth, test_deck):
     assert auth.patch('/ivoryos/draft/ui-state', json={'autofill': True}).get_json() == {'success': True}
 
     html = auth.get('/ivoryos/draft/instruments/deck.dummy').get_json()['html']
     assert 'value="#arg"' in html
+    # and its toggle on the toolbox comes back lit
+    with auth.application.app_context():
+        post_script_for_user('testuser', Script(author='testuser', deck='test_deck'), draft_id=session_draft_id(auth))
+    page = auth.get('/ivoryos/draft').get_data(as_text=True)
+    assert 'toolbox-autofill active"' in page and 'id="autoFillToggle" aria-pressed="true"' in page
 
 
 def test_a_step_opens_in_a_pop_up_with_save_and_cancel(auth, test_deck):

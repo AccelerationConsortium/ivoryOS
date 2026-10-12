@@ -76,15 +76,16 @@ function changeDeck(deck) {
 
 
 
-function toggleAutoFill() {
+function toggleAutoFill(button) {
+    const on = button.getAttribute("aria-pressed") !== "true";
+    button.setAttribute("aria-pressed", on ? "true" : "false");
+    button.classList.toggle("active", on);
     fetch(scriptUIStateUrl, {
         method: "PATCH",
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-            autofill: document.getElementById("autoFillCheck").checked
-        })
+        body: JSON.stringify({ autofill: on })
     })
     .then(res => res.json())
     .then(data => {

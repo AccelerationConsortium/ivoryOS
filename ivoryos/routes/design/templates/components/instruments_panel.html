@@ -1,13 +1,17 @@
 {# The toolbox: what can be added to the workflow. Flow control, each instrument, each method
    category and the workflows sit under a divider of their own, which folds them away when
    clicked. Every group's actions load with the page, folded or not, so opening one is
-   instant (see action_handlers.js). #}
+   instant (see action_handlers.js).
+   Which instruments start open comes from the route (open_groups): from the top, while their
+   methods fit on a screen. After that the browser remembers what the user folds, per deck. #}
+{% set open_groups = open_groups if open_groups is defined else defined_variables %}
 {% macro group(key, label, open=True) %}
     {% set group_id = 'toolbox-' ~ (key | replace('.', '-')) %}
     <div class="toolbox-group">
-        <button class="toolbox-divider" type="button"
+        <button class="toolbox-divider" type="button" data-group="{{ key }}"
                 aria-expanded="{{ 'true' if open else 'false' }}" aria-controls="{{ group_id }}">
             <span>{{ label }}</span>
+            <span class="toolbox-count" aria-hidden="true"></span>
             <i class="bi bi-chevron-down toolbox-chevron" aria-hidden="true"></i>
         </button>
         <div id="{{ group_id }}" class="toolbox-group-body"{{ '' if open else ' hidden' }}>
@@ -18,32 +22,47 @@
     </div>
 {% endmacro %}
 
-<div class="toolbox" id="toolbox">
+<div class="toolbox" id="toolbox" data-deck="{{ script.deck if script and script.deck else '' }}">
     {% if design_agent_enabled %}
         <div class="accordion accordion-flush mb-2">
             {% include 'components/design_agent_panel.html' %}
         </div>
     {% endif %}
 
-    {% include 'components/autofill_toggle.html' %}
+    {# one control above the scrolling groups: a search across every group, then the auto fill
+       toggle and one toggle that folds every group and, lit, unfolds them again #}
+    <div class="toolbox-tools">
+        <div class="input-group input-group-sm">
+            <input type="search" class="form-control toolbox-search"
+                   placeholder="Search" aria-label="Search all actions" autocomplete="off">
+            {% include 'components/autofill_toggle.html' %}
+            <button type="button" class="btn toolbox-tool-toggle toolbox-fold-all"
+                    aria-pressed="false" title="Fold all groups">
+                Fold <i class="bi bi-arrows-collapse" aria-hidden="true"></i>
+            </button>
+        </div>
+    </div>
 
-    {{ group('flow_control', 'Flow control', open=False) }}
+    {# the groups are the only part that scrolls, under the tools row #}
+    <div class="toolbox-groups">
+        {{ group('flow_control', 'Flow control', open=False) }}
 
-    {% for instrument in defined_variables %}
-        {{ group(instrument, instrument | format_name) }}
-    {% else %}
-        <div class="small text-muted px-2 my-2">No instruments on this deck.</div>
-    {% endfor %}
+        {% for instrument in defined_variables %}
+            {{ group(instrument, instrument | format_name, open=(instrument in open_groups)) }}
+        {% else %}
+            <div class="small text-muted px-2 my-2">No instruments on this deck.</div>
+        {% endfor %}
 
-    {% for instrument in local_variables %}
-        {{ group(instrument, instrument) }}
-    {% endfor %}
+        {% for instrument in local_variables %}
+            {{ group(instrument, instrument) }}
+        {% endfor %}
 
-    {% for category in block_variables %}
-        {{ group(category, category | format_name) }}
-    {% endfor %}
+        {% for category in block_variables %}
+            {{ group(category, category | format_name) }}
+        {% endfor %}
 
-    {{ group('workflows', 'Workflows') }}
+        {{ group('workflows', 'Workflows') }}
+    </div>
 
     {# the workflow's variables, suggested in every action's fields; refreshed as steps are added #}
     <datalist id="variables_datalist">

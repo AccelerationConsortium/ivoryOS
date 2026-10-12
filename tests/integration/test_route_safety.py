@@ -93,7 +93,8 @@ def test_the_designer_shows_a_fields_unit_and_range(auth, test_deck, limits):
 
     html = auth.get('/ivoryos/draft/instruments/deck.dummy').get_json()['html']
 
-    assert '>mL · 0 to 10</span>' in html
+    # under the field, in the field column of the toolbox grid, and named as a limit
+    assert 'class="form-text field-limit" title="Safety limit: mL · 0 to 10">mL · 0 to 10</div>' in html
 
 
 def test_an_instrument_form_shows_each_fields_limit(app):
