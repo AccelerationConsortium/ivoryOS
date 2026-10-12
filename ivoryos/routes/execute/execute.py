@@ -7,7 +7,7 @@ import importlib
 
 from flask import Blueprint, redirect, url_for, flash, jsonify, request, render_template, session, \
     current_app, g, send_file
-from flask_login import login_required
+from flask_login import current_user, login_required
 from markupsafe import Markup
 from werkzeug.utils import secure_filename
 
@@ -255,7 +255,8 @@ def experiment_run():
                                   logger=g.logger, socketio=g.socketio, repeat_count=repeat,
                                   output_path=datapath, compiled=compiled, history=existing_data,
                                   current_app=current_app._get_current_object(), batch_size=batch_size,
-                                  on_start=on_start_callback, display_name=display_name
+                                  on_start=on_start_callback, display_name=display_name,
+                                  submitted_by=current_user.get_id()
                                   )
 
                 # remove queue flash, handled in html/js
@@ -425,7 +426,8 @@ def run_bo():
                           current_app=current_app._get_current_object(), batch_size=int(batch_size),
                           objectives=objectives, parameters=parameters, constraints=constraints, steps=steps,
                           optimizer_cls=Optimizer, additional_params=additional_params,
-                          on_start=on_start_callback, display_name=display_name
+                          on_start=on_start_callback, display_name=display_name,
+                          submitted_by=current_user.get_id()
                           )
         # if result == "queued":
         #     flash(f"System busy. Optimization {run_name} added to queue.")

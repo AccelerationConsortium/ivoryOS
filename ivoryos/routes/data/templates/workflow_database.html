@@ -42,7 +42,7 @@
             <input type="hidden" name="sort_by" value="{{ current_sort_by }}">
             <input type="hidden" name="order" value="{{ current_order }}">
             <div class="input-group rounded-pill border border-teal-light overflow-hidden" style="background: white; max-width: 300px;">
-                <input type="search" name="keyword" id="keyword" class="form-control border-0 px-3 py-2" placeholder="Search experiments..."
+                <input type="search" name="keyword" id="keyword" class="form-control border-0 px-3 py-2" placeholder="Search name or user"
                     value="{{ request.args.get('keyword', '') }}" style="box-shadow: none; font-size: 0.9rem;">
                 <button type="submit" class="btn btn-link text-secondary px-3 py-0 border-0" style="text-decoration: none;">
                     <i class="bi bi-search" style="color: #6c757d; font-size: 0.95rem;"></i>
@@ -68,6 +68,12 @@
                                 <a href="{{ url_for('data.list_workflows', keyword=request.args.get('keyword', ''), per_page=current_per_page, sort_by='id', order='desc' if current_sort_by == 'id' and current_order == 'asc' else 'asc') }}"
                                     class="text-secondary text-decoration-none fw-semibold">
                                     Workflow ID {% if current_sort_by == 'id' %}<i class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th scope="col" class="py-3 border-0">
+                                <a href="{{ url_for('data.list_workflows', keyword=request.args.get('keyword', ''), per_page=current_per_page, sort_by='submitted_by', order='desc' if current_sort_by == 'submitted_by' and current_order == 'asc' else 'asc') }}"
+                                    class="text-secondary text-decoration-none fw-semibold">
+                                    Submitted By {% if current_sort_by == 'submitted_by' %}<i class="bi bi-arrow-{{ 'up' if current_order == 'asc' else 'down' }}"></i>{% endif %}
                                 </a>
                             </th>
                             <th scope="col" class="py-3 border-0">
@@ -101,6 +107,14 @@
                                 </td>
                                 <td>
                                     <code class="small text-secondary">{{ workflow.id }}</code>
+                                </td>
+                                {# who submitted the run; not kept for runs from before it was #}
+                                <td class="small">
+                                    {% if workflow.submitted_by %}
+                                        <i class="bi bi-person text-muted me-1" aria-hidden="true"></i>{{ workflow.submitted_by }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
                                 </td>
                                 <td class="small text-muted">
                                     {{ workflow.start_time.strftime("%Y-%m-%d %H:%M:%S") if workflow.start_time else '-' }}

@@ -95,11 +95,14 @@ class ScriptRunnerQueueMixin:
                 "uid": task.get("uid"),
                 "name": task.get("run_name", "untitled"),
                 "status": "pending",
-                "args": f"{task.get('repeat_count', 1)} iteration(s)" if not task.get('config') else f"Config: {len(task.get('config'))} entries"
+                "args": f"{task.get('repeat_count', 1)} iteration(s)" if not task.get('config') else f"Config: {len(task.get('config'))} entries",
+                "submitted_by": task.get("submitted_by"),
             }
             
             # Add detailed info for the modal
             details = {}
+            if task.get("submitted_by"):
+                details["Submitted By"] = task.get("submitted_by")
             if task.get("repeat_count"):
                 details["Mode"] = "Repeated Execution"
                 details["Repeat Count"] = task.get("repeat_count")
@@ -230,6 +233,8 @@ class ScriptRunnerQueueMixin:
             if self.current_task:
                 task = self.current_task
                 details = {}
+                if task.get("submitted_by"):
+                    details["Submitted By"] = task.get("submitted_by")
                 if task.get("repeat_count"):
                     details["Mode"] = "Repeated Execution"
                     details["Repeat Count"] = task.get("repeat_count")
@@ -420,8 +425,9 @@ class ScriptRunnerQueueMixin:
     def run_script(self, script, repeat_count=1, run_name=None, logger=None, socketio=None, config=None,
                    output_path="", compiled=False, current_app=None, history=None, optimizer=None, batch_mode=None,
                    batch_size=1, objectives=None, parameters=None, constraints=None, steps=None, optimizer_cls=None,
-                   additional_params=None, on_start=None, display_name=None):
-
+                   additional_params=None, on_start=None, display_name=None, submitted_by=None):
+        """Queue a run. ``submitted_by`` is the username of who submitted it, kept with the run
+        however long it waits in the queue."""
 
         self.socketio = socketio
         self.logger = logger
@@ -458,6 +464,7 @@ class ScriptRunnerQueueMixin:
             "additional_params": additional_params,
             "on_start": on_start,
             "display_name": display_name,
+            "submitted_by": submitted_by,
             # positions shift as the queue advances; this keeps naming the same task
             "uid": uuid.uuid4().hex,
         }

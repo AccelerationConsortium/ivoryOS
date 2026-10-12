@@ -92,7 +92,7 @@ def reset_old_schema(engine, db_dir):
     current = inspect(engine)
     json_type = "JSON" if engine.dialect.name == "postgresql" else "TEXT"
     new_columns = {
-        'workflow_runs': (("status", "VARCHAR(32)"), ("events", json_type)),
+        'workflow_runs': (("status", "VARCHAR(32)"), ("events", json_type), ("submitted_by", "VARCHAR(50)")),
         'workflow_phases': (("status", "VARCHAR(32)"), ("error", json_type)),
     }
     tables = current.get_table_names()
