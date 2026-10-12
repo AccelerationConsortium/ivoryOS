@@ -28,7 +28,10 @@ def load_json():
             flash('No file part')
         if f.filename.endswith("json"):
             script_dict = json.load(f)
-            post_script_file(script_dict, is_dict=True)
+            name = script_dict.get("name") if isinstance(script_dict, dict) else None
+            # another workflow: its history starts here
+            post_script_file(script_dict, is_dict=True, label=f"Import “{name}”" if name else "Import a workflow",
+                             new_history=True)
         else:
             flash("Script file need to be JSON file")
     return redirect(url_for("design.experiment_builder"))

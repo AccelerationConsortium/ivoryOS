@@ -36,10 +36,15 @@
         const scriptDeleteUrl = "{{ url_for('design.clear_draft') }}";
         const scriptCompileUrl = "{{ url_for('design.compile_preview') }}";
         const variablesUrl = "{{ url_for('design.get_available_variables') }}";
+        const draftHistoryUrl = "{{ url_for('design.design_history.list_history') }}";
+        const draftUndoUrl = "{{ url_for('design.design_history.undo') }}";
+        const draftRedoUrl = "{{ url_for('design.design_history.redo') }}";
+        const draftRestoreUrl = "{{ url_for('design.design_history.restore', index=0) }}";
     </script>
     <script src="{{ url_for('static', filename='js/sortable_design.js') }}"></script>
     <script src="{{ url_for('static', filename='js/action_handlers.js') }}"></script>
     <script src="{{ url_for('static', filename='js/script_metadata.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ui_state.js') }}"></script>
     <script src="{{ url_for('static', filename='js/agent_overlay.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/draft_history.js') }}"></script>
 {% endblock %}

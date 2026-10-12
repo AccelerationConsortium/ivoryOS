@@ -27,6 +27,16 @@ server comes back, as long as the browser is still logged in. Logging out delete
 session's draft; files left by sessions that never logged out are pruned oldest-first
 once there are more than 256.
 
+Beside each draft, `draft_<user>_<draft_id>.history.json` holds its undo history: up to
+100 earlier states of the draft, each labelled with the change that led to it, and which
+one the draft is at now (`ivoryos/services/draft_history.py`). Every save of a draft goes
+through `post_script_file`, which records the change, so new designer routes get undo
+without extra code. Pass `record=False` for a save the user did not make, such as filling
+in the deck, and `label=` to name a change the comparison cannot describe. The history
+covers one workflow: a route that puts another workflow in the designer (opening from the
+library, importing, **New**) passes `new_history=True`, so undo stops there. The history is
+deleted and pruned with its draft.
+
 These directories are runtime output. Do not commit newly generated local run data.
 
 ## Database location

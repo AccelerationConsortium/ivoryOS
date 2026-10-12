@@ -132,6 +132,8 @@ function initializeCanvas() {
     });
     initializeStepIssueTooltips();
     getCodePreview();
+    // what undo and redo would do now came with the canvas (see draft_history.js)
+    if (typeof syncHistoryControls === "function") syncHistoryControls();
 }
 
 // The canvas is re-rendered as raw HTML on every edit, so the tooltips that

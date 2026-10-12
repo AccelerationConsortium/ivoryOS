@@ -241,4 +241,4 @@ def _add_actions_to_design(action_list: list, deck_info: dict):
         
         ScriptEditor(script).add_action(action=new_action)
     
-    post_script_file(script)
+    post_script_file(script, label=f"Add {len(action_list)} step{'' if len(action_list) == 1 else 's'} from the design agent")

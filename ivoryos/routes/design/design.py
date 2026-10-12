@@ -21,6 +21,7 @@ from ivoryos.parsers.returns import extract_return_variables
 from ivoryos.routes.design.design_file import files
 from ivoryos.routes.design.design_step import steps
 from ivoryos.routes.design.design_agent import agent
+from ivoryos.routes.design.design_history import history
 from ivoryos.routes.library.library import publish
 
 design = Blueprint('design', __name__, template_folder='templates')
@@ -29,6 +30,7 @@ design = Blueprint('design', __name__, template_folder='templates')
 design.register_blueprint(files)
 design.register_blueprint(steps)
 design.register_blueprint(agent)
+design.register_blueprint(history)
 
 global_state = GlobalState()
 
@@ -102,7 +104,7 @@ def experiment_builder():
     if deck and script.deck is None:
         script.deck = os.path.splitext(os.path.basename(deck.__file__))[
             0] if deck.__name__ == "__main__" else deck.__name__
-        post_script_file(script)
+        post_script_file(script, record=False)
     pseudo_deck_name = session.get('pseudo_deck', '')
     pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pseudo_deck_name)
     off_line = current_app.config["OFF_LINE"]
@@ -279,7 +281,7 @@ def update_ui_state():
 
         if script.deck is None or script.isEmpty():
             script.deck = pkl_name.split('.')[0]
-            post_script_file(script)
+            post_script_file(script, record=False)
         elif script.deck and not script.deck == pkl_name.split('.')[0]:
             flash(f"Choose the deck with name {script.deck}")
         pseudo_deck_path = os.path.join(current_app.config["DUMMY_DECK"], pkl_name)
@@ -336,7 +338,8 @@ def clear_draft():
     else:
         deck_name = session.get("pseudo_deck", "")
     script = Script(deck=deck_name, author=current_user.get_id())
-    post_script_file(script)
+    # a new workflow: its history starts here
+    post_script_file(script, label="New workflow", new_history=True)
     exec_string = ScriptRenderer(script).compile(current_app.config['SCRIPT_FOLDER'])
     # session['python_code'] = exec_string
     return jsonify({'success': True})
@@ -376,7 +379,8 @@ def submit_script():
             result[stype] = "success"
         except Exception as e:
             result[stype] = f"failed to transcript, but function can still run. error: {str(e)}"
-    post_script_file(script)
+    # another workflow: its history starts here
+    post_script_file(script, label="Import Python code", new_history=True)
     status = publish()
     return jsonify({"script": result, "db": status}), 200
 

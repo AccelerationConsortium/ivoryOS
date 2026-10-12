@@ -46,7 +46,8 @@ def workflow_script(script_name:str):
         if not row:
             return jsonify(success=False)
         script = Script(**row.as_dict())
-        post_script_file(script)
+        # another workflow: its history starts here, and undo never goes back to the one before
+        post_script_file(script, label=f"Open “{script_name}”", new_history=True)
         pseudo_name = session.get("pseudo_deck", "")
         off_line = current_app.config["OFF_LINE"]
         if off_line and pseudo_name and not script.deck == pseudo_name:
