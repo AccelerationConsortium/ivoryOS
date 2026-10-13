@@ -1,6 +1,8 @@
 import re
 import io
 
+from flask import g
+
 from ivoryos.models import Script, db
 from ivoryos.runtime.state import global_state
 from ivoryos.script import ScriptEditor
@@ -808,3 +810,47 @@ def test_a_config_table_that_cannot_run_is_not_started(auth, test_deck, monkeypa
     form['temperature[2]'] = '30'
     auth.post('/ivoryos/executions/config', data=form, follow_redirects=True)
     assert run_script.call_args.kwargs['config'] == [{'temperature': '25'}, {'temperature': '30'}]
+
+
+def _toolbox_csrf_tokens(html):
+    return set(re.findall(r'name="csrf_token"[^>]*value="([^"]+)"', html))
+
+
+def _as_browser(client, method, url, **kwargs):
+    """One request as a browser sends it. The fixtures keep an app context open across the
+    test, so ``g`` is cleared by hand here; otherwise it would carry the CSRF token from one
+    request to the next, which never happens between real requests."""
+    g.pop('csrf_token', None)
+    return getattr(client, method)(url, **kwargs)
+
+
+def test_toolbox_groups_loaded_in_parallel_share_the_session_csrf_token(auth, test_deck, app):
+    """
+    The designer fetches every toolbox group at once, each from the cookie the page set. The
+    page itself must therefore mint the session's CSRF token: otherwise each group would mint
+    its own, only the last cookie would survive in the browser, and adding from any other
+    group would fail with "The CSRF tokens do not match".
+    """
+    app.config['WTF_CSRF_ENABLED'] = True
+    try:
+        with app.app_context():  # a draft that already knows its deck, as a real session has
+            post_script_for_user('testuser', Script(author='testuser', deck='test_deck'),
+                                 draft_id=session_draft_id(auth), record=False)
+        with auth.session_transaction() as sess:
+            sess.pop('csrf_token', None)  # a session that has not seen a form yet
+        assert _as_browser(auth, 'get', '/ivoryos/draft').status_code == 200
+        page_cookie = auth.get_cookie('session').value
+
+        first = _as_browser(auth, 'get', '/ivoryos/draft/instruments/deck.dummy').get_json()['html']
+        auth.set_cookie('session', page_cookie)  # the second fetch starts where the first did
+        second = _as_browser(auth, 'get', '/ivoryos/draft/instruments/flow_control').get_json()['html']
+
+        tokens = _toolbox_csrf_tokens(first)
+        assert len(tokens) == 1 and tokens == _toolbox_csrf_tokens(second)
+
+        # the browser kept the second response's cookie; a form from the first still submits
+        response = _as_browser(auth, 'post', '/ivoryos/draft/instruments/deck.dummy',
+                               data={'hidden_name': 'int_method', 'arg': '5', 'csrf_token': tokens.pop()})
+        assert response.get_json()['success'], response.get_json()
+    finally:
+        app.config['WTF_CSRF_ENABLED'] = False
