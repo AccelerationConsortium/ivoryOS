@@ -1,4 +1,7 @@
 ﻿# Changelog
+## 1.7.2 (October 13th, 2026)
+- !221 **[Bug]** fix failed to add method: The CSRF tokens do not match
+
 ## 1.7.1 (October 12th, 2026)
 - !220 **[New]** tag each run with the user who submitted it, shown in the data panel and queue
 - !219 **[Bug]** resolve config table editors display, with dropdowns for Enum and Literal inputs
