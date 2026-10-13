@@ -7,6 +7,7 @@ load_dotenv()
 import bcrypt
 from flask import Flask, session, g, redirect, url_for
 from flask_login import AnonymousUserMixin
+from flask_wtf.csrf import generate_csrf
 from sqlalchemy import inspect, text
 
 from ivoryos.utils.logger import start_logger
@@ -177,6 +178,11 @@ def create_app(config_class=None):
         g.logger = logger
         g.socketio = socketio
         session.permanent = False
+        # Mint the session's CSRF token on the first response, before any form is built. The
+        # designer loads its toolbox groups in parallel; if the session had no token yet, every
+        # parallel response would create its own and only the last cookie would survive, so the
+        # other groups' forms would fail with "The CSRF tokens do not match".
+        generate_csrf()
         # DEMO_MODE: Simulate logged-in user per session
         if app.config.get("DEMO_MODE", False):
             if "demo_user_id" not in session:
