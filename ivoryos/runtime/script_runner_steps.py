@@ -226,6 +226,9 @@ class ScriptRunnerStepMixin:
         smaller batch.
         """
         times = step["args"].get("statement", 1)
+        if times in (None, ""):
+            # older drafts saved a blank repeat count as None
+            times = 1
         if isinstance(times, str) and times.startswith("#"):
             counts = [int(context.get(times[1:])) for context in contexts]
         else:

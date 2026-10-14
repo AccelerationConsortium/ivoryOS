@@ -489,7 +489,8 @@ class ScriptRenderer:
             if isinstance(statement, str) and statement.startswith("#"):
                 statement = f"str({statement[1:]})"
             else:
-                statement = statement.encode('unicode_escape').decode()
+                # older drafts saved a blank pause message as the number 1
+                statement = str(statement if statement is not None else '').encode('unicode_escape').decode()
             if batch:
                 return f"{self.indent(indent_unit)}for param in param_list:" + f"{self.indent(indent_unit+1)}pause('''{statement}''')", indent_unit
             return f"{self.indent(indent_unit)}pause('''{statement}''')", indent_unit
@@ -547,6 +548,9 @@ class ScriptRenderer:
         exec_string = ""
         if isinstance(args, str) and args.startswith("#"):
             args = args[1:]
+        if args in (None, ''):
+            # older drafts saved a blank repeat count as None
+            args = 1
         if action == 'repeat':
             exec_string += self.indent(indent_unit) + f"for _ in range({args}):"
             indent_unit += 1

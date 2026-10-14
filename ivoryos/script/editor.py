@@ -274,6 +274,9 @@ class ScriptEditor:
         return kwargs
 
     def add_logic_action(self, logic_type: str, statement, insert_position=None, **kwargs):
+        # a blank number field submits None rather than ''
+        if statement is None:
+            statement = ''
         current_len = len(self.currently_editing_script)
         uid = uuid.uuid4().fields[-1]
         logic_dict = {
@@ -313,8 +316,8 @@ class ScriptEditor:
             "pause":
                 [
                     {"id": current_len + 1, "instrument": 'pause', "action": "pause",
-                     "args": {"statement": 1 if statement == '' else statement}, "return": '', "uuid": uid,
-                     "arg_types": {"statement": "str"}}
+                     "args": {"statement": "Human intervention required" if statement == '' else statement},
+                     "return": '', "uuid": uid, "arg_types": {"statement": "str"}}
                 ],
             "comment":
                 [
