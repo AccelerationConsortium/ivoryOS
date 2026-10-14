@@ -134,6 +134,20 @@ def test_compile_generates_headers_builtins_returns_and_required_imports(tmp_pat
     assert "def pause(reason=\"Manual intervention required\")" in file_text
 
 
+def test_compile_handles_blank_repeat_and_pause_saved_by_older_drafts():
+    script = Script(name="Old Draft", author="tester")
+    script.script_dict["script"] = [
+        action("repeat", "repeat", {"statement": None}, id=1, uuid=7, arg_types={"statement": "int"}),
+        action("pause", "pause", {"statement": 1}, id=2, arg_types={"statement": "str"}),
+        action("repeat", "endrepeat", {}, id=3, uuid=7),
+    ]
+
+    compiled = ScriptRenderer(script).compile()["script"]
+
+    assert "for _ in range(1):" in compiled
+    assert "pause('''1''')" in compiled
+
+
 def test_compile_batch_mode_uses_param_list_and_result_storage():
     script = Script(name="Batch Run", author="tester")
     script.script_dict["script"] = [

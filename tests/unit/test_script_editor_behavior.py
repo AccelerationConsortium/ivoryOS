@@ -126,3 +126,17 @@ def test_toggle_comment_action():
     # Toggle back to enabled
     editor.toggle_comment_action(1)
     assert script.script_dict["script"][0]["disabled"] is False
+
+
+@pytest.mark.parametrize("blank", [None, ""])
+def test_blank_repeat_and_pause_get_usable_defaults(blank):
+    # a blank number field submits None, a blank text field submits ''
+    script = Script(author="tester")
+    editor = ScriptEditor(script)
+
+    editor.add_logic_action("repeat", blank)
+    editor.add_logic_action("pause", blank)
+    editor.add_logic_action("comment", blank)
+
+    statements = [action["args"].get("statement") for action in script.script_dict["script"]]
+    assert statements == [1, None, "Human intervention required", ""]

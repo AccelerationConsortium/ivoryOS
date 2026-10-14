@@ -854,3 +854,15 @@ def test_toolbox_groups_loaded_in_parallel_share_the_session_csrf_token(auth, te
         assert response.get_json()['success'], response.get_json()
     finally:
         app.config['WTF_CSRF_ENABLED'] = False
+
+
+def test_flow_control_dropped_with_a_blank_statement_still_compiles(auth, test_deck):
+    for builtin in ('repeat', 'pause', 'comment'):
+        response = auth.post('/ivoryos/draft/instruments/flow_control',
+                             data={'builtin_name': builtin, 'statement': ''})
+        body = response.get_json()
+        assert body['success'] is True and body['error'] == '', body['error']
+
+    script = get_script_for_user('testuser', draft_id=session_draft_id(auth))
+    statements = [step['args'].get('statement') for step in script.script_dict['script']]
+    assert statements == [1, None, 'Human intervention required', '']
