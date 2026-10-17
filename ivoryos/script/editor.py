@@ -5,6 +5,9 @@ import re
 import uuid
 from typing import Dict
 
+from ivoryos.parsers.structured_types import find_structured_type, iter_variables, load_structured_type
+from ivoryos.parsers.introspection import _get_type_from_parameters
+
 class ScriptEditor:
     def __init__(self, script):
         self.script = script
@@ -390,6 +393,14 @@ class ScriptEditor:
                                             config_type_dict[key] = action['arg_types'][arg]
                                     else:
                                         config_type_dict[key] = "any"
+                            elif find_structured_type(action['arg_types'].get(arg)) is not None:
+                                # variables nested inside a dict value, typed by the dict's value annotation
+                                annotation = load_structured_type(action['arg_types'][arg])
+                                for key, value_annotation in iter_variables(args[arg], annotation):
+                                    if key not in (*variables, *configure):
+                                        configure.append(key)
+                                        field_type = _get_type_from_parameters(key, {key: value_annotation}) if value_annotation is not None else ""
+                                        config_type_dict[key] = field_type or "any"
         return configure, config_type_dict
 
     def config_return(self):

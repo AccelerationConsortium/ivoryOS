@@ -30,9 +30,10 @@ function triggerModal(formHtml, actionName, actionId, dropTargetId) {
             .data("action-name", actionName)
             .data("drop-target-id", dropTargetId);
 
-        // Fetch valid variables for this position
+        // Fetch valid variables for this position (a dict argument's textarea too: its table takes
+        // its suggestions from it, see structured_editor.js)
         const datalistId = "modal_vars_" + Date.now();
-        $("#modalFormFields").find("input[list='variables_datalist']").attr("list", datalistId);
+        $("#modalFormFields").find("[list='variables_datalist']").attr("list", datalistId);
 
         fetch(variablesUrl + "?before_id=" + (dropTargetId || ""))
             .then(res => res.json())

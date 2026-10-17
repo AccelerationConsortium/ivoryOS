@@ -9,6 +9,7 @@ from ivoryos.runtime.safety import SafetyViolation, guard
 from ivoryos.utils.enums import to_members
 from ivoryos.runtime.runner_runtime import HumanInterventionRequired, ensure_deck, global_state, pause
 from ivoryos.models import WorkflowStep, db
+from ivoryos.parsers.structured_types import substitute_variables
 from ivoryos.parsers.returns import store_return_value
 from ivoryos.parsers.serialize import sanitize_for_json
 from ivoryos.utils.decorators import BUILDING_BLOCKS
@@ -527,7 +528,8 @@ class ScriptRunnerStepMixin:
                 # for comment need to substitue #args in the arg with the actual values
                 substituted[key] = substitute_vars(value, context)
             else:
-                substituted[key] = value
+                # e.g. #variables nested inside a dict value
+                substituted[key] = substitute_variables(value, context)
 
         return substituted
 

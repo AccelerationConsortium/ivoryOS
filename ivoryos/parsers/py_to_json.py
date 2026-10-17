@@ -3,6 +3,8 @@ import uuid
 
 
 from ivoryos.runtime.state import GlobalState
+from ivoryos.parsers.structured_types import is_dict_annotation, structured_value_from_node
+from ivoryos.parsers.introspection import _get_type_from_parameters
 
 global_state = GlobalState()
 
@@ -57,7 +59,13 @@ def convert_to_cards(source_code: str):
         def __init__(self):
             self.defined_types = {}  # <-- always exists
 
-        def value_and_type_from_node(self, node):
+        def value_and_type_from_node(self, node, annotation=None):
+            if annotation is not None and is_dict_annotation(annotation) and not isinstance(node, ast.Name):
+                try:
+                    value = structured_value_from_node(node, annotation)
+                    return value, _get_type_from_parameters("value", {"value": annotation})
+                except ValueError:
+                    pass
             if isinstance(node, ast.Constant):
                 value = node.value
                 return value, infer_type(value)
@@ -242,6 +250,7 @@ def convert_to_cards(source_code: str):
             # Resolve function signature
             sig_params = []
             func_def = None
+            annotations = {}  # parameter name -> annotation, to parse dict arguments
 
             # 1. Check in interface_schema
             if instrument in global_state.interface_schema:
@@ -249,6 +258,7 @@ def convert_to_cards(source_code: str):
                 if func_info and 'signature' in func_info:
                     sig_params = list(func_info['signature'].parameters.keys())
                     sig_params.remove("self")
+                    annotations = {k: p.annotation for k, p in func_info['signature'].parameters.items()}
                     print(sig_params)
 
             # 2. Check in building_blocks
@@ -261,6 +271,7 @@ def convert_to_cards(source_code: str):
                         func_info = global_state.building_blocks[instrument].get(action)
                         if func_info and 'signature' in func_info:
                             sig_params = list(func_info['signature'].parameters.keys())
+                            annotations = {k: p.annotation for k, p in func_info['signature'].parameters.items()}
 
             # Handle positional arguments
             for i, arg_node in enumerate(node.args):
@@ -270,7 +281,7 @@ def convert_to_cards(source_code: str):
                     # Fallback if we have more args than parameters or no signature found
                     arg_name = f"arg_{i}"
 
-                value, value_type = self.value_and_type_from_node(arg_node)
+                value, value_type = self.value_and_type_from_node(arg_node, annotations.get(arg_name))
 
                 args[arg_name] = value
                 arg_types[arg_name] = value_type
@@ -280,11 +291,11 @@ def convert_to_cards(source_code: str):
                 if kw.arg is None and isinstance(kw.value, ast.Dict):
                     for k_node, v_node in zip(kw.value.keys, kw.value.values):
                         key = k_node.value if isinstance(k_node, ast.Constant) else ast.unparse(k_node)
-                        value, value_type = self.value_and_type_from_node(v_node)
+                        value, value_type = self.value_and_type_from_node(v_node, annotations.get(key))
                         args[key] = value
                         arg_types[key] = value_type
                 else:
-                    value, value_type = self.value_and_type_from_node(kw.value)
+                    value, value_type = self.value_and_type_from_node(kw.value, annotations.get(kw.arg))
                     args[kw.arg] = value
                     arg_types[kw.arg] = value_type
 

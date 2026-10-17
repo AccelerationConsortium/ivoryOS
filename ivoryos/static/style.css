@@ -920,3 +920,228 @@ ul.reorder {
     color: var(--brand-accent);
     font-weight: 600;
 }
+
+/* A dict argument (structured_editor.js). Its label, any safety shield and the Table / JSON switch share a
+   line; the table or the JSON text go under them at full width. In Bootstrap's input group the parts wrap;
+   in the toolbox's two-column grid they span both columns. */
+.input-group.structured-group {
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 0.4rem;
+}
+
+.input-group.structured-group > * {
+    order: 3;
+}
+
+.input-group.structured-group > .input-group-text:first-child {
+    order: 0;
+    border-radius: var(--bs-border-radius) !important;
+}
+
+.input-group.structured-group > .guard-shield {
+    order: 1;
+    margin-left: 0.25rem !important;
+    border-radius: var(--bs-border-radius) !important;
+}
+
+.input-group.structured-group > .structured-toolbar {
+    order: 2;
+}
+
+.structured-toolbar {
+    display: flex;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    margin-left: 0.5rem !important;
+}
+
+.input-group.structured-group > textarea.form-control,
+.input-group.structured-group > .structured-note,
+.input-group.structured-group > .structured-body {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    margin-left: 0 !important;
+}
+
+.input-group.structured-group > textarea.form-control {
+    border-radius: var(--bs-border-radius) !important;
+}
+
+/* the toolbox lays its fields out in a grid of their own: no reordering there */
+.toolbox-action-body .form-group > .structured-group > * {
+    order: 0;
+}
+
+.toolbox-action-body .form-group > .structured-group > textarea,
+.toolbox-action-body .form-group > .structured-group > .structured-note,
+.toolbox-action-body .form-group > .structured-group > .structured-body {
+    grid-column: 1 / -1;
+}
+
+.toolbox-action-body .structured-toolbar {
+    margin-left: 0 !important;
+}
+
+/* the Table / JSON switch: a quiet two-way pill */
+.structured-switch {
+    display: inline-flex;
+    padding: 2px;
+    border-radius: 999px;
+    background-color: var(--bs-secondary-bg);
+}
+
+.structured-switch .btn {
+    padding: 0.1rem 0.55rem;
+    border: 0;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    color: var(--bs-secondary-color);
+}
+
+.structured-switch .btn:hover {
+    color: var(--bs-body-color);
+}
+
+.structured-switch .btn.active {
+    background-color: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.structured-note {
+    margin-top: 0;
+}
+
+/* the table: a soft panel rather than another box of borders */
+.structured-body {
+    container-type: inline-size;
+    padding: 0.65rem 0.75rem 0.75rem;
+    border-radius: var(--bs-border-radius-lg);
+    background-color: var(--bs-tertiary-bg);
+    font-size: 0.875rem;
+}
+
+.toolbox-action-body .structured-body {
+    padding: 0.5rem 0.55rem 0.6rem;
+    background-color: var(--bs-body-bg);
+    font-size: inherit;
+}
+
+.structured-hint {
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
+}
+
+/* one row per entry, no rules between them; scrolls sideways inside the panel when the card is narrow */
+.structured-table-wrap {
+    position: relative;  /* also clips the visually hidden "Row actions" header, which is positioned */
+    overflow-x: auto;
+}
+
+.structured-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.structured-table th,
+.structured-table td {
+    padding: 0.15rem 0.35rem 0.15rem 0;
+    vertical-align: middle;
+}
+
+.structured-table th {
+    padding-bottom: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.2;
+    text-align: left;
+    vertical-align: bottom;
+    color: var(--bs-secondary-color);
+}
+
+.structured-table td .form-control {
+    min-width: 3.75rem;
+}
+
+.structured-row-actions {
+    width: 1%;
+    padding-right: 0 !important;
+    white-space: nowrap;
+}
+
+.structured-icon {
+    padding: 0.1rem 0.2rem !important;
+    border: 0;
+    line-height: 1;
+    color: var(--bs-secondary-color);
+}
+
+.structured-icon.structured-remove:hover:not(:disabled) {
+    color: var(--bs-danger);
+}
+
+/* with a mouse, a row's button stays faint until the row is pointed at or being edited */
+@media (hover: hover) {
+    .structured-table tbody tr .structured-icon {
+        opacity: 0.35;
+        transition: opacity 0.15s;
+    }
+
+    .structured-table tbody tr:hover .structured-icon,
+    .structured-table tbody tr:focus-within .structured-icon {
+        opacity: 1;
+    }
+}
+
+.structured-no-rows {
+    padding: 0.35rem 0 !important;
+    font-style: italic;
+    color: var(--bs-secondary-color);
+}
+
+.structured-add-row {
+    margin-top: 0.35rem;
+    padding: 0.15rem 0.6rem !important;
+    border: 1px dashed var(--bs-border-color);
+    font-size: 0.75rem !important;
+    color: var(--bs-secondary-color);
+}
+
+.structured-add-row:hover,
+.structured-add-row:focus-visible {
+    border-color: var(--brand-primary);
+    color: var(--brand-primary);
+}
+
+/* a value that needs a look (a misspelled number, a duplicate key): a red border, no icon, which would
+   crowd a narrow cell */
+.structured-body .form-control.is-invalid {
+    padding-right: 0.5rem;
+    background-image: none;
+}
+
+.structured-empty {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* a narrow panel (the designer's toolbox, a phone): cells give a little more */
+@container (max-width: 15rem) {
+    .structured-table td .form-control {
+        min-width: 2.75rem;
+        padding-left: 0.3rem;
+        padding-right: 0.3rem;
+    }
+
+    .structured-table th,
+    .structured-table td {
+        padding-right: 0.2rem;
+    }
+}
