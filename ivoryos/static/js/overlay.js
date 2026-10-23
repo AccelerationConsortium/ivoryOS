@@ -111,3 +111,14 @@ function addOverlayToButtons(buttonIds) {
 if (typeof buttonIds !== 'undefined') {
     addOverlayToButtons(buttonIds);
 }
+
+// Going Back to this page can restore it from the browser cache mid-call,
+// overlay and all; reset it so the page is usable again
+window.addEventListener('pageshow', function(event) {
+    if (!event.persisted) return;
+    var overlay = document.getElementById('overlay');
+    if (overlay) overlay.style.display = 'none';
+    document.querySelectorAll('form[data-override-confirmed]').forEach(function(form) {
+        delete form.dataset.overrideConfirmed;
+    });
+});

@@ -461,6 +461,13 @@ hr.vertical {
     padding-top: 20%;
 }
 
+/* overlay limited to its positioned parent, kept below the navbar (1030), offcanvas and modals */
+.overlay.overlay-panel {
+    position: absolute;
+    z-index: 1020;
+    padding-top: 15%;
+}
+
 .drop-placeholder {
     height: 2px !important;
     /* Keep it very thin */

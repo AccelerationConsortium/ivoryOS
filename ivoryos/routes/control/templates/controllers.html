@@ -2,12 +2,6 @@
 {% block title %}IvoryOS | Controllers {% endblock %}
 
 {% block body %}
-<div id="overlay" class="overlay">
-  <div>
-    <h3 id="overlay-text"></h3>
-    <div class="spinner-border" role="status"></div>
-  </div>
-</div>
 <div class="container-fluid">
   <div class="row">
     <!-- Sidebar: Instruments -->
@@ -81,7 +75,15 @@
     </nav>
 
     <!-- Main: Method Cards -->
-    <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="height: calc(100vh - 100px); overflow-y: auto;">
+    <div class="col-md-9 ms-sm-auto col-lg-10 p-0 position-relative">
+    {# covers only the method cards while a call runs, so the navbar, sidebar and modals stay usable #}
+    <div id="overlay" class="overlay overlay-panel">
+      <div>
+        <h3 id="overlay-text"></h3>
+        <div class="spinner-border" role="status"></div>
+      </div>
+    </div>
+    <main class="px-3 px-md-4" style="height: calc(100vh - 100px); overflow-y: auto;">
       {% if instrument %}
       {# <h2 class="text-secondary">{{ instrument }} controller</h2>#}
       <div class="mb-3">
@@ -253,6 +255,7 @@
         methods.</div>
       {% endif %}
     </main>
+    </div>
   </div>
 </div>
 
