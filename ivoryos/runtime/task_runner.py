@@ -17,12 +17,23 @@ global_state = GlobalState()
 
 
 class TaskRunner:
-    def __init__(self, globals_dict=None):
+    def __init__(self, globals_dict=None, on_busy_change=None):
         self.retry = False
         if globals_dict is None:
             globals_dict = globals()
         self.globals_dict = globals_dict
         self.lock = global_state.runner_lock
+        # called when a step takes or lets go of the runner lock, so open pages
+        # can update their status pill without a reload
+        self.on_busy_change = on_busy_change
+
+    def _busy_changed(self):
+        if self.on_busy_change:
+            self.on_busy_change()
+
+    def _release(self):
+        self.lock.release()
+        self._busy_changed()
 
     async def run_single_step(self, component, method, kwargs, wait=True, current_app=None, override_busy=False):
         # Try to acquire lock without blocking
@@ -34,6 +45,7 @@ class TaskRunner:
                 current_status["output"] = "busy"
                 return current_status
             acquired = True
+            self._busy_changed()
 
         if wait:
             output = await self._run_single_step(component, method, kwargs, current_app, override_busy=override_busy, acquired=acquired)
@@ -106,7 +118,7 @@ class TaskRunner:
             method_name = f"{component}.{method}"
         except Exception as e:
             if acquired:
-                self.lock.release()
+                self._release()
             return {"status": "error", "msg": str(e)}
 
         # Flask context is NOT async → just use normal "with"
@@ -143,7 +155,7 @@ class TaskRunner:
                 step.end_time = datetime.now()
                 db.session.commit()
                 if acquired:
-                    self.lock.release()
+                    self._release()
 
             return dict(success=success, output=output)
 

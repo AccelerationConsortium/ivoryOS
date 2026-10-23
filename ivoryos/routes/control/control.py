@@ -12,9 +12,11 @@ from ivoryos.runtime.safety import UNIT_GROUPS, describe, guard, instrument_name
 from ivoryos.runtime.task_runner import TaskRunner
 from ivoryos.runtime.state import GlobalState
 from ivoryos.models import db, SingleStep
+from ivoryos.socket_handlers import runner as script_runner
 
 global_state = GlobalState()
-runner = TaskRunner()
+# both runners share one lock, so the workflow runner's busy status covers single steps too
+runner = TaskRunner(on_busy_change=script_runner._emit_busy_status)
 
 control = Blueprint('control', __name__, template_folder='templates')
 
