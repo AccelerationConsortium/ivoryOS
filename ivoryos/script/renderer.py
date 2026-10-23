@@ -11,6 +11,7 @@ from ivoryos.script.models import Script
 from ivoryos.script.editor import ScriptEditor
 from ivoryos.utils.enums import enum_class_from_type, find_member
 from ivoryos.models.base import db
+from ivoryos.parsers.structured_types import find_structured_type, has_variables, load_structured_type, render_python
 
 class ScriptRenderer:
     def __init__(self, script: Script):
@@ -51,11 +52,24 @@ class ScriptRenderer:
                 ]
         return line_collection
 
+    @staticmethod
+    def _is_structured_value(value, arg_type):
+        """A dict argument holding #variables (they become bare names)."""
+        return isinstance(value, dict) and find_structured_type(arg_type) == "dict" and has_variables(value)
+
+    @staticmethod
+    def _display_value(value, arg_type):
+        """A dict with #variables as a literal with bare names, anything else as it is."""
+        if ScriptRenderer._is_structured_value(value, arg_type):
+            return render_python(value, load_structured_type(arg_type))
+        return value
+
     def render_script_lines(self, script_dict):
-        def render_args(args):
+        def render_args(args, arg_types=None):
             if not args:
                 return ""
-            return ", ".join(f"{k}={v}" for k, v in args.items())
+            arg_types = arg_types if isinstance(arg_types, dict) else {}
+            return ", ".join(f"{k}={self._display_value(v, arg_types.get(k))}" for k, v in args.items())
 
         def parse_block(block):
             lines = []
@@ -113,7 +127,7 @@ class ScriptRenderer:
                     lines.append("    " * indent + f"{act} = {expr}")
                 else:
                     instr = action["instrument"]
-                    args = render_args(action.get("args", {}))
+                    args = render_args(action.get("args", {}), action.get("arg_types"))
                     ret = action.get("return")
                     line = "    " * indent
                     ret_target = self.editor._format_return_target(ret)
@@ -135,10 +149,11 @@ class ScriptRenderer:
         }
 
     def render_nested_script_lines(self, script_dict, interface_schema=None):
-        def render_args(args):
+        def render_args(args, arg_types=None):
             if not args:
                 return ""
-            return ", ".join(f"{k}={v}" for k, v in args.items())
+            arg_types = arg_types if isinstance(arg_types, dict) else {}
+            return ", ".join(f"{k}={self._display_value(v, arg_types.get(k))}" for k, v in args.items())
 
         def parse_block(block, parent_id_prefix, indent=0):
             nodes = []
@@ -216,7 +231,7 @@ class ScriptRenderer:
                         line_code = "    " * indent + f"{act} = {expr}"
                     else:
                         args_dict = action.get("args", {})
-                        args = render_args(args_dict)
+                        args = render_args(args_dict, action.get("arg_types"))
                         ret = action.get("return")
                         line_code = "    " * indent
                         
@@ -681,6 +696,8 @@ class ScriptRenderer:
              val_str = repr(v)
              if isinstance(v, str) and v.startswith("#"):
                  val_str = v[1:]
+             elif arg_types and self._is_structured_value(v, arg_types.get(k)):
+                 val_str = render_python(v, load_structured_type(arg_types[k]))
              elif isinstance(v, dict):
                  if v and isinstance(next(iter(v)), str):
                       key = next(iter(v))

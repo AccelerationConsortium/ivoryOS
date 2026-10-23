@@ -338,5 +338,7 @@
     <!-- Socket.io for global events (like error modals) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
     <script src="{{ url_for('static', filename='js/socket_handler.js') }}"></script>
+    {# dict arguments as tables of keys and values, on every page with a form #}
+    <script src="{{ url_for('static', filename='js/structured_editor.js') }}"></script>
 </body>
 </html>

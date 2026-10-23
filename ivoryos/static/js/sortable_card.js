@@ -2,7 +2,7 @@ $(function () {
     $("#sortable-grid").sortable({
         items: ".draggable-method-card",
         cursor: "move",
-        cancel: "input,textarea,button,select,option,a,[data-bs-toggle='popover']",
+        cancel: "input,textarea,button,select,option,a,[data-bs-toggle='popover'],.structured-body",
         opacity: 0.7,
         revert: true,
         placeholder: "ui-state-highlight",

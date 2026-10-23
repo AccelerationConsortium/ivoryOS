@@ -1,3 +1,4 @@
+import json
 import uuid
 from enum import Enum, EnumMeta
 from typing import Union, Any
@@ -7,7 +8,7 @@ import importlib
 from wtforms.fields.choices import SelectField
 from wtforms.fields.core import Field
 from wtforms.validators import InputRequired, ValidationError, Optional
-from wtforms.widgets.core import TextInput
+from wtforms.widgets.core import TextInput, TextArea
 from flask_wtf import FlaskForm
 from wtforms import StringField, FloatField, HiddenField, BooleanField, IntegerField
 from wtforms.form import BaseForm
@@ -17,6 +18,10 @@ from ivoryos.script.compatibility import check_action, current_reference
 from ivoryos.runtime.state import GlobalState
 
 from ivoryos.parsers.introspection import get_return_type
+from ivoryos.parsers.structured_types import (
+    find_structured_type, format_structured_value, has_variables, is_dict_annotation, is_variable, load_structured_type,
+    parse_structured_value, render_python, structured_schema, structured_template, validate_structured_value,
+)
 from ivoryos.runtime.safety import describe as describe_limit, guard
 from ivoryos.utils.enums import enum_class_of, find_member
 
@@ -367,6 +372,69 @@ class FlexibleLiteralField(StringField):
                 raise ValidationError(f"Invalid choice: '{key}'. Must match one of {self.choices}")
 
 
+class StructuredField(Field):
+    """
+    A dict argument, edited as JSON or a Python literal (as a table of keys and values in the browser).
+    ``#variables`` are allowed for the whole value or for any value inside it.
+    """
+    widget = TextArea()
+
+    def __init__(self, label='', validators=None, annotation=None, script=None, **kwargs):
+        super(StructuredField, self).__init__(label, validators, **kwargs)
+        self.annotation = annotation
+        self.script = script
+
+    def _value(self):
+        if self.raw_data:
+            return self.raw_data[0]
+        if self.data is None:
+            return ""
+        if isinstance(self.data, str):
+            return self.data
+        return format_structured_value(self.data)
+
+    def process_formdata(self, valuelist):
+        if not valuelist:
+            return
+        value = valuelist[0]  # text from a form, or already a dict/list from a JSON request
+        if value is None or isinstance(value, str) and value.strip() in ("", "None"):
+            self.data = None
+            return
+        try:
+            if isinstance(value, str) and not is_variable(value.strip()):
+                value = parse_structured_value(value, self.annotation)
+            elif isinstance(value, str):
+                value = value.strip()
+            validate_structured_value(value, self.annotation)
+        except ValueError as exc:
+            self.data = None
+            raise ValueError(str(exc)) from exc
+        if has_variables(value) and self.script is None:
+            raise ValueError(self.gettext("Variables are only supported when designing a workflow"))
+        if has_variables(value) and not self.script.editing_type == "script":
+            raise ValueError(self.gettext("Variable is not supported in prep/cleanup"))
+        self.data = value
+
+
+STRUCTURED_PLACEHOLDER = 'JSON, e.g. {"key": value}; #variables allowed for any value'
+
+
+def _is_output_reference(value):
+    """``{"name": "function_output"}``: a step argument that is the output of an earlier step, not a dict value."""
+    return isinstance(value, dict) and len(value) == 1 and next(iter(value.values())) == "function_output"
+
+
+def _structured_render_kwargs(value, annotation=None):
+    rows = 1 if value is None or isinstance(value, str) else len(format_structured_value(value).splitlines())
+    # monospace and unwrapped, so the JSON keeps its layout in narrow cards
+    render_kwargs = {"rows": min(max(rows, 2), 20), "spellcheck": "false", "wrap": "off",
+                     "style": "font-family: var(--bs-font-monospace, monospace); font-size: .85em;"}
+    if annotation is not None:
+        # the field layout, so structured_editor.js can show inputs and tables over the JSON
+        render_kwargs["data-schema"] = json.dumps(structured_schema(annotation))
+    return render_kwargs
+
+
 class DynamicBaseForm(FlaskForm):
     """
     Base form for dynamic forms, whose field names come from user method signatures.
@@ -525,7 +593,17 @@ def create_form_for_method(method, autofill, script=None, design=True, limits=No
         if optional or param.default is None:
             field_kwargs["filters"] = [lambda x: x if x != '' else None]
 
-        if _is_enum_type(param.annotation):
+        extra_render_kwargs = {}
+        if is_dict_annotation(param.annotation):
+            field_class = StructuredField
+            placeholder_text = STRUCTURED_PLACEHOLDER
+            if default_value is None and param.default is param.empty:
+                # a required dict starts as an empty one, ready for entries
+                field_kwargs["default"] = structured_template(param.annotation)
+            extra_kwargs = {"annotation": param.annotation}
+            extra_render_kwargs = _structured_render_kwargs(field_kwargs["default"], param.annotation)
+
+        elif _is_enum_type(param.annotation):
             enum_class = _unwrap_enum_type(param.annotation)
             field_class = FlexibleEnumField
             placeholder_text = f"Choose or type a value for {enum_class.__name__}"
@@ -573,7 +651,7 @@ def create_form_for_method(method, autofill, script=None, design=True, limits=No
                 field_kwargs["validators"] = []  # or [Optional()]
 
 
-        render_kwargs = {"placeholder": placeholder_text}
+        render_kwargs = {"placeholder": placeholder_text, **extra_render_kwargs}
         # the unit and allowed range, shown after the input (see the form templates)
         hint = describe_limit((limits or {}).get(param.name) or {})
         if hint:
@@ -835,8 +913,10 @@ def create_form_from_action(action: dict, script=None, design=True):
         param_type = arg_types[name]
         # formatted_param_name = format_name(name)
         value = args.get(name, "")
-        if type(value) is dict and value:
+        structured_type = find_structured_type(param_type)
+        if type(value) is dict and value and (structured_type is None or _is_output_reference(value)):
             value = next(iter(value))
+            structured_type = None
         if value in (None, "", "None"):
             value = None
 
@@ -868,7 +948,13 @@ def create_form_from_action(action: dict, script=None, design=True):
         }
         param_type = param_type if type(param_type) is str else f"{param_type}"
         extra_kwargs = {}
-        if param_type.startswith("Enum:"):
+        extra_render_kwargs = {}
+        if structured_type is not None:
+            field_class = StructuredField
+            placeholder_text = STRUCTURED_PLACEHOLDER
+            extra_kwargs = {"annotation": load_structured_type(structured_type)}
+            extra_render_kwargs = _structured_render_kwargs(value, extra_kwargs["annotation"])
+        elif param_type.startswith("Enum:"):
             try:
                 _, full_path = param_type.split(":", 1)
                 module_name, class_name = full_path.rsplit(".", 1)
@@ -905,7 +991,7 @@ def create_form_from_action(action: dict, script=None, design=True):
             field_kwargs["validators"] = [InputRequired()]
 
 
-        render_kwargs = {"placeholder": placeholder_text}
+        render_kwargs = {"placeholder": placeholder_text, **extra_render_kwargs}
         # the unit and allowed range, shown after the input (see the form templates)
         hint = describe_limit(action_limits.get(name) or {})
         if hint:
@@ -1228,9 +1314,16 @@ def _action_button(action: dict, variables: dict, reference=None):
                     arg_order.extend(argument for argument in action['args'].keys() if argument not in arg_order)
                 else:
                     arg_order = sorted(action['args'].keys())
+                arg_types = action.get('arg_types') if isinstance(action.get('arg_types'), dict) else {}
                 for argument_name in arg_order:
                     argument_data = action['args'].get(argument_name)
-                    if isinstance(argument_data, dict):
+                    structured_type = find_structured_type(arg_types.get(argument_name))
+                    if (structured_type is not None and isinstance(argument_data, (dict, list))
+                            and not _is_output_reference(argument_data)):
+                        # a dict as its (shortened) literal, #variables as bare names
+                        value = render_python(argument_data, load_structured_type(structured_type))
+                        value = value if len(value) <= 60 else value[:57] + "..."
+                    elif isinstance(argument_data, dict):
                         if not argument_data:
                             value = argument_data  # Keep the original value if not a dict
                         else:
