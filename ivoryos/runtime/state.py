@@ -23,6 +23,7 @@ class GlobalState:
             cls._instance._interface_schema = {}
             cls._instance._runner_lock = threading.Lock()
             cls._instance._runner_status = None
+            cls._instance._running_step = None
             cls._instance._optimizers = {}
             cls._instance._notification_handlers = []
 
@@ -121,6 +122,19 @@ class GlobalState:
     @runner_status.setter
     def runner_status(self, value):
         self._runner_status = value
+
+    @property
+    def running_step(self):
+        """The single step holding the runner lock, as {"id", "component", "method"}, or None.
+
+        Unlike runner_status, which keeps naming the last task or run after it ends, this is only
+        set while the step runs, so open pages can be told what is running now.
+        """
+        return self._running_step
+
+    @running_step.setter
+    def running_step(self, value):
+        self._running_step = value
 
     @property
     def optimizers(self):

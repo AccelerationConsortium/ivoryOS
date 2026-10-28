@@ -5,6 +5,8 @@ import inspect
 import inspect
 import asyncio
 import ast
+import threading
+from concurrent.futures import Future
 from datetime import datetime
 
 from ivoryos.utils.decorators import BUILDING_BLOCKS
@@ -15,9 +17,26 @@ from ivoryos.runtime.state import GlobalState
 
 global_state = GlobalState()
 
+INTERRUPTED = "Interrupted: the server stopped before this step finished"
+
+
+def mark_interrupted_steps():
+    """
+    Mark the steps a previous server left running. It went down mid-call, losing the instrument
+    connection, so they will never finish; the error tells a page or client still waiting on one
+    to stop. Their end time stays empty: when they stopped is not known, and a made-up one would
+    give them a false duration. Call with an app context, before the server takes calls.
+
+    :return: how many steps were marked
+    """
+    count = SingleStep.query.filter(SingleStep.end_time.is_(None), SingleStep.run_error.is_(None)).update(
+        {"run_error": INTERRUPTED})
+    db.session.commit()
+    return count
+
 
 class TaskRunner:
-    def __init__(self, globals_dict=None, on_busy_change=None):
+    def __init__(self, globals_dict=None, on_busy_change=None, on_step_finished=None):
         self.retry = False
         if globals_dict is None:
             globals_dict = globals()
@@ -26,6 +45,9 @@ class TaskRunner:
         # called when a step takes or lets go of the runner lock, so open pages
         # can update their status pill without a reload
         self.on_busy_change = on_busy_change
+        # called with (step_id, result) once a step ends, so a page or client
+        # waiting on a background step hears about it without polling
+        self.on_step_finished = on_step_finished
 
     def _busy_changed(self):
         if self.on_busy_change:
@@ -40,9 +62,9 @@ class TaskRunner:
         acquired = False
         if not override_busy:
             if not self.lock.acquire(blocking=False):
-                current_status = global_state.runner_status or {}
-                current_status["status"] = "busy"
-                current_status["output"] = "busy"
+                # a copy: the busy reply must not change what the running step reports
+                current_status = dict(global_state.runner_status or {})
+                current_status.update(success=False, status="busy", output="busy")
                 return current_status
             acquired = True
             self._busy_changed()
@@ -50,15 +72,30 @@ class TaskRunner:
         if wait:
             output = await self._run_single_step(component, method, kwargs, current_app, override_busy=override_busy, acquired=acquired)
         else:
-            # Create background task properly
-            async def background_runner():
-                await self._run_single_step(component, method, kwargs, current_app, override_busy=override_busy, acquired=acquired)
-
-            asyncio.create_task(background_runner())
-            await asyncio.sleep(0.1)  # Change time.sleep to await asyncio.sleep
-            output = {"status": "task started", "task_id": global_state.runner_status.get("id") if global_state.runner_status else None}
+            # the request's event loop closes once the reply is sent and would cancel a step
+            # left on it, letting go of the lock mid-call; the step gets a thread of its own
+            started = Future()
+            threading.Thread(
+                target=self._run_in_background,
+                args=(started, component, method, kwargs, current_app, override_busy, acquired),
+                daemon=True,
+            ).start()
+            step_id = await asyncio.wrap_future(started)
+            if isinstance(step_id, dict):
+                return step_id  # it failed before it could start
+            output = {"status": "task started", "task_id": step_id}
 
         return output
+
+    def _run_in_background(self, started, component, method, kwargs, current_app, override_busy, acquired):
+        try:
+            asyncio.run(self._run_single_step(component, method, kwargs, current_app,
+                                              override_busy=override_busy, acquired=acquired, started=started))
+        except Exception as e:
+            # don't leave the request waiting on a step that never started
+            if not started.done():
+                started.set_exception(e)
+            raise
 
     def _get_executable(self, component, deck, method):
         if component.startswith("deck."):
@@ -112,14 +149,22 @@ class TaskRunner:
         function_executable = getattr(instrument, method)
         return function_executable
 
-    async def _run_single_step(self, component, method, kwargs, current_app=None, override_busy=False, acquired=False):
+    async def _run_single_step(self, component, method, kwargs, current_app=None, override_busy=False, acquired=False,
+                               started=None):
+        # `started` (background steps only) gets the step's id once it is recorded
+        def report_start(value):
+            if started is not None and not started.done():
+                started.set_result(value)
+
         try:
             function_executable = self._get_executable(component, global_state.deck, method)
             method_name = f"{component}.{method}"
         except Exception as e:
             if acquired:
                 self._release()
-            return {"status": "error", "msg": str(e)}
+            output = {"status": "error", "msg": str(e)}
+            report_start(output)
+            return output
 
         # Flask context is NOT async → just use normal "with"
         with current_app.app_context():
@@ -130,10 +175,17 @@ class TaskRunner:
                 start_time=datetime.now()
             )
             db.session.add(step)
-            db.session.flush()
-            
+            # committed now, not when it ends, so the step can be looked up while it runs
+            db.session.commit()
+            step_id = step.id
+            report_start(step_id)
+
             if not override_busy:
-                global_state.runner_status = {"id": step.id, "type": "task"}
+                global_state.runner_status = {"id": step_id, "type": "task"}
+            if acquired:
+                # tell open pages which step is running, so one on its instrument shows it
+                global_state.running_step = {"id": step_id, "component": component, "method": method}
+                self._busy_changed()
 
             try:
                 kwargs = self._convert_kwargs_type(kwargs, function_executable)
@@ -155,9 +207,13 @@ class TaskRunner:
                 step.end_time = datetime.now()
                 db.session.commit()
                 if acquired:
+                    global_state.running_step = None
                     self._release()
 
-            return dict(success=success, output=output)
+            result = dict(success=success, output=output)
+            if self.on_step_finished:
+                self.on_step_finished(step_id, result)
+            return result
 
     @staticmethod
     def _convert_kwargs_type(kwargs, function_executable):

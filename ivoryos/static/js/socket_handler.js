@@ -3,7 +3,8 @@ document.addEventListener("DOMContentLoaded", function () {
     var socket = io({ path: socketPath });
     window.socket = socket;
 
-    window.platformState = { is_running: false, is_paused: false };
+    // task: the single step running, as busy_status last named it (overlay.js shows it)
+    window.platformState = { is_running: false, is_paused: false, task: null };
     let retryInFlight = false;
 
     function getProgressBar() {
@@ -223,6 +224,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     socket.on('busy_status', function(data) {
         window.platformState.is_running = data.is_running;
+        window.platformState.task = data.task || null;
         if (data.paused !== undefined) {
             window.platformState.is_paused = data.paused;
         }

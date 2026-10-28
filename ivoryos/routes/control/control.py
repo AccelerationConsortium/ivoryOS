@@ -12,11 +12,18 @@ from ivoryos.runtime.safety import UNIT_GROUPS, describe, guard, instrument_name
 from ivoryos.runtime.task_runner import TaskRunner
 from ivoryos.runtime.state import GlobalState
 from ivoryos.models import db, SingleStep
-from ivoryos.socket_handlers import runner as script_runner
+from ivoryos.socket_handlers import runner as script_runner, socketio
 
 global_state = GlobalState()
+
+
+def _emit_step_finished(step_id, result):
+    """Tell open pages a single step ended, e.g. the Instruments page waiting to drop its overlay."""
+    socketio.emit("task_finished", {"task_id": step_id, **result})
+
+
 # both runners share one lock, so the workflow runner's busy status covers single steps too
-runner = TaskRunner(on_busy_change=script_runner._emit_busy_status)
+runner = TaskRunner(on_busy_change=script_runner._emit_busy_status, on_step_finished=_emit_step_finished)
 
 control = Blueprint('control', __name__, template_folder='templates')
 
@@ -90,6 +97,8 @@ async def deck_controllers(instrument: str = None):
         payload = request.get_json() if request.is_json else request.form.to_dict()
         method_name = payload.pop("hidden_name", None)
         form = forms.get(method_name)
+        # the Instruments page posts its form with fetch and reads the reply as JSON
+        wants_json = request.is_json or request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json'
 
         if not form:
             return jsonify({"success": False, "error": f"Method {method_name} not found"}), 404
@@ -99,6 +108,8 @@ async def deck_controllers(instrument: str = None):
             kwargs = {k: v for k, v in payload.items() if k not in ["csrf_token", "hidden_wait", "override_busy"]}
         else:
             if not form.validate_on_submit():
+                if wants_json:
+                    return jsonify({"success": False, "output": f"{form.errors}"}), 400
                 flash(f"Run Error! {form.errors}", "error")
                 return render_template(
                     "controllers.html",
@@ -123,7 +134,7 @@ async def deck_controllers(instrument: str = None):
             override_busy=override_busy
         )
 
-        if request.is_json:
+        if wants_json:
             return jsonify(output)
         else:
             if output.get("success"):
@@ -243,6 +254,8 @@ def get_task_by_id(task_id):
     .. http:get:: /instruments/task/<int:task_id>
 
     Retrieve a single task execution step by its ID from the database.
+    A step still running has neither ``end_time`` nor ``run_error``; one the server stopped
+    during has a ``run_error`` and no ``end_time``, since when it stopped is not known.
 
     :status 200: Returns task details.
     :status 404: Task not found.

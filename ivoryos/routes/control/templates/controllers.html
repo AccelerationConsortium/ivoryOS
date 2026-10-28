@@ -209,6 +209,7 @@
 
         const saveOrderUrl = `{{ url_for('control.save_order', instrument=instrument) }}`;
         const buttonIds = {{ session['card_order'][instrument] | tojson }};
+        const INSTRUMENT = {{ instrument | tojson }};
 
         // Initialize Bootstrap Popovers
         document.addEventListener('DOMContentLoaded', function () {
