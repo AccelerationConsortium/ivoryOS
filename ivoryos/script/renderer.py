@@ -307,6 +307,20 @@ class ScriptRenderer:
 
         return exec_str_collection
 
+    @staticmethod
+    def _literal_annotation(param_type):
+        """``Literal:a,1`` as the annotation it was recorded from: ``Literal['a', 1]``."""
+        _, literal_args_str = param_type.split(":", 1)
+        args_list = []
+        for a in literal_args_str.split(","):
+            if a.isdigit() or (a.startswith("-") and a[1:].isdigit()):
+                args_list.append(a)
+            elif a.replace(".", "", 1).isdigit() and a.count(".") < 2:
+                args_list.append(a)
+            else:
+                args_list.append(f"'{a}'")
+        return f"Literal[{', '.join(args_list)}]"
+
     def _generate_function_header(self, run_name, stype, is_async, batch=False):
         configure, config_type = self.editor.config(stype)
         new_configure = []
@@ -316,18 +330,10 @@ class ScriptRenderer:
                  class_name = full_path.split(".")[-1]
                  new_configure.append(f"{param}: {class_name}")
             elif isinstance(param_type, str) and param_type.startswith("Literal:"):
-                 _, literal_args_str = param_type.split(":", 1)
-                 args_list = []
-                 for a in literal_args_str.split(","):
-                     if a.isdigit() or (a.startswith("-") and a[1:].isdigit()):
-                         args_list.append(a)
-                     elif a.replace(".", "", 1).isdigit() and a.count(".") < 2:
-                         args_list.append(a)
-                     else:
-                         args_list.append(f"'{a}'")
-                 new_configure.append(f"{param}: Literal[{', '.join(args_list)}]")
+                 new_configure.append(f"{param}: {self._literal_annotation(param_type)}")
             elif isinstance(param_type, list):
                  enum_item = next((item for item in param_type if isinstance(item, str) and item.startswith("Enum:")), None)
+                 literal_item = next((item for item in param_type if isinstance(item, str) and item.startswith("Literal:")), None)
                  if enum_item:
                       _, full_path = enum_item.split(":", 1)
                       class_name = full_path.split(".")[-1]
@@ -335,6 +341,12 @@ class ScriptRenderer:
                           new_configure.append(f"{param}: Optional[{class_name}]")
                       else:
                           new_configure.append(f"{param}: {class_name}")
+                 elif literal_item:
+                      literal = self._literal_annotation(literal_item)
+                      if "NoneType" in param_type:
+                          new_configure.append(f"{param}: Optional[{literal}]")
+                      else:
+                          new_configure.append(f"{param}: {literal}")
                  else:
                       valid_types = [t for t in param_type if t != "NoneType"]
                       if len(valid_types) == 1:

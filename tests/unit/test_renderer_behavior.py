@@ -172,3 +172,14 @@ def test_an_optional_enum_argument_is_written_as_its_member():
 
     assert renderer._process_dict_args({"choice": "A", "amount": 5.0}, arg_types) == "{'choice': RenderChoice.A, 'amount': 5.0}"
     assert renderer._process_dict_args({"choice": None}, arg_types) == "{'choice': None}"
+
+
+def test_an_optional_literal_input_is_typed_in_the_workflow_header():
+    script = Script(name="Mix", author="tester")
+    script.script_dict["script"] = [
+        action("deck.mixer", "mix", {"level": "#level"}, id=1, arg_types={"level": ["Literal:low,high", "NoneType"]}),
+    ]
+    renderer = ScriptRenderer(script)
+
+    assert "def Mix(level: Optional[Literal['low', 'high']]):" in renderer.compile()["script"]
+    assert {"from typing import Literal", "from typing import Optional"} <= set(renderer.get_required_imports().splitlines())
