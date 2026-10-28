@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "abstract-sdl",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["community/examples/abstract_sdl_example/abstract_sdl.py"],
+      "port": 8000
+    },
+    {
+      "name": "docs",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8001", "-d", "docs/build/html"],
+      "port": 8001
+    }
+  ]
+}

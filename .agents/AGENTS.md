@@ -218,6 +218,39 @@ Key events received from the client:
 
 ---
 
+## Documentation Screenshots
+
+The user docs (`docs/source/users/`) use annotated screenshots in
+`docs/source/_static/screenshots/`. They are **generated**, not taken by hand, by
+`docs/screenshots/capture_screenshots.py`, which starts the abstract SDL example, drives the
+UI with Playwright, and draws numbered markers on the controls each docs page describes.
+There is no CI check for this: keeping the pictures current is part of making a UI change.
+
+- After changing anything under `ivoryos/templates/` or `ivoryos/static/` that alters what a
+  user sees (layout, labels, buttons, panels, dialogs), regenerate the screenshots and commit
+  the updated PNGs together with the UI change:
+
+  ```console
+  pip install -e ".[doc]" playwright pillow
+  playwright install chromium
+  python docs/screenshots/capture_screenshots.py
+  python docs/screenshots/capture_screenshots.py --only design-overview,execute-config
+  ```
+
+- Every PNG changes on each run (fonts and anti-aliasing differ between machines), so a
+  full `git diff` of the folder is expected; commit all of them, not a hand-picked subset.
+- If a control the script targets was renamed, moved or removed, the script fails with
+  `marker N target is not visible`. Fix the selector in the script, then update the
+  numbered list under that image in the matching docs page so markers and text agree.
+- Each shot's `name` is the PNG file name and is referenced from one docs page. Adding a
+  marker means adding a list item under that image too.
+- The Bayesian Optimization screenshot needs an optimizer extra installed
+  (`pip install -e ".[optimizer-ax]"`) and is skipped otherwise; that is fine for unrelated
+  UI changes.
+- Do not hand-edit or re-crop the PNGs. If the picture is wrong, change the script and re-run.
+
+---
+
 ## Dependencies
 
 - Core requirements are in `requirements.txt` and `pyproject.toml` (source of truth for extras).
