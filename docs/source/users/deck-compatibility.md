@@ -25,11 +25,39 @@ marks the ones that no longer match. You do not have to check for this yourself.
 
 ## Where you will see them
 
-- **Workflow designer** — beside each affected step. Hover the icon to read the
-  reason. A banner at the top counts how many steps are affected.
-- **Step edit panel** — when you open a step, the reasons are listed at the top.
-- **Execution page** — before you start a run, naming every step that will fail,
-  so nothing starts that cannot finish.
+**Workflow designer** — beside each affected step. Hover the icon to read the
+reason. A banner at the top counts how many steps are affected.
+
+```{image} ../_static/screenshots/design-step-warnings.png
+:alt: A workflow with two red and one yellow step marker, and the banner above them
+:width: 1190px
+```
+
+1. A red icon: this step will stop the run.
+2. A yellow icon: this step will run, but something about it changed.
+3. Hover an icon to read the reason.
+
+The banner above the steps counts them and names the phases they are in.
+
+**Step edit panel** — when you open a step, the reasons are listed at the top.
+
+```{image} ../_static/screenshots/design-step-warning-edit.png
+:alt: The edit panel of a flagged step, suggesting the method was renamed
+:width: 532px
+```
+
+The reason is listed at the top, with a suggestion when the platform has something similar.
+
+**Execution page** — before you start a run, naming every step that will fail,
+so nothing starts that cannot finish.
+
+```{image} ../_static/screenshots/execute-step-warnings.png
+:alt: The warning on the Execution page listing the steps that will fail
+:width: 1328px
+```
+
+The heading counts the steps that will stop the run; the list names every flagged step,
+including those that may still run. Hover a line for the full reason.
 
 Steps you have switched off are still marked in the designer, but they are not
 counted on the execution page, because a switched-off step never runs.
