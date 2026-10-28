@@ -2,6 +2,7 @@ import re
 import io
 
 from flask import g
+from itsdangerous import URLSafeTimedSerializer
 
 from ivoryos.models import Script, db
 from ivoryos.runtime.state import global_state
@@ -816,6 +817,13 @@ def _toolbox_csrf_tokens(html):
     return set(re.findall(r'name="csrf_token"[^>]*value="([^"]+)"', html))
 
 
+def _session_csrf_tokens(app, tokens):
+    """The session's token each signed CSRF token carries. The signature includes the second it
+    was made, so two requests a second apart give different tokens for the same session."""
+    signer = URLSafeTimedSerializer(app.secret_key, salt="wtf-csrf-token")  # as flask_wtf signs them
+    return {signer.loads(token) for token in tokens}
+
+
 def _as_browser(client, method, url, **kwargs):
     """One request as a browser sends it. The fixtures keep an app context open across the
     test, so ``g`` is cleared by hand here; otherwise it would carry the CSRF token from one
@@ -846,7 +854,8 @@ def test_toolbox_groups_loaded_in_parallel_share_the_session_csrf_token(auth, te
         second = _as_browser(auth, 'get', '/ivoryos/draft/instruments/flow_control').get_json()['html']
 
         tokens = _toolbox_csrf_tokens(first)
-        assert len(tokens) == 1 and tokens == _toolbox_csrf_tokens(second)
+        assert len(tokens) == 1
+        assert _session_csrf_tokens(app, tokens) == _session_csrf_tokens(app, _toolbox_csrf_tokens(second))
 
         # the browser kept the second response's cookie; a form from the first still submits
         response = _as_browser(auth, 'post', '/ivoryos/draft/instruments/deck.dummy',
