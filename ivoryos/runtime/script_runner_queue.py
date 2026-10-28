@@ -7,6 +7,7 @@ from ivoryos.runtime import task_conditions
 from ivoryos.runtime.live_config import describe as describe_change
 from ivoryos.runtime.run_events import TABLE_EDITED, event as run_event
 from ivoryos.runtime.runner_runtime import ensure_deck
+from ivoryos.runtime.state import global_state
 
 
 class ScriptRunnerQueueMixin:
@@ -491,7 +492,9 @@ class ScriptRunnerQueueMixin:
             self.socketio.emit('busy_status', {
                 'is_running': self.lock.locked(),
                 'queue_length': len(self.execution_queue),
-                'paused': self.paused or self.queue_paused
+                'paused': self.paused or self.queue_paused,
+                # the single step running, if one holds the lock (see GlobalState.running_step)
+                'task': global_state.running_step,
             })
 
     def _emit_queue_status(self):

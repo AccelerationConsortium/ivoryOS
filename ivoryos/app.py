@@ -12,6 +12,7 @@ from sqlalchemy import inspect, text
 
 from ivoryos.utils.logger import start_logger
 from ivoryos.runtime.safety import FILE_NAME as SAFETY_FILE, describe as describe_limit, guard
+from ivoryos.runtime.task_runner import mark_interrupted_steps
 from ivoryos.models import db, User
 from ivoryos.socket_handlers import socketio
 from ivoryos.routes.auth.auth import auth, login_manager
@@ -159,6 +160,9 @@ def create_app(config_class=None):
         # db.create_all()
         reset_old_schema(db.engine, app.config['OUTPUT_FOLDER'])
         create_admin()
+        interrupted = mark_interrupted_steps()
+        if interrupted:
+            print(f"Marked {interrupted} step(s) the last server left running as interrupted.")
 
     # Additional setup
     create_ivoryos_folders(app.config['OUTPUT_FOLDER'])
