@@ -317,7 +317,7 @@ def generate_block_schema(save: bool = False, output_path: str = ''):
                 "path": f"{func.__module__}.{func.__qualname__}"
             }
     if block_schema:
-        print(f"\n=== ✅ BUILDING_BLOCKS ({len(block_schema)}) ===")
+        print(f"\n=== BUILDING_BLOCKS [ok] ({len(block_schema)}) ===")
         for category, blocks in block_schema.items():
             print(f"  {category}: ", ",".join(blocks.keys()))
     return block_schema

@@ -60,8 +60,7 @@ class GlobalState:
 
     @building_blocks.setter
     def building_blocks(self, value):
-        if self._building_blocks is None:
-            self._building_blocks = value
+        self._building_blocks = value
 
     @property
     def registered_workflows(self):
@@ -69,8 +68,7 @@ class GlobalState:
 
     @registered_workflows.setter
     def registered_workflows(self, value):
-        if self._registered_workflows is None:
-            self._registered_workflows = value
+        self._registered_workflows = value
 
 
     @property
