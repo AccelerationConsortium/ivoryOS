@@ -1,7 +1,9 @@
 import inspect
+import sys
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 
+import pytest
 from werkzeug.datastructures import MultiDict
 from wtforms import IntegerField, StringField
 from wtforms.validators import ValidationError
@@ -11,6 +13,7 @@ from ivoryos.forms.dynamic_forms import (
     WORKFLOW_NAME_FIELD,
     DynamicBaseForm,
     FlexibleEnumField,
+    FlexibleLiteralField,
     VariableOrBoolField,
     VariableOrFloatField,
     VariableOrIntField,
@@ -23,6 +26,8 @@ from ivoryos.forms.dynamic_forms import (
     create_workflow_forms,
     parse_annotation,
 )
+from ivoryos.parsers.introspection import get_arg_type
+from ivoryos.runtime.state import global_state
 from ivoryos.script import Script
 
 
@@ -411,3 +416,34 @@ def test_an_enum_step_keeps_its_key_however_it_was_typed(app):
 
     with app.test_request_context(method="POST", data={"mode": "SLOW", "color": "RED"}):
         assert form_class().validate()
+
+
+def mix(level: Optional[Literal["low", "high"]] = None):
+    return level
+
+
+def test_an_optional_literal_is_recorded_with_its_choices():
+    assert get_arg_type(["level"], {"signature": inspect.signature(mix)}) == {"level": ["Literal:low,high", "NoneType"]}
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="X | None needs Python 3.10")
+def test_a_literal_or_none_is_recorded_with_its_choices():
+    signature = inspect.Signature([inspect.Parameter(
+        "level", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=Literal["low", "high"] | None)])
+    assert get_arg_type(["level"], {"signature": signature}) == {"level": ["Literal:low,high", "NoneType"]}
+
+
+def test_an_optional_literal_step_offers_its_choices_when_edited(app, monkeypatch):
+    """A step saved before Optional[Literal] kept its choices recorded just "Literal";
+    its edit form takes the choices from the deck's signature."""
+    monkeypatch.setattr(global_state, "_interface_schema", {"deck.mixer": {"mix": {"signature": inspect.signature(mix)}}})
+
+    for recorded in (["Literal:low,high", "NoneType"], ["Literal", "NoneType"]):
+        action = {"id": 1, "uuid": 1, "instrument": "deck.mixer", "action": "mix",
+                  "args": {"level": "high"}, "arg_types": {"level": recorded}, "return": ""}
+        with app.app_context():
+            form = create_form_from_action(action, script=Script(author="tester"), design=True)
+
+        assert isinstance(form.level, FlexibleLiteralField)
+        assert form.level.choices == ["low", "high"]
+        assert form.level.data == "high"

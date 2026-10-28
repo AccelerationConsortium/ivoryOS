@@ -85,6 +85,14 @@ def _normalize_type(value):
     return text
 
 
+def _without_literal_choices(value):
+    """A type with each ``Literal:a,b`` cut to ``Literal``, the way a step saved before
+    Optional[Literal] kept its choices recorded it."""
+    if isinstance(value, (list, tuple)):
+        return [_without_literal_choices(item) for item in value]
+    return "Literal" if str(value).startswith("Literal:") else value
+
+
 def _format_type(value):
     """One argument type as it should read in a warning."""
     if isinstance(value, (list, tuple)):
@@ -513,7 +521,7 @@ def _check_argument_types(action, arguments, parameters, signature, label):
     issues = []
     for name in comparable:
         before, after = recorded.get(name), current.get(name)
-        if _normalize_type(before) == _normalize_type(after):
+        if _normalize_type(before) in (_normalize_type(after), _normalize_type(_without_literal_choices(after))):
             continue
         issues.append(_issue(
             TYPE_CHANGED, WARNING,

@@ -78,11 +78,19 @@ def _resolve_type_string(annotation):
                 else:
                     module_name = deck.__name__
         arg_type = f"Enum:{module_name}.{annotation.__name__}"
+    elif get_origin(annotation) is Literal:
+        # inside Optional/Union too, so an Optional[Literal] keeps its choices
+        arg_type = _literal_type_string(annotation)
     elif hasattr(annotation, '__name__'):
         arg_type = annotation.__name__
     else:
         arg_type = str(annotation)
     return arg_type
+
+
+def _literal_type_string(annotation):
+    """``Literal["a", "b"]`` as a step records it: ``Literal:a,b``."""
+    return f"Literal:{','.join(str(a) for a in get_args(annotation))}"
 
 
 def _get_type_from_parameters(arg, parameters):
@@ -107,9 +115,7 @@ def _get_type_from_parameters(arg, parameters):
     elif annotation is not inspect._empty:
         origin = get_origin(annotation)
         if origin is Literal:
-            args = get_args(annotation)
-            arg_type = f"Literal:{','.join(str(a) for a in args)}"
-            return arg_type
+            return _literal_type_string(annotation)
 
         if getattr(annotation, '__module__', '') == 'typing':
 

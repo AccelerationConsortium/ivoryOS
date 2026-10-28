@@ -1,5 +1,6 @@
 import inspect
 from enum import Enum
+from typing import Literal, Optional
 
 from ivoryos.parsers.introspection import _inspect_class
 from ivoryos.script import Script, ScriptEditor
@@ -168,6 +169,23 @@ def test_enum_argument_survives_a_change_of_recorded_module_path():
 def test_enum_argument_swapped_for_a_different_class_is_reported():
     action = step("deck.pump", "tag", {"color": "RED"}, {"color": "Enum:deck.Colour"})
     assert codes(check_action(action, reference())) == [TYPE_CHANGED]
+
+
+class Mixer:
+    def mix(self, level: Optional[Literal["low", "high"]] = None):
+        return level
+
+
+def test_optional_literal_recorded_without_its_choices_is_not_reported():
+    """A step saved before Optional[Literal] kept its choices recorded just "Literal"."""
+    mixer = reference(interface_schema={"deck.mixer": _inspect_class(Mixer())})
+
+    def mix_step(recorded):
+        return step("deck.mixer", "mix", {"level": "low"}, {"level": recorded})
+
+    assert check_action(mix_step(["Literal", "NoneType"]), mixer) == []
+    assert check_action(mix_step(["Literal:low,high", "NoneType"]), mixer) == []
+    assert codes(check_action(mix_step(["Literal:low,mid", "NoneType"]), mixer)) == [TYPE_CHANGED]
 
 
 def test_kwargs_absorb_unrecognised_arguments():

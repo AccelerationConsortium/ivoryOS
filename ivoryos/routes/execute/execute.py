@@ -158,9 +158,13 @@ def experiment_run():
              if enum_entries:
                  # Use the first found Enum type
                  type_str = enum_entries[0]
-                 # Update the list in place so template gets the simple string? 
+                 # Update the list in place so template gets the simple string?
                  # Or better, just proceed to process it as a string
-        
+             literal_entries = [t for t in type_str if isinstance(t, str) and t.startswith("Literal:")] if isinstance(type_str, list) else []
+             if literal_entries:
+                 # an Optional[Literal]: the config table offers its choices, like a Literal
+                 config_type_list[key] = literal_entries[0]
+
         if isinstance(type_str, str) and type_str.startswith("Enum:"):
             try:
                 _, full_path = type_str.split(":", 1)

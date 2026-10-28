@@ -937,6 +937,10 @@ def create_form_from_action(action: dict, script=None, design=True):
             if none_type == "NoneType":
                 param_type = param_type[0]
                 is_optional = True
+        if param_type == "Literal" and sig and name in sig.parameters and _is_literal_type(sig.parameters[name].annotation):
+            # a step saved before Optional[Literal] kept its choices recorded just "Literal"
+            choices = _unwrap_literal_args(sig.parameters[name].annotation)
+            param_type = f"Literal:{','.join(str(c) for c in choices)}"
 
         is_required = not (is_optional or param_default_is_none or is_bool)
 
