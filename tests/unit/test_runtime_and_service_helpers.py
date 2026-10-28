@@ -47,6 +47,32 @@ def test_block_decorator_registers_functions_and_namespace_exposes_them():
         BUILDING_BLOCKS.update(original)
 
 
+def test_block_schema_reaches_global_state_on_a_cp1252_console(monkeypatch):
+    import io
+    import sys
+
+    from ivoryos.parsers.introspection import generate_block_schema
+
+    original = {category: dict(methods) for category, methods in BUILDING_BLOCKS.items()}
+    previous_blocks = global_state._building_blocks
+    BUILDING_BLOCKS.clear()
+    # Windows consoles default to cp1252, which cannot encode emoji
+    monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(io.BytesIO(), encoding="cp1252"))
+
+    try:
+        @block(category="math")
+        def add_one(value: int):
+            return value + 1
+
+        global_state.building_blocks = generate_block_schema()
+        assert list(global_state.building_blocks) == ["blocks.math"]
+        assert "add_one" in global_state.building_blocks["blocks.math"]
+    finally:
+        BUILDING_BLOCKS.clear()
+        BUILDING_BLOCKS.update(original)
+        global_state._building_blocks = previous_blocks
+
+
 def test_ensure_deck_and_pause_use_global_runtime_state():
     previous_deck = global_state._deck
     previous_handlers = list(global_state._notification_handlers)
