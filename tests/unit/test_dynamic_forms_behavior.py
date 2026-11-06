@@ -164,11 +164,11 @@ def test_create_all_builtin_forms_exposes_expected_controls(app):
     with app.app_context():
         forms = create_all_builtin_forms(script)
 
-    assert set(forms) == {"if", "while", "variable", "input", "wait", "repeat", "pause", "math", "comment"}
+    # no math: a variable computes the same
+    assert set(forms) == {"if", "while", "variable", "input", "wait", "repeat", "pause", "comment"}
     assert hasattr(forms["wait"], BATCH_ACTION_FIELD)
     assert hasattr(forms["variable"], "variable_type")
     assert hasattr(forms["input"], "variable_type")
-    assert hasattr(forms["math"], "math_variable")
 
 
 def test_create_action_button_formats_variables_returns_and_missing_outputs():

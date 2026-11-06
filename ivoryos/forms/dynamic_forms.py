@@ -1184,7 +1184,9 @@ def create_form_from_action(action: dict, script=None, design=True):
 
 def create_all_builtin_forms(script):
     all_builtin_forms = {}
-    for logic_name in ['if', 'while', 'variable', 'input', 'wait', 'repeat', 'pause', 'math', 'comment']:
+    for logic_name in ['if', 'while', 'variable', 'input', 'wait', 'repeat', 'pause',
+                       # 'math',  # hidden: a variable computes the same; a saved math step still runs and is edited
+                       'comment']:
         # signature = info.get('signature', {})
         form_class = create_builtin_form(logic_name, script)
         all_builtin_forms[logic_name] = form_class()
@@ -1230,20 +1232,21 @@ def create_builtin_form(logic_type, script):
         )
         setattr(BuiltinFunctionForm, "variable", variable_field)
         setattr(BuiltinFunctionForm, "variable_type", type_field)
-    elif logic_type == "math":
-        math_variable_field = VariableOrStringField(
-            label="save_to",
-            validators=[InputRequired()],
-            render_kw={"placeholder": "Variable name"},
-            script=script
-        )
-        type_field = SelectField(
-            'Type',
-            choices=VARIABLE_TYPE_CHOICES,
-            default='float',
-        )
-        setattr(BuiltinFunctionForm, "math_variable", math_variable_field)
-        setattr(BuiltinFunctionForm, "variable_type", type_field)
+    # math is hidden from the toolbox (see create_all_builtin_forms): a variable computes the same
+    # elif logic_type == "math":
+    #     math_variable_field = VariableOrStringField(
+    #         label="save_to",
+    #         validators=[InputRequired()],
+    #         render_kw={"placeholder": "Variable name"},
+    #         script=script
+    #     )
+    #     type_field = SelectField(
+    #         'Type',
+    #         choices=VARIABLE_TYPE_CHOICES,
+    #         default='float',
+    #     )
+    #     setattr(BuiltinFunctionForm, "math_variable", math_variable_field)
+    #     setattr(BuiltinFunctionForm, "variable_type", type_field)
 
     if logic_type in ['wait']:
         batch_action = BooleanField(label='run once per batch', render_kw={"placeholder": "Optional"})

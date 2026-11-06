@@ -291,6 +291,20 @@ def test_step_edit_form_explains_why_the_step_no_longer_matches(auth, test_deck)
     assert 'no longer takes &#39;dropped_arg&#39;' in body
 
 
+def test_a_saved_math_step_still_opens_to_edit(auth, test_deck):
+    # math is no longer in the toolbox; a workflow saved with one still edits and compiles
+    script = Script(author='testuser')
+    ScriptEditor(script).add_math_variable("#x * 2 + 1", "out")
+
+    with auth.application.app_context():
+        post_script_for_user('testuser', script, draft_id=session_draft_id(auth))
+        uuid = get_script_for_user('testuser', session_draft_id(auth)).script_dict['script'][0]['uuid']
+
+    body = auth.get(f'/ivoryos/draft/steps/{uuid}').get_data(as_text=True)
+    assert 'value="#x * 2 + 1"' in body and 'placeholder="x * 2 + 1"' in body
+    assert auth.get('/ivoryos/draft/code_preview?mode=single&batch=sample').status_code == 200
+
+
 def test_a_deck_name_alone_is_not_flagged(auth, test_deck):
     """Only the steps say whether a workflow fits: a deck keeps its name when its methods change."""
     from ivoryos.runtime.state import global_state
@@ -546,8 +560,10 @@ def test_a_flow_control_field_explains_itself_in_its_placeholder_not_as_a_limit(
 
     # a short example in the box, no note under it
     assert 'placeholder="1, True, &#34;text&#34;"' in html or 'placeholder="1, True, &quot;text&quot;"' in html
-    assert 'placeholder="x * 2 + 1"' in html and 'placeholder="x &gt; 5"' in html
+    assert 'placeholder="x &gt; 5"' in html
     assert 'field-help' not in html
+    # no math in the toolbox: a variable computes the same
+    assert 'data-action="math"' not in html and 'value="math"' not in html
     # the type select has a label that fits the narrow label column
     assert 'Select Value Type' not in html and 'Select Input Type' not in html
     assert '<label class="input-group-text">Type' in html

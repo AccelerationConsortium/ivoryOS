@@ -43,16 +43,17 @@ whole batch rather than once per sample, such as homing a robot.
 | `wait` | Pause the workflow for a number of seconds. |
 | `pause` | Stop and show a message until someone resumes the run, for a manual step. |
 | `input` | Ask the person at the bench for a value and save the answer. |
-| `variable` | Set a named value: a number, `True`/`False`, `"text"`, or one built from other values. |
-| `math` | Compute a number from other values, such as `x + 5 * (y - 2)`. |
+| `variable` | Set a named value: a number, `True`/`False`, `"text"`, or one computed from other values, such as `x + 5 * (y - 2)`. |
 | `comment` | Write a line to the run log. |
+
+An older workflow may have a `math` step. It still runs and can still be edited, but `math` is
+no longer in the toolbox: a `variable` with a Float or Integer type does the same.
 
 ### Values and expressions
 
-Conditions and the statements of `variable` and `math` steps are written as in Python. A name such
-as `x` is a value set by an earlier step: a `variable`, `math` or `input` step, or a **Save value
-as** name. `#x` reads the same value, and when no earlier step sets `x`, it also makes `x` a run
-input.
+Conditions and the statements of `variable` steps are written as in Python. A name such as `x`
+is a value set by an earlier step: a `variable` or `input` step, or a **Save value as** name.
+`#x` reads the same value, and when no earlier step sets `x`, it also makes `x` a run input.
 
 A `variable` step's **Type** decides what its statement gives. With `name` set to `qwe`, `x` to 3
 and `y` to 2.5:
