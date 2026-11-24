@@ -14,6 +14,7 @@ from ivoryos.optimizer.registry import OPTIMIZER_REGISTRY
 from ivoryos.routes.auth.auth import login_manager
 from ivoryos.routes.control.control import global_state
 from ivoryos.socket_handlers import socketio
+from ivoryos.utils import single_instance
 from ivoryos.utils.logger import start_logger
 from ivoryos.models import db, User
 from ivoryos.script import Script
@@ -149,10 +150,21 @@ def run(module=None, host="0.0.0.0", port=None, debug=None, llm_server=None, mod
     :param notification_handler: notification handler function
     :param templates_dir: directory to import templates from, defaults to "templates"
     """
-    # Prevent multiple IvoryOS instances from running simultaneously
+    # Prevent a second run() in this process
     if os.environ.get("IVORYOS_ACTIVE"):
         return
     os.environ["IVORYOS_ACTIVE"] = "1"
+
+    # and a second process serving the same deck script, which would drive the same instruments
+    script = getattr(sys.modules.get(module), "__file__", None) if module else None
+    if script:
+        shown_host = "localhost" if host in ("0.0.0.0", "::") else host
+        shown_port = port or int(os.environ.get("PORT", 8000))
+        try:
+            single_instance.acquire(script, url=f"http://{shown_host}:{shown_port}{url_prefix}")
+        except single_instance.AlreadyRunning as e:
+            os.environ.pop("IVORYOS_ACTIVE", None)
+            raise SystemExit(str(e))
 
     app = create_app(config_class=config or get_config())  # Create app instance using factory function
 

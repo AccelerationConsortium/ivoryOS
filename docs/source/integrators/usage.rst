@@ -60,6 +60,19 @@ Notification handlers can send messages, such as email, SMS, or Slack notificati
    ivoryos.run(__name__, notification_handler=[slack_bot, another_notification_handler])
 
 
+One copy per deck script
+------------------------
+
+A deck script can be served by only one IvoryOS process at a time, since two copies would send commands to the same instruments. If you start a script that is already running, even on another port, the new copy stops before its server starts and says which process to stop:
+
+.. code-block:: text
+
+   ivoryOS is already running my_deck.py (process 12345, http://localhost:8000/ivoryos, started 2026-11-24 10:32:05).
+   Only one copy of a deck script can control its instruments. Stop the running one first (press Ctrl+C in its terminal, or run `kill 12345`), then start this one again.
+
+Instruments created at the top of the script are connected before ``ivoryos.run()`` is reached, so the second copy has already opened them by the time it stops. Different deck scripts can run side by side.
+
+
 Parameter type conversion
 -------------------------
 

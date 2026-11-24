@@ -323,4 +323,5 @@ to the published docs in `docs/source/`.
 6. **Blueprint URL registration order matters**: The `design` and `execute` blueprints share `url_prefix=url_prefix` (no sub-path). Be careful about route conflicts when adding routes to either.
 7. **`script.python_script` mode**: When a script has a raw Python string in `python_script`, the step-level runner is bypassed. CSV output and DB snapshotting do **not** apply in this mode.
 8. **Demo mode**: `DemoConfig` creates a `SessionDemoUser` per browser session instead of requiring real login. Check `app.config.get("DEMO_MODE", False)` before modifying auth logic.
+9. **One process per deck script**: `run()` takes an OS file lock keyed on the deck script's path (`ivoryos/utils/single_instance.py`, in the temp folder) and exits with a message naming the holder's PID if another process has it. `IVORYOS_ACTIVE` only guards a second `run()` in the same process. When testing two servers at once, use two different scripts.
 
